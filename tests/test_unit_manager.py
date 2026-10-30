@@ -106,7 +106,7 @@ class UnitManagerTests(unittest.TestCase):
         with patch.dict(os.environ,{'INVOCATION_ID':'invalid'}),self.assertRaises(DeployError):unit.service_entry('/x')
         with patch.dict(os.environ,{'INVOCATION_ID':'a'*32}),patch('unit_manager.check',side_effect=DeployError('not manager MainPID')) as check:
             with self.assertRaises(DeployError):unit.service_entry('/x')
-            check.assert_called_once_with('/x',running=True,entry=True)
+            check.assert_called_once_with('/x',running=True,entry=True,credential_recovery=True)
 
     def test_entry_requires_real_pid_identity_cgroup_and_invocation_together(self):
         meta={**offline.meta(),'uid':os.geteuid(),'gid':os.getegid()};meta.pop('payload_storage')

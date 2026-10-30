@@ -1,5 +1,19 @@
 # 实施进度
 
+## 最后激活与个人UID交付的一次请求
+
+新增owner_delivery.py、owner_finish.py及Root本地`owner-delivery-plan/apply/abort`、`owner-finish --spec ... [--plan|--abort]`。固定Root私有请求明确operation_id、原stage/Node计划和目标UID/GID/parent/name/同盘Root spool；中断保留原operation_id，新尝试显式换ID，避免将旧中止记录重放当成重新激活。**身份、中央配额、Node工作/缓存槽与ACK/健康心跳仍须先完成，owner-finish不是完整资源开户自动化。** 不创建宿主账号、不远程登录、不读取个人模型/skill/MCP配置。
+
+服务身份子程序调用原激活事务，Root先持久原请求，再保存原始交付计划；计划/journal/回执只有绑定、身份和摘要，无密码/token。交付核对当前已提交且启用的身份、Basic/Bearer、范围/到期、源文件/目录身份及安装/config。Root私有spool完整落盘并可续写自身正确文件前缀，FD相对renameat2 NOREPLACE发布新目录，持久handoff授权后才转交0600文件与0700目录给个人UID；原始相对CA可交付，外部路径/私钥不接管。已有目录、链接/硬链接、父目录重建、跨挂载及过期凭据拒绝，不覆盖个人文件。用户接管后恢复不再重拷旧配置，归档偏好可保留。
+
+中止仅处理原操作：未提交激活走已有spent-ID中止，已提交激活不自动撤销/禁用；交付及资源不回滚，未知/已交付/Root私有未完成文件不自动删除。Root回执明确保留原状态，完成重放是历史。pending阻断离线备份、代码切换和资源维护；纯凭据阶段不改变执行合同，中央可正常恢复启动/停止，其他resource/unit/startup journal仍阻断。已实际演练pending期间重启中央再恢复，避免激活等待live controller与禁止启动互相锁死。子程序输出丢弃，不用全进程FSIZE限制误伤超过256KiB的合法SQLite。
+
+最终 **578项/103.558秒/无跳过** 及JS语法通过，70个非文档生产源码与最后Root包一致。实际Root/SVC23820/个人UID23802：原激活7、交付8、完成协调6个SIGKILL边界与同请求恢复；未提交完成中止后换operation_id沿用同一目标；一份最终激活token。实际部分Root文件续写、已有目标不覆盖、stale parent/跨文件系统拒绝、handoff前推进隔离管理员进程时钟导致过期拒绝并显式中止、300000字节身份DB填充通过。用户接管后实际UID修改archive_root，继续恢复保留；源用户禁用/令牌撤销后拒绝新交付，旧完成记录不重新启用或覆盖。随后个人UID用程序交付的client完成真实API登录/幂等提交/单attempt BishengIR 19+23=42及读取产物，peer UID读取凭据拒绝，无手工凭据复制。既有本地配额/缓存/Node ACK及中央/Node启动适配流程继续通过。
+
+独立核对保留的master/交付回执、Svc原client SHA、激活DB记录与唯一已撤销token摘要一致；最终账户disabled1。三次成功Root各四盘均释放，所有自有角色/helper/volume缺失，原盘保留。私有完整evidence/owner-finish-validation.json、公开精选reports/public-source-check.json.owner_finish。两次测试失败保留：首focused夹具漏config.json导致2错误；后577回归的两个pidfd夹具漏合法role元数据导致2错误，已修夹具。此前Root/577绿色不重标为最后source范围。
+
+旧zdl启动时间/Memory/SHM不变；没有当前宿主systemd写入、宿主账户、NPU/model或其他工程修改。实际PID1/两宿主用户/两物理机/远程HOME/NPU仍未验收，原新服务启动证据使用固定manager适配器。本阶段不替代完整资源开户协调、已激活用户扩新Node和合同变更重授权；整体goal仍未完成。
+
 ## 一次启动意图、真实进程就绪与准入交接
 
 新增unit_start.py及本地Root命令`unit-start-plan/apply/abort`。绑定安装/配置/已加载unit/管理器/全部启用Node定义，持久journal和Root只读gate，发送前持久issued边界；只调用一次`StartUnit(name,"fail")`，不调用Restart/Stop/enable。响应不明或协调器崩溃后仅核对原请求；即使issued之后、RPC之前中断，也不猜测重发。原unit停止/无job且状态静默后可显式abort并生成新计划，不能在服务仍运行时清理中止记录。
@@ -139,7 +153,7 @@ Root在停止并排空时计划，持久journal后执行管理器Reload及选定
 
 ## 当前代码检查
 
-当前完整回归 **567 项/95.628 秒/无跳过**、网页 JavaScript 语法通过；此前554项为manager读回/加载恢复、541项为未提交激活中止、525项为unit离线更新、515项为最后激活、497项为中央/Node交接、486项为Node本地绑定、478项为中央存储组、469项为待预配身份、457项为原生槽追加、440项为独立原盘核验工具阶段。公开摘要 [reports/public-source-check.json](reports/public-source-check.json) 保存受测 68 个生产代码摘要。
+当前完整回归 **578 项/103.558 秒/无跳过**、网页 JavaScript 语法通过；此前567项为启动/心跳准入交接、554项为manager读回/加载恢复、541项为未提交激活中止、525项为unit离线更新、515项为最后激活、497项为中央/Node交接、486项为Node本地绑定、478项为中央存储组、469项为待预配身份、457项为原生槽追加、440项为独立原盘核验工具阶段。公开摘要 [reports/public-source-check.json](reports/public-source-check.json) 保存受测 70 个生产代码摘要。
 
 新增 5 个核验工具回归使用真实子进程，覆盖有效元数据、单次短写截断、持续写达到内核文件限额、stderr 洪泛和文件系统警告拒绝。小记录输出在子进程写入时就受 2MiB 上限约束，避免 capture_output 读完后才检查大小；不影响已冻结的生产代码或构建工作负载。
 

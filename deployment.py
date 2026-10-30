@@ -26,7 +26,7 @@ from lab_client import atomic_json,read_json
 from state_lock import state_lock
 
 ROOT=Path(__file__).resolve().parent
-CORE=['auth.py','owner_identity.py','owner_handoff.py','node_owner_ack.py','owner_activation.py','owner_activation_abort.py','unit_refresh.py','unit_manager.py','unit_start.py','backends.py','collector.py','container_engine.py','container_entry.py','artifact_export.py',
+CORE=['auth.py','owner_identity.py','owner_handoff.py','node_owner_ack.py','owner_activation.py','owner_activation_abort.py','owner_delivery.py','owner_finish.py','unit_refresh.py','unit_manager.py','unit_start.py','backends.py','collector.py','container_engine.py','container_entry.py','artifact_export.py',
       'environment_probe.py','environment_contract.py','device_qualification.py','attempt_inventory.py','executor.py','npu_admission.py','npu_device.py','inputs.py','jobs.py','lab_client.py','client_archive.py','archive_api.py','nodes.py','server.py',
       'templates.py','worker.py','workflow_runner.py','workflow_spec.py','workflow_results.py',
       'state_lock.py','resources.py','queue_policy.py','docker_runtime.py','listener.py','preflight.py','workspace_slots.py','filesystem_quota.py','quota_workspace.py','workspace_quota_admin.py','node_owner_admin.py','group_quota.py','payload_groups.py','payload_quota_admin.py','payload_owner_admin.py','io_policy.py','storage_io.py','payload_storage.py','storage_budget.py','storage_files.py','storage_lifecycle.py','node_storage.py','deployment.py','maintenance.py','servicectl','accessctl','workerctl',
@@ -37,7 +37,7 @@ EXECUTABLES={'servicectl','accessctl','workerctl','labctl','install-client'}
 # Bundles always include these helpers, but earlier compatible service releases
 # do not need them to run existing workspaces. Do not make their absence alone
 # prevent verification/rollback of an otherwise intact historical installation.
-OPTIONAL_ADMIN_FILES={'workspace_quota_admin.py','OWNER_PROVISION.md','owner_identity.py','payload_owner_admin.py','node_owner_admin.py','owner_handoff.py','node_owner_ack.py','owner_activation.py','unit_refresh.py','unit_manager.py','unit_start.py','owner_activation_abort.py'}
+OPTIONAL_ADMIN_FILES={'workspace_quota_admin.py','OWNER_PROVISION.md','owner_identity.py','payload_owner_admin.py','node_owner_admin.py','owner_handoff.py','node_owner_ack.py','owner_activation.py','unit_refresh.py','unit_manager.py','unit_start.py','owner_activation_abort.py','owner_delivery.py','owner_finish.py'}
 
 
 class DeployError(ValueError):pass
@@ -211,7 +211,7 @@ def load_installation(prefix):
     return prefix,meta,release
 
 
-def verify(prefix,quota_recovery=False,unit_recovery=False,manager_recovery=False,startup_recovery=False):
+def verify(prefix,quota_recovery=False,unit_recovery=False,manager_recovery=False,startup_recovery=False,delivery_recovery=False,finish_recovery=False):
     prefix,meta,release=load_installation(prefix);manifest=regular_json(release/'release.json')
     checked_manifest(manifest)
     if manifest.get('id')!=meta['release_id'] or manifest.get('state_schema')!=meta['state_schema']:raise DeployError('Installed release identity differs')
@@ -226,6 +226,10 @@ def verify(prefix,quota_recovery=False,unit_recovery=False,manager_recovery=Fals
         raise DeployError('Resume or explicitly abort the original pending manager reload before starting or maintaining this installation')
     if not startup_recovery and any(p.exists() or p.is_symlink() for p in [prefix/'unit-start-change.json',prefix/'service-admission.json']):
         raise DeployError('Resume or explicitly abort the original pending unit startup before starting or maintaining this installation')
+    if not delivery_recovery and ((prefix/'owner-delivery-change.json').exists() or (prefix/'owner-delivery-change.json').is_symlink()):
+        raise DeployError('Resume or explicitly abort the original pending credential delivery before offline maintenance')
+    if not finish_recovery and ((prefix/'owner-finish-change.json').exists() or (prefix/'owner-finish-change.json').is_symlink()):
+        raise DeployError('Resume the original owner activation/delivery coordinator before offline maintenance')
     if meta['role']=='controller':
         config=regular_json(Path(meta['state_dir'])/'config.json',private=True)
         if not quota_recovery:
@@ -469,9 +473,19 @@ def process_status(prefix):
             'release_id':saved.get('release_id') if live else meta['release_id'],'state_dir':str(state)}
 
 
+def _service_verify(prefix,startup_recovery=False):
+    # Credential-only journals do not change execution/resource contracts.
+    # Keeping the controller restartable avoids deadlocking live readiness
+    # checks after an unrelated controller crash during final delivery.
+    selected,meta,release=verify(prefix,startup_recovery=startup_recovery,delivery_recovery=True,finish_recovery=True)
+    if meta['role']!='controller' and any(p.exists() or p.is_symlink() for p in [selected/'owner-delivery-change.json',selected/'owner-finish-change.json']):
+        raise DeployError('Credential delivery journals do not belong to a Node installation')
+    return selected,meta,release
+
+
 def run_service(prefix):
     from jobs import identity
-    prefix,meta,release=verify(prefix,startup_recovery=bool(os.environ.get('INVOCATION_ID')))
+    prefix,meta,release=_service_verify(prefix,startup_recovery=bool(os.environ.get('INVOCATION_ID')))
     if os.geteuid()!=meta['uid'] or os.getegid()!=meta['gid']:raise DeployError('Service must run as its configured UID/GID')
     from unit_manager import service_entry
     service_entry(prefix)
@@ -493,7 +507,7 @@ def run_service(prefix):
 
 
 def start(prefix):
-    prefix,meta,release=verify(prefix)
+    prefix,meta,release=_service_verify(prefix)
     if os.geteuid() not in {0,meta['uid']}:raise DeployError('Service identity or root is required')
     status=process_status(prefix)
     if status['running']:return status
@@ -522,7 +536,7 @@ def start(prefix):
 
 
 def stop(prefix):
-    prefix,meta,_=verify(prefix)
+    prefix,meta,_=_service_verify(prefix)
     if os.geteuid() not in {0,meta['uid']}:raise DeployError('Service identity or root is required')
     status=process_status(prefix)
     if not status['running']:return status

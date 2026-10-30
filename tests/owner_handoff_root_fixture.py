@@ -168,8 +168,9 @@ u._checkpoint=crash;u.apply("/opt/handoff-controller",json.load(open("/state/uni
     def personal_code(self,code,uid=23802):
         def drop():os.setgroups([]);os.setgid(uid);os.setuid(uid)
         wrapper='import sys;sys.path.insert(0,"'+self.prefix+'/current");'+code
-        r=subprocess.run(['/usr/bin/python3','-I','-B','-c',wrapper,'/personal/new_owner'],capture_output=True,text=True,
-            preexec_fn=drop,env={'PATH':'/usr/bin:/bin','HOME':'/personal/new_owner','LANG':'C.UTF-8'},timeout=30)
+        personal=str(getattr(self,'personal_path','/personal/new_owner'))
+        r=subprocess.run(['/usr/bin/python3','-I','-B','-c',wrapper,personal],capture_output=True,text=True,
+            preexec_fn=drop,env={'PATH':'/usr/bin:/bin','HOME':personal,'LANG':'C.UTF-8'},timeout=30)
         if r.returncode:raise RuntimeError('Personal UID client operation failed: '+r.stderr[-1200:])
         return json.loads(r.stdout)
 
@@ -333,27 +334,31 @@ print(json.dumps({"stale":True}))
         try:worker.heartbeat()
         finally:worker.lock.close();worker.state_lock.close()
         if self.context.get('activation_abort'):self.abort_uncommitted(path)
-        faults=[];identifier=None
-        for boundary in ['intent','trust','client','before_commit','committed','receipt','published']:
-            crashed=self.service_run('''import sys,os,signal,json
-from pathlib import Path
-from jobs import JobStore
-from lab_client import read_json
-import owner_activation as a
-s=Path(sys.argv[1])
-def crash(stage):
- if stage=="'''+boundary+'''":os.kill(os.getpid(),signal.SIGKILL)
-a._checkpoint=crash;a.Activation(JobStore(s,read_json(s/'config.json'))).activate(read_json(s/'activation-spec.json'))
-''')
-            assert crashed.returncode==-signal.SIGKILL,(boundary,crashed.stderr[-1200:])
-            pending=self.state/'owner-activations/new_owner.pending.json'
-            if pending.exists():
-                value=read_json(pending)
-                if identifier:assert identifier==value['id']
-                identifier=value['id']
-            status=self.command('accessctl','user-status','new_owner')
-            if boundary in ['intent','trust','client','before_commit']:assert status['disabled'] and status['state']=='staged'
-            faults.append({'boundary':boundary,'sigkill_observed':True,'same_activation_id':True})
+        if self.context.get('owner_finish'):
+            from owner_finish_fixture import run
+            faults,identifier,self.finish_proof=run(self,spec,config)
+        else:
+            faults=[];identifier=None
+            for boundary in ['intent','trust','client','before_commit','committed','receipt','published']:
+                crashed=self.service_run('''import sys,os,signal,json
+    from pathlib import Path
+    from jobs import JobStore
+    from lab_client import read_json
+    import owner_activation as a
+    s=Path(sys.argv[1])
+    def crash(stage):
+     if stage=="'''+boundary+'''":os.kill(os.getpid(),signal.SIGKILL)
+    a._checkpoint=crash;a.Activation(JobStore(s,read_json(s/'config.json'))).activate(read_json(s/'activation-spec.json'))
+    ''')
+                assert crashed.returncode==-signal.SIGKILL,(boundary,crashed.stderr[-1200:])
+                pending=self.state/'owner-activations/new_owner.pending.json'
+                if pending.exists():
+                    value=read_json(pending)
+                    if identifier:assert identifier==value['id']
+                    identifier=value['id']
+                status=self.command('accessctl','user-status','new_owner')
+                if boundary in ['intent','trust','client','before_commit']:assert status['disabled'] and status['state']=='staged'
+                faults.append({'boundary':boundary,'sigkill_observed':True,'same_activation_id':True})
         first=self.command('accessctl','user-activate','--spec',str(path));again=self.command('accessctl','user-activate','--spec',str(path))
         assert first['id']==again['id']==identifier and first['reused'] and again['reused']
         assert not (self.state/'owner-activations/new_owner.pending.json').exists()
@@ -373,8 +378,10 @@ a._checkpoint=crash;a.Activation(JobStore(s,read_json(s/'config.json'))).activat
         # Explicit trusted-administrator delivery, without putting credentials
         # in command arguments, stdout, the task payload or central web routes.
         import shutil
-        personal=Path('/personal/new_owner');personal.mkdir(mode=0o700);os.chown(personal,23802,23802)
-        shutil.copyfile(published,personal/'client.json');(personal/'client.json').chmod(0o600);os.chown(personal/'client.json',23802,23802)
+        if self.context.get('owner_finish'):personal=self.personal_path
+        else:
+            personal=Path('/personal/new_owner');personal.mkdir(mode=0o700);os.chown(personal,23802,23802)
+            shutil.copyfile(published,personal/'client.json');(personal/'client.json').chmod(0o600);os.chown(personal/'client.json',23802,23802)
         atomic_json(personal/'environment.json',config['environment_manifest']);os.chown(personal/'environment.json',23802,23802)
         denied=self.personal_code('''import json,sys
 from pathlib import Path
@@ -431,10 +438,14 @@ print(json.dumps({'peer_read_denied':True,'tokens':n}))
         self.command('accessctl','user-disable','new_owner',json_output=False)
         replay=self.command('accessctl','user-activate','--spec',str(path));assert replay['reused']
         assert self.command('accessctl','user-status','new_owner')['disabled']
+        if self.context.get('owner_finish'):
+            from owner_finish_fixture import after_disable
+            after_disable(self)
         return {'owner_activation':{'passed':True,'fault_chain':faults,'stale_node_refused':True,'private_profile_mode':'0600',
             'service_uid':23820,'task_uid':23802,'caps_zero':True,'actual_cpu_ir':checked,'later_disable_preserved':True,
             'personal_client_uid':23802,'peer_uid23801_private_profile_denied':True,'administrator_private_copy_delivery':True,
             'scope':'Installed same-host controller/Node activation plus one real queued non-root CPU BishengIR workflow. No NPU or real systemd PID1.'},
             'accounts_enabled':1,'account_disabled_after_acceptance':True,'full_owner_onboarding_ready':False,
             'identity_still_staged_and_token_count_zero':False,'credential_free_stage_verified_before_activation':True,
-            **({'activation_abort':self.abort_proof} if self.context.get('activation_abort') else {})}
+            **({'activation_abort':self.abort_proof} if self.context.get('activation_abort') else {}),
+            **({'owner_finish':self.finish_proof} if self.context.get('owner_finish') else {})}

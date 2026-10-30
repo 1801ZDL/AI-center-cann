@@ -21,6 +21,12 @@ def main():
     parser=argparse.ArgumentParser(description=__doc__)
     commands=parser.add_subparsers(dest='action',required=True)
     p=commands.add_parser('bundle');p.add_argument('--output',required=True)
+    p=commands.add_parser('owner-delivery-plan',help='Plan delivery of an activated personal credential to one explicit private UID')
+    p.add_argument('--prefix',required=True);p.add_argument('--spec',required=True);p.add_argument('--output',required=True)
+    for action in ['owner-delivery-apply','owner-delivery-abort']:
+        p=commands.add_parser(action);p.add_argument('--prefix',required=True);p.add_argument('--plan',required=True)
+    p=commands.add_parser('owner-finish',help='Resume final activation and private UID credential delivery from one Root-owned spec')
+    p.add_argument('--prefix',required=True);p.add_argument('--spec',required=True);p.add_argument('--plan',action='store_true');p.add_argument('--abort',action='store_true')
     p=commands.add_parser('workspace-prepare',help='Prepare UID-quota slots on an explicitly selected, already-mounted empty ext4 filesystem')
     p.add_argument('--root',required=True);p.add_argument('--limits',required=True);p.add_argument('--output');p.add_argument('--plan',action='store_true')
     p=commands.add_parser('payload-groups-prepare',help='Provision explicit owner group limits on a new, already quota-enabled dedicated payload filesystem')
@@ -90,6 +96,24 @@ def main():
         if action=='unit-install':p.add_argument('--unit-dir',default='/etc/systemd/system');p.add_argument('--enable',action='store_true')
     args=parser.parse_args()
     if args.action=='bundle':result=deploy.bundle(args.output)
+    elif args.action=='owner-finish':
+        deploy.require_root();path=Path(args.spec)
+        if path.lstat().st_uid!=0:raise deploy.DeployError('Finish request must be Root-owned')
+        from owner_finish import finish
+        result=finish(args.prefix,deploy.regular_json(path,max_bytes=65536,private=True),preview=args.plan,abort=args.abort)
+    elif args.action=='owner-delivery-plan':
+        deploy.require_root();path=Path(args.spec)
+        if path.lstat().st_uid!=0:raise deploy.DeployError('Delivery request must be Root-owned')
+        from owner_delivery import plan
+        from payload_quota_admin import write
+        result=plan(args.prefix,deploy.regular_json(path,max_bytes=65536,private=True));target=deploy.secure_parent(args.output)
+        if target.exists() or target.is_symlink():raise deploy.DeployError('Choose a new Root-private delivery plan output')
+        write(target,result['plan']);result={'read_only':True,'plan_id':result['plan']['id'],'plan_file':str(target),'credentials_issued':False}
+    elif args.action in {'owner-delivery-apply','owner-delivery-abort'}:
+        deploy.require_root();path=Path(args.plan)
+        if path.lstat().st_uid!=0:raise deploy.DeployError('Delivery plan must be Root-owned')
+        from owner_delivery import apply
+        result=apply(args.prefix,deploy.regular_json(path,max_bytes=128*1024,private=True),abort=args.action=='owner-delivery-abort')
     elif args.action=='unit-start-plan':
         from unit_start import plan
         from payload_quota_admin import write

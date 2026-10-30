@@ -115,7 +115,7 @@ class DeploymentTests(unittest.TestCase):
         state=self.root/'pidfd';state.mkdir()
         try:
             saved=identity(child.pid);atomic_json(state/'service-process.json',saved)
-            meta={'uid':os.getuid(),'gid':os.getgid(),'state_dir':str(state)}
+            meta={'role':'controller','uid':os.getuid(),'gid':os.getgid(),'state_dir':str(state)}
             def status(_):return {'running':child.poll() is None,'pid':child.pid,'role':'controller','ready':False}
             with patch('deployment.verify',return_value=(self.root,meta,self.root)),patch('deployment.process_status',side_effect=status):
                 stopped=deployment.stop(self.root)
@@ -129,7 +129,7 @@ class DeploymentTests(unittest.TestCase):
         state=self.root/'pidfd-reused';state.mkdir()
         try:
             saved=identity(child.pid);saved['start_ticks']+=1;atomic_json(state/'service-process.json',saved)
-            meta={'uid':os.getuid(),'gid':os.getgid(),'state_dir':str(state)}
+            meta={'role':'controller','uid':os.getuid(),'gid':os.getgid(),'state_dir':str(state)}
             with patch('deployment.verify',return_value=(self.root,meta,self.root)),patch('deployment.process_status',return_value={'running':True,'pid':child.pid}):
                 with self.assertRaisesRegex(DeployError,'identity changed'):deployment.stop(self.root)
             self.assertIsNone(child.poll())

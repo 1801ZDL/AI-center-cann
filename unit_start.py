@@ -88,7 +88,7 @@ def entry(prefix):
     gate=_gate(prefix)
     if gate is None:
         if (Path(prefix)/JOURNAL).exists():raise DeployError('Startup journal has no published entry gate')
-        manager.check(prefix,running=True,entry=True)
+        manager.check(prefix,running=True,entry=True,credential_recovery=True)
         return
     if gate['phase']!='issued' or os.geteuid()!=gate['uid'] or os.getegid()!=gate['gid']:raise DeployError('This invocation has no issued startup permission')
     prefix,meta,_,_ = manager._context(prefix,startup_recovery=True)

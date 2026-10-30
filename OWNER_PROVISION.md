@@ -1,6 +1,35 @@
 # 用户预配：当前阶段与交付条件
 
-当前提供**中央待预配身份/GID配额**、**Node原生槽与本地绑定**、**中央批准/Node ACK交接**及**最后就绪校验与私有凭据发布**。已有同机隔离角色与个人UID的CPU任务验收，新增既有systemd unit的离线预览/CAS/备份与可恢复文件更新。实际manager加载/重启、自动化全流程协调、真实宿主账号/两机和NPU仍需补齐。
+当前提供**中央待预配身份/GID配额**、**Node原生槽与本地绑定**、**中央批准/Node ACK交接**及**最后就绪校验与私有凭据发布**。新增一个固定请求完成最后激活及本地个人UID交付，已有实际个人UID排队IR任务验收。资源预配各阶段仍须先完成，远程个人目录交付、完整跨服务器开户协调、真实宿主账号/两机与PID1/NPU仍需补齐。系统服务启动协调的独立范围见SERVER.md。
+
+## 最后激活与本地个人目录的一次请求
+
+前面的身份、中央存储、Node绑定/ACK/健康心跳必须已完成。以下操作由选定中央所在主机的可信Root管理员执行；不创建Linux账号、不持有用户SSH或模型密钥，不通过个人MCP开放提权。个人parent须已属于明确指定的UID/GID且祖先没有链接/其他人写权限；最后的name目录必须不存在。准备一个**已存在、Root所有0700、与个人parent在同一文件系统和挂载**的spool，例如由管理员在/home文件系统准备/home/.ascend-lab-delivery。不会自动改用户HOME权限或选择其他盘作为替代。
+
+Root私有0600请求示例（摘要/Node ID/UID/GID按实际替换）：
+
+```json
+{
+  "operation_id":"替换为一次生成并在重试时保持不变的32位十六进制ID",
+  "activation":{"owner":"researcher_a","stage_id":"替换为中央64位摘要","required_nodes":[{"node_id":"worker-替换为实际ID","plan_id":"替换为原Node交接64位摘要"}]},
+  "delivery":{"owner":"researcher_a","parent":"/home/researcher_a","name":"ascend-lab","uid":23004,"gid":23004,"spool":"/home/.ascend-lab-delivery"}
+}
+```
+
+```bash
+/opt/ascend-lab-controller/current/servicectl owner-finish --prefix /opt/ascend-lab-controller --spec /root/finish-owner.json --plan
+/opt/ascend-lab-controller/current/servicectl owner-finish --prefix /opt/ascend-lab-controller --spec /root/finish-owner.json
+```
+
+第二条命令完成原user-activate及受管交付；中断后重复同一operation_id和请求。中止记录重放仍为中止；要开始新尝试须明确生成新operation_id，可沿用同一激活合同与未占用的个人目标目录。结果只含操作ID与回执，不输出密码/token。Root先持久保存prefix/owner-finish-change.json，固定服务UID子程序执行原激活，再持久保存原始交付计划，完成后保留Root私有owner-finish-history回执。服务子程序没有可注入的用户命令，输出丢弃；不设置会限制SQLite正常写入的全进程文件大小上限。已激活后被管理员禁用/撤销的身份不会被完成重放重新启用或签发凭据。
+
+交付单独使用Root私有owner-delivery-change.json：只读取对应已提交激活的原私有client及可选相对CA，校验当前账号、Basic密码与Bearer有效性/范围/到期时间。计划绑定安装/配置、源文件身份/SHA、目标UID/父目录/Root spool。文件在Root私有暂存目录完整写入并fsync，可续写自身未完成的正确前缀；以FD相对renameat2 NOREPLACE发布新目录，再持久保存handoff授权，最后把0600文件及0700目录交给个人UID。未知文件、已有目录、链接/硬链接、父目录身份变化或跨文件系统均拒绝，绝不覆盖个人配置。[Linux不覆盖重命名语义](https://man7.org/linux/man-pages/man2/rename.2.html)
+
+所有权转交后，个人可以用该目录的client.json配置CLI/MCP及归档偏好；恢复只完成历史交接记录，不重拷旧凭据或覆盖个人修改。delivery.json仅含操作/身份元数据。两种pending阻断离线备份、代码切换和资源维护，其他维护恢复标志不能绕过；它们不改变执行/资源合同，因此中央启动/停止入口可在这两个凭据阶段恢复服务，仍会校验代码与其他资源journal。现有运行服务和其他账号不因此停止。Root历史资料位于安装prefix，应随安装管理资料保留。
+
+放弃未完成请求可重复同一命令并加`--abort`。协调器只处理自己原始激活/交付：未提交激活沿原中止流程清理，已提交激活仅完成其恢复，不自动禁用或撤销；已交给个人的文件、未知副本、原生资源和未完成的Root私有文件均不删除。返回prior_state_retained=true，管理员仍须按实际状态决定禁用/撤销及留存文件清理。完成回执是历史记录，不是当前文件/令牌有效性证明；Source已变或凭据已过期而尚未交接时拒绝继续，不另发凭据绕过。
+
+对已完成激活、仅需交付的用户，也可分别调用`owner-delivery-plan --prefix ... --spec Root私有delivery定义 --output Root新计划`、`owner-delivery-apply --prefix ... --plan 原计划`及`owner-delivery-abort`。该定义就是上例delivery对象。跨主机个人目录仍通过可信加密交付渠道处理，本命令不会远程登录；完整资源预配的一键协调尚未实现。
 
 ## 中央待预配身份
 
@@ -135,7 +164,7 @@ Node本地绑定：真实安装、fixture stage摘要、独立的两个128MiB ex
 1. 已有中央不可登录的待预配身份、定义摘要及项目预登记；仍须与后续各层操作组合。
 2. 已有中央 owner GID/硬配额追加、Node 原生槽与本地用户/工作/缓存绑定原语；仍需中央协调及 systemd 组更新。
 3. 已有中央批准、登记提交与Node持久ACK、健康心跳观察；实际两机接入和真实systemd仍待验收，不要求中央持有个人SSH或模型密钥。
-4. 已有最后校验、账号激活与可恢复私有凭据发布；实际文件交给个人UID目前由可信管理员完成，尚未自动对接组织身份或个人主目录。
+4. 已有最后校验、账号激活与可恢复私有凭据发布，新增本地个人UID交付及最后两步的一次请求。仍需先配置目标UID目录和同盘Root spool；未自动对接组织身份或远程个人主目录，也不创建宿主账号。
 
 当前阶段不会把底层槽追加成功当成这四步已完成。最新验收与缺口见 [PROGRESS.md](PROGRESS.md)。
 
@@ -155,7 +184,7 @@ Node本地绑定：真实安装、fixture stage摘要、独立的两个128MiB ex
 
 最小任务校验同时要求用户内存额度至少256MiB、归档额度覆盖2MiB产物和既有8MiB元数据预留。系统核对原stage定义、禁用且无凭据身份、中央原生配额、每个指定Node的ready回执和当前完整profile、30秒内健康心跳、环境、工作/缓存槽和暂存容量。最低工作流的暂存字节/inode门槛复用实际调度准入函数。中央开户进程及正在运行的同UID中央服务必须都具备新owner存储组；因此旧systemd组列表不能被一次管理CLI的正确组列表掩盖。中央服务须运行支持 `owner-activation-v1` 的代码。NPU额度非零时，还要求各必需节点有当前本用户设备访问资格；当前CPU开户演练不证明NPU开户，缺资格时保持禁用，不自动启动设备探针。
 
-在冻结Node账本和身份事务后，先持久保存私有凭据intent及个人client文件，再一次提交密码哈希、token摘要、启用位和激活记录，最后发布无密码/token的交付回执并清理intent。密码/token仅在服务私有文件中，命令输出只含路径和回执；默认个人token期限24小时，仅jobs读/提交/取消。管理员通过可信加密渠道将client文件和可选CA交给对应实际用户，个人目录0700、文件0600，不上传网站或共享目录。现阶段没有自动写入个人主目录的命令。
+在冻结Node账本和身份事务后，先持久保存私有凭据intent及个人client文件，再一次提交密码哈希、token摘要、启用位和激活记录，最后发布无密码/token的交付回执并清理intent。密码/token仅在服务私有文件中，命令输出只含路径和回执；默认个人token期限24小时，仅jobs读/提交/取消。本地个人目录可使用前述owner-finish/owner-delivery交付；其他主机仍通过可信加密渠道交给对应实际用户，个人目录0700、文件0600，不上传网站或共享目录。
 
 中断后保留文件并重复同一请求，不另建凭据或覆盖已有个人配置。提交后管理员禁用、撤销或续发的状态优先，恢复不得复活旧令牌或账号。未完成时备份/代码切换被阻断；已有激活记录拒绝降级到缺相应恢复支持的代码。已完成激活的离线恢复会重定位交付回执路径。若未提交intent已过期或资源上下文改变，可使用下述显式中止流程，再按现有就绪条件重新激活；私有回执丢失或账号已提交时仍须核对原操作，不能手工删记录绕过。
 
