@@ -1,5 +1,32 @@
 # 实施进度
 
+## 固定工具镜像、受控Node配方与两UID分析（2026-10-31）
+
+**最终818项/132.308秒/无跳过及JS语法通过，80个非文档CORE生产源码与最终full、实际安装包及Root49冻结一致。** 六个受保护运行文件仍为v0.36哈希。新增10项配方/镜像上下文边界检查；先前focused39项/9.701秒通过，其后添加的CLI machine导出由最终full与已安装实际CLI覆盖。最终unit job-97b3725a7504，私有evidence/operator-node-validation.json，公开精选reports/public-source-check.json.operator_node。
+
+operator_workflow.py作为轻量个人客户端的一部分，使用封存input ID和受保护环境证据导出的锁，生成固定CPU报告请求；不自动提交、下载或联系模型。复用现有build_v1的封存输入/环境锁/产物合同，明确purpose为offline_operator_report_generation，不宣称执行了编译或新增第六种设备工作流。固定1CPU/768MiB/0SHM/0NPU/180秒、只读输入、有限持久工作区及2/4MiB归档。lock必须有CPython3.11/x86_64/不可变镜像、精确工具版本和当前应用/上游源码SHA；labctl environment-lock现导出machine。旧普通workflow参数及提交接口保持原合同。
+
+新增固定镜像入口operator_node.py及离线Docker构建配方。44个wheel按接受过的包报告冻结精确版本和SHA；准备脚本只复制四个应用文件、Dockerfile、锁及完整核对过的wheel，拒链接/额外/缺失/重复/超限，不读凭据或调用Docker。镜像使用已有自有Python3.11.15/glibc2.39工具链基础镜像，RUN禁网、安装后应用/venv只读；没有修改基础镜像或其他人的容器。最终镜像为sha256:f9a049c9f1ab7241c63cafd09eb8788ea54f7643fd74bd0bce8383e253a5e674，镜像内四个应用文件SHA匹配当前源码。构建器本机命令按自有CPU/1GiB限制运行，legacy builder选择仅作用于该命令环境，不改全局Docker配置。别机需要管理员准备适合的固定基础镜像、独立重建和环境验收，不能复制本机路径假定通用。
+
+工具子进程补Python -I -B：固定入口与上游msprof MCP、delta脚本避免输入目录同名模块进入导入路径。只调用已固定的CSV工具，生成原operator-analysis JSON/CSV，然后按既有workload-result声明两个产物；没有给模型原上游SQL/采集工具或Docker权限。个人客户端无需pandas/MCP SDK。使用与限制见OPERATOR_ANALYSIS.md。
+
+最终实际安装演练job-bdfc7152b1c6 **31项通过**：在自有角色中安装非root中央、Root Node，原生UID字节/inode工作区、独立有限spool；固定CPU探针按实际非root任务UID读取镜像文件/包并由管理员确认环境、同步合同和新鲜Node心跳。两个实际任务UID23003/23004分别执行固定镜像分析；UID23642持有自己的私有profile和独立公共只读客户端，实际导出含machine的环境锁、生成请求（0提交）、通过stdio只读MCP读取报告，提交工具/任务覆盖被拒，其他owner不能读取输入/报告。
+
+真实历史数据沿封存输入执行，封存后的本地副本修改不影响结果。输入额外放置msprof_mcp/__init__.py和csv.py的故意失败模块，固定入口仍成功且无shadow标记，验证隔离导入。错误工具锁保持queued/0attempt后取消；host独立对比持久合同确认server.py哈希不匹配。有效封存的NaN CSV经过真实单attempt明确failed，无成功分析报告；两正常报告各单attempt、JSON/CSV和原日志/环境回执归档，历史耗时比继续不能当优化收益。受保护回执locked/workload_started/exit0与Node采集的实际UID、无设备映射、禁网、只读rootfs、768MiB限制、UID原生quota和清理回执交叉核对。
+
+安装器doctor、升级/回滚、归档和备份恢复继续通过；恢复后原分析报告可读、原input可复用并完成一个新单attempt报告。恢复后的正向是在角色内实际API/运行时检查后冻结到父报告；其新state位于角色文件系统，容器移除后host不保留原目录，不能冒充现在仍能独立读取该state。初始两正常/一失败/一取消的原持久DB及正常两份实际环境回执由host独立核对。自有两个文件盘helper/角色/卷确认清退，backing files私有保留；不宣称当前还挂载native quota。
+
+最终开户回归job-286f87cb5d25同80源码的原 **49个SIGKILL恢复点通过**；host独立数据库6个实际CPU IR均succeeded/各1attempt，原domain policy恢复，7盘helper/角色/卷清退、backing files私有保留。两个Root范围均为同一物理机内的数字UID与角色服务，不是宿主真实账户或systemd PID1。
+
+失败保留：初始锁来源检查只接受HTTPS URL，已接受的msprof本地wheel按其确切公开SHA显式识别后才生成锁。首个镜像在受控执行前加隔离导入后重建。首安装job-60b64e58c41c在固定probe因私有权限的app文件拒绝读取，分析未启动；修正镜像内目录/文件读取权限、保留严格probe后重建。第二安装job-e923c40413f7的探针/IR通过，但独立个人UID被中央私有目录中的客户端路径正确拒绝；改装单独公共只读客户端，未放宽中央目录权限，最终演练通过。两失败演练的自有盘均已核释放，无设备重试、驱动重置或原任务假成功。
+
+Main未为安装演练停机，仅最终0非终态/有效hold时重载。原config SHA、CPU254/255、2048MiB/SHM1024MiB/1槽、19个Node profile及domain保持一致；旧Node不升级、inventory不豁免、zdl运行起点/内存/SHM不变。本轮0 NPU kernel/0模型调用；上一阶段1次DeepSeek摘要保持旧范围，未重用其结果当本轮运行验收。
+
+下一优先：真实编译错误/精度错误/卡死及仿真流水诊断案例，预算内提出实验→中央排队→跟踪原attempt→归档闭环；控制盘增长/保留与一般资源合同、五类冻结workflow网页提交仍待。管理员试点先两名真实用户/专用卡/实际PID1，再第二物理机与断网fencing。完整msagent harness、NPU访问/ACL/数值性能仿真仍未验收，别无变化重试旧EBUSY。PUBLIC-001继续延期；overall_goal_complete=false、production_ready=false。
+
+下方为历史阶段。
+
+
 ## 离线领域工具接入与中央通信中断恢复（2026-10-31）
 
 当前最终完整检查 **808项/141.079秒/无跳过，JavaScript语法通过**。78个非文档CORE生产源码与最终full/Root冻结一致；六个受保护运行文件继续保持v0.36哈希。新增22项算子报告检查、6项通信恢复检查、2项自有清理范围检查。原网页11组仍保留此前静态资产验收，本轮未重新运行浏览器。

@@ -2,7 +2,7 @@
 
 当前接入两个可独立复用的上游组件：`msprof-mcp 0.1.8` 的 CSV 算子查询工具，以及固定 msagent 提交中的 `delta_report.py`。分析程序作为中央队列的 CPU 任务运行，JSON/CSV 报告归档后，个人 harness 通过只读 MCP 获取绑定任务的报告。个人客户端不需要安装 pandas、Perfetto、MCP SDK 或完整 msagent。
 
-这是历史 profiling 数据的分析入口。当前生产者验收使用个人 Main 的协作式 host command 队列；受控 Node 的正式分析模板、工具镜像认证与常规用户的完整生产接入仍待。CLI 中的任务目录检查用于避免误操作，不能代替管理员设备权限/cgroup 隔离。测试状态见 [PROGRESS.md](PROGRESS.md)。
+这是历史 profiling 数据的分析入口。新增固定工具镜像与个人请求配方，复用既有build_v1的受控CPU产物合同；执行对象是离线报告，不是编译任务或第六种设备工作流。当前验收状态以PROGRESS.md为准。先前生产者沿个人Main的协作式host command队列运行，其证据继续保留原范围。CLI 中的任务目录检查用于避免误操作，不能代替管理员设备权限/cgroup 隔离。测试状态见 [PROGRESS.md](PROGRESS.md)。
 
 ## 固定工具环境
 
@@ -88,3 +88,63 @@ provider/LICENSE
 分析器分别保存 CSV 的 Device_id 列值和回放记录的物理卡号；单看该列不能证明逻辑/物理映射。物理卡不同、核心频率不同/不稳定、shape/dtype 不一致或缺失、精度未声称通过，以及同一 ELF，都会阻止将耗时比例表述为编译器优化收益。即使这些字段一致，历史用户记录也不足以替代受控复测、健康/外部负载检查和真实精度验收。
 
 已验证的历史例子为每份30次、约563.034μs与33.567μs；记录的物理卡和核心频率不同，ELF哈希相同。程序保留16.773倍的观测耗时比，`optimization_speedup` 为 null，上游比较脚本因物理设备不同返回2。这不是新的 NPU 测量，也不表明当前任何卡仍处于历史频率。
+
+
+## 固定工具镜像与受控 Node 配方
+
+`operator_workflow.py` 生成固定入口请求，复用既有 `build_v1` 的封存输入、环境锁、CPU预算和结构化产物机制。任务名称及结构化结果明确标记 `offline_operator_report_generation`；类型沿用build是现有CPU产物合同，不表示执行编译。请求固定为1 CPU、768MiB内存、0 SHM、0 NPU、180秒；只读输入、至少16MiB/256inode的持久工作区，单文件2MiB/总4MiB归档预算。Node和物理域还须容纳128MiB托管开销，实际调度继续按原准入和资源账本进行。
+
+镜像中 `/opt/ascend-lab-operator/app/operator_node.py` 是固定执行入口，按既有bootstrap分配的非root UID运行，检查零能力及NoNewPrivs；仅使用 `/inputs` 和 `/work/results`，不接收命令、目录或设备覆盖。上游MCP子进程和比较脚本使用Python `-I -B`隔离模式，避免输入目录中的同名模块影响工具加载。个人客户端只负责生成请求和读取报告；配方校验不代替服务端身份授权、受限容器和镜像环境资格，也不限制管理员另行授权的其他build_v1程序。
+
+准备镜像时先下载明确锁定的44个wheel，再生成仅含四个应用源文件、锁和wheel的独立上下文：
+
+```bash
+/本人/python311/bin/python -m pip --isolated download --no-cache-dir \
+  --index-url https://pypi.org/simple --only-binary=:all: --require-hashes \
+  -r examples/operator_tools/requirements-linux-x86_64-py311.txt \
+  --dest /本人/private/operator-wheels
+python3 scripts/prepare_operator_image.py \
+  --wheels /本人/private/operator-wheels --output /本人/private/operator-context
+```
+
+准备脚本核对完整wheel集合及每个哈希，拒额外文件、链接、缺件、重复和超预算，不读取凭据，也不下载、调用Docker或安装服务。现有上下文不覆盖。锁限定CPython3.11/Linux x86_64；其他平台需独立锁和实测。镜像应用目录不包含模型配置、MCP凭据、会话或原始输入。
+
+管理员在自己的构建环境使用固定基础镜像ID构建：
+
+```bash
+docker build --pull=false --network=none \
+  --build-arg BASE_IMAGE=sha256:管理员核对过的64位镜像ID \
+  --build-arg BASE_PYTHON=/基础镜像中/python3.11的绝对路径 \
+  --tag 管理员自己的镜像名称 /本人/private/operator-context
+```
+
+管理员还须按构建器版本配置CPU/内存限制；`--network=none`作用于构建RUN，不代表解析未准备的基础镜像不会访问镜像仓库，因此基础镜像须预先具备。本机验收复用已有自有Python3.11.15/glibc2.39工具链镜像，离线安装wheel；没有拉取或修改其他人的镜像。部署任务时必须登记最终 `sha256:...` ID，不依赖可变tag。
+
+分析Node的Python配置为 `/opt/ascend-lab-operator/venv/bin/python`，镜像应满足glibc>=2.34。可使用独立CPU分析profile，和其他profile在同一物理域记账；不必替换现有开发容器或给个人agent Docker socket。新增/修改image、Python、环境配置时，按ENVIRONMENTS.md先停止相关Node、运行固定environment_probe并由管理员确认，再同步合同、启动并等待新鲜心跳；不热改已认证Node或放宽环境门。
+
+固定探针需要查询PACKAGES中的五个包和四个应用文件/两个上游文件。可用标准库生成请求（该步骤不提交）：
+
+```bash
+python3 - <<'PYQUERY'
+import json
+from operator_workflow import probe_queries
+value={"template":"environment_probe","environment":"worker-python",
+       "parameters":probe_queries("worker-替换为已登记的12位节点ID")}
+with open("operator-probe.json","x") as target:json.dump(value,target)
+PYQUERY
+```
+
+提交固定probe、管理员确认环境并观察Node就绪后，个人端执行：
+
+```bash
+./labctl --profile /本人/private/client.json environment-lock job-成功探针ID --output operator-lock.json
+./labctl --profile /本人/private/client.json input-add /本人/private/profile-case
+python3 /本人/client/operator_workflow.py \
+  --input-id input-返回的封存ID --lock operator-lock.json \
+  --idempotency-key 本人本次操作唯一键 --output operator-request.json
+./labctl --profile /本人/private/client.json submit --workflow operator-request.json
+```
+
+生成请求不会提交任务或联系中央；已有输出文件不覆盖。配方要求锁包含固定镜像ID、明确x86_64/CPython3.11事实、精确包版本和当前客户端对应的镜像应用/上游代码SHA。`labctl environment-lock`现同时导出machine；旧锁缺该字段时应从原受保护证据重新导出。客户端版本对应的应用源码变化时，要明确重建/认证镜像，不能静默沿用旧代码。
+
+后续仍按原job/attempt观察和下载，不因等待超时重新提交。读取结果使用原 `operator-case` 或单任务只读MCP；追加采集、复现、编译或设备实验仍分别申请资源。

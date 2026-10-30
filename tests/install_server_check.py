@@ -5,6 +5,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import re
 import shutil
 import socket
 import ssl
@@ -21,7 +22,7 @@ from jobs import atomic_json,now
 from deployment import bundle,unpack_release
 from backends import physical_identity
 
-arguments=argparse.ArgumentParser();arguments.add_argument('--large-wheel');arguments.add_argument('--https-network',action='store_true');arguments.add_argument('--disk-workspace',action='store_true');arguments.add_argument('--user-quota-workspace',action='store_true');arguments.add_argument('--storage-pressure',action='store_true');arguments.add_argument('--central-payload',action='store_true');arguments.add_argument('--central-owner-quotas',action='store_true');arguments.add_argument('--node-spool-pressure',action='store_true');arguments.add_argument('--persistent-cache',action='store_true');arguments.add_argument('--dependencies',action='store_true');arguments.add_argument('--input-durability',action='store_true');arguments.add_argument('--native-toolchain',action='store_true');arguments.add_argument('--payload-quota-resize',action='store_true');arguments.add_argument('--deadline-limit',action='store_true');options=arguments.parse_args()
+arguments=argparse.ArgumentParser();arguments.add_argument('--large-wheel');arguments.add_argument('--https-network',action='store_true');arguments.add_argument('--disk-workspace',action='store_true');arguments.add_argument('--user-quota-workspace',action='store_true');arguments.add_argument('--storage-pressure',action='store_true');arguments.add_argument('--central-payload',action='store_true');arguments.add_argument('--central-owner-quotas',action='store_true');arguments.add_argument('--node-spool-pressure',action='store_true');arguments.add_argument('--persistent-cache',action='store_true');arguments.add_argument('--dependencies',action='store_true');arguments.add_argument('--input-durability',action='store_true');arguments.add_argument('--native-toolchain',action='store_true');arguments.add_argument('--payload-quota-resize',action='store_true');arguments.add_argument('--deadline-limit',action='store_true');arguments.add_argument('--operator-analysis');arguments.add_argument('--operator-image');options=arguments.parse_args()
 https=options.https_network
 user_quota=options.user_quota_workspace
 central_groups=options.central_owner_quotas
@@ -33,6 +34,7 @@ assert not (user_quota and options.disk_workspace)
 assert not options.persistent_cache or user_quota, 'Cache acceptance requires two mapped users and separate quota workspaces'
 assert not options.input_durability or options.central_payload, 'Input durability acceptance requires a dedicated payload filesystem'
 assert not options.native_toolchain or (user_quota and options.persistent_cache and https and options.dependencies), 'Native toolchain acceptance includes quota/cache/HTTPS/workflow restore'
+assert not options.operator_analysis or (user_quota and options.operator_image and not options.native_toolchain and not options.persistent_cache and not https), 'Operator analysis uses its own quota/image fixture, without unrelated cache or TLS cases'
 disk=options.disk_workspace or user_quota
 assert not (disk and options.large_wheel), 'Keep disk hard-limit and large-wheel fixtures separate'
 assert not (options.storage_pressure and options.large_wheel), 'Keep the full-disk fault injection bounded'
@@ -56,11 +58,15 @@ task_image=(ROOT/'runtime/toolchain-cache-20261030/offline-image-id').read_text(
 task_python='/usr/local/python3.11.15/bin/python3.11' if options.native_toolchain else '/usr/bin/python3'
 task_version='3.11.15' if options.native_toolchain else '3.10.12'
 task_setup='/opt/ascend-lab-native-env.sh' if options.native_toolchain else '/usr/local/Ascend/ascend-toolkit/set_env.sh'
+if options.operator_analysis:
+    operator_image=json.loads(Path(options.operator_image).read_text());task_image=operator_image['image'];task_python=operator_image['python'];task_version=operator_image['python_version']
+    assert re.fullmatch('sha256:[a-f0-9]{64}',task_image) and task_python=='/opt/ascend-lab-operator/venv/bin/python' and re.fullmatch(r'3\.11\.\d+',task_version)
+    task_setup='/opt/ascend-lab-native-env.sh'
 with socket.socket() as probe:probe.bind(('127.0.0.1',0));port=probe.getsockname()[1]
 containers=[];volumes=[];networks=[];stopped_main=False;checks=[];token=None;tls_context=None;authority_text=None;renewal=None;https_mcp=None
 retention_proof={};mount_proof={};owned_disk=None;pressure_disk=None;pressure_volume=None;storage_pressure=None;spool_disk=None
 central_disks=[];central_volumes=[];payload_args=[];payload_contracts=[];central_proof=None
-group_pressure={};quota_resize_proof=None;deadline_proof=None
+group_pressure={};quota_resize_proof=None;deadline_proof=None;operator_proof=None
 node_spool_pressure=None;cache_disk=None;cache_volume=None;cache_policy=None;cache_proof=None;dependency_proof=None;input_durability=None;native_proof=None
 controller_url=('https://controller.lab:' if https else 'http://127.0.0.1:')+str(port)
 outer_url=('https' if https else 'http')+'://127.0.0.1:'+str(port)
@@ -147,7 +153,21 @@ def restore_host_owner():
 
 
 try:
-    subprocess.run([str(ROOT/'labctl'),'stop'],capture_output=True,check=True,timeout=15);stopped_main=True
+    if options.operator_analysis:
+        from lab_client import Client
+        current=Client(json.loads((ROOT/'runtime/config.json').read_text())).request('/api/jobs')
+        expected=json.loads((Path(os.environ['LAB_JOB_DIR'])/'dispatch.json').read_text())['id']
+        assert {j['id'] for j in current['jobs'] if j['state'] not in {'succeeded','failed','cancelled','timed_out'}}=={expected}
+    else:
+        subprocess.run([str(ROOT/'labctl'),'stop'],capture_output=True,check=True,timeout=15);stopped_main=True
+    if options.operator_analysis:
+        readonly_probe="import hashlib,json,os,sys;from pathlib import Path;p=Path('/opt/ascend-lab-operator/app');sys.path.insert(0,str(p));from operator_profile import check_provider;assert os.getuid()==23003;print(json.dumps({'versions':check_provider(),'app_sha256':{n:hashlib.sha256((p/n).read_bytes()).hexdigest() for n in ['operator_node.py','operator_profile.py','diagnostic_case.py','lab_client.py']}}))"
+        result=docker(['run','--rm','--network','none','--read-only','--user','23003:23003','--cap-drop','ALL',
+            '--security-opt','no-new-privileges:true','--memory','128m','--memory-swap','128m','--pids-limit','16',
+            '--cpuset-cpus',str(cpus[-1]),'--entrypoint',task_python,task_image,'-I','-B','-c',readonly_probe])
+        observed=json.loads(result.stdout)
+        assert observed['app_sha256']=={n:hashlib.sha256((ROOT/n).read_bytes()).hexdigest() for n in observed['app_sha256']}
+        check('Fixed tool image is readable by the actual non-root task UID and reviewed provider code is present before installing services')
     # Only new fixture directories are exposed; prove same-device bind mounts are not traversed.
     mount_parent=base/'mount-proof';(mount_parent/'payload/nested').mkdir(parents=True,mode=0o755)
     mount_other=base/'mount-other';mount_other.mkdir(mode=0o755);(mount_other/'sentinel').write_bytes(b'owned mount sentinel')
@@ -247,7 +267,7 @@ try:
             argv+=['--mount','type=volume,src='+spool_volume+',dst=/spool-proof-alias,volume-nocopy']
             for mounted,path in work_mounts:argv+=['--mount','type=volume,src='+mounted+',dst='+path+',volume-nocopy']
             if cache_volume:argv+=['--mount','type=volume,src='+cache_volume+',dst='+cache_path+',volume-nocopy','--mount','type=volume,src='+cache_volume+',dst=/cache-proof-alias,volume-nocopy']
-        lifetime=1500 if options.deadline_limit else 900 if large_wheel else 600 if options.native_toolchain else 300
+        lifetime=1500 if options.deadline_limit else 900 if large_wheel else 600 if options.native_toolchain or options.operator_analysis else 300
         argv+=['--entrypoint','/usr/bin/timeout',image,'--kill-after=5s',str(lifetime)+'s','/usr/bin/python3','-I','-c','import time;time.sleep('+str(lifetime-5)+')']
         docker(argv);containers.append(name)
         claim='import os,sys;os.chown(sys.argv[1],0,0);os.chmod(sys.argv[1],0o700)'
@@ -369,23 +389,23 @@ try:
     docker(['exec','--user',str(installed['uid'])+':'+str(installed['gid']),controller,
             '/opt/ascend-lab-controller/current/install-client','--prefix',client_target])
     published=secret_json(controller,Path(client_target)/'manifest.json')
-    assert published['version']=='0.32-client' and set(published['sha256'])=={'labctl','lab_client.py','io_policy.py','client_archive.py','diagnostic_case.py','mcp_bridge.py','CLIENT.md','WORKFLOWS.md','WORKSPACE.md','STORAGE.md'}
+    assert published['version']=='0.32-client' and set(published['sha256'])=={'labctl','lab_client.py','io_policy.py','client_archive.py','diagnostic_case.py','operator_profile.py','operator_node.py','operator_workflow.py','OPERATOR_ANALYSIS.md','mcp_bridge.py','CLIENT.md','WORKFLOWS.md','WORKSPACE.md','STORAGE.md'}
     check('Installed public code supplies a standalone personal CLI/MCP installer without controller credentials or model configuration')
     ctl(controller,'controller','admin','--','accessctl','user-add','proof_user')
     ctl(controller,'controller','admin','--','accessctl','environment-grant','proof_user','worker-python')
     personal=secret_json(controller,controller_state/'personas/proof_user/client.json');token=personal['token']
-    if options.native_toolchain:ctl(controller,'controller','admin','--','accessctl','quota','proof_user','--memory-mib','2048')
+    if options.native_toolchain or options.operator_analysis:ctl(controller,'controller','admin','--','accessctl','quota','proof_user','--memory-mib','2048' if options.native_toolchain else '768')
     if user_quota:
         ctl(controller,'controller','admin','--','accessctl','user-add','proof_peer')
         ctl(controller,'controller','admin','--','accessctl','environment-grant','proof_peer','worker-python')
         peer=secret_json(controller,controller_state/'personas/proof_peer/client.json')
         peer_headers={'Authorization':'Bearer '+peer['token']}
-        if options.native_toolchain:ctl(controller,'controller','admin','--','accessctl','quota','proof_peer','--memory-mib','2048')
+        if options.native_toolchain or options.operator_analysis:ctl(controller,'controller','admin','--','accessctl','quota','proof_peer','--memory-mib','2048' if options.native_toolchain else '768')
     owner_headers={'Authorization':'Basic '+base64.b64encode((personal['username']+':'+personal['password']).encode()).decode()}
     probe='import os,json,sys;p=sys.argv[1];s=os.stat(p);v=os.statvfs(p);print(json.dumps({"device":s.st_dev,"root_inode":s.st_ino,"bytes":v.f_blocks*v.f_frsize,"inodes":v.f_files}))'
     slots=[]
     if user_quota:
-        limits={'users':[{'uid':23003,'bytes':16*1024**2,'inodes':2048 if options.native_toolchain else 128},{'uid':23004,'bytes':24*1024**2,'inodes':3072 if options.native_toolchain else 192}]}
+        limits={'users':[{'uid':23003,'bytes':16*1024**2,'inodes':2048 if options.native_toolchain else 1024 if options.operator_analysis else 128},{'uid':23004,'bytes':24*1024**2,'inodes':3072 if options.native_toolchain else 1024 if options.operator_analysis else 192}]}
         save='import sys;from pathlib import Path;p=Path("/provision/quota-limits.json");p.write_bytes(sys.stdin.buffer.read());p.chmod(0o600)'
         docker(['exec','-i',node,'/usr/bin/python3','-I','-c',save],input=json.dumps(limits))
         prepare_args=['exec',node,'/usr/bin/python3','-B','/bootstrap/servicectl','workspace-prepare','--root',slot_path,
@@ -426,7 +446,7 @@ try:
         docker(['exec','-i','--user',str(installed['uid'])+':'+str(installed['gid']),controller,
             '/usr/bin/python3','-I','-c',save_contract,str(cache_contract)],input=json.dumps(cache_policy))
     enrollment=ctl(controller,'controller','admin','--','workerctl','enroll','--name','installed-node',
-        '--cpus',str(cpus[-1]),'--memory-mib','2176' if options.native_toolchain else '1664' if large_wheel else '768','--image',task_image,'--user-map','proof_user:23003:23003',
+        '--cpus',str(cpus[-1]),'--memory-mib','2176' if options.native_toolchain else '896' if options.operator_analysis else '1664' if large_wheel else '768','--image',task_image,'--user-map','proof_user:23003:23003',
         *(['--user-map','proof_peer:23004:23004'] if user_quota else []),
         '--io-config',str(io_contract),
         '--workspace-config',str(workspace_contract),
@@ -435,7 +455,7 @@ try:
         '--physical-id',physical_identity(),'--controller-url',controller_url,'--node-state-dir',str(node_state))
     ctl(controller,'controller','admin','--','workerctl','node-templates',enrollment['node_id'],
         '--template','cpu_demo','--template','isolation_probe','--template','ir_v1','--template','environment_probe',
-        *(['--template','build_v1'] if large_wheel or options.dependencies or options.native_toolchain else []),
+        *(['--template','build_v1'] if large_wheel or options.dependencies or options.native_toolchain or options.operator_analysis else []),
         *(['--template','accuracy_v1'] if options.dependencies else []))
     configuration=secret_json(controller,Path(enrollment['config']))
     configuration['environment_setup']=task_setup
@@ -481,6 +501,9 @@ try:
         probe_parameters.update(packages=['triton-ascend','torch','torch-npu'],tools=['bishengir-opt','bishengir-compile','cmake','ninja','c++'],
             files=[package+'/backends/ascend/compiler.py',package+'/backends/ascend/driver.py',package+'/_C/triton-mlir-opt',
                 package+'/backends/ascend/bishengir/bin/bishengir-opt',package+'/backends/ascend/bishengir/bin/bishengir-compile','/opt/ascend-lab-offline-compat.json'])
+    if options.operator_analysis:
+        from operator_workflow import probe_queries
+        probe_parameters=probe_queries(enrollment['node_id'])
     status,response=api('/api/jobs',{'template':'environment_probe','environment':'worker-python','parameters':probe_parameters})
     assert status==201,response
     probe_job=wait(response['job']['id']);assert probe_job['state']=='succeeded',probe_job
@@ -543,6 +566,10 @@ try:
         native_proof=native_check(globals())
         check('Installed managed CPU workflow certifies actual Ascend backend/tool files and archives real Triton ELF/IR plus fresh CMake/ccache cold and warm results')
         check('Native source/environment/owner cache separation and original warm reuse survive node restart without another attempt')
+    if options.operator_analysis:
+        sys.path.insert(0,str(ROOT/'tests'));from installed_operator_check import run as operator_check
+        operator_proof=operator_check(globals())
+        check('Fixed-image offline analysis uses sealed input, actual non-root quota tasks, no network/NPU, authenticated report reader and independent personal UID')
     if options.dependencies:
         sys.path.insert(0,str(ROOT/'tests'));from installed_dependencies_check import run as dependency_check
         dependency_proof=dependency_check(globals())
@@ -853,6 +880,10 @@ try:
         from installed_native_toolchain_check import after_restore as native_after_restore
         native_proof['after_restore']=native_after_restore(globals(),native_proof)
         check('Restored controller and node control preserve the certified native environment and original compiler cache; one actual warm native workflow completes')
+    if operator_proof:
+        from installed_operator_check import after_restore as operator_after_restore
+        operator_proof['after_restore']=operator_after_restore(globals(),operator_proof)
+        check('Restored controller and node retain the original analysis archive and sealed input; one new fixed-image report attempt succeeds')
     ctl(node,'node','stop');ctl(controller,'controller','stop')
     check('Quiescent node state restores to a new control directory, rebinds the same empty spool and executes another actual IR task')
     if options.dependencies:
@@ -953,6 +984,7 @@ try:
             **({'native_toolchain':native_proof} if native_proof else {}),
             **({'payload_quota_resize':quota_resize_proof} if quota_resize_proof else {}),
             **({'deadline_limit':deadline_proof} if deadline_proof else {}),
+            **({'operator_analysis':operator_proof} if operator_proof else {}),
             **({'persistent_cache':cache_proof,'cache_disk':cache_disk.report} if cache_proof else {}),
             **({'node_spool_pressure':node_spool_pressure} if node_spool_pressure else {}),
             'fixed_probe_memory':{'explicit_memory_mib':256,'oversized_request_http_status':quota_status,
@@ -963,9 +995,30 @@ try:
 finally:
     owned_attempts=[]
     if node in containers:
-        collect='import json,sys;from pathlib import Path;print(json.dumps(sorted({json.loads(p.read_text())["attempt_id"] for p in Path(sys.argv[1]).glob("*/attempts/*/control/grant.json")})))'
-        result=docker(['exec',node,'/usr/bin/python3','-I','-c',collect,str(node_parent)],check=False)
-        if result.returncode==0:owned_attempts=json.loads(result.stdout)
+        info=json.loads(docker(['inspect',node]).stdout)[0]
+        assert info['Config']['Labels']['io.ascend-lab.installproof']==prefix
+        if info['State']['Running']:docker(['stop','--time','3',node])
+        ended=json.loads(docker(['inspect',node]).stdout)[0]['State'];assert not ended['Running'] and ended['Pid']==0
+        collect='''import json,re
+from pathlib import Path
+items=[]
+for node in Path('/state').iterdir():
+ if not node.is_dir() or not (node/'config.json').is_file():continue
+ assert not node.is_symlink() and not (node/'config.json').is_symlink()
+ config=json.loads((node/'config.json').read_text())
+ for path in node.glob('attempts/*/control/grant.json'):
+  assert not path.is_symlink() and path.stat().st_size<=1024**2
+  grant=json.loads(path.read_text());attempt=grant['attempt_id']
+  assert re.fullmatch('attempt-[a-f0-9]{32}',attempt) and path.parent.parent.name==attempt
+  assert grant['node_id']==config['node_id'] and grant['physical_id']==config['physical_id'] and grant['resources']['npu']==0
+  items.append(attempt)
+assert len(items)<=128
+print(json.dumps(sorted(set(items))))
+'''
+        result=docker(['run','--rm','--network','none','--read-only','--cap-drop','ALL','--cap-add','DAC_OVERRIDE',
+            '--memory','64m','--cpuset-cpus',str(cpus[0]),'--mount','type=bind,src='+str(node_parent)+',dst=/state,readonly',
+            '--entrypoint','/usr/bin/python3',image,'-I','-c',collect])
+        owned_attempts=json.loads(result.stdout)
     for name in reversed(containers):
         result=docker(['inspect',name],check=False)
         if result.returncode==0 and json.loads(result.stdout)[0]['Config'].get('Labels',{}).get('io.ascend-lab.installproof')==prefix:
@@ -976,12 +1029,16 @@ finally:
             (base/(role+'-bootstrap.log')).write_text(log.stdout+log.stderr)
             docker(['rm','-f',name],check=False)
     for attempt in owned_attempts:
+        assert re.fullmatch('attempt-[0-9a-f]{32}',attempt)
         result=docker(['ps','-a','--filter','label=io.ascend-lab.attempt='+attempt,'--format','{{.ID}}'],check=False)
         for container_id in result.stdout.splitlines():
             info=json.loads(docker(['inspect',container_id]).stdout)[0]
             if info['Config'].get('Labels',{}).get('io.ascend-lab.attempt')==attempt:
-                if info['State']['Running']:docker(['stop','--time','2',container_id],check=False)
-                docker(['rm',container_id],check=False)
+                assert info['Config']['Image']==task_image
+                if info['State']['Running']:docker(['stop','--time','2',container_id])
+                ended=json.loads(docker(['inspect',container_id]).stdout)[0]['State']
+                assert not ended['Running'] and ended['Pid']==0,'Preserve fixture: original task termination is unconfirmed'
+                docker(['rm',container_id])
     disk_cleanup_errors=[]
     for name in reversed(volumes):
         result=docker(['volume','inspect',name],check=False)
@@ -1028,7 +1085,9 @@ finally:
         result=docker(['network','inspect',name],check=False)
         if result.returncode==0 and json.loads(result.stdout)[0].get('Labels',{}).get('io.ascend-lab.installproof')==prefix:
             docker(['network','rm',name],check=False)
-    try:restore_host_owner()
+    try:
+        if disk_cleanup_errors:raise RuntimeError('Preserve fixture ownership while storage cleanup is unconfirmed: '+'; '.join(disk_cleanup_errors))
+        restore_host_owner()
     finally:
         if large_wheel:
             # Remove only test copies after all fixture daemons are stopped; the original wheel is untouched.

@@ -124,3 +124,5 @@ MCP启动可加`--archive --archive-root /本人/归档`，或`--archive --local
 `0.31-client`在固定工作流MCP会话的queue_status中回显预先批准的持久缓存要求；提交仍使用原固定请求，模型不能覆盖缓存政策、路径或任务命令。工作流JSON的cache字段由中央校验，旧服务器会拒绝不支持的字段。
 
 `0.32-client`允许工作流JSON携带depends_on和artifact_inputs；固定MCP会话会显示这些约束并拒绝临时覆盖。`retry-inputs job-ID`只请求服务端继续原冻结交接，不在个人机器读取或复制中央文件。
+
+固定离线报告的可选配方见OPERATOR_ANALYSIS.md：独立客户端包含operator_workflow.py及operator-recipe-v1能力，可由封存input ID和已确认环境锁生成请求，不自动提交。environment-lock现保留machine事实，便于架构准入。

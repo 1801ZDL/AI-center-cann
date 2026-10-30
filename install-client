@@ -26,6 +26,8 @@ def main():
                             ('client_archive.py','client_archive.py'),
                             ('diagnostic_case.py','diagnostic_case.py'),
                             ('operator_profile.py','operator_profile.py'),
+                            ('operator_node.py','operator_node.py'),
+                            ('operator_workflow.py','operator_workflow.py'),
                             ('OPERATOR_ANALYSIS.md','OPERATOR_ANALYSIS.md'),
                             ('mcp_bridge.py','mcp_bridge.py'),('CLIENT.md','CLIENT.md'),('WORKFLOWS.md','WORKFLOWS.md'),
                             ('WORKSPACE.md','WORKSPACE.md'),('STORAGE.md','STORAGE.md')]:
@@ -33,7 +35,7 @@ def main():
             path=staging/name;path.write_bytes(content)
             path.chmod(0o555 if name=='labctl' else 0o444)
             manifest[name]=hashlib.sha256(content).hexdigest()
-        (staging/'manifest.json').write_text(json.dumps({'version':'0.32-client','sha256':manifest,'capabilities':['operator-case-v1']},indent=2)+'\n')
+        (staging/'manifest.json').write_text(json.dumps({'version':'0.32-client','sha256':manifest,'capabilities':['operator-case-v1','operator-recipe-v1']},indent=2)+'\n')
         (staging/'manifest.json').chmod(0o444)
         # Prevent implicit local-admin mode in the distributed client.
         (staging/'client-only').write_text('Use a personal --profile; no server lifecycle operations.\n')

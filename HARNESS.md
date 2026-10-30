@@ -36,3 +36,5 @@ msagent 的 Operator 文档面向单算子性能分析和优化，并要求提�
 完整 msagent 会话/内置 shell/工作流可以作为另一个 harness 使用，但同样需要本人 profile 和受限工具权限。移植 Skill 时带齐脚本与明确依赖；对端 harness 的工具名、目录约定、会话状态和权限规则需分别适配。复制技能说明不能保证执行权限或数值/性能结论一致。跨 harness 的统一合同是任务 API、环境指纹、产物及结构化结果；对话历史不作为任务状态数据库。
 
 本轮未自动安装外部 Skills、msprof 或第三方插件，没有修改任何人的 harness 配置。新接入前仍需源码/依赖范围与真实产物适配验收；PUBLIC-001 公共夜间任务继续延期。
+
+固定镜像分析可使用operator_workflow.py生成现有build_v1请求，再由原调度MCP/CLI显式提交。个人harness继续只读operator-case；没有为此开放原上游SQL/采集工具、共享模型配置或Docker权限。配方和资格步骤见OPERATOR_ANALYSIS.md。

@@ -297,7 +297,7 @@ def main():
     elif args.action=='environment-lock':
         evidence=json.loads(Client(config).request('/api/jobs/'+args.job_id+'/artifact?name='+urllib.parse.quote('results/_lab/environment.json',safe=''),raw=True))
         if evidence.get('locked') is not True:raise ClientError('Choose a workflow with a matching protected environment record')
-        observed=evidence['observed'];lock={'python':observed['python'],'image_sha256':observed['image_sha256'],
+        observed=evidence['observed'];lock={'python':observed['python'],'machine':observed['machine'],'image_sha256':observed['image_sha256'],
             'packages':{k:v if v is not None else '__absent__' for k,v in observed['packages'].items()},
             'tools':{k:v['sha256'] for k,v in observed['tools'].items() if v is not None},
             'files':{k:v['sha256'] for k,v in observed['files'].items() if v is not None}}

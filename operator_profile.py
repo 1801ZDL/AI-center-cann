@@ -166,7 +166,7 @@ async def analyze(inputs,output):
             summary={**csv_summary(csv_data,request['operator']),**context_summary(context),'id':item['id'],
                 'csv_sha256':sha(csv_data),'context_sha256':sha(context)}
             sources.append(summary);path=stage/(str(index)+'.csv');path.write_bytes(csv_data);path.chmod(0o400);files.append(path)
-        server=StdioServerParameters(command=sys.executable,args=['-m','msprof_mcp.server'],env={'MSPROF_MCP_LOG_LEVEL':'ERROR'})
+        server=StdioServerParameters(command=sys.executable,args=['-I','-B','-m','msprof_mcp.server'],env={'MSPROF_MCP_LOG_LEVEL':'ERROR'})
         async with stdio_client(server) as (read,write):
             async with ClientSession(read,write,read_timeout_seconds=timedelta(seconds=30)) as session:
                 await session.initialize();tools=await session.list_tools()
@@ -185,7 +185,7 @@ async def analyze(inputs,output):
         for name,source in zip(['before','after'],sources):
             (stage/(name+'.json')).write_text(json.dumps({'op':request['operator'],'device_id':source['physical_device'],
                 'precision':'pass' if source['correctness_claim'] else 'fail','kernel_avg_us':source['mean_us']}))
-        checked=subprocess.run([sys.executable,str(helper),'--baseline',str(stage/'before.json'),'--after',str(stage/'after.json'),
+        checked=subprocess.run([sys.executable,'-I','-B',str(helper),'--baseline',str(stage/'before.json'),'--after',str(stage/'after.json'),
             '--output',str(stage/'delta.md')],text=True,capture_output=True,timeout=20)
         if checked.returncode not in {0,2}:raise ValueError('Pinned upstream comparison helper failed')
         report=validate_report({'schema':SCHEMA,'purpose':'historical_profile_comparison','created_at':now(),'operator':request['operator'],

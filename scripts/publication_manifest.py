@@ -26,7 +26,7 @@ def source_paths():
                                   'check-browser.sh','requirements-qa.txt','evidence/README.md'])
     for folder in ['examples','tests','web','scripts']:
         paths.update(p for p in (ROOT/folder).rglob('*') if p.is_file() and '__pycache__' not in p.parts
-                     and p.suffix in {'.py','.md','.sh','.html','.css','.js','.svg','.mlir','.c','.cpp','.json','.txt'})
+                     and (p.name=='Dockerfile' or p.suffix in {'.py','.md','.sh','.html','.css','.js','.svg','.mlir','.c','.cpp','.json','.txt'}))
     # Reports are a separate, explicit allowlist, never a catch-all JSON export.
     paths.update(ROOT/'reports'/n for n in ['v036-public.json','public-source-check.json','mixed-compiler-stage.json']
                  if (ROOT/'reports'/n).is_file())

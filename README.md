@@ -2,7 +2,7 @@
 
 面向 Triton-Ascend / AscendNPU-IR 开发服务器的 AI 任务调度与实验管理原型。程序化中央服务负责资源分配和可靠执行，个人 Agent 通过 MCP/API 提交任务、读取日志和分析结果。
 
-**当前为 v0.36 基线加后续修复，尚非生产就绪。** 已实现个人身份/项目授权、持久资源账本、受控 Node、五类工作流合同、版本锁、归档和个人客户端。可恢复开户、排空、原凭据扩第二 Node、已知工作并行期间激活及可运行性预览已有同机隔离验证；领域工具新增真实历史 profiling 的离线诊断入口。最新通过范围、失败记录和源码冻结见 [PROGRESS.md](PROGRESS.md)。
+**当前为 v0.36 基线加后续修复，尚非生产就绪。** 已实现个人身份/项目授权、持久资源账本、受控 Node、五类工作流合同、版本锁、归档和个人客户端。可恢复开户、排空、原凭据扩第二 Node、已知工作并行期间激活及可运行性预览已有同机隔离验证；领域工具新增固定镜像的受控CPU诊断配方，已有真实历史profiling、两个任务UID及独立只读客户端的同机演练。最新通过范围、失败记录和源码冻结见 [PROGRESS.md](PROGRESS.md)。
 
 扩展继续保留同一任务 API/MCP 和实验格式。新服务器由管理员准备身份、受控设备、存储和服务，再登记 Node；个人 agent 无需共享模型密钥或更换 harness。当前旧容器仍属协作接入，不能拦截用户自行运行。真实宿主多用户、systemd PID1、两物理机断网/fencing、非 root NPU 精度/性能/仿真及一般资源合同变更仍待验收。操作见 [OWNER_PROVISION.md](OWNER_PROVISION.md)，推广门槛见 [DEPLOYMENT.md](DEPLOYMENT.md)。
 
@@ -78,7 +78,7 @@ ssh -N -L 18765:127.0.0.1:18765 YOUR_USER@YOUR_SERVER
 
 个人 Agent 可以位于各自主机账号或开发容器。公共二进制/公共能力包可以只读共享，个人 HOME/XDG、模型配置和会话必须按真实用户隔离。中央及个人 Agent 不持有 Docker socket；受信任 Node 负责创建任务容器。
 
-已接入可选的离线算子性能报告：中央 CPU 任务调用固定上游工具，个人 harness 只读取有权限的归档报告；输入、安装和限制见 [OPERATOR_ANALYSIS.md](OPERATOR_ANALYSIS.md)。当前不代表完整 msagent 或新的 NPU 优化验收。
+已接入可选的离线算子性能报告：中央 CPU 任务调用固定上游工具，个人 harness 只读取有权限的归档报告；输入、安装和限制见 [OPERATOR_ANALYSIS.md](OPERATOR_ANALYSIS.md)。固定配方复用build_v1的CPU产物合同；当前不代表完整msagent或新的NPU优化验收。
 
 ## Agent 接入
 

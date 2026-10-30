@@ -1,15 +1,15 @@
 {
   "schema": "ai-center-cann-source-check/v1",
-  "recorded_at": "2026-10-30T23:13:51.963458+00:00",
+  "recorded_at": "2026-10-30T23:37:22.753959+00:00",
   "passed": true,
-  "python_unit_tests": 808,
+  "python_unit_tests": 818,
   "unit_skipped": 0,
-  "unit_seconds": 141.079,
-  "unit_log_sha256": "c6f3f5851040619c1f4b0f2cd5a20b96838f4838f26ebb3236c9f5397eb804fd",
+  "unit_seconds": 132.308,
+  "unit_log_sha256": "49cf3978aebc917301e3d34ed36e2a88ad708898b616acbe84c30e2e48d6a624",
   "python": "Python3.12.3",
   "javascript_syntax_passed": true,
   "command": "bash scripts/check.sh /usr/bin/python3",
-  "scope": "Final808 unit/JS and same-host isolated Root49 share78 non-document CORE sources. Actual pinned upstream offline CSV tools plus separate installed read-only CLI/MCP and one tools-denied DeepSeek summary accepted with primary terminology correction. Synthetic live cleanup and real CPU IR only; no NPU compute, real host accounts, actual PID1, second physical host or full msagent harness.",
+  "scope": "Final818 unit/JS, same-host installed31 and Root49 share80 non-document CORE sources. Fixed-image CPU report recipe, two actual task UIDs, separate personal reader and restore passed. No NPU compute, model call, real host users, actual PID1 or second physical host.",
   "production_source_sha256": {
     "auth.py": "ec1f1ead3824d5e7bdeed7bfdd8a4464a3c2e0cd0e7ffa3eac8f0832c54fc047",
     "owner_identity.py": "5a48cf78584b2f717ac45594a73da569589cde6d9441037a0aedffe423f1515b",
@@ -75,7 +75,7 @@
     "storage_files.py": "c2dfe4aec3a4dec6bf8802655eb9e72a414e307d5eb6f4725da99f0484642ebf",
     "storage_lifecycle.py": "cc5778edf04bf1118ac940f6954cc488ae7ceedbee373568af87c6add3cde098",
     "node_storage.py": "185bdeb757c0644cf6319460d74ea15061cf6329b4707354696f8e156a16370c",
-    "deployment.py": "78d33c471df925f988aafd3a5694e3c3c88ea23cf4e57f659ea283d9de28bd9e",
+    "deployment.py": "16cf9f985bef95b256740647016ba6f94276ba02c10abea59a3858bb6b5b4508",
     "maintenance.py": "34ef088ed1122ba0f0c8491acd96d0336c8863c4d6a5e5437d4911714a6e0a24",
     "servicectl": "9a5e9fb910b3edbcf0c3eee6be9a42c57809f975ffe7e92a049d9933ba221e1a",
     "accessctl": "c0d0a86c7a027036e202aff0795eae0001beec676c393d13e73a763d685ccdc9",
@@ -84,16 +84,18 @@
     "spool_transfer.py": "885bc83a4b4cbc7d4a81c2ab1efd1df1c84b986166911f0e642bc3b214f2dd7b",
     "persistent_cache.py": "d70d394a48ae2068fe25a0a075d0882b1361ff6dda6b2d7ca3717d7fac35bd0b",
     "dependencies.py": "222c432de7e6c2b14f85e677a68247d1b3d8269a89090845963f2249fd586cc3",
-    "labctl": "e29a36673a1b78c9c7ff85deff288654afdeea3f6009c869b5d0f7f44dffce30",
-    "install-client": "241aabc4f33c0cbb3afcb97d6ab162dda52fd2ef55f1624d0e5936aad0073be4",
+    "labctl": "8c595e034d21143c449833c7c9cbd4b3e28bd2cc599aa60b1523e95235517d7d",
+    "install-client": "977a0e80875a97280e4b7db6b199e7052ab9910088a92b7a8df82a8ea2187249",
     "mcp_bridge.py": "25ce5f4bec8b270357f0d7c3192f58a49cef908bdda40823f9225bc614e54a71",
     "diagnostic_case.py": "cca7edb7c45e2942748fbd3e333968dabfb5e7a4857a064d4b96aca6e913dedc",
-    "operator_profile.py": "d98803b8206a9ec352be7b815250bd8c884ddb85d3ce520bfe018267c1150c6c"
+    "operator_profile.py": "382f4438ea13f2433f582cbf5b5f64c9a52837a1c5f9370a624a94016ff96daf",
+    "operator_node.py": "40a5c872904b699ff7e1e15ab7b8a52e63577b71b02caf6a26b69d39096b0412",
+    "operator_workflow.py": "c5603836192e9ac05018edcdcbffff7d348a4797d2f37aafbbe811b2a13fd829"
   },
   "cpu": 2,
   "memory_mib": 2048,
   "npu": 0,
-  "model_invocations": 1,
+  "model_invocations": 0,
   "prior_socket_portability_acceptance": {
     "schema": "ai-center-cann-source-check/v1",
     "recorded_at": "2026-10-30T08:41:17.365271+00:00",
@@ -6275,6 +6277,184 @@
       "active_inventory_holds_after": 0,
       "existing_nodes_upgraded": false,
       "inventory_waiver": false
+    }
+  },
+  "prior_operator_node_full_check": {
+    "python_unit_tests": 808,
+    "unit_skipped": 0,
+    "unit_seconds": 141.079,
+    "unit_log_sha256": "c6f3f5851040619c1f4b0f2cd5a20b96838f4838f26ebb3236c9f5397eb804fd",
+    "python": "Python3.12.3",
+    "javascript_syntax_passed": true,
+    "scope": "Final808 unit/JS and same-host isolated Root49 share78 non-document CORE sources. Actual pinned upstream offline CSV tools plus separate installed read-only CLI/MCP and one tools-denied DeepSeek summary accepted with primary terminology correction. Synthetic live cleanup and real CPU IR only; no NPU compute, real host accounts, actual PID1, second physical host or full msagent harness.",
+    "model_invocations": 1
+  },
+  "operator_node": {
+    "schema": "ascend-lab-operator-node-validation/v1",
+    "passed": true,
+    "recorded_at": "2026-10-30T23:37:22.750479+00:00",
+    "production_source_files": 80,
+    "full_unit": {
+      "job_id": "job-97b3725a7504",
+      "tests": 818,
+      "seconds": 132.308,
+      "skipped": 0,
+      "log_sha256": "49cf3978aebc917301e3d34ed36e2a88ad708898b616acbe84c30e2e48d6a624",
+      "python": "Python3.12.3",
+      "javascript_syntax_passed": true
+    },
+    "focused": {
+      "job_id": "job-80f0538dcda8",
+      "tests": 39,
+      "seconds": 9.701,
+      "scope": "Recipe/profile/client checks before the additive CLI machine export; final full and installed CLI cover the final implementation"
+    },
+    "installed": {
+      "job_id": "job-bdfc7152b1c6",
+      "checks": 31,
+      "report_sha256": "9f2e4906581f9553e0694e17617380e903594c880d2af441232aab72dbe29a68",
+      "release": "3d25868423f6d82fc1bad34a8f742ba5165650786c420a9ee77bb69d277caedf",
+      "same_80_core_sources": true,
+      "independent_initial_jobs": [
+        {
+          "id": "job-64a3259bdf4f",
+          "owner": "proof_user",
+          "state": "succeeded",
+          "attempt_id": "attempt-4e208bee4ee74011814b7ee497296df9",
+          "kind": "build",
+          "template": "build_v1",
+          "reason": "Managed container ended; Docker confirms no running task"
+        },
+        {
+          "id": "job-a83f5f35aeb9",
+          "owner": "proof_peer",
+          "state": "succeeded",
+          "attempt_id": "attempt-dab6eec2dbbb41eca55fcc264a2981f7",
+          "kind": "build",
+          "template": "build_v1",
+          "reason": "Managed container ended; Docker confirms no running task"
+        },
+        {
+          "id": "job-a88ad3f6d4fc",
+          "owner": "proof_user",
+          "state": "failed",
+          "attempt_id": "attempt-49a8fd2642c14a7c94da7a04236ae440",
+          "kind": "build",
+          "template": "build_v1",
+          "reason": "Managed container ended; Docker confirms no running task"
+        },
+        {
+          "id": "job-b6bc976d0af3",
+          "owner": "proof_user",
+          "state": "cancelled",
+          "attempt_id": null,
+          "kind": "build",
+          "template": "build_v1",
+          "reason": "用户取消了等待中的作业",
+          "independent_mismatched_contract_fields": [
+            "files./opt/ascend-lab-operator/venv/lib/python3.11/site-packages/msprof_mcp/server.py"
+          ]
+        }
+      ],
+      "independent_reports": [
+        {
+          "job_id": "job-64a3259bdf4f",
+          "uid": 23003,
+          "report_sha256": "322499a2a9bcdfb2aa5f00f7adaab4e8585ab9fcf777441010512fcfe9b9056c",
+          "runtime_sha256": "18ac2f6f4456b2175b77882009ffca2b21569d5b064ad4db5fe87601b69d1f02",
+          "protected_receipt_sha256": "7a43b8cdd0013b75fb3d1756a3e982625e8705c37a3606d4b5ec3c69bb874735"
+        },
+        {
+          "job_id": "job-a83f5f35aeb9",
+          "uid": 23004,
+          "report_sha256": "0ba4dadaee0a27c3eaf313db5af1875e5101454e85573dedb72081b9b9002103",
+          "runtime_sha256": "c002eb810a4f91f47710c39d431b99dc690064d3e0bbc3f1bbd53682814cdf02",
+          "protected_receipt_sha256": "7a43b8cdd0013b75fb3d1756a3e982625e8705c37a3606d4b5ec3c69bb874735"
+        }
+      ],
+      "cleanup_confirmed": true,
+      "backing_files_retained": 2
+    },
+    "owner_regression": {
+      "job_id": "job-286f87cb5d25",
+      "fault_count": 49,
+      "same_80_core_sources": true,
+      "six_persisted_cpu_ir_single_attempts": true,
+      "original_domain_policy_restored": true,
+      "report_sha256": "c60fa406e94989d2a50837cb9303513f36ca6a75966ab37c4051e7deeb73ae3a",
+      "cleanup_confirmed": true,
+      "backing_files_retained": 7
+    },
+    "protected_six_unchanged": true,
+    "failures_retained": [
+      "First image was strengthened to use isolated Python tool subprocesses before managed execution",
+      "First installed run rejected unreadable app files at the protected probe; fixed image directory/file permissions, workload never started",
+      "Second installed run confirmed the separate personal UID could not traverse service-private client directory; installed its own public read-only client without opening controller state",
+      "Initial lock provenance check allowed only HTTPS wheel URLs; the previously verified local msprof wheel was explicitly recognized by its exact public-wheel hash; no install occurred before correction"
+    ],
+    "coverage_limits": [
+      "Existing build_v1 CPU artifact contract; report generation, not a compiler build or independent numerical/performance certification",
+      "Same physical host and owned UID-separated role containers; no host accounts, actual PID1, second physical host or NPU compute",
+      "After-restore assertions were performed live inside roles and frozen in the parent report; restored role filesystem is not retained on host",
+      "Current image qualification covers pinned tools and source, not correctness of user historical replay metadata",
+      "No complete msagent harness or model calls; no per-user model configuration changes"
+    ],
+    "npu_kernel_launches": 0,
+    "model_invocations": 0,
+    "overall_goal_complete": false,
+    "production_ready": false,
+    "operator": {
+      "passed": true,
+      "personal_uid": 23642,
+      "task_uids": [
+        23003,
+        23004
+      ],
+      "data_only_shadow_modules_not_imported": true,
+      "sealed_input_survives_local_edit": true,
+      "fixed_recipe_preparation_did_not_submit": true,
+      "actual_stdio_read_only_report": true,
+      "cross_owner_input_and_report_denied": true,
+      "bad_data_failed_without_analysis_report": true,
+      "source_generator_sha256": "382f4438ea13f2433f582cbf5b5f64c9a52837a1c5f9370a624a94016ff96daf",
+      "means_us": [
+        563.0341666666667,
+        33.566966666666666
+      ],
+      "optimization_speedup": null,
+      "image": "sha256:fc5266347b718bdcf944d182a29e7a307ef6ec0bddc9b12a2d61599d80fb56ec",
+      "after_restore": {
+        "passed": true,
+        "new_job": "job-6ade4c474723",
+        "attempts": 1,
+        "original_archive_readable": true,
+        "original_sealed_input_reused": true
+      }
+    },
+    "image": {
+      "image": "sha256:fc5266347b718bdcf944d182a29e7a307ef6ec0bddc9b12a2d61599d80fb56ec",
+      "base_image": "sha256:7dc8f9779053a5b2a135da2ad82aec83a0a1054fb1a3748233cb242e842576a4",
+      "base_python": "/usr/local/python3.11.15/bin/python3.11",
+      "python": "/opt/ascend-lab-operator/venv/bin/python",
+      "python_version": "3.11.15",
+      "context_manifest_sha256": "2c04c2cd3b1ec0a9b0ba5a0d7485c7749e2ce70e8a5bec406e207a0262419ef0",
+      "source_sha256": {
+        "app/diagnostic_case.py": "cca7edb7c45e2942748fbd3e333968dabfb5e7a4857a064d4b96aca6e913dedc",
+        "app/lab_client.py": "4dc0cc3300d62c5ba2f91bc8a026693d84a93d310aaa681816ffe9436bb82d1a",
+        "app/operator_node.py": "40a5c872904b699ff7e1e15ab7b8a52e63577b71b02caf6a26b69d39096b0412",
+        "app/operator_profile.py": "382f4438ea13f2433f582cbf5b5f64c9a52837a1c5f9370a624a94016ff96daf"
+      },
+      "wheel_count": 44,
+      "build_network": "none",
+      "runtime_network_expected": "none"
+    },
+    "main": {
+      "configuration_and_19_node_profiles_and_domains_unchanged": true,
+      "idle_reload": true,
+      "existing_nodes_upgraded": false,
+      "inventory_waiver": false,
+      "nonterminal_jobs_after": 0,
+      "active_inventory_holds_after": 0
     }
   }
 }
