@@ -159,11 +159,14 @@ class Activation:
         directory=self.runtime/'owner-activations';pending=directory/(owner+'.pending.json');receipt=directory/(owner+'.json')
         client=self.runtime/'personas'/owner/'client.json'
         with lock(self.runtime,'owner-activation',exclusive=True):
+            from owner_activation_abort import guard,spent
+            guard(self.runtime,owner)
             intent=_read(pending);finished=_read(receipt)
             if finished and finished['request']!=spec:raise JobError('Owner activation already has another resource contract',409)
             if intent and intent['request']!=spec:raise JobError('Resume the original activation request',409)
             with self.jobs.transaction() as db,self.access.connect() as identities:
                 identities.execute('BEGIN IMMEDIATE')
+                if intent and spent(identities,intent['id']):raise JobError('This activation intent was aborted; create a new operation',409)
                 row=identities.execute('SELECT id,record FROM owner_activations WHERE owner=?',(owner,)).fetchone()
                 if row:
                     record=json.loads(row[1])
@@ -196,6 +199,7 @@ class Activation:
                         marker={'format':FORMAT,'id':identifier,'stage_id':spec['stage_id'],'required_nodes':spec['required_nodes']}
                         intent={'format':FORMAT,'id':identifier,'request':spec,'readiness':readiness,'marker':marker,'at':now(),
                             'expires_at':time.time()+86400,'salt':salt.hex(),'password_hash':hashlib.pbkdf2_hmac('sha256',password.encode(),salt,300000).hex(),
+                            'trust_created_by_activation':bool(ca and not (client.parent/'controller-ca.pem').exists() and not (client.parent/'controller-ca.pem').is_symlink()),
                             'client':{'username':owner,'password':password,'token':secrets.token_urlsafe(32),'controller':controller,
                                       **({'ca_file':'controller-ca.pem'} if ca else {})},'ca_pem':ca}
                         _save(pending,intent);_checkpoint('intent')

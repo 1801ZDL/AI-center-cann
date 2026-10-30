@@ -230,6 +230,75 @@ print(json.dumps({"profile_sha256":sha(projection(j.nodes.node(r["node_id"])["pr
             'scope':'Same-host installed non-root controller plus Root Node, real stage/GID approval and authenticated HTTP commit/ready ACK. Environment enrolled by trusted fixture administrator; not a new protected environment-probe acceptance.',**activation,
             **({'unit_refresh':self.unit_proof} if self.unit_proof else {})}
 
+    def abort_uncommitted(self,spec_path):
+        from lab_client import read_json
+        import hashlib
+        previous=(self.state/'personas/old_owner/client.json').read_bytes()
+        for option in ['--state-dir=/state/unrelated','--state-d=/state/unrelated']:
+            try:self.command('accessctl',option,'user-status','new_owner')
+            except RuntimeError as error:assert 'without overriding' in str(error)
+            else:raise AssertionError('Installed admin accepted another state directory')
+        killed=self.service_run('''import json,sys,os,signal
+from pathlib import Path
+from jobs import JobStore
+from lab_client import read_json
+import owner_activation as a
+s=Path(sys.argv[1])
+def crash(stage):
+ if stage=='client':os.kill(os.getpid(),signal.SIGKILL)
+a._checkpoint=crash;a.Activation(JobStore(s,read_json(s/'config.json'))).activate(read_json(s/'activation-spec.json'))
+''');assert killed.returncode==-signal.SIGKILL,killed.stderr[-1000:]
+        state=self.command('accessctl','user-activation-status','new_owner');identifier=state['activation_id'];assert state['state']=='pending'
+        pending=self.state/'owner-activations/new_owner.pending.json';self.aborted_client=read_json(pending)['client'];self.aborted_id=identifier
+        self.service_code('''import json,sys
+from pathlib import Path
+from owner_activation import _save,_read
+s=Path(sys.argv[1]);p=s/'owner-activations/new_owner.pending.json';v=_read(p);v['expires_at']=-1;_save(p,v)
+print(json.dumps({'expired':True}))
+''')
+        refused=subprocess.run(['/usr/bin/python3','-I','-B',self.prefix+'/current/servicectl','admin','--prefix',self.prefix,'--',
+            'accessctl','user-activate','--spec',str(spec_path)],capture_output=True,text=True,timeout=30)
+        assert refused.returncode and 'expired' in refused.stderr
+        plan=self.state/'abort-plan.json';preview=self.command('accessctl','user-activation-abort-plan','new_owner','--activation-id',identifier,'--output',str(plan))
+        text=plan.read_text();assert self.aborted_client['token'] not in text and self.aborted_client['password'] not in text
+        assert preview['read_only'] and not preview['credentials_issued'] and pending.exists()
+        faults=[]
+        for boundary in ['journal','client','trust','before_commit','committed','receipt','intent_removed','published']:
+            stopped=self.service_run('''import json,sys,os,signal
+from pathlib import Path
+from jobs import JobStore
+from lab_client import read_json
+import owner_activation_abort as a
+s=Path(sys.argv[1])
+def crash(stage):
+ if stage=="'''+boundary+'''":os.kill(os.getpid(),signal.SIGKILL)
+a._checkpoint=crash;a.Abort(JobStore(s,read_json(s/'config.json'))).apply(read_json(s/'abort-plan.json'))
+''');assert stopped.returncode==-signal.SIGKILL,(boundary,stopped.stderr[-1200:])
+            if boundary!='published':
+                refused=subprocess.run(['/usr/bin/python3','-I','-B',self.prefix+'/current/servicectl','admin','--prefix',self.prefix,'--',
+                    'accessctl','user-activate','--spec',str(spec_path)],capture_output=True,text=True,timeout=30)
+                assert refused.returncode and 'activation abort' in refused.stderr
+            assert self.command('accessctl','user-status','new_owner')['disabled']
+            faults.append({'boundary':boundary,'sigkill_observed':True,'same_abort_plan':True})
+        replay=self.command('accessctl','user-activation-abort-apply','--plan',str(plan));assert replay['reused'] and replay['state']=='aborted'
+        assert not pending.exists() and not (self.state/'personas/new_owner/client.json').exists()
+        assert self.command('accessctl','user-activation-status','new_owner')['state']=='staged'
+        verified=self.service_code('''import sqlite3,json,sys
+from pathlib import Path
+s=Path(sys.argv[1])
+with sqlite3.connect(s/'identities.sqlite3') as d:
+ assert d.execute("SELECT disabled,password_hash FROM users WHERE id='new_owner'").fetchone()==(1,'!')
+ assert d.execute("SELECT COUNT(*) FROM tokens WHERE user='new_owner'").fetchone()[0]==0
+ assert d.execute("SELECT COUNT(*) FROM owner_activations WHERE owner='new_owner'").fetchone()[0]==0
+ assert d.execute("SELECT COUNT(*) FROM owner_activation_aborts WHERE owner='new_owner'").fetchone()[0]==1
+print(json.dumps({'disabled_and_no_credentials':True}))
+''');assert verified['disabled_and_no_credentials'] and (self.state/'personas/old_owner/client.json').read_bytes()==previous
+        self.abort_plan=plan
+        self.abort_proof={'passed':True,'fault_chain':faults,'expired_intent_explicitly_aborted':True,'private_plan_contains_no_credentials':True,
+            'original_private_files_removed':True,'old_owner_profile_unchanged':True,'zero_tokens_before_reactivation':True,
+            'equal_form_admin_state_override_refused':True,
+            'scope':'Installed service-UID CLI aborts a real uncommitted expired activation, eight consecutive SIGKILL boundaries; no resource or user deletion.'}
+
     def activate(self,prefix,plan,config):
         from lab_client import atomic_json,read_json
         from worker import Worker
@@ -250,6 +319,7 @@ print(json.dumps({"stale":True}))
         worker=Worker(config)
         try:worker.heartbeat()
         finally:worker.lock.close();worker.state_lock.close()
+        if self.context.get('activation_abort'):self.abort_uncommitted(path)
         faults=[];identifier=None
         for boundary in ['intent','trust','client','before_commit','committed','receipt','published']:
             crashed=self.service_run('''import sys,os,signal,json
@@ -275,6 +345,18 @@ a._checkpoint=crash;a.Activation(JobStore(s,read_json(s/'config.json'))).activat
         assert first['id']==again['id']==identifier and first['reused'] and again['reused']
         assert not (self.state/'owner-activations/new_owner.pending.json').exists()
         published=self.state/'personas/new_owner/client.json';assert published.stat().st_uid==23820 and published.stat().st_mode&0o777==0o600
+        if self.context.get('activation_abort'):
+            import hashlib
+            assert identifier!=self.aborted_id
+            fingerprint=hashlib.sha256(published.read_bytes()).hexdigest()
+            replay=self.command('accessctl','user-activation-abort-apply','--plan',str(self.abort_plan));assert replay['reused']
+            assert hashlib.sha256(published.read_bytes()).hexdigest()==fingerprint and not self.command('accessctl','user-status','new_owner')['disabled']
+            from lab_client import Client,ClientError
+            for credentials in [self.aborted_client,{k:v for k,v in self.aborted_client.items() if k!='token'}]:
+                try:Client(credentials).request('/api/me')
+                except ClientError as error:assert '401' in str(error)
+                else:raise AssertionError('Aborted password/token became usable')
+            self.abort_proof.update(new_activation_id_differs=True,old_abort_replay_keeps_new_active_credentials=True,old_password_and_token_http_denied=True)
         # Explicit trusted-administrator delivery, without putting credentials
         # in command arguments, stdout, the task payload or central web routes.
         import shutil
@@ -341,4 +423,5 @@ print(json.dumps({'peer_read_denied':True,'tokens':n}))
             'personal_client_uid':23802,'peer_uid23801_private_profile_denied':True,'administrator_private_copy_delivery':True,
             'scope':'Installed same-host controller/Node activation plus one real queued non-root CPU BishengIR workflow. No NPU or real systemd PID1.'},
             'accounts_enabled':1,'account_disabled_after_acceptance':True,'full_owner_onboarding_ready':False,
-            'identity_still_staged_and_token_count_zero':False,'credential_free_stage_verified_before_activation':True}
+            'identity_still_staged_and_token_count_zero':False,'credential_free_stage_verified_before_activation':True,
+            **({'activation_abort':self.abort_proof} if self.context.get('activation_abort') else {})}

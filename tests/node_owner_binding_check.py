@@ -209,7 +209,7 @@ a._checkpoint=crash;a.apply("/opt/owner-node",json.load(open("/state/bind-plan.j
     print(json.dumps(report),flush=True)
 
 
-def parent(central_handoff=False,activate_owner=False,unit_refresh=False):
+def parent(central_handoff=False,activate_owner=False,unit_refresh=False,activation_abort=False):
     root=Path(__file__).resolve().parents[1];sys.path.insert(0,str(root));sys.path.insert(0,str(root/'tests'))
     from deployment import bundle,unpack_release,CORE
     from docker_runtime import discover,command,binary
@@ -230,7 +230,7 @@ def parent(central_handoff=False,activate_owner=False,unit_refresh=False):
         (payload/'handoff_fixture.py').write_bytes((root/'tests/owner_handoff_root_fixture.py').read_bytes());(payload/'handoff_fixture.py').chmod(0o444)
     (payload/'input.mlir').write_text('module { func.func @add() -> i32 { %a = arith.constant 19 : i32\n %b = arith.constant 23 : i32\n %r = arith.addi %a, %b : i32\n return %r : i32 } }\n');(payload/'input.mlir').chmod(0o444)
     binding,_=discover();cpus=job['allocation']['cpu_ids']
-    context={'job_id':job['id'],'attempt_id':job['attempt_id'],'runtime':binding,'central_handoff':central_handoff,'activate_owner':activate_owner,'unit_refresh':unit_refresh}
+    context={'job_id':job['id'],'attempt_id':job['attempt_id'],'runtime':binding,'central_handoff':central_handoff,'activate_owner':activate_owner,'unit_refresh':unit_refresh,'activation_abort':activation_abort}
     if activate_owner:context['node_state']=str(state/'node')
     def docker(args,check=True,timeout=45):
         argv,env=command(binding,['docker',*map(str,args)]);r=subprocess.run(argv,env=env,capture_output=True,text=True,timeout=timeout)
@@ -289,12 +289,13 @@ def parent(central_handoff=False,activate_owner=False,unit_refresh=False):
 
 if __name__=='__main__':
     parser=argparse.ArgumentParser();parser.add_argument('--actor',action='store_true');parser.add_argument('--controller',action='store_true')
-    parser.add_argument('--with-regression',action='store_true');parser.add_argument('--central-handoff',action='store_true');parser.add_argument('--activate-owner',action='store_true');parser.add_argument('--unit-refresh',action='store_true');args=parser.parse_args()
+    parser.add_argument('--with-regression',action='store_true');parser.add_argument('--central-handoff',action='store_true');parser.add_argument('--activate-owner',action='store_true');parser.add_argument('--unit-refresh',action='store_true');parser.add_argument('--activation-abort',action='store_true');args=parser.parse_args()
     if args.actor:actor()
     elif args.controller:controller()
     else:
         root=Path(__file__).resolve().parents[1]
         if args.with_regression:
             subprocess.run(['/usr/bin/python3','-m','unittest','discover','-s','tests','-p','test_node_owner_admin.py','-v'],cwd=root,check=True)
-        parent(args.central_handoff or args.activate_owner or args.unit_refresh,args.activate_owner or args.unit_refresh,args.unit_refresh)
+        parent(args.central_handoff or args.activate_owner or args.unit_refresh or args.activation_abort,
+               args.activate_owner or args.unit_refresh or args.activation_abort,args.unit_refresh or args.activation_abort,args.activation_abort)
         if args.with_regression:subprocess.run(['bash','scripts/check.sh','/usr/bin/python3'],cwd=root,check=True)

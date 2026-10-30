@@ -19,6 +19,9 @@ def main():
     command=sub.add_parser('user-stage');command.add_argument('--spec',required=True)
     command=sub.add_parser('user-status');command.add_argument('user')
     command=sub.add_parser('user-activate');command.add_argument('--spec',required=True)
+    command=sub.add_parser('user-activation-status');command.add_argument('user')
+    command=sub.add_parser('user-activation-abort-plan');command.add_argument('user');command.add_argument('--activation-id',required=True);command.add_argument('--output',required=True)
+    command=sub.add_parser('user-activation-abort-apply');command.add_argument('--plan',required=True)
     command=sub.add_parser('project-grant');command.add_argument('project');command.add_argument('user')
     command.add_argument('--role',choices=['viewer','editor','manager'],default='editor')
     command=sub.add_parser('project-revoke');command.add_argument('project');command.add_argument('user')
@@ -37,7 +40,25 @@ def main():
     if not config:parser.error('Start the Demo once before provisioning users')
     access=AccessControl(runtime,config)
     try:
-        if args.action=='user-activate':
+        if args.action in {'user-activation-status','user-activation-abort-plan','user-activation-abort-apply'}:
+            from jobs import JobStore
+            from owner_activation_abort import Abort
+            from lab_client import private_profile
+            abort=Abort(JobStore(runtime,config))
+            if args.action=='user-activation-status':result=abort.status(args.user)
+            elif args.action=='user-activation-abort-apply':result=abort.apply(private_profile(args.plan))
+            else:
+                value=abort.plan(args.user,args.activation_id);target=Path(args.output).absolute()
+                if target.parent.resolve(strict=True)!=target.parent:parser.error('Abort plan output parent must not contain links')
+                info=target.parent.stat()
+                if info.st_uid!=os.geteuid() or info.st_mode&0o077:parser.error('Abort plan output needs a service-owned private parent')
+                fd=os.open(target,os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,0o600)
+                with os.fdopen(fd,'w') as output:json.dump(value['plan'],output,indent=2);output.write('\n');output.flush();os.fsync(output.fileno())
+                from owner_activation import _sync
+                _sync(target.parent)
+                result={'read_only':True,'owner':args.user,'activation_id':args.activation_id,'plan_id':value['plan']['id'],'plan_file':str(target),'credentials_issued':False}
+            print(json.dumps(result,ensure_ascii=False,indent=2))
+        elif args.action=='user-activate':
             from jobs import JobStore
             from owner_activation import Activation
             from lab_client import private_profile

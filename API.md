@@ -169,6 +169,8 @@ NPUgrant增加npu_policy_sha256，固定管理员合同。节点启动前及Dock
 个人archive_root、本地源文件和下载进度均留在客户端，不提交给中央。此接口是拉取归档，不在中央执行个人路径上的写入。
 ## 待预配用户的中央与节点交接
 
+未提交意图的状态/中止仅开放中央本地CLI：`user-activation-status`、`user-activation-abort-plan`、`user-activation-abort-apply`，没有用户或节点远程接口。普通个人token无法中止开户。原激活ID和文件指纹绑定后只清理匹配的未提交凭据，保留已中止ID；账号已提交则拒绝，旧完成计划重放保留新凭据。操作见 [OWNER_PROVISION.md](OWNER_PROVISION.md)。
+
 最后激活只提供中央本地管理命令 `accessctl user-activate --spec FILE`，没有用户或节点可调用的远程提权接口。请求明确owner、stage_id及全部required_nodes的node_id/plan_id。活跃中央进程组、当前Node状态/环境/配额与回执就绪后，私有凭据先持久保存，再提交启用和token摘要；HTTP身份、个人CLI/MCP合同保持。操作输出不包含密码/token，实际个人文件交付由管理员完成。恢复及当前限制见 [OWNER_PROVISION.md](OWNER_PROVISION.md)。
 
 中央本地管理员通过 `workerctl owner-approve NODE --plan FILE` 批准原始 Node 绑定计划，以 `owner-status NODE` 查询交接状态。计划文件须由中央服务 UID 所有且仅本人可读；普通用户及节点无批准接口。批准核对真实禁用且无凭据的待预配身份、中央原生存储配额、原 Node 投影及修订、空闲执行与物理域清单。未完成交接的节点暂停新领取；已分配资源不因交接或密钥撤销而释放。

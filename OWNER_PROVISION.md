@@ -157,4 +157,32 @@ Node本地绑定：真实安装、fixture stage摘要、独立的两个128MiB ex
 
 在冻结Node账本和身份事务后，先持久保存私有凭据intent及个人client文件，再一次提交密码哈希、token摘要、启用位和激活记录，最后发布无密码/token的交付回执并清理intent。密码/token仅在服务私有文件中，命令输出只含路径和回执；默认个人token期限24小时，仅jobs读/提交/取消。管理员通过可信加密渠道将client文件和可选CA交给对应实际用户，个人目录0700、文件0600，不上传网站或共享目录。现阶段没有自动写入个人主目录的命令。
 
-中断后保留文件并重复同一请求，不另建凭据或覆盖已有个人配置。提交后管理员禁用、撤销或续发的状态优先，恢复不得复活旧令牌或账号。未完成时备份/代码切换被阻断；已有激活记录拒绝降级到缺相应恢复支持的代码。已完成激活的离线恢复会重定位交付回执路径。若未提交intent已过期、资源合同改变或私有回执丢失，操作拒绝并保留证据；自动中止/重新规划尚未实现，需要后续管理流程，不能手工删记录绕过。
+中断后保留文件并重复同一请求，不另建凭据或覆盖已有个人配置。提交后管理员禁用、撤销或续发的状态优先，恢复不得复活旧令牌或账号。未完成时备份/代码切换被阻断；已有激活记录拒绝降级到缺相应恢复支持的代码。已完成激活的离线恢复会重定位交付回执路径。若未提交intent已过期或资源上下文改变，可使用下述显式中止流程，再按现有就绪条件重新激活；私有回执丢失或账号已提交时仍须核对原操作，不能手工删记录绕过。
+
+
+## 未提交激活的显式中止与重新激活
+
+管理命令只在中央本地服务身份下执行，没有用户/节点可调用的远程中止接口。先用状态命令取得原始32位激活ID，不要为了找ID而打印含密码/token的pending文件：
+
+```bash
+/opt/ascend-lab-controller/current/servicectl admin \
+  --prefix /opt/ascend-lab-controller -- \
+  accessctl user-activation-status researcher_a
+/opt/ascend-lab-controller/current/servicectl admin \
+  --prefix /opt/ascend-lab-controller -- \
+  accessctl user-activation-abort-plan researcher_a \
+  --activation-id 替换为状态中的原始ID \
+  --output /var/lib/ascend-lab-controller/abort-plan.json
+/opt/ascend-lab-controller/current/servicectl admin \
+  --prefix /opt/ascend-lab-controller -- \
+  accessctl user-activation-abort-apply \
+  --plan /var/lib/ascend-lab-controller/abort-plan.json
+```
+
+计划输出需是服务UID所有的私有目录中的新文件，已有文件拒绝覆盖；计划、journal和回执仅含绑定及文件指纹，不复制明文凭据。只允许原stage定义仍有效、账号禁用/不可用密码标记、从未发放token且无激活提交记录的操作；已经提交的账号包括停在最后回执阶段的账号，须走禁用/撤销流程，不能中止回退。中央仍运行旧代码时先升级/重载，活跃实例须声明owner-activation-abort-v1。Node离线、意图过期或资源上下文改变本身不妨碍中止。
+
+中止绑定原激活ID、stage摘要、控制及个人目录身份、原intent和相关client/CA文件的设备/inode/时间/权限/SHA。先保存持久journal，再删除完全匹配的本次client及由新意图标记为本次创建的CA，提交永久已中止ID记录和审计，写回执后清原intent和journal。原有CA以及旧意图未记录归属的CA保留；未知或变化的文件拒绝删除。账号保持禁用，不新建token。八个连续进程中断边界可按同一计划恢复，期间普通激活和离线备份/代码切换拒绝；不要删除journal另起计划。存在已中止ID时拒绝降级到缺少相应恢复支持的代码。
+
+完成后可按同一既有stage/资源合同重新执行user-activate，产生新激活ID和凭据。旧意图即使被重新放回也不能启用，旧中止计划的完成重放保留后来新建的凭据。中止不会删除用户、回收中央GID、Node UID槽/缓存或修改资源/环境合同；资源合同改变后的重授权与完整一键协调仍待实现。只清理中央服务私有目录，不接管个人主目录或外部副本。
+
+当前同机安装演练使用实际服务UID23820：真实激活在client落盘后SIGKILL，模拟意图过期，显式中止再经历journal/client/trust/before_commit/committed/receipt/intent_removed/published八次连续SIGKILL并恢复。中止后仍禁用、token0、已中止ID1；重新激活产生不同ID，旧Basic密码及Bearer均401，旧中止重放保留新配置；随后个人UID23802完成真实单次排队BishengIR编译和归档清理。原有用户配置未改，实际systemd管理器和NPU未参与本次验收。

@@ -48,6 +48,8 @@ def assert_quiescent(state,role,check_spool=True):
     if role=='controller':
         if list((state/'owner-activations').glob('*.pending.json')):
             raise DeployError('Finish pending owner activation credential delivery before offline maintenance')
+        if list((state/'owner-activation-aborts').glob('*.pending.json')):
+            raise DeployError('Finish pending owner activation abort before offline maintenance')
         path=state/'jobs.sqlite3'
         if path.exists():
             with sqlite3.connect('file:'+str(path)+'?mode=ro',uri=True) as db:
@@ -315,6 +317,14 @@ def restore(prefix,archive_path,new_state,max_bytes=10*1024**3,payload_config=No
 
 def require_features(state,role,manifest):
     config=read_json(Path(state)/'config.json') or {}
+    if role=='controller' and 'owner_activation_abort.py' not in manifest.get('files',{}):
+        if any((Path(state)/'owner-activation-aborts').glob('*.json')):
+            raise DeployError('Owner activation abort recovery records require compatible abort support; refusing downgrade')
+        path=Path(state)/'identities.sqlite3'
+        if path.exists():
+            with sqlite3.connect(path.as_uri()+'?mode=ro',uri=True) as db:
+                if db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='owner_activation_aborts'").fetchone() and db.execute('SELECT 1 FROM owner_activation_aborts LIMIT 1').fetchone():
+                    raise DeployError('Spent activation IDs require compatible abort support; refusing downgrade')
     if role=='controller' and 'owner_activation.py' not in manifest.get('files',{}):
         if any((Path(state)/'owner-activations').glob('*.json')):
             raise DeployError('Owner activation recovery records require compatible identity activation support; refusing downgrade')

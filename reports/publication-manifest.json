@@ -1,6 +1,6 @@
 {
   "schema": "ai-center-cann-publication/v1",
-  "recorded_at": "2026-10-30T15:56:35.191511+00:00",
+  "recorded_at": "2026-10-30T16:31:00.157501+00:00",
   "files": {
     ".gitignore": {
       "sha256": "a6287d1d645bcba2ddfec87d1055724b00577eea69200b919302f4d46cf3680d",
@@ -8,13 +8,13 @@
       "mode": "100644"
     },
     "API.md": {
-      "sha256": "497e6e664cf41ed80830420e94a3674552efc4b2c26d481a6a91423c2eecec21",
-      "bytes": 28008,
+      "sha256": "61cbed55e69e8f62c7516b665fb98251c7ce2feb5432567c06994312b7b99b27",
+      "bytes": 28442,
       "mode": "100644"
     },
     "BACKLOG.md": {
-      "sha256": "7290810d75882005fac30771642ea6fcb2448d4397afca6882c8f7cd87badeb5",
-      "bytes": 2146,
+      "sha256": "6c79d4e4245bb7a7d11692503c09623989e609acce75d473fad2d47fd1d8df02",
+      "bytes": 2211,
       "mode": "100644"
     },
     "CACHE.md": {
@@ -38,8 +38,8 @@
       "mode": "100644"
     },
     "DEPLOYMENT.md": {
-      "sha256": "c064c6f643570408e3b637c1d01c506b5bc234376eac7fc35c40daf43ed1ca1b",
-      "bytes": 43810,
+      "sha256": "f66c0a845c4a7804697aca5b2a4ca726f8ea345de651cf519cce131087922e4e",
+      "bytes": 44552,
       "mode": "100644"
     },
     "ENVIRONMENTS.md": {
@@ -63,18 +63,18 @@
       "mode": "100644"
     },
     "OWNER_PROVISION.md": {
-      "sha256": "e18a701be0de29ebd031aeb1abc68e83b3700f823270a13821382be576abb7b9",
-      "bytes": 18059,
+      "sha256": "3b539dc97d76a99e6084b87fb2f037e8f1d38330e9dcaef2860d9b442afad8f9",
+      "bytes": 21201,
       "mode": "100644"
     },
     "PROGRESS.md": {
-      "sha256": "bb63d0d6ac773ebc021a9d6f5e83da7f844df7a15c8dba557902f283b6a5413e",
-      "bytes": 24050,
+      "sha256": "0e8b69aaa02a6cbab947f5e9ee04f9238da1ec9c083282f503bb34c62f0e7794",
+      "bytes": 26837,
       "mode": "100644"
     },
     "README.md": {
-      "sha256": "ff982cb396bccb3fd86b56d90bac1a15fbbc2f60aedf864461f68cabe4adf5d6",
-      "bytes": 6601,
+      "sha256": "2255d9b012cc8e18b5e8c8106832de6002ff58e6098c1a42be6eb863f42987f8",
+      "bytes": 6613,
       "mode": "100644"
     },
     "RECOVERY.md": {
@@ -108,8 +108,8 @@
       "mode": "100644"
     },
     "accessctl": {
-      "sha256": "d1ba92ef417219ae2cf674ef428fa73cf70768bfa16a23ef38438e1cec33cbb8",
-      "bytes": 7174,
+      "sha256": "c0d0a86c7a027036e202aff0795eae0001beec676c393d13e73a763d685ccdc9",
+      "bytes": 9042,
       "mode": "100755"
     },
     "agent_runner.py": {
@@ -178,8 +178,8 @@
       "mode": "100644"
     },
     "deployment.py": {
-      "sha256": "66fa0beeed38aeb3f5ad3519f5b5b32019ede060a6d5a9b425fb86495028b2bb",
-      "bytes": 35141,
+      "sha256": "a18c7a7e8442209f0c729355a9ab7b0d8166f03ccb0ed7f81d89899fc7e84909",
+      "bytes": 35197,
       "mode": "100644"
     },
     "device_qualification.py": {
@@ -333,8 +333,8 @@
       "mode": "100644"
     },
     "maintenance.py": {
-      "sha256": "c55d1a5036a0dbf2e90607a47c2b293656341dba699fdbf5cf6a8a71f7164c7d",
-      "bytes": 31321,
+      "sha256": "b20bb3d8e052f86834767af7e58f5b1f0960edde729d62b86704485ec8fc3f54",
+      "bytes": 32247,
       "mode": "100644"
     },
     "mcp_bridge.py": {
@@ -373,8 +373,13 @@
       "mode": "100644"
     },
     "owner_activation.py": {
-      "sha256": "94c38b90a64bf2221dddc6fbd6cd65f9bb9dd7c0e2a8b2c796c12b1d838a4982",
-      "bytes": 18104,
+      "sha256": "a34b7e1de33596164ed5c38d33a22738b514efec58b656a2a255acbe2f480741",
+      "bytes": 18521,
+      "mode": "100644"
+    },
+    "owner_activation_abort.py": {
+      "sha256": "7a180ab782dfd6e7b0279649c6e6fc453fbc642875ace140681deab5c2e3a4dd",
+      "bytes": 14307,
       "mode": "100644"
     },
     "owner_handoff.py": {
@@ -433,13 +438,13 @@
       "mode": "100644"
     },
     "reports/public-source-check.json": {
-      "sha256": "fddf743658f5a2e44fb08efe29bbda0163e04e3f44ef151b701236a042d5a070",
-      "bytes": 65645,
+      "sha256": "eb68222530db7b7ea04da8ef2523356f2454d99238cc8c9361f7ff2e7ca307b0",
+      "bytes": 75231,
       "mode": "100644"
     },
     "reports/v036-public.json": {
-      "sha256": "0c4111f7559bd62aa5bb3ad5364622c0a412c2b6050b17666ac3189f148df5a6",
-      "bytes": 5363,
+      "sha256": "6e091cd1491b7c59b622987d54d4809a20cc0114bcdfc6c9b7fbf48f674b2e02",
+      "bytes": 5475,
       "mode": "100644"
     },
     "requirements-qa.txt": {
@@ -458,18 +463,18 @@
       "mode": "100755"
     },
     "scripts/publication_manifest.py": {
-      "sha256": "5813af1df39c8f9aab9d1c882f208c202f95b17b0c1db9b91c77065b663c4faa",
-      "bytes": 9011,
+      "sha256": "7c17a41922147b637667ff77c043398812a27fb156ef9258463a973dc46b4677",
+      "bytes": 9090,
       "mode": "100644"
     },
     "server.py": {
-      "sha256": "d4567942b5db4a10661a4c1c7b8bc12b52fed775a23474c37d6260108f92faa5",
-      "bytes": 27355,
+      "sha256": "84baed73ba4f2cc2886b6cae452d04819779bb5444231e1563035d7430d9610a",
+      "bytes": 27432,
       "mode": "100644"
     },
     "servicectl": {
-      "sha256": "596684ac3a9412d721b61e54681495cfc482077369e6a0d8ba4995ba59c05a34",
-      "bytes": 18775,
+      "sha256": "d607302151ac440642c73768fbb99b37df8265ecf4ac3b3fa31c9d12d993ad7f",
+      "bytes": 18934,
       "mode": "100755"
     },
     "spool_storage.py": {
@@ -893,8 +898,8 @@
       "mode": "100644"
     },
     "tests/node_owner_binding_check.py": {
-      "sha256": "19cb49eca006e10729b750e242313ac1a96d0630196e7a7859c088c1d89eada0",
-      "bytes": 23762,
+      "sha256": "4063aaf853ead91b5e1f05f3af8389dc7bb178e64a96a3be3c7a54652fbe2791",
+      "bytes": 23996,
       "mode": "100644"
     },
     "tests/node_spool_pressure.py": {
@@ -918,8 +923,8 @@
       "mode": "100644"
     },
     "tests/owner_handoff_root_fixture.py": {
-      "sha256": "2ff1f616da3f760760b3d2b23728a40597b745ad9c53381bd6ffc5461a272973",
-      "bytes": 25031,
+      "sha256": "b76e2d495d3b808b2bbbdb19269b77b592f30e39caec17955ae881a830fa327d",
+      "bytes": 31222,
       "mode": "100644"
     },
     "tests/package_release_check.py": {
@@ -1192,6 +1197,11 @@
       "bytes": 14175,
       "mode": "100644"
     },
+    "tests/test_owner_activation_abort.py": {
+      "sha256": "3ae155256f4511eb79f3eec30cfd7b154bb3fdbd397a004fe6bf6351a11f1781",
+      "bytes": 10276,
+      "mode": "100644"
+    },
     "tests/test_owner_handoff.py": {
       "sha256": "200c25e08c0e9e6b4187d9c220b1c19e04cd34068a60a5e80e7a4b26a28a62e4",
       "bytes": 11922,
@@ -1383,10 +1393,10 @@
       "mode": "100644"
     }
   },
-  "files_count": 276,
-  "total_bytes": 2887638,
-  "known_private_values_checked": 1382,
-  "private_fixture_files_considered": 1046,
+  "files_count": 278,
+  "total_bytes": 2939108,
+  "known_private_values_checked": 1400,
+  "private_fixture_files_considered": 1056,
   "model_keys_read": false,
   "raw_runtime_or_evidence_included": false,
   "passed": true

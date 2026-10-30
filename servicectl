@@ -209,7 +209,9 @@ def main():
         if meta['role']!='controller':raise deploy.DeployError('Account/node enrollment is administered on the controller installation')
         if os.geteuid() not in {0,meta['uid']}:raise deploy.DeployError('Service identity or root is required')
         command=args.command[1:] if args.command[:1]==['--'] else args.command
-        if not command or command[0] not in {'accessctl','workerctl'} or any(x in {'--state-dir','--controller-state'} for x in command[1:]):raise deploy.DeployError('Choose accessctl or workerctl without overriding this installation state')
+        state_flags={'--state-dir','--controller-state'}
+        overrides=any(x.startswith('--') and len(x.split('=',1)[0])>2 and any(flag.startswith(x.split('=',1)[0]) for flag in state_flags) for x in command[1:])
+        if not command or command[0] not in {'accessctl','workerctl'} or overrides:raise deploy.DeployError('Choose accessctl or workerctl without overriding this installation state')
         def drop():
             if os.geteuid()==0:
                 from payload_groups import gids
