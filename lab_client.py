@@ -23,6 +23,10 @@ class ClientError(ValueError):
     pass
 
 
+class ClientUnavailable(ClientError):
+    """No trustworthy response; retry must retain the original operation identity."""
+
+
 def now():
     return dt.datetime.now(dt.timezone.utc).isoformat()
 
@@ -189,7 +193,7 @@ class Client:
         except ClientError:
             raise
         except (OSError, ValueError):
-            raise ClientError('Controller connection or response unavailable; no task was run locally') from None
+            raise ClientUnavailable('Controller connection or response unavailable; no task was run locally') from None
 
     def upload_input(self,source):
         from io_policy import limits,MIB

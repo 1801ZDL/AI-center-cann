@@ -1,5 +1,32 @@
 # 实施进度
 
+## 离线领域工具接入与中央通信中断恢复（2026-10-31）
+
+当前最终完整检查 **808项/141.079秒/无跳过，JavaScript语法通过**。78个非文档CORE生产源码与最终full/Root冻结一致；六个受保护运行文件继续保持v0.36哈希。新增22项算子报告检查、6项通信恢复检查、2项自有清理范围检查。原网页11组仍保留此前静态资产验收，本轮未重新运行浏览器。
+
+真实工具接入：独立CPU队列任务实际调用msprof-mcp0.1.8/MCP1.30.0的stdio `get_operator_details`，独立CSV解析交叉核对，再运行固定msagent提交5a9b2a1a8a38f35cc63109929850aa4a46db090e中的未改动delta_report.py。原项目文件只读，输入副本、来源和代码哈希私有保存，结果JSON/CSV归档。完整msagent、自动采集/上板/优化和正式Node工具镜像未安装或验收。安装依赖集中在本项目tools独立环境，不改共享Python或其他项目。
+
+实际历史MergeTopK数据每份30次，均值563.0341667μs与33.5669667μs，CSV Device_id为0/1，回放记录的物理卡也为0/1，核心频率为100/1650MHz，声称同一ELF。报告保留16.77345982的耗时比，优化收益为null；上游比较脚本因物理卡不同返回2。CSV列值单独保留，不据其名称推导逻辑/物理映射；历史精度声明不是本轮精度认证。这不是新的NPU测量，也不说明当前设备仍有历史频率。
+
+独立分发客户端增加`labctl operator-case`和单任务只读stdio MCP，只暴露无参数get_diagnostic_case。实际新目录安装、所有分发文件SHA、CLI与真实initialize/list/call通过；先按服务端ACL读任务，再读固定完整归档、校验SHA/schema并递归脱敏。其他身份、任务覆盖和提交工具被拒，读取前后无新增任务，个人端不导入上游分析依赖。最终生产者job-3c04b2b6e7b3单attempt成功，报告生成器SHA匹配最终源文件。接口与用法见OPERATOR_ANALYSIS.md。
+
+使用opencode-simple-tasks的受限材料整理流程，按用户指定沿既有zdl模型配置实际调用一次DeepSeek（配置显示DeepSeek-V4.1-Flash261017）。最终权限检查全工具deny、MCP为空，工具调用0、错误0；只提交已经核实的最小历史数据，不委派设备操作或代码修改。原模型材料使用了过度具体的logical_device_ids字段名；主助手审阅后明确改为中性的CSV列值语义。原材料/草稿保留，之后仅代码字段改名与最终CPU报告重跑，未再调用模型。不能把这一次摘要当成完整msagent或自动bug诊断验收。
+
+Root回归实际发现并修复通信窗口问题：控制器重启时一次连接失败曾让Worker退出原任务监管，后续演练清理又在任务仍运行时修改回执属主。现在连接/不可用响应有独立ClientUnavailable/ControllerUnavailable类型；运行中继续检查原容器的退出和本地超时，启动前或传输中保留原grant/意图，恢复沿同attempt处理；HTTP授权拒绝仍失败关闭。没有用网络超时推断执行失败、释放资源或生成替代任务。
+
+清理器只核对本演练可信CPU grant/原数据库attempt、固定镜像和精确容器标签，先停止并确认Running=false/Pid0，再修复文件属主与卸载文件盘。额外真实微演练job-0c9081076cf8保持自有CPU任务及文件盘句柄运行，验证上述顺序、0600回执内容保留、原grant SHA不变、文件盘释放；使用合成本地grant，不是调度成功回执或任务重试。
+
+最终Root job-ac67e5789873原49个SIGKILL恢复点通过。host独立读取持久数据库：6个实际CPU IR任务均succeeded/各1attempt，原domain policy恢复；旧用户运行期间新用户激活/个人排队及第二Node IR继续通过。7盘helper/角色/卷独立确认已退出/移除，backing files私有保留。/opt和/personal仍为角色tmpfs，Root数字UID不是宿主真实账号，当前没有挂载原生quota供重新查询。未验真实PID1、第二物理机或NPU计算。
+
+失败保留：首次上游依赖解析到MCP2.3.0、FastMCP导入失败，另建固定MCP1.30.0环境后实际通过；首轮报告将JSON整体脱敏破坏结构，改递归字符串脱敏后通过。首Root job-9c1b8ba743c7保留失败与原needs_attention租约历史：其自有任务退出1后，独立核对退出/原label/盘身份，再清退准确对象；没有篡改历史完成态、盲目释放或重试原任务。首通信focused的3失败2错误为mock路径/未注入Docker callable，修正fixture后8项通过。最终full为job-ab3b47af3abb。独立证据汇总脚本初次误把kind当template，改按实际ir/ir_v1后读取6项通过，不影响生产源码或回归结果。
+
+Main只在0非终态/有效inventory hold时重载；config SHA、CPU254/255、2048MiB总内存、1024MiB SHM、1槽、原19个Node profile及domain完全不变。旧Node未升级、fresh inventory不豁免，既有zdl运行起点/内存/SHM不变。本轮0 NPU kernel、1次受限模型摘要。完整私有证据evidence/domain-tools-validation.json，公开精选reports/public-source-check.json.domain_tools；原始输入、模型配置/会话、测试盘不发布。
+
+下一步优先把分析生产者落入固定托管Node模板和已认证工具镜像，补真实编译/精度错误及卡死/仿真案例，再推进预算内提出实验→排队→观察原任务→归档；同时补控制盘增长/保留、一般资源合同、五类工作流网页提交。首管理员试点依次验证两名真实用户/专用卡/实际PID1，再第二物理机与断网fencing；保持同一API/MCP和单中央权威。PUBLIC-001继续暂缓，overall_goal_complete=false、production_ready=false。
+
+下方为历史阶段。
+
+
 ## 网页可运行性预览与请求生命周期（2026-10-31）
 
 “托管作业”当前表单新增“检查可运行节点”，与“提交到队列”独立；两者共用jobRequest构造，保留原提交幂等键。预览仅请求原POST /api/jobs/preview，不创建任务或归档，也不因blocked而禁止用户显式排队等待未来节点/环境。候选和原因用DOM textContent显示，未映射peer不进入预览候选（已有授权共享节点总览仍按原范围展示）。只读凭据禁用两按钮，服务端原授权不变。

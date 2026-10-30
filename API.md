@@ -1,5 +1,10 @@
 # 作业 API v0.7
 
+## 归档算子分析报告
+
+个人客户端的 `operator_profile.py` 使用原有GET任务详情和固定artifact-chunk读取一个<=64KiB报告；没有新增执行型HTTP接口。先按服务端本人/项目ACL授权，再检查固定文件名、完整长度、SHA及schema，拒绝截断/超限/不一致的报告。其独立stdio MCP沿用无参数 `get_diagnostic_case`，启动时绑定job ID；不能提交/取消或覆盖任务/文件路径。报告属于用户工作负载证据，不授予设备资格或独立精度/性能认证。详见OPERATOR_ANALYSIS.md。
+
+
 ## 只读可运行性预览（2026-10-31）
 
 `POST /api/jobs/preview` 接受与普通提交相同的请求，要求本人 `jobs:submit` 权限。返回当前可见节点的 `status`、`reason_code`、`reason`；托管节点另有 `capacity_fits` 和 `capacity_blockers`，只检查共同 CPU、负载内存加128MiB托管开销、SHM静态上限。这些容量字段不是完整环境匹配证明；镜像、工具链、设备、工作盘、暂存等继续复用实际 placement 判断。

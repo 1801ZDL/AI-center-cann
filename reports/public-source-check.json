@@ -1,15 +1,15 @@
 {
   "schema": "ai-center-cann-source-check/v1",
-  "recorded_at": "2026-10-30T22:05:53.269092+00:00",
+  "recorded_at": "2026-10-30T23:13:51.963458+00:00",
   "passed": true,
-  "python_unit_tests": 778,
+  "python_unit_tests": 808,
   "unit_skipped": 0,
-  "unit_seconds": 123.119,
-  "unit_log_sha256": "f09842d3c28d9ccce5b339f99af07e3f9808415517d15c9cfec1707435de666e",
-  "python": "Python 3.12.3",
+  "unit_seconds": 141.079,
+  "unit_log_sha256": "c6f3f5851040619c1f4b0f2cd5a20b96838f4838f26ebb3236c9f5397eb804fd",
+  "python": "Python3.12.3",
   "javascript_syntax_passed": true,
   "command": "bash scripts/check.sh /usr/bin/python3",
-  "scope": "Backend and discovered unit sources unchanged from778-check / same-host Root49 baseline; current web preview verified separately in actual packaged and live browsers. No new full backend/Root run, NPU compute or model invocation.",
+  "scope": "Final808 unit/JS and same-host isolated Root49 share78 non-document CORE sources. Actual pinned upstream offline CSV tools plus separate installed read-only CLI/MCP and one tools-denied DeepSeek summary accepted with primary terminology correction. Synthetic live cleanup and real CPU IR only; no NPU compute, real host accounts, actual PID1, second physical host or full msagent harness.",
   "production_source_sha256": {
     "auth.py": "ec1f1ead3824d5e7bdeed7bfdd8a4464a3c2e0cd0e7ffa3eac8f0832c54fc047",
     "owner_identity.py": "5a48cf78584b2f717ac45594a73da569589cde6d9441037a0aedffe423f1515b",
@@ -43,13 +43,13 @@
     "npu_device.py": "97cc78f229163dae267a7ed351fce92b3fc0bbeb781d70d758cedef3d30ea47e",
     "inputs.py": "ce565e9c7f4dbf603d8eb8274877238eeaa1074954d109e55ab2b267c69dc5d4",
     "jobs.py": "2d9d4e1c76b18270587a0620e129a3547e2694a0644626d569c7fbd7711a58d1",
-    "lab_client.py": "4fc2f9a95d7e0bdee0f628b8237e4a3935d19bfcde7bfba85ce95854c0429527",
+    "lab_client.py": "4dc0cc3300d62c5ba2f91bc8a026693d84a93d310aaa681816ffe9436bb82d1a",
     "client_archive.py": "eec04a9574e8a87d90dc54c556d4bfe6462dfb92f0332bdc6996ad64e7121c97",
     "archive_api.py": "3e9f6539e3760cb4d68b2f85a8f01b751441e3d79b70675aac1f45e90a527e57",
     "nodes.py": "3bd8a837840f89237b7a1a340a4caaf0ef8ccd7d9243a0746e4478d98d8dd3b3",
     "server.py": "5fb73f8fefe15d3888e2a41512db269b22239ccf6e5bc4a2304e2276222a6b45",
     "templates.py": "6ada33ac5851c5ef28a3e7b5f34206962c87c469c6054f10e8d33c68a623d3ba",
-    "worker.py": "15857213c15299cd3685895a09b3c17faa756eb62b01b22cbbf25a2564ba7536",
+    "worker.py": "00c4521693f7b46f6769f57e6bb0bc6885f71bcadc88c0dc04f1a5bc1bdc8566",
     "workflow_runner.py": "239bbcb5eca6414d85f7172808a710896d9743660289039626e54672088078f7",
     "workflow_spec.py": "3c1403328db9e4a3ab228056559250127fd3ff985fe009f1f4646045257dfb6a",
     "workflow_results.py": "4af089654e6867b3609e7719ec392c7792977ccb79d8d09f1af3ac58fff22377",
@@ -75,7 +75,7 @@
     "storage_files.py": "c2dfe4aec3a4dec6bf8802655eb9e72a414e307d5eb6f4725da99f0484642ebf",
     "storage_lifecycle.py": "cc5778edf04bf1118ac940f6954cc488ae7ceedbee373568af87c6add3cde098",
     "node_storage.py": "185bdeb757c0644cf6319460d74ea15061cf6329b4707354696f8e156a16370c",
-    "deployment.py": "1a96d1bd66fb21a7b982a598128aaa6795406d1331462f4f5705cf7981e2512f",
+    "deployment.py": "78d33c471df925f988aafd3a5694e3c3c88ea23cf4e57f659ea283d9de28bd9e",
     "maintenance.py": "34ef088ed1122ba0f0c8491acd96d0336c8863c4d6a5e5437d4911714a6e0a24",
     "servicectl": "9a5e9fb910b3edbcf0c3eee6be9a42c57809f975ffe7e92a049d9933ba221e1a",
     "accessctl": "c0d0a86c7a027036e202aff0795eae0001beec676c393d13e73a763d685ccdc9",
@@ -84,15 +84,16 @@
     "spool_transfer.py": "885bc83a4b4cbc7d4a81c2ab1efd1df1c84b986166911f0e642bc3b214f2dd7b",
     "persistent_cache.py": "d70d394a48ae2068fe25a0a075d0882b1361ff6dda6b2d7ca3717d7fac35bd0b",
     "dependencies.py": "222c432de7e6c2b14f85e677a68247d1b3d8269a89090845963f2249fd586cc3",
-    "labctl": "9ffdeace9b4fa466c43bbc73130604dd4067f9831b79f742a03a3727b62dd4f8",
-    "install-client": "e9ea6b75847c8157ddd016add9760ac3d0fa391dac4815fdb1015e0fd35062a3",
+    "labctl": "e29a36673a1b78c9c7ff85deff288654afdeea3f6009c869b5d0f7f44dffce30",
+    "install-client": "241aabc4f33c0cbb3afcb97d6ab162dda52fd2ef55f1624d0e5936aad0073be4",
     "mcp_bridge.py": "25ce5f4bec8b270357f0d7c3192f58a49cef908bdda40823f9225bc614e54a71",
-    "diagnostic_case.py": "cca7edb7c45e2942748fbd3e333968dabfb5e7a4857a064d4b96aca6e913dedc"
+    "diagnostic_case.py": "cca7edb7c45e2942748fbd3e333968dabfb5e7a4857a064d4b96aca6e913dedc",
+    "operator_profile.py": "d98803b8206a9ec352be7b815250bd8c884ddb85d3ce520bfe018267c1150c6c"
   },
   "cpu": 2,
   "memory_mib": 2048,
   "npu": 0,
-  "model_invocations": 0,
+  "model_invocations": 1,
   "prior_socket_portability_acceptance": {
     "schema": "ai-center-cann-source-check/v1",
     "recorded_at": "2026-10-30T08:41:17.365271+00:00",
@@ -5969,5 +5970,311 @@
       "Final browser loads static assets from a generated service bundle and exercises the live personal service. Documentation may be updated later; this is not a new full Root installation acceptance.",
       "Backend and discovered unit sources are unchanged from778-check and Root49 baseline. Those heavyweight regressions were not repeated in this UI-only stage."
     ]
+  },
+  "prior_domain_tools_full_check": {
+    "python_unit_tests": 778,
+    "unit_skipped": 0,
+    "unit_seconds": 123.119,
+    "unit_log_sha256": "f09842d3c28d9ccce5b339f99af07e3f9808415517d15c9cfec1707435de666e",
+    "python": "Python 3.12.3",
+    "javascript_syntax_passed": true,
+    "scope": "Backend and discovered unit sources unchanged from778-check / same-host Root49 baseline; current web preview verified separately in actual packaged and live browsers. No new full backend/Root run, NPU compute or model invocation."
+  },
+  "domain_tools": {
+    "schema": "ascend-lab-domain-tools-validation/v1",
+    "passed": true,
+    "recorded_at": "2026-10-30T23:13:51.960862+00:00",
+    "production_source_files": 78,
+    "protected_runtime_unchanged": true,
+    "full_unit": {
+      "job_id": "job-ab3b47af3abb",
+      "tests": 808,
+      "seconds": 141.079,
+      "skipped": 0,
+      "log_sha256": "c6f3f5851040619c1f4b0f2cd5a20b96838f4838f26ebb3236c9f5397eb804fd",
+      "python": "Python3.12.3",
+      "javascript_syntax_passed": true
+    },
+    "root": {
+      "job_id": "job-ac67e5789873",
+      "report_sha256": "6f6c6a879120b63888d8f5fddcebaa5b3f0c395c233fb7cbe67fe3fa444a84b2",
+      "fault_count": 49,
+      "source_sha256": {
+        "accessctl": "c0d0a86c7a027036e202aff0795eae0001beec676c393d13e73a763d685ccdc9",
+        "archive_api.py": "3e9f6539e3760cb4d68b2f85a8f01b751441e3d79b70675aac1f45e90a527e57",
+        "artifact_export.py": "7206a6895fab6315160cd553a768cca4e3454e733bca185c91cfbca6a4f6cf4b",
+        "attempt_inventory.py": "f968f45e14853c2a810bbc33a921b1c8e40b7e553065233c7eb74e05134f0a2c",
+        "auth.py": "ec1f1ead3824d5e7bdeed7bfdd8a4464a3c2e0cd0e7ffa3eac8f0832c54fc047",
+        "backends.py": "ad71569a0d69590e4d4eaafb43c65b62ceefa7a2cdf8bbf79754e4c7005d929e",
+        "client_archive.py": "eec04a9574e8a87d90dc54c556d4bfe6462dfb92f0332bdc6996ad64e7121c97",
+        "collector.py": "d2ebaa14f4dbca07c368a5c483cf7ccb608d8bbc7fbb2ea3996c72f30e183071",
+        "container_engine.py": "12887405ee02072feebff5fae506adf3bb31b883e2b96070c6cc525ea5146008",
+        "container_entry.py": "19b20fd495cd88c68a22dc897afa6c470ec3562b20c5fccaebe6bc6742215a9a",
+        "dependencies.py": "222c432de7e6c2b14f85e677a68247d1b3d8269a89090845963f2249fd586cc3",
+        "deployment.py": "78d33c471df925f988aafd3a5694e3c3c88ea23cf4e57f659ea283d9de28bd9e",
+        "device_qualification.py": "227381a9a9a7a28396dedf1a62f630cdbb41c1c2fcb0196610ff66dbd37f7809",
+        "diagnostic_case.py": "cca7edb7c45e2942748fbd3e333968dabfb5e7a4857a064d4b96aca6e913dedc",
+        "docker_runtime.py": "3f57cb1a347ecf036279899b259a94a4de64cd00666f2c698c67cde8ebbe751c",
+        "environment_contract.py": "45789813c6922b41724f695158deda79ccfdfb865ef3d58251e9b1472206a4c8",
+        "environment_probe.py": "0b0e21c1e05b8be5d436718283255e6c88bf447304cc3aa6dd62e37811fbd007",
+        "executor.py": "42cdad27b62cf936263ee8cc41d11ea75260120a4e90a7b4213df5ad82fb677b",
+        "filesystem_quota.py": "f298cd3dacacfa9d344ee1e040feb30b5cf51adb009802abde2db69ddb662d53",
+        "group_quota.py": "3137ba8af5c5803fab0a2e4f547063ee883fc5fae3aa3349767585f4a61429d4",
+        "inputs.py": "ce565e9c7f4dbf603d8eb8274877238eeaa1074954d109e55ab2b267c69dc5d4",
+        "install-client": "241aabc4f33c0cbb3afcb97d6ab162dda52fd2ef55f1624d0e5936aad0073be4",
+        "io_policy.py": "4e265b10e40fcfece83edc5a2d3ec9db08d22bce60b9825feea821570eaeafec",
+        "jobs.py": "2d9d4e1c76b18270587a0620e129a3547e2694a0644626d569c7fbd7711a58d1",
+        "lab_client.py": "4dc0cc3300d62c5ba2f91bc8a026693d84a93d310aaa681816ffe9436bb82d1a",
+        "labctl": "e29a36673a1b78c9c7ff85deff288654afdeea3f6009c869b5d0f7f44dffce30",
+        "listener.py": "3bf6371e47ae761e87d19570f39f989d2622b2b62b6c64bdfc01cb06ea44a99f",
+        "maintenance.py": "34ef088ed1122ba0f0c8491acd96d0336c8863c4d6a5e5437d4911714a6e0a24",
+        "mcp_bridge.py": "25ce5f4bec8b270357f0d7c3192f58a49cef908bdda40823f9225bc614e54a71",
+        "node_owner_ack.py": "18a3457115a0380080772dcea802502037b11dfc2900be72891690d822a4404f",
+        "node_owner_admin.py": "4ecec3e030131b47b74ced9c6aa36e0a7f2fa3091be24838f42f7a4871f5b324",
+        "node_owner_provision.py": "3d863b8852e2d34901622323d2810a4233887a9e877e97eb6d00b7c8d08a6b19",
+        "node_storage.py": "185bdeb757c0644cf6319460d74ea15061cf6329b4707354696f8e156a16370c",
+        "nodes.py": "3bd8a837840f89237b7a1a340a4caaf0ef8ccd7d9243a0746e4478d98d8dd3b3",
+        "npu_admission.py": "c6d39a24b5f4acde33041864e07642f9c1d72d70bb17ce6ef862d7dbda698f1e",
+        "npu_device.py": "97cc78f229163dae267a7ed351fce92b3fc0bbeb781d70d758cedef3d30ea47e",
+        "operator_profile.py": "d98803b8206a9ec352be7b815250bd8c884ddb85d3ce520bfe018267c1150c6c",
+        "owner_activation.py": "69a46be30a6ee14bf64ade4b3ad953b9e5b664a9dfc39459805b818edec3f1af",
+        "owner_activation_abort.py": "7a180ab782dfd6e7b0279649c6e6fc453fbc642875ace140681deab5c2e3a4dd",
+        "owner_delivery.py": "43f5c1d2a7386574830321c8d419e5ce37691fe8024fa7f4ec68745c647fcdf7",
+        "owner_device_probe.py": "8fa7a6523db8a54e13837d0002ca0a36db28b3453e6baf3d63465f4fb123b4b0",
+        "owner_finish.py": "ead0d57b4c8e33a6a79bb505d9b67fdcabedba544148c117fdf5dd39cf30bf04",
+        "owner_handoff.py": "e6f8691104c02dc7ab2dc2ae0fb63017c95f033c03ecb56e71bd3e88a8909183",
+        "owner_identity.py": "5a48cf78584b2f717ac45594a73da569589cde6d9441037a0aedffe423f1515b",
+        "owner_maintenance_drain.py": "17b84d6d43ce09e3f94d639e62be0d91d53a02d79f06bb5678fe945c2eed52a9",
+        "owner_node_grant.py": "f04ca3ef5a886d9dc13ce09524673a97109591de197c0d95bd8c60b62d25d018",
+        "owner_probe_adoption.py": "36118d5761f3c1f7e3e132c657b7ae928ed6a53e74394a8a0a81ebf835d81e0b",
+        "owner_provision.py": "29c9a60423c5f2373e2202a541f4cad26cab4cc72053e77f29cfc4865b754092",
+        "payload_groups.py": "6377b078e9f1032a2e33862ba2995c3b94992a731a68a42044a57c6ac77e54d8",
+        "payload_owner_admin.py": "f34f7dc3d761a425d8ea42d343f4c14f34c9b9304593803c4bcc7cfe52134b07",
+        "payload_quota_admin.py": "b93541ebd312cc8e195cb5e6065dfe40d969a5166df6b7270b4dea9b3146cbf0",
+        "payload_storage.py": "4091fd672211d19a51918064ec2eb3bea5c089d07f426379c361a827611512f0",
+        "persistent_cache.py": "d70d394a48ae2068fe25a0a075d0882b1361ff6dda6b2d7ca3717d7fac35bd0b",
+        "preflight.py": "c4437bc8954c66f15749c3c26f24e62679c2092ab63aebdacea317956c5864a6",
+        "qualification_compatibility.py": "0a68729c7de707cc63b5e1b66c879cba7cf196878eb959e1aff2f65e7388897b",
+        "queue_policy.py": "c59b12a3c123c335dc410a99e38733806c6b2f163920b01e727ceb72ae6f32df",
+        "quota_workspace.py": "f836673c97ed36d3f0a3c8589860b004fd22058f0fedb305f9afcf0571cbb287",
+        "resources.py": "c480d97bfac202e36350f15ef9474a08a8e483ffbfb5c78113a7c62676f6e12e",
+        "server.py": "5fb73f8fefe15d3888e2a41512db269b22239ccf6e5bc4a2304e2276222a6b45",
+        "servicectl": "9a5e9fb910b3edbcf0c3eee6be9a42c57809f975ffe7e92a049d9933ba221e1a",
+        "spool_storage.py": "c8a579146e0b24077ebf504050dd5344505f8023f6e33be1c1cb6e9ff312fea4",
+        "spool_transfer.py": "885bc83a4b4cbc7d4a81c2ab1efd1df1c84b986166911f0e642bc3b214f2dd7b",
+        "state_lock.py": "bbad124c6c10376d51e94e49a3a440722bdc8b7999e3396bb6488b973963467a",
+        "storage_budget.py": "212df634fbb6e5b978ec874b967e04a83356723e5e502cb60101592899186dd1",
+        "storage_files.py": "c2dfe4aec3a4dec6bf8802655eb9e72a414e307d5eb6f4725da99f0484642ebf",
+        "storage_io.py": "99152ca78d5f1cd32b682121cb86f6c6786c54c1aee81664cd6a45073cfedd37",
+        "storage_lifecycle.py": "cc5778edf04bf1118ac940f6954cc488ae7ceedbee373568af87c6add3cde098",
+        "templates.py": "6ada33ac5851c5ef28a3e7b5f34206962c87c469c6054f10e8d33c68a623d3ba",
+        "unit_manager.py": "190effd3310d96c170d90cd92fec3559f80e0929a758f48e4b0a4a7e12637170",
+        "unit_refresh.py": "d88422e74cdd6d01be12954e570ecaa7e9bc9a54893ef163bbf86ef8a6f285bf",
+        "unit_start.py": "f850d1c17859e5f56e73d8fda681ac13748a9dfea0a4237467fccd483986cb96",
+        "worker.py": "00c4521693f7b46f6769f57e6bb0bc6885f71bcadc88c0dc04f1a5bc1bdc8566",
+        "workerctl": "e7edf6c4104c825e90243c333d49126484521e46149c2c3bfb5046b5b1a19195",
+        "workflow_results.py": "4af089654e6867b3609e7719ec392c7792977ccb79d8d09f1af3ac58fff22377",
+        "workflow_runner.py": "239bbcb5eca6414d85f7172808a710896d9743660289039626e54672088078f7",
+        "workflow_spec.py": "3c1403328db9e4a3ab228056559250127fd3ff985fe009f1f4646045257dfb6a",
+        "workspace_quota_admin.py": "7dea3194c837d9ba34ec48d679a9044e8919bf00fc253af0050d5c3d652b31dd",
+        "workspace_slots.py": "1dfd1dafaf787ef955c78aef686198686d5799306a65ec0d24453aef3e73260c"
+      },
+      "cleanup_confirmed": true,
+      "independent_persisted_ir": [
+        {
+          "id": "job-6cf28f147369",
+          "owner": "old_owner",
+          "state": "succeeded",
+          "started_at": "2026-10-30T23:11:45.675958+00:00",
+          "finished_at": "2026-10-30T23:11:52.559494+00:00",
+          "attempt_id": "attempt-a767963b67384646a270cdb9ca412235",
+          "node_id": "worker-e9fbc2ef4fa5"
+        },
+        {
+          "id": "job-30fe22dabe12",
+          "owner": "old_owner",
+          "state": "succeeded",
+          "started_at": "2026-10-30T23:11:55.371344+00:00",
+          "finished_at": "2026-10-30T23:12:02.242694+00:00",
+          "attempt_id": "attempt-bb1524b7c10a45369951c42875889b4e",
+          "node_id": "worker-e9fbc2ef4fa5"
+        },
+        {
+          "id": "job-b1011b5c9f0b",
+          "owner": "old_owner",
+          "state": "succeeded",
+          "started_at": "2026-10-30T23:12:07.970952+00:00",
+          "finished_at": "2026-10-30T23:12:09.436550+00:00",
+          "attempt_id": "attempt-aa3e0d7114bc433994cfa0c6356af7f9",
+          "node_id": "worker-e9fbc2ef4fa5"
+        },
+        {
+          "id": "job-5ac583dc25c4",
+          "owner": "old_owner",
+          "state": "succeeded",
+          "started_at": "2026-10-30T23:12:12.603797+00:00",
+          "finished_at": "2026-10-30T23:12:44.760268+00:00",
+          "attempt_id": "attempt-110811dec5df471d912a159430d7ce85",
+          "node_id": "worker-e9fbc2ef4fa5"
+        },
+        {
+          "id": "job-0e9ae8f69ea5",
+          "owner": "new_owner",
+          "state": "succeeded",
+          "started_at": "2026-10-30T23:12:45.572938+00:00",
+          "finished_at": "2026-10-30T23:12:47.011442+00:00",
+          "attempt_id": "attempt-75897ef2c13244e1a6043e1bc79e526c",
+          "node_id": "worker-e9fbc2ef4fa5"
+        },
+        {
+          "id": "job-90a1e628caa7",
+          "owner": "new_owner",
+          "state": "succeeded",
+          "started_at": "2026-10-30T23:12:56.268161+00:00",
+          "finished_at": "2026-10-30T23:12:57.645423+00:00",
+          "attempt_id": "attempt-df07064349a840b8962a7ae3a0c3824c",
+          "node_id": "worker-3a39da53919c"
+        }
+      ],
+      "independent_single_attempts": true,
+      "independent_original_domain_policy_restored": true,
+      "backing_files_retained": 7,
+      "physical_hosts_tested": 1,
+      "real_host_accounts_created": false,
+      "systemd_pid1_tested": false,
+      "independent_owned_object_cleanup": {
+        "passed": true,
+        "role_containers_absent": true,
+        "disk_helpers_absent": 7,
+        "own_volumes_absent": true,
+        "backing_files_retained": 7,
+        "native_quota_is_not_currently_mounted": true
+      }
+    },
+    "portable_live": {
+      "passed": true,
+      "at": "2026-10-30T23:13:28.660171+00:00",
+      "job_id": "job-3c04b2b6e7b3",
+      "case_sha256": "79d84018bd56af0de819d27e96b65ddbfea02e3b35289d168a6580a0854ddcb0",
+      "installed_operator_module_sha256": "d98803b8206a9ec352be7b815250bd8c884ddb85d3ce520bfe018267c1150c6c",
+      "cli_and_actual_stdio_mcp": true,
+      "bound_read_only_tools": 1,
+      "foreign_identity_rejected": true,
+      "submission_and_job_override_rejected": true,
+      "no_added_jobs": true,
+      "producer_attempts": 1,
+      "analysis_provider_imported_by_reader": false,
+      "model_invocations": 0,
+      "npu_kernel_launches": 0
+    },
+    "owned_cleanup": {
+      "job_id": "job-0c9081076cf8",
+      "passed": true,
+      "synthetic_local_grant": true,
+      "actual_running_cpu_container_stopped": true,
+      "termination_confirmed_before_ownership_repair": true,
+      "protected_receipt_preserved": true,
+      "grant_sha256_unchanged": true,
+      "scheduler_completion_claimed": false,
+      "task_retry": false,
+      "npu_kernel_launches": 0,
+      "host_account_changes": false,
+      "owned_disk_released": true,
+      "backing_file_retained": true
+    },
+    "npu_kernel_launches": 0,
+    "model_invocations": 1,
+    "failures_retained": [
+      "msprof-mcp0.1.8 dependency resolution selected MCP2.3.0; FastMCP import failed; a separate pinned MCP1.30.0 environment passed",
+      "Serialized JSON redaction corrupted structure; changed to recursive string redaction; first focused error retained",
+      "First Root run lost controller communication and abandoned supervision; teardown repaired ownership while a sibling CPU task was active; task later exited1; exact owned objects independently reconciled; original needs_attention lease history retained",
+      "First recovery-focused run used invalid mocks; corrected fixture paths and injected Docker callable; final8 passed"
+    ],
+    "coverage_limits": [
+      "Historical real data only; no new NPU kernel, current device observation, independent correctness/performance qualification or complete msagent harness",
+      "Producer currently uses cooperative personal Main host command; formal managed Node template/tool-image qualification remains pending",
+      "Actual model call used earlier archived report; neutral CSV identifier terminology reviewed afterwards without another call",
+      "Same-host isolated Root numeric UIDs, not real host users, actual PID1, two physical hosts or fencing",
+      "Client/runtime tools are optional; no raw model keys, conversations, original project data or test disks are public"
+    ],
+    "overall_goal_complete": false,
+    "production_ready": false,
+    "analysis": {
+      "provider": {
+        "name": "msprof-mcp",
+        "version": "0.1.8",
+        "mcp_version": "1.30.0",
+        "verified_code_sha256": {
+          "msprof_mcp/server.py": "66c633c74c23441e22c00aba257a1ac9910ad6b7104eda40d027f4f29609638d",
+          "msprof_mcp/tools/csv_analyze.py": "ae1bd12ed42029bcf56183a9ae4689b363771d26d364e8101d65dd9f54d2e4cb"
+        },
+        "called_tools": [
+          "get_operator_details"
+        ]
+      },
+      "upstream_delta_check": {
+        "msagent_commit": "5a9b2a1a8a38f35cc63109929850aa4a46db090e",
+        "script_sha256": "a093bfe4407547c134afa3f193e61887d4f83b9f83f0f4d8f4e450d2d9a8c2bc",
+        "license_sha256": "b638cc8ca486ec24e2539a18ba7f8518934b09dc14a0e29f8e9a2caffb772720",
+        "exit_code": 2,
+        "stderr": "ERROR: 基线与优化后结果口径不一致：\n  - device_id: 0 != 1\n"
+      },
+      "samples": [
+        30,
+        30
+      ],
+      "mean_us": [
+        563.0341666666667,
+        33.566966666666666
+      ],
+      "csv_device_ids": [
+        [
+          0
+        ],
+        [
+          1
+        ]
+      ],
+      "historical_physical_devices": [
+        0,
+        1
+      ],
+      "historical_clock_mhz": [
+        100,
+        1650
+      ],
+      "comparison": {
+        "status": "not_admissible_for_optimization_claim",
+        "blockers": [
+          "different_physical_device",
+          "different_or_unstable_core_frequency",
+          "same_binary_does_not_establish_a_compiler_optimization"
+        ],
+        "observed_duration_ratio": 16.773459820120774,
+        "same_binary_claim": true,
+        "optimization_speedup": null,
+        "note": "Observed duration ratio is not an optimization gain. Missing provenance, repetitions, health and external load still require review even when these checks match."
+      },
+      "generator_sha256": "d98803b8206a9ec352be7b815250bd8c884ddb85d3ce520bfe018267c1150c6c",
+      "report_sha256": "7eafef071e0076a4a070e8739f09358c16628eb57f0aaeaf205768afa9de3f3c"
+    },
+    "model_summary": {
+      "passed": true,
+      "configured_label": "DeepSeek-V4.1-Flash (261017)",
+      "all_tools_denied": true,
+      "tool_calls": 0,
+      "model_invocations": 1,
+      "primary_review_accepted_with_csv_terminology_correction": true,
+      "earlier_report_material_retained": true,
+      "new_model_call_after_rename": false
+    },
+    "main": {
+      "configuration_and_19_node_profiles_and_domains_unchanged": true,
+      "idle_reload": true,
+      "nonterminal_jobs_after": 0,
+      "active_inventory_holds_after": 0,
+      "existing_nodes_upgraded": false,
+      "inventory_waiver": false
+    }
   }
 }

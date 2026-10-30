@@ -19,7 +19,7 @@ import urllib.request
 from backends import physical_identity
 from container_engine import DockerAttempt
 from jobs import atomic_json,identity,now,read_json
-from lab_client import Client, ClientError
+from lab_client import Client, ClientError, ClientUnavailable
 from workflow_spec import CAPABILITIES
 from state_lock import state_lock
 from resources import MULTI_SLOT,validate_policy,memory_cost
@@ -28,6 +28,10 @@ STOP=threading.Event()
 
 
 class NotStartedCancelled(RuntimeError):pass
+
+
+class ControllerUnavailable(RuntimeError):
+    """Control channel loss is not a local execution or cleanup result."""
 
 
 class NodeClient:
@@ -41,6 +45,8 @@ class NodeClient:
             raise ValueError('Invalid worker operation')
         try:
             return self.client.request('/api/worker/'+action,body)
+        except ClientUnavailable:
+            raise ControllerUnavailable('Controller node operation '+action+' unavailable; original attempt retained') from None
         except ClientError as error:
             raise RuntimeError('Controller node operation '+action+': '+str(error)) from None
 
@@ -347,9 +353,20 @@ class Worker:
                     self.finish_attempt(engine,result)
                     print(json.dumps({'at':now(),'job_id':grant['job_id'],'attempt_id':grant['attempt_id'],'state':result['status']}),flush=True)
                     return
-                state=self.client.call('update',{**self.auth_body(grant),'running':True,'logs':engine.preview()})
+                try:state=self.client.call('update',{**self.auth_body(grant),'running':True,'logs':engine.preview()})
+                except ControllerUnavailable:
+                    # Continue observing this exact container, including local timeout
+                    # and exit checks. A lost response must not abandon supervision
+                    # or turn a known-running attempt into a local execution fault.
+                    STOP.wait(.5)
+                    continue
                 if state.get('cancel'):engine.tick(cancel=True)
                 STOP.wait(.5)
+        except ControllerUnavailable:
+            # Before start or during result transfer, recovery resumes the same
+            # saved grant and intent. Never infer a preflight failure, consume a
+            # replacement ticket, release capacity or mark attention from IO loss.
+            raise
         except Exception as error:
             try:info=engine.inspect()
             except Exception:

@@ -9,6 +9,7 @@ import json
 import os
 from pathlib import Path
 import platform
+import re
 import resource
 import runpy
 import shutil
@@ -19,6 +20,69 @@ import uuid
 
 IMAGE='sha256:24188496e90e95212870b86a2be4fe5a360da8b556f54fe662fd9a954e94d273'
 BASELINE='9d025e05d25dc419824da0cfc1d8b87c92e09f8d'
+
+
+def cleanup_owned_attempts(state,base,cpus,docker):
+    """End only this fixture's authenticated CPU containers before chown/unmount.
+
+    A failed controller assertion can leave a sibling task alive after the role
+    stops. Its protected receipt must retain ownership until that task has ended.
+    The original controller lease history is retained; this is fixture teardown,
+    never a scheduler completion or permission to retry an uncertain workload.
+    """
+    reader='''import json,re,sqlite3
+from pathlib import Path
+items=[]
+for node in [Path('/state/node'),Path('/state/expansion-node')]:
+ if not (node/'config.json').exists():continue
+ assert not node.is_symlink() and not (node/'config.json').is_symlink()
+ config=json.loads((node/'config.json').read_text())
+ assert config['image']=='''+repr(IMAGE)+'''
+ attempts=node/'attempts'
+ if not attempts.exists():continue
+ assert not attempts.is_symlink()
+ for attempt in attempts.iterdir():
+  assert not attempt.is_symlink() and re.fullmatch('attempt-[0-9a-f]{32}',attempt.name)
+  path=attempt/'control/grant.json'
+  if not path.exists():continue
+  assert not (attempt/'control').is_symlink() and not path.is_symlink() and path.stat().st_size<=1024**2
+  grant=json.loads(path.read_text())
+  assert grant['attempt_id']==attempt.name and grant['node_id']==config['node_id'] and grant['physical_id']==config['physical_id']
+  assert grant['resources']['npu']==0
+  items.append(attempt.name)
+database=Path('/state/controller/jobs.sqlite3')
+if database.exists():
+ with sqlite3.connect('file:'+str(database)+'?mode=ro',uri=True) as db:
+  for row in db.execute('SELECT data FROM jobs'):
+   job=json.loads(row[0]);attempt=job.get('attempt_id')
+   if not job.get('_remote') or not attempt:continue
+   assert re.fullmatch('attempt-[0-9a-f]{32}',attempt) and job['resources']['npu']==0
+   items.append(attempt)
+items=sorted(set(items))
+assert len(items)<=64
+print(json.dumps(items))
+'''
+    found=docker(['run','--rm','--network','none','--read-only','--cap-drop','ALL','--cap-add','DAC_OVERRIDE',
+        '--memory','64m','--cpuset-cpus',str(cpus[0]),'--mount','type=bind,src='+str(state)+',dst=/state,readonly',
+        '--entrypoint','/usr/bin/python3',IMAGE,'-I','-c',reader])
+    attempts=json.loads(found.stdout);records=[]
+    for attempt in attempts:
+        if not isinstance(attempt,str) or not re.fullmatch('attempt-[0-9a-f]{32}',attempt):raise RuntimeError('Invalid fixture attempt identity')
+        ids=docker(['ps','-aq','--filter','label=io.ascend-lab.attempt='+attempt]).stdout.split()
+        for identifier in ids:
+            info=json.loads(docker(['inspect',identifier]).stdout)[0]
+            assert info['Config']['Labels'].get('io.ascend-lab.attempt')==attempt and info['Config']['Image']==IMAGE
+            assert info['Name'].lstrip('/').startswith('ascend-lab-'+attempt.removeprefix('attempt-'))
+            before=info['State']
+            if before['Running']:docker(['stop','--time','3',identifier])
+            info=json.loads(docker(['inspect',identifier]).stdout)[0]
+            assert not info['State']['Running'] and info['State']['Pid']==0,'Preserve fixture: task termination is unconfirmed'
+            logs=docker(['logs',identifier],check=False)
+            (base/(attempt+'-'+identifier+'.log')).write_text(logs.stdout+logs.stderr)
+            records.append({'attempt_id':attempt,'container_id':identifier,'before':before,'after':info['State']})
+            docker(['rm',identifier])
+    (base/'owned-attempt-cleanup.json').write_text(json.dumps({'verified':True,'containers':records,
+        'lease_history_preserved':True,'no_task_retry':True,'scope':'Only trusted local CPU fixture grants; no global labels, resets or detach-all'}))
 
 
 def actor():
@@ -307,6 +371,7 @@ def parent(central_handoff=False,activate_owner=False,unit_refresh=False,activat
         if made_role:
             info=json.loads(docker(['inspect',name]).stdout)[0];assert info['Config']['Labels']['io.ascend-lab.nodeowner']==prefix
             if info['State']['Running']:docker(['stop','--time','3',name])
+            cleanup_owned_attempts(state,base,cpus,docker)
             repair='import os;p="/state"\nfor base,dirs,files in os.walk(p,followlinks=False):\n for n in dirs+files:os.lchown(os.path.join(base,n),'+str(os.getuid())+','+str(os.getgid())+')\nos.chown(p,'+str(os.getuid())+','+str(os.getgid())+')'
             docker(['run','--rm','--network','none','--read-only','--cap-drop','ALL','--cap-add','CHOWN','--cap-add','DAC_OVERRIDE','--memory','64m',
                 '--cpuset-cpus',str(cpus[0]),'--mount','type=bind,src='+str(state)+',dst=/state','--entrypoint','/usr/bin/python3',IMAGE,'-I','-c',repair]);docker(['rm',name])

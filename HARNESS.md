@@ -1,5 +1,8 @@
 # Harness 与领域能力接入
 
+2026-10-31：新增固定历史 profiling 报告能力。生产者在中央 CPU 队列调用实际 msprof-mcp0.1.8/MCP1.30.0 的 get_operator_details，并执行固定 msagent 比较脚本；个人harness通过轻量只读MCP读取绑定报告。没有安装完整msagent，也未开放原始SQL或采集工具。相同ELF、不同物理设备/核心频率的观测比不会成为优化收益。具体版本、数据边界、配置及验收见 [OPERATOR_ANALYSIS.md](OPERATOR_ANALYSIS.md) 和PROGRESS.md；模型草稿仍需主助手核对原始证据。
+
+
 2026-10-31：调度 MCP 增加 `preview_job`，在原固定会话范围内读取同一任务的当前可见节点和阻碍，不创建提交意图/任务/资源预留。预览与提交共享请求构造，不能借预览传任意命令、路径、输入或资源。它是 `readOnlyHint` 工具，但 harness 的其他 shell/MCP 权限仍需单独限制。当前验证为实际HTTP/CLI/MCP适配器调用与协议检查，未新增模型诊断或NPU计算验收。参见CLIENT.md与API.md。
 
 

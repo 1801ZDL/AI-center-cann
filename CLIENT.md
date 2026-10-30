@@ -1,5 +1,10 @@
 # 个人 CLI / Agent 接入
 
+## 离线算子报告的只读接入
+
+客户端新增 `operator-case job-ID`，读取已归档的 `results/operator-analysis.json`；普通日志诊断命令保持不变。`operator_profile.py mcp --profile 本人配置 --job-id 分析任务ID` 提供无参数 `get_diagnostic_case`，只读绑定任务，不暴露上游 SQL、采集、提交或任意路径。读取只需本人/项目的 jobs:read 授权，不需要安装分析工具依赖。工具环境、输入格式、CPU提交及当前范围见 [OPERATOR_ANALYSIS.md](OPERATOR_ANALYSIS.md)。个人模型密钥和对话仍由各自harness管理。
+
+
 ## 提交前预览（2026-10-31）
 
 在原提交命令增加 `--preview`，读取当前可见节点及阻碍，不入队、不占用资源：
