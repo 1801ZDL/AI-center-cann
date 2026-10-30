@@ -1,10 +1,10 @@
 {
   "schema": "ai-center-cann-publication/v1",
-  "recorded_at": "2026-10-30T08:41:37.443034+00:00",
+  "recorded_at": "2026-10-30T09:29:24.570638+00:00",
   "files": {
     ".gitignore": {
-      "sha256": "5a3a46e864c1ec7c58a56819ce340fa1e88640cf7dd3fa7185133aff16f336d3",
-      "bytes": 810,
+      "sha256": "a6287d1d645bcba2ddfec87d1055724b00577eea69200b919302f4d46cf3680d",
+      "bytes": 846,
       "mode": "100644"
     },
     "API.md": {
@@ -63,18 +63,18 @@
       "mode": "100644"
     },
     "PROGRESS.md": {
-      "sha256": "87fba8e4d152dcc0da5f834c216b71ca2d68e540193f08b4ad9cf1b41793042f",
-      "bytes": 4687,
+      "sha256": "0b69b7535eadb12dcdcba2e5f65af7d0dd51da3cf85361fc411dfd2a47f38e89",
+      "bytes": 6755,
       "mode": "100644"
     },
     "README.md": {
-      "sha256": "c7acb0577ea57ddcd55753ea92e6fefeac5c29dcef5e9b0311774a9f0149f720",
-      "bytes": 6318,
+      "sha256": "13593cd8636e41767459be530c9da5d5654417d51e6d4f11067333febd68b0e6",
+      "bytes": 6317,
       "mode": "100644"
     },
     "RECOVERY.md": {
-      "sha256": "94cfbfa472b22ba77799660fbf27b35f6cc107f296101b3f55b10a7202f7d826",
-      "bytes": 4407,
+      "sha256": "0de3d4713db5ce33efeb72ae0867d1b070dc2df7326bd70a2c21c7b9bb616914",
+      "bytes": 5062,
       "mode": "100644"
     },
     "SERVER.md": {
@@ -392,14 +392,19 @@
       "bytes": 9546,
       "mode": "100644"
     },
+    "reports/mixed-compiler-stage.json": {
+      "sha256": "0abe7fd681166ab26172d538f6e2b8c1ab380295a0aad092ff8cf4317d8df354",
+      "bytes": 2384,
+      "mode": "100644"
+    },
     "reports/public-source-check.json": {
-      "sha256": "ae084f276d1f7cdbc1056ab40039aaac28e7662f0674c3ece614484da26b9625",
-      "bytes": 8121,
+      "sha256": "beb54ffc768c06cc9d52c723d85cdec448a6b8e1f7d0d1f23922c7bbbafca46b",
+      "bytes": 14872,
       "mode": "100644"
     },
     "reports/v036-public.json": {
-      "sha256": "71b1f4ec6566523648a0df91425740c9c2ff857125980e2da78a116cf80e3fa0",
-      "bytes": 4232,
+      "sha256": "e504a24ecd8113139aa6c1f70e2a3ea9a7cbe61f6ebc94d925a122f6dc040e25",
+      "bytes": 4277,
       "mode": "100644"
     },
     "requirements-qa.txt": {
@@ -418,8 +423,8 @@
       "mode": "100755"
     },
     "scripts/publication_manifest.py": {
-      "sha256": "0d4bc85a65c32b3e21a88982d53277c93381b2a4a0d241ce07198126f5bbe6cb",
-      "bytes": 7419,
+      "sha256": "044dbbc17eadad7726e8d83f369917aa6bd6b6f3f465091dacc925b76d62e8ee",
+      "bytes": 7621,
       "mode": "100644"
     },
     "server.py": {
@@ -647,6 +652,11 @@
       "bytes": 7465,
       "mode": "100644"
     },
+    "tests/large_mixed_compile_check.py": {
+      "sha256": "e4be1f4913ee6800610afc57c4454370aa0998088137bd5cea672e43aceeb230",
+      "bytes": 34630,
+      "mode": "100644"
+    },
     "tests/live_aging_check.py": {
       "sha256": "dd822b0243d7b3d1b909ee0ceaa8d53584e8567745fa9b18cba50b983d4edba7",
       "bytes": 11120,
@@ -725,6 +735,11 @@
     "tests/live_inventory_check.py": {
       "sha256": "4baa4f87150c410af1523fd15ac62993082237ffd1b99e0f43b7dce7ddb99906",
       "bytes": 7982,
+      "mode": "100644"
+    },
+    "tests/live_large_mixed_check.py": {
+      "sha256": "2a31611cd45661a7db51d9a3388ef77ac370656b1dbb74c8562acf21a1087e05",
+      "bytes": 5548,
       "mode": "100644"
     },
     "tests/live_managed_npu_check.py": {
@@ -968,8 +983,8 @@
       "mode": "100644"
     },
     "tests/test_attempt_inventory.py": {
-      "sha256": "a60f737fc607e623e0f1870ab760d5d66e4b38096dcf1dc91b6aeb47e47f55d5",
-      "bytes": 9020,
+      "sha256": "d24beb6e760ee875f134569cb2a1d9b558d57b6cbc711c2f4281aa7735ea7a50",
+      "bytes": 13846,
       "mode": "100644"
     },
     "tests/test_backend.py": {
@@ -1073,8 +1088,8 @@
       "mode": "100644"
     },
     "tests/test_nodes.py": {
-      "sha256": "f41fb1a38e09851d825991e47cfdda025a02f6584a9cb0c8f3ae079613dbed16",
-      "bytes": 15011,
+      "sha256": "4ff7dbda4f811630c47a389b27c4ff34218ae3cd9fa83d88845366c129767ae7",
+      "bytes": 15059,
       "mode": "100644"
     },
     "tests/test_npu_admission.py": {
@@ -1188,13 +1203,13 @@
       "mode": "100644"
     },
     "tests/workloads/full_triton_quota_build.py": {
-      "sha256": "8547db7aae7debcb53d0ced3fd296f7a4814a7da2cbb1e98797110af46f0751d",
-      "bytes": 12964,
+      "sha256": "90cc7bdebf6dc32c597d3189add7672a61e9a34e78525d58165f7000fddd618b",
+      "bytes": 13117,
       "mode": "100644"
     },
     "tests/workloads/mixed_small_build.py": {
-      "sha256": "9f2a313b5eaf68d4c94897c4a93dcd0c827516f7e5151120363bfd271611fe7e",
-      "bytes": 3231,
+      "sha256": "d8488735d7edff40736b982a1fcc4bd536e77e398351fa96e427e83d34e92fbd",
+      "bytes": 3315,
       "mode": "100644"
     },
     "web/app.js": {
@@ -1218,8 +1233,8 @@
       "mode": "100644"
     },
     "worker.py": {
-      "sha256": "1834de77bde668288a5f53b3f4ffcb6d711220c89f46095fe8edc0c322a46d89",
-      "bytes": 25809,
+      "sha256": "76f0e926dddd63c5ced0c5a6934c30069e8e6a6ff338300270b1c45b41a9e3ae",
+      "bytes": 26636,
       "mode": "100644"
     },
     "workerctl": {
@@ -1248,10 +1263,10 @@
       "mode": "100644"
     }
   },
-  "files_count": 249,
-  "total_bytes": 2407452,
-  "known_private_values_checked": 995,
-  "private_fixture_files_considered": 874,
+  "files_count": 252,
+  "total_bytes": 2465708,
+  "known_private_values_checked": 1185,
+  "private_fixture_files_considered": 940,
   "model_keys_read": false,
   "raw_runtime_or_evidence_included": false,
   "passed": true

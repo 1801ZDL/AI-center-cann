@@ -4,8 +4,11 @@ import json
 from pathlib import Path
 import sys
 import tempfile
+import threading
 import time
+from types import SimpleNamespace
 import unittest
+from unittest.mock import patch
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 from attempt_inventory import CAPABILITY,HOLD_REASON,WAIT_REASON,local,validate
 from jobs import ROOT,JobStore,JobError,atomic_json
@@ -91,6 +94,73 @@ class InventoryTests(unittest.TestCase):
         atomic_json(directory/'state.json',{'stage':'cleaned','controller_acknowledged':False})
         observed=local(self.runtime/'node');self.assertEqual(len(observed),1);self.assertNotIn('private-only',json.dumps(observed))
         atomic_json(directory/'state.json',{'stage':'cleaned','controller_acknowledged':True});self.assertEqual(local(self.runtime/'node'),[])
+
+    def test_concurrent_heartbeat_snapshot_cannot_arrive_after_its_attempt_completion(self):
+        # Real local inventory + real controller reconciliation, with only the
+        # HTTP transport and the accepted completion commit held at barriers.
+        # A valid old "running" snapshot must arrive before that attempt can
+        # become terminal; otherwise normal concurrent tasks quarantine a host.
+        from worker import Worker
+        job=self.submit();grant=self.jobs.nodes.claim(self.nodes[0])['grant']
+        node_root=self.runtime/'concurrent-node';control=node_root/'attempts'/grant['attempt_id']/'control'
+        control.mkdir(parents=True);atomic_json(control/'grant.json',grant)
+        atomic_json(control/'state.json',{'stage':'running'})
+        artifacts=node_root/'fixture-artifacts';artifacts.mkdir();(artifacts/'environment.json').write_text('{}')
+        arrived=threading.Event();release=threading.Event();blob=threading.Event();complete=threading.Event();errors=[]
+        reply=threading.Event();fresh=threading.Event();heartbeats=[]
+        state={'stage':'cleaned'}
+        engine=SimpleNamespace(grant=grant,spool=None,control=control,artifacts=artifacts,state=state,
+                               save=lambda:atomic_json(control/'state.json',state))
+        def call(action,body):
+            if action=='heartbeat':
+                heartbeats.append(body)
+                if len(heartbeats)==1:
+                    self.assertFalse(body['attempt_inventory'][0]['cleaned']);arrived.set()
+                    if not release.wait(5):raise RuntimeError('Test heartbeat barrier expired')
+                else:self.assertTrue(body['attempt_inventory'][0]['cleaned'])
+                value=self.jobs.nodes.heartbeat(self.nodes[0],body)
+                if len(heartbeats)>1:fresh.set()
+                return value
+            if action=='blob':blob.set();return {}
+            if action=='complete':
+                complete.set()
+                with self.jobs.transaction() as db:
+                    current=self.jobs.get(job['id'],db);current['state']='succeeded';self.jobs.write(db,current)
+                if not reply.wait(5):raise RuntimeError('Test completion ACK barrier expired')
+                return {'accepted':True,'state':'succeeded'}
+            raise AssertionError(action)
+        config={'state_dir':str(node_root),'controller':'http://127.0.0.1:18888','node_key':'test-node-key',
+                'node_id':self.nodes[0],
+                'physical_id':self.jobs.backend.physical_id,'image':'sha256:'+'a'*64,
+                'policy':{'cpu_ids':[self.jobs.policy['cpu_ids'][0]],'memory_mib':512,'shm_mib':0,'max_running':1}}
+        def capture(fn):
+            try:fn()
+            except BaseException as error:errors.append(error)
+        with patch('worker.NodeClient',return_value=SimpleNamespace(call=call)),\
+             patch('docker_runtime.discover',return_value=({},{})),\
+             patch('docker_runtime.image_available'),patch('environment_contract.verify_config',return_value=None):
+            worker=Worker(config)
+            def upload():
+                engine.save()  # Actual worker cleanup precedes upload/complete.
+                worker.upload(engine,{'status':'succeeded','execution_cleanup_confirmed':True})
+            heart=threading.Thread(target=lambda:capture(worker.heartbeat));finish=threading.Thread(target=lambda:capture(upload))
+            later=threading.Thread(target=lambda:capture(worker.heartbeat))
+            try:
+                heart.start();self.assertTrue(arrived.wait(2));finish.start();self.assertTrue(blob.wait(2))
+                # Give the old unguarded implementation time to commit complete;
+                # the corrected worker may upload blobs but must serialize it.
+                complete.wait(.5);release.set();heart.join(3);self.assertTrue(complete.wait(2))
+                # A large completion ACK must not block newer cleaned-state
+                # heartbeats or make an otherwise healthy node look offline.
+                later.start();self.assertTrue(fresh.wait(2));reply.set();finish.join(3);later.join(3)
+                self.assertFalse(heart.is_alive());self.assertFalse(finish.is_alive());self.assertFalse(errors,errors)
+                self.assertTrue(complete.is_set());self.assertEqual(self.jobs.get(job['id'])['state'],'succeeded')
+                self.assertFalse(self.jobs.inventory.holds(),'A pre-cleanup heartbeat raced with a valid completion')
+            finally:
+                release.set();reply.set();heart.join(3)
+                if finish.ident is not None:finish.join(3)
+                if later.ident is not None:later.join(3)
+                worker.lock.close();worker.state_lock.close()
     def test_reserved_start_waits_without_consuming_ticket_until_reconciled(self):
         self.submit();grant=self.jobs.nodes.claim(self.nodes[0])['grant']
         self.beat(self.nodes[1],[self.orphan()]);body={key:grant[key] for key in ['job_id','attempt_id','lease_token']}

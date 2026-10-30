@@ -108,8 +108,10 @@ subprocess.check_call=call;sys.argv=['setup.py','build_ext'];runpy.run_path('set
         print('Configuration-only prerequisite passed; full compilation remains unproven.',flush=True)
         raise SystemExit(0)
     report['phase']='source_to_wheel';save('full-build-provenance.json',report)
+    report['source_to_wheel_started_unix']=time.time();save('full-build-provenance.json',report)
     run(['ccache','--zero-stats'],cwd=source,env=env)
     run([sys.executable,'setup.py','bdist_wheel','--dist-dir',results],cwd=source,env=env)
+    report['source_to_wheel_finished_unix']=time.time()
     cache_output=subprocess.check_output(['ccache','--print-stats'],cwd=source,env=env,text=True)
     report['ccache_stats']={p[0]:int(p[1]) for line in cache_output.splitlines() if len(p:=line.split())==2}
     save('full-build-provenance.json',report)

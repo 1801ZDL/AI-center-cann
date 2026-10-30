@@ -49,3 +49,4 @@ __pycache__/
 !/reports/v036-public.json
 !/reports/publication-manifest.json
 !/reports/public-source-check.json
+!/reports/mixed-compiler-stage.json

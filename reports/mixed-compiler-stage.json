@@ -1,0 +1,73 @@
+{
+  "schema": "ai-center-cann-mixed-compiler-stage/v1",
+  "recorded_at": "2026-10-30T09:29:23.815160+00:00",
+  "status": "partial-stage-not-full-acceptance",
+  "overall_goal_complete": false,
+  "production_ready": false,
+  "full_compiler_accepted": false,
+  "logical_users": 20,
+  "host_accounts_created": false,
+  "task_uid_count": 20,
+  "outer_budget": {
+    "cpu": 2,
+    "memory_mib": 12288,
+    "timeout_seconds": 10800
+  },
+  "compiler_request": {
+    "cpu": 1,
+    "memory_mib": 8192,
+    "npu": 0
+  },
+  "disk_gib": {
+    "work": 32,
+    "cache": 8,
+    "spool": 4,
+    "central_payload": 8
+  },
+  "next_spool_inodes": 524288,
+  "latest_finished_case": {
+    "counts": {
+      "cancelled": 1,
+      "failed": 19,
+      "succeeded": 39
+    },
+    "cmake_jobs_independently_verified": 38,
+    "cmake_owners": 19,
+    "cold_misses_per_job": 2,
+    "warm_hits_per_job": 2,
+    "warm_misses_per_job": 0,
+    "answer": 42,
+    "peak_compute_slots": 2,
+    "inventory_holds": 0,
+    "cold_source_compiler_started_then_explicitly_cancelled": true,
+    "ir_contract_failures": 19,
+    "failure": "IR artifacts declared below results/ instead of required ir/",
+    "owned_objects_cleaned": true,
+    "loop_associations_released": true,
+    "main_budget_restored": true
+  },
+  "worker_concurrency_fix": {
+    "deterministic_before_failure": true,
+    "focused_after_tests": 15,
+    "focused_after_passed": true,
+    "genuine_unknown_holds_preserved": true,
+    "heartbeat_continues_during_completion_ack": true,
+    "full_unit_tests": 435,
+    "full_unit_seconds": 69.847,
+    "unit_skipped": 0,
+    "javascript_syntax_passed": true
+  },
+  "earlier_failures": [
+    "Fixture IO file ceiling larger than input total rejected startup",
+    "Fixture Root600 contracts unreadable by ordinary service admin",
+    "Wrong IR category/empty log fixture plus real heartbeat/terminal ordering race"
+  ],
+  "next_case_preconditions": [
+    "Actual managed IR contract passes before long compilation",
+    "Frozen-source CMake configuration passes using a different cache namespace",
+    "Two conservative workflow spool inode reservations fit"
+  ],
+  "npu_queries": 0,
+  "npu_kernel_launches": 0,
+  "scope": "Same physical server, owned isolated roles and real UID quota filesystems; successful19-owner small build/cache stage, not full cold/warm compiler, NPU or physical multi-host acceptance"
+}

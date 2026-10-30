@@ -17,15 +17,18 @@ report={'schema':'ascend-lab-result/v1','kind':'ir' if a.mode=='ir' else 'build'
         'no_new_privileges':True,'cpu_ids':sorted(os.sched_getaffinity(0)),
         'npu_kernel_launches':0,'mode':a.mode,'started_unix':time.time(),'artifacts':[]}
 def run(argv,**kwargs):
-    done=subprocess.run(list(map(str,argv)),check=True,capture_output=True,text=True,**kwargs)
-    with (out/'peer.log').open('a') as f:f.write(done.stdout+done.stderr)
+    done=subprocess.run(list(map(str,argv)),capture_output=True,text=True,**kwargs)
+    with (out/'peer.log').open('a') as f:
+        f.write('COMMAND '+json.dumps(list(map(str,argv)))+'\n'+done.stdout+done.stderr)
+    done.check_returncode()
     return done.stdout
 if a.mode=='ir':
-    src=out/'input.mlir';dst=out/'output.mlir'
+    ir=root/'ir';ir.mkdir(exist_ok=True)
+    src=ir/'input.mlir';dst=ir/'output.mlir'
     src.write_text('module { func.func @fold() -> i32 { %a = arith.constant 20 : i32\n%b = arith.constant 22 : i32\n%c = arith.addi %a, %b : i32\nreturn %c : i32 } }\n')
     run(['/opt/lab-bishengir/bin/bishengir-opt','--canonicalize','--cse',src,'-o',dst])
     assert 'arith.constant 42' in dst.read_text() and 'arith.addi' not in dst.read_text()
-    report.update(answer=42,artifacts=['results/input.mlir','results/output.mlir','results/peer.log'])
+    report.update(answer=42,artifacts=['ir/input.mlir','ir/output.mlir'])
 else:
     source=Path.cwd()/'small-source';build=Path.cwd()/'small-build'
     assert not source.exists() and not build.exists() and os.environ['CCACHE_DIR']=='/cache/ccache'

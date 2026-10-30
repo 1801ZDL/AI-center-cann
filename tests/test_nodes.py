@@ -174,6 +174,7 @@ class NodeTests(unittest.TestCase):
         self.assertEqual(self.nodes.claim(self.a)['grant'],grant)
         from worker import Worker
         worker=object.__new__(Worker)
+        worker.inventory_lock=threading.RLock()
         worker.root=self.runtime/'worker-state'
         worker.config={**self.profile,'node_id':self.a,'image':'sha256:'+'0'*64,'python':'/usr/bin/python3'}
         worker.client=Mock()

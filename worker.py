@@ -48,6 +48,7 @@ class NodeClient:
 class Worker:
     def __init__(self,config):
         self.config=config;self.client=NodeClient(config)
+        self.inventory_lock=threading.RLock()
         self.root=Path(config['state_dir']).resolve()
         if config.get('workspace'):
             from quota_workspace import separate_control
@@ -139,24 +140,39 @@ class Worker:
             try:host_sha=host_fingerprint(self.config['docker_runtime'])
             except (OSError,ValueError):host_sha=None
             npu.update(access_host_sha256=host_sha,access_runtime_files=runtime_manifest())
-        receipt=self.client.call('heartbeat',{'physical_id':physical_identity(),
+        body={'physical_id':physical_identity(),
              'image_sha256':self.config['image'],'environment_setup':self.config.get('environment_setup'),
              'python_executable':self.config.get('python','/usr/bin/python3'),
              'environment_sha256':environment_sha,
              'max_timeout_seconds':maximum,
              'policy_revision':self.config.get('policy_revision',1),
-             'protocol_version':1,'capabilities':capabilities,**npu,'attempt_inventory':attempt_inventory(self.root),
+             'protocol_version':1,'capabilities':capabilities,**npu,
              'io_limits':limits(self.config.get('io_limits')),
              'cpu_ids':sorted(os.sched_getaffinity(0)),'memory_available_bytes':available,
              'host_cpu_utilization_pct':cpu,
              'disk_free_bytes':spool_reading['free_bytes'] if self.spool else stat.f_bavail*stat.f_frsize,
              'disk_free_inodes':spool_reading['free_inodes'] if self.spool else stat.f_favail,
-             'artifact_gc_ready':self.artifact_gc_ready})
+             'artifact_gc_ready':self.artifact_gc_ready}
+        # A running snapshot must reach the controller before that attempt's
+        # terminal completion can commit. Otherwise an ordinary concurrent
+        # finish turns a valid, older snapshot into a durable inventory hold.
+        # Keep slow resource discovery and bulk uploads outside this lock.
+        with self.inventory_lock:
+            body['attempt_inventory']=attempt_inventory(self.root)
+            receipt=self.client.call('heartbeat',body)
         atomic_json(self.root/'heartbeat-receipt.json',{'node_id':self.config['node_id'],'acknowledged_at':time.time()})
         return receipt
 
     def auth_body(self,grant):
         return {key:grant[key] for key in ['job_id','attempt_id','lease_token']}
+
+    def complete(self,body):
+        # Cleanup was durably recorded before upload. Drain any heartbeat that
+        # captured the earlier running state before sending complete. Future
+        # snapshots see cleaned=True, so they may proceed during a slow final
+        # checksum/ACK; holding this lock across complete would hide liveness.
+        with self.inventory_lock:pass
+        return self.client.call('complete',body)
 
     def upload(self,engine,result):
         if engine.spool:engine.spool.check()
@@ -176,7 +192,7 @@ class Worker:
                     offset+=len(data)
             manifest.append({'name':name,'size':size,'sha256':digest.hexdigest()})
         atomic_json(engine.control/'artifact-transfer.json',{'manifest':manifest})
-        response=self.client.call('complete',{**auth,'result':result,'artifacts':manifest})
+        response=self.complete({**auth,'result':result,'artifacts':manifest})
         self.acknowledge(engine,response,manifest)
         return response
 
@@ -271,7 +287,7 @@ class Worker:
                 transfer=read_json(engine.control/'artifact-transfer.json')
                 saved_result=read_json(engine.control/'result.json')
                 if transfer is not None and saved_result is not None:
-                    response=self.client.call('complete',{**self.auth_body(grant),'result':saved_result,'artifacts':transfer['manifest']})
+                    response=self.complete({**self.auth_body(grant),'result':saved_result,'artifacts':transfer['manifest']})
                     self.acknowledge(engine,response,transfer['manifest'])
                 else:engine.state['controller_acknowledged']=True;engine.save()
                 return

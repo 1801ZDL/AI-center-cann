@@ -28,7 +28,7 @@ def source_paths():
         paths.update(p for p in (ROOT/folder).rglob('*') if p.is_file() and '__pycache__' not in p.parts
                      and p.suffix in {'.py','.md','.sh','.html','.css','.js','.svg','.mlir','.c','.cpp','.json','.txt'})
     # Reports are a separate, explicit allowlist, never a catch-all JSON export.
-    paths.update(ROOT/'reports'/n for n in ['v036-public.json','public-source-check.json']
+    paths.update(ROOT/'reports'/n for n in ['v036-public.json','public-source-check.json','mixed-compiler-stage.json']
                  if (ROOT/'reports'/n).is_file())
     assert set(CORE)<={str(p.relative_to(ROOT)) for p in paths}
     return sorted(paths)
@@ -54,6 +54,8 @@ def private_values():
                     'jobs/*/tmp/installation/node-control/*/attempts/*/control/grant.json',
                     'jobs/*/tmp/nested-*/nested-*/request.json']:
         files.update(r.glob(pattern))
+    for pattern in ['jobs/*/tmp/large-mixed/client-*.json','jobs/*/tmp/large-mixed/*-private-config.json']:
+        files.update(r.glob(pattern))
     for p in files:
         if p.is_file() and not p.is_symlink():collect(read_json(p))
     return values,len(files)
@@ -75,7 +77,7 @@ def main():
                         and hashlib.sha256((ROOT/n).read_bytes()).hexdigest()!=old['source_files'].get(n)]
         public.update(schema='ai-center-cann-public-validation/v1',
             source='Curated historical v0.36 local evidence; raw private reports are not published',
-            public_source_changes_since_acceptance='Documentation, publication tooling, unexecuted mixed-workload fixtures and legacy cooperative Unix-socket portability fix; protected six-file runtime hashes unchanged. Historical Root54 is not a new acceptance of these edits.',
+            public_source_changes_since_acceptance='Documentation/publication tooling, mixed-workload fixtures, legacy cooperative Unix-socket portability and Worker heartbeat/completion ordering fixes; protected six-file runtime hashes unchanged. Historical Root54 is not a new acceptance of these edits.',
             production_source_changes_since_acceptance=source_changes,
             reproduced_by_public_ci=False,raw_evidence_in_repository=False,
             physical_hosts_tested=1,real_host_accounts_created=False,
