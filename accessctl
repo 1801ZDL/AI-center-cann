@@ -18,6 +18,7 @@ def main():
     command.add_argument('--storage-manage',action='store_true')
     command=sub.add_parser('user-stage');command.add_argument('--spec',required=True)
     command=sub.add_parser('user-status');command.add_argument('user')
+    command=sub.add_parser('user-activate');command.add_argument('--spec',required=True)
     command=sub.add_parser('project-grant');command.add_argument('project');command.add_argument('user')
     command.add_argument('--role',choices=['viewer','editor','manager'],default='editor')
     command=sub.add_parser('project-revoke');command.add_argument('project');command.add_argument('user')
@@ -36,7 +37,12 @@ def main():
     if not config:parser.error('Start the Demo once before provisioning users')
     access=AccessControl(runtime,config)
     try:
-        if args.action=='user-stage':
+        if args.action=='user-activate':
+            from jobs import JobStore
+            from owner_activation import Activation
+            from lab_client import private_profile
+            print(json.dumps(Activation(JobStore(runtime,config)).activate(private_profile(args.spec)),ensure_ascii=False,indent=2))
+        elif args.action=='user-stage':
             from lab_client import private_profile,ClientError
             try:spec=private_profile(args.spec)
             except ClientError as error:parser.exit(1,str(error)+'\n')
@@ -99,7 +105,7 @@ def main():
                 client['token']=access.issue_token(client['username'],{'jobs:read','jobs:submit','jobs:cancel'}|({'storage:manage'} if args.storage_manage else set()))
                 atomic_json(profile,client)
             print('Client token', 'renewed' if args.action=='token-renew' else 'revoked')
-    except AccessError as error:
+    except (AccessError,ValueError) as error:
         parser.exit(1,str(error)+'\n')
 
 

@@ -1,7 +1,6 @@
 """Credential-free staged owner definitions. Authentication stays closed until commit.
 
-This module deliberately has no activation/token export operation. Those require
-the later multi-layer owner binding receipts, not a generic account enable flag.
+Activation lives in owner_activation and requires multi-layer binding evidence.
 """
 import hashlib
 import json
@@ -34,9 +33,24 @@ def staged(user,profile):
 
 
 def login_allowed(profile):
-    # Unknown/incomplete provisioning metadata must never silently become an
-    # ordinary legacy account. Activation is intentionally not implemented here.
-    return isinstance(profile,dict) and 'provisioning' not in profile
+    if not isinstance(profile,dict) or 'provisioning' in profile:return False
+    if 'provisioned' not in profile:return True
+    import re
+    value=profile['provisioned']
+    valid=(isinstance(value,dict) and set(value)=={'format','id','stage_id','required_nodes'}
+        and value['format']=='ascend-lab-owner-activation/v1'
+        and isinstance(value['id'],str) and re.fullmatch('[0-9a-f]{32}',value['id']) is not None
+        and isinstance(value['stage_id'],str) and re.fullmatch('[0-9a-f]{64}',value['stage_id']) is not None
+        and isinstance(value['required_nodes'],list) and 1<=len(value['required_nodes'])<=32)
+    if not valid:return False
+    seen=set()
+    for item in value['required_nodes']:
+        if (not isinstance(item,dict) or set(item)!={'node_id','plan_id'}
+            or not isinstance(item['node_id'],str) or re.fullmatch('worker-[0-9a-f]{12}',item['node_id']) is None
+            or not isinstance(item['plan_id'],str) or re.fullmatch('[0-9a-f]{64}',item['plan_id']) is None
+            or item['node_id'] in seen):return False
+        seen.add(item['node_id'])
+    return True
 
 
 def relocate(user,profile,workspace):

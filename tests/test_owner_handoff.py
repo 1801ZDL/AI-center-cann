@@ -27,7 +27,7 @@ class OwnerHandoffTests(unittest.TestCase):
                                      'scheduler':{'workspace_root':str(self.root)}})
         for owner in ['alice','bob']:(self.root/owner).mkdir(mode=0o700)
         self.jobs.access.create_user('alice',self.root/'alice',environments=['worker-python'])
-        self.stage=self.jobs.access.stage_user('bob',self.root/'bob',quota={'input_storage_mib':4,'archive_storage_mib':4})
+        self.stage=self.jobs.access.stage_user('bob',self.root/'bob',quota={'input_storage_mib':4,'archive_storage_mib':getattr(self,'stage_archive_mib',4)})
         profile={'name':'owner_node','physical_id':self.jobs.backend.physical_id,'users':self.data.before['users'],
             'workspace':self.data.before['workspace'],'persistent_cache':self.data.before['persistent_cache'],
             'image':'sha256:'+'a'*64,'templates':['cpu_demo'],
@@ -37,7 +37,7 @@ class OwnerHandoffTests(unittest.TestCase):
         self.plan['request']['stage_id']=self.stage['stage_id'];self.plan['after']['owner_bindings']['bob']['stage_id']=self.stage['stage_id']
         for snapshot in self.plan['caches'].values():snapshot['state']['binding'].update(node_id=self.node,physical_id=profile['physical_id'])
         self.plan['id']=sha({k:v for k,v in self.plan.items() if k!='id'})
-        self.storage=patch.object(self.h,'_storage',return_value={'storage_id':'a'*32,'gid':23832,'bytes':16*1024**2,'inodes':128});self.storage.start()
+        self.storage=patch.object(self.h,'_storage',return_value={'storage_id':'a'*32,'gid':23832,'bytes':getattr(self,'stage_hard_mib',16)*1024**2,'inodes':128});self.storage.start()
 
     def tearDown(self):self.storage.stop();self.jobs.access.close();self.data.tearDown()
 

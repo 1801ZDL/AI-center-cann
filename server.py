@@ -420,7 +420,8 @@ def main():
     (runtime / 'server.pid').write_text(str(os.getpid()))
     from jobs import atomic_json,identity
     from owner_handoff import CAPABILITY as OWNER_HANDOFF
-    atomic_json(runtime/'server-ready.json',{**identity(os.getpid()),'controller_instance':jobs.controller_instance,'capabilities':[OWNER_HANDOFF]})
+    from owner_activation import CAPABILITY as OWNER_ACTIVATION
+    atomic_json(runtime/'server-ready.json',{**identity(os.getpid()),'controller_instance':jobs.controller_instance,'capabilities':[OWNER_HANDOFF,OWNER_ACTIVATION]})
     logging.info('Started controller listener using %s on port %s',listener_info['scheme'],config['port'])
 
     def stop(signum, frame):
