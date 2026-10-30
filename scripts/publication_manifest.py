@@ -51,7 +51,8 @@ def private_values():
                     'jobs/*/tmp/installation/controller-*/config.json',
                     'jobs/*/tmp/installation/controller-*/personas/*/client.json',
                     'jobs/*/tmp/installation/node-control/*/config.json',
-                    'jobs/*/tmp/installation/node-control/*/attempts/*/control/grant.json']:
+                    'jobs/*/tmp/installation/node-control/*/attempts/*/control/grant.json',
+                    'jobs/*/tmp/nested-*/nested-*/request.json']:
         files.update(r.glob(pattern))
     for p in files:
         if p.is_file() and not p.is_symlink():collect(read_json(p))
@@ -70,9 +71,12 @@ def main():
                 'root_install_checks','server_release','server_archive_sha256','current_protected_runtime',
                 'large_compiler_build_executed_this_turn','domain_agent_installed_or_accepted_this_turn',
                 'npu_compute_accepted','remaining']}
+        source_changes=[n for n in CORE if not n.endswith('.md')
+                        and hashlib.sha256((ROOT/n).read_bytes()).hexdigest()!=old['source_files'].get(n)]
         public.update(schema='ai-center-cann-public-validation/v1',
             source='Curated historical v0.36 local evidence; raw private reports are not published',
-            public_source_changes_since_acceptance='Documentation, publication tooling and unexecuted mixed-workload fixtures; protected runtime hashes unchanged',
+            public_source_changes_since_acceptance='Documentation, publication tooling, unexecuted mixed-workload fixtures and legacy cooperative Unix-socket portability fix; protected six-file runtime hashes unchanged. Historical Root54 is not a new acceptance of these edits.',
+            production_source_changes_since_acceptance=source_changes,
             reproduced_by_public_ci=False,raw_evidence_in_repository=False,
             physical_hosts_tested=1,real_host_accounts_created=False,
             prior_full_build={'scope':old['prior_full_build']['scope'],'wheel_record_files':5416,'current_runtime_full_build_reexecuted':False},

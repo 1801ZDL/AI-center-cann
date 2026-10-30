@@ -24,6 +24,14 @@ RECEIPT_TTL=5
 SOCKET_NAME='npu-admission.sock'
 
 
+def _socket_directory(directory):
+    # Linux sun_path is short even when the containing directory is valid.
+    # Anchor lookup to a private directory FD, without global /tmp endpoints,
+    # process-wide chdir, or a different authentication/permission boundary.
+    fd=os.open(directory,os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW|os.O_CLOEXEC)
+    return fd,'/proc/self/fd/'+str(fd)+'/'+SOCKET_NAME
+
+
 def query(cann_env='/data/pri/cann/set_env.sh',tool=None):
     tool=tool or shutil.which('npu-smi') or '/usr/local/sbin/npu-smi'
     return parse_npu(command(['bash','--noprofile','--norc','-c',
@@ -62,18 +70,31 @@ class HostBroker:
     def __init__(self,directory,job,probe=None):
         self.path=Path(directory)/SOCKET_NAME;self.job=job;self.probe=probe or query
         self.stop=threading.Event();self.used=False;self.listener=None;self.thread=None;self.current=None
+        self.directory_fd=None;self.bound_identity=None
+
+    def remove_endpoint(self):
+        if self.directory_fd is None or self.bound_identity is None:return
+        try:item=os.stat(SOCKET_NAME,dir_fd=self.directory_fd,follow_symlinks=False)
+        except FileNotFoundError:return
+        if (item.st_dev,item.st_ino)==self.bound_identity:os.unlink(SOCKET_NAME,dir_fd=self.directory_fd)
 
     def __enter__(self):
         # Never remove a pre-existing endpoint or guess that a previous supervisor died.
-        self.listener=socket.socket(socket.AF_UNIX,socket.SOCK_STREAM)
         try:
-            self.listener.bind(str(self.path));self.bound_identity=self.path.stat().st_ino
-            self.path.chmod(0o600);self.listener.listen(2);self.listener.settimeout(.2)
+            self.directory_fd,address=_socket_directory(self.path.parent)
+            self.listener=socket.socket(socket.AF_UNIX,socket.SOCK_STREAM)
+            self.listener.bind(address)
+            item=os.stat(SOCKET_NAME,dir_fd=self.directory_fd,follow_symlinks=False)
+            self.bound_identity=(item.st_dev,item.st_ino)
+            os.chmod(SOCKET_NAME,0o600,dir_fd=self.directory_fd,follow_symlinks=False)
+            self.listener.listen(2);self.listener.settimeout(.2)
             self.thread=threading.Thread(target=self.serve,name='npu-admission',daemon=True);self.thread.start()
             return self
         except BaseException:
-            self.listener.close()
-            if hasattr(self,'bound_identity'):self.path.unlink(missing_ok=True)
+            if self.listener:self.listener.close()
+            try:self.remove_endpoint()
+            finally:
+                if self.directory_fd is not None:os.close(self.directory_fd);self.directory_fd=None
             raise
 
     def __exit__(self,*_):
@@ -84,7 +105,9 @@ class HostBroker:
         # A bounded in-flight management query is allowed to finish before teardown.
         if self.thread:self.thread.join(15)
         self.listener.close()
-        if self.path.exists() and self.path.stat().st_ino==self.bound_identity:self.path.unlink()
+        try:self.remove_endpoint()
+        finally:
+            if self.directory_fd is not None:os.close(self.directory_fd);self.directory_fd=None
 
     def serve(self):
         while not self.stop.is_set():
@@ -122,9 +145,11 @@ class HostBroker:
 
 def request_receipt(directory,job):
     nonce=secrets.token_hex(16)
+    directory_fd=None
     try:
+        directory_fd,address=_socket_directory(directory)
         with socket.socket(socket.AF_UNIX,socket.SOCK_STREAM) as connection:
-            connection.settimeout(15);connection.connect(str(Path(directory)/SOCKET_NAME))
+            connection.settimeout(15);connection.connect(address)
             peer=struct.unpack('3i',connection.getsockopt(socket.SOL_SOCKET,socket.SO_PEERCRED,12))
             if peer[1]!=os.getuid():raise RuntimeError('Unexpected NPU management endpoint identity')
             connection.sendall(json.dumps({'job_id':job['id'],'attempt_id':job['attempt_id'],
@@ -134,6 +159,8 @@ def request_receipt(directory,job):
         return {key:value for key,value in receipt.items() if key not in {'nonce'}}
     except (OSError,ValueError,RuntimeError,TimeoutError):
         raise RuntimeError('宿主 NPU 启动前复查未通过或回执不可用；未启动用户命令') from None
+    finally:
+        if directory_fd is not None:os.close(directory_fd)
 
 
 def validate_receipt(receipt,job,nonce=None):

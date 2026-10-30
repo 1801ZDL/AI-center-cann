@@ -53,6 +53,26 @@ class NpuAdmissionTests(unittest.TestCase):
             with self.assertRaises(RuntimeError):request_receipt(self.root,self.job)
         self.probe.assert_called_once()
 
+    def test_long_directory_preserves_peer_attempt_token_and_cleanup_contract(self):
+        directory=self.root/('nested-'+'x'*80)/('nested-'+'y'*80)
+        directory.mkdir(parents=True,mode=0o700)
+        self.assertGreater(len(os.fsencode(directory/SOCKET_NAME)),107)
+        with HostBroker(directory,self.job,self.probe):
+            with self.assertRaises(RuntimeError):request_receipt(directory,{**self.job,'_token':'wrong-token'})
+            self.probe.assert_not_called()
+            validate_receipt(request_receipt(directory,self.job),self.job)
+            self.assertEqual((directory/SOCKET_NAME).stat().st_mode&0o777,0o600)
+        self.probe.assert_called_once();self.assertFalse((directory/SOCKET_NAME).exists())
+
+    def test_directory_rename_cleans_original_socket_and_preserves_replacement(self):
+        original=self.root/'original';original.mkdir(mode=0o700);moved=self.root/'moved'
+        with HostBroker(original,self.job,self.probe):
+            original.rename(moved);original.mkdir(mode=0o700)
+            replacement=original/SOCKET_NAME;replacement.write_text('preserve replacement endpoint')
+            validate_receipt(request_receipt(moved,self.job),self.job)
+        self.assertFalse((moved/SOCKET_NAME).exists())
+        self.assertEqual(replacement.read_text(),'preserve replacement endpoint')
+
     def test_busy_unhealthy_unknown_and_unreadable_states_refuse_admission(self):
         cases=[([],[]),([{'id':0,'health':'Warning','utilization_pct':0}],[]),
                ([{'id':0,'health':'OK','utilization_pct':1}],[]),
