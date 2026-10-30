@@ -1,0 +1,2 @@
+# Optional browser checks only. The dashboard itself has no third-party dependencies.
+playwright==1.64.1

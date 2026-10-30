@@ -1,0 +1,212 @@
+#!/usr/bin/env python3
+"""Local enrollment and lifecycle for only this project's independent workers."""
+import argparse
+import json
+import os
+from pathlib import Path
+import signal
+import subprocess
+import sys
+import time
+
+from backends import physical_identity
+from jobs import ROOT,JobStore,atomic_json,identity_alive,read_json
+
+
+def main():
+    os.umask(0o077)
+    parser=argparse.ArgumentParser()
+    parser.add_argument('--controller-state',default=str(ROOT/'runtime'))
+    sub=parser.add_subparsers(dest='action',required=True)
+    sub.add_parser('identity')
+    for action in ['node-disable','node-rotate']:
+        command=sub.add_parser(action);command.add_argument('node_id')
+    command=sub.add_parser('node-templates');command.add_argument('node_id')
+    command.add_argument('--template',action='append',required=True)
+    command=sub.add_parser('node-policy');command.add_argument('node_id')
+    command.add_argument('--cpus',required=True);command.add_argument('--memory-mib',type=int,required=True)
+    command.add_argument('--shm-mib',type=int,required=True);command.add_argument('--max-running',type=int,required=True)
+    command.add_argument('--expected-revision',type=int,required=True)
+    command=sub.add_parser('node-events');command.add_argument('node_id')
+    command=sub.add_parser('node-environment');command.add_argument('node_id')
+    command.add_argument('--from-job',required=True);command.add_argument('--expected-revision',type=int,required=True)
+    command=sub.add_parser('node-probe');command.add_argument('node_id');command.add_argument('--user')
+    command.add_argument('--memory-mib',type=int,help='Explicit probe memory reservation for large finite tmpfs slots; ordinary quotas still apply')
+    command.add_argument('--tool',action='append',default=[]);command.add_argument('--file',action='append',default=[])
+    command.add_argument('--package',action='append',default=[])
+    command=sub.add_parser('node-device-probe');command.add_argument('node_id');command.add_argument('--user')
+    command.add_argument('--device',type=int,required=True);command.add_argument('--memory-mib',type=int,default=256)
+    command=sub.add_parser('node-device-status');command.add_argument('node_id');command.add_argument('--user')
+    sub.add_parser('inventory-holds')
+    command=sub.add_parser('inventory-release');command.add_argument('node_id');command.add_argument('--expected-revision',type=int,required=True)
+    sub.add_parser('domain-list')
+    command=sub.add_parser('domain-events');command.add_argument('physical_id')
+    command=sub.add_parser('domain-set');command.add_argument('physical_id')
+    command.add_argument('--cpus',required=True);command.add_argument('--memory-mib',type=int,required=True)
+    command.add_argument('--shm-mib',type=int,required=True);command.add_argument('--max-running',type=int,required=True)
+    command.add_argument('--expected-revision',type=int,required=True);command.add_argument('--drain',action='store_true')
+    command=sub.add_parser('domain-drain');command.add_argument('physical_id')
+    command.add_argument('--expected-revision',type=int,required=True);command.add_argument('--resume',action='store_true')
+    command=sub.add_parser('enroll');command.add_argument('--name',required=True)
+    command.add_argument('--cpus',required=True);command.add_argument('--memory-mib',type=int,default=512)
+    command.add_argument('--shm-mib',type=int,default=16);command.add_argument('--max-running',type=int,default=1)
+    command.add_argument('--max-timeout-seconds',type=int,default=300,help='Administrator limit for this node; heartbeat confirms it before new assignments')
+    command.add_argument('--image',required=True);command.add_argument('--user-map',action='append',required=True,help='owner:uid:gid')
+    command.add_argument('--physical-id',default=physical_identity())
+    command.add_argument('--controller-url')
+    command.add_argument('--ca-file',help='Public PEM trust bundle to transfer alongside the node configuration')
+    command.add_argument('--node-state-dir')
+    command.add_argument('--npu-config',help='Administrator NPU contract JSON; never supplied by task users')
+    command.add_argument('--workspace-config',help='Private administrator contract for dedicated finite filesystem slots')
+    command.add_argument('--spool-config',help='Private administrator contract for a separate finite node input/artifact filesystem')
+    command.add_argument('--cache-config',help='Private prepared UID-quota policy for an independent persistent cache filesystem')
+    command.add_argument('--io-config',help='Private administrator input/output ceiling contract')
+    for action in ['start','stop','status']:
+        command=sub.add_parser(action);command.add_argument('--config',required=True)
+    args=parser.parse_args()
+    if args.action=='identity':print(physical_identity());return
+    if args.action in {'node-device-probe','node-device-status'}:
+        from device_qualification import PROBE,decision
+        runtime=Path(args.controller_state).resolve();jobs=JobStore(runtime,read_json(runtime/'config.json'))
+        node=jobs.nodes.node(args.node_id);users=node['profile']['users'];owner=args.user or (next(iter(users)) if len(users)==1 else None)
+        if owner not in users:parser.error('Choose a mapped --user')
+        policy=node['profile'].get('npu')
+        if not policy:parser.error('Node has no administrator NPU contract')
+        if args.action=='node-device-status':
+            print(json.dumps({'node_id':args.node_id,'owner':owner,'scope':'device-files-only',
+                 'devices':[{'device_id':device,**decision(node,owner,device)} for device in policy['device_ids']]},ensure_ascii=False,indent=2));return
+        if args.device not in policy['device_ids'] or PROBE not in node['profile']['templates']:
+            parser.error('Explicitly register the selected device and fixed npu_access_probe template first')
+        job,_=jobs.submit({'name':'固定设备访问验收','environment':'worker-python','template':PROBE,
+              'parameters':{'node_id':args.node_id,'device_id':args.device,'memory_mib':args.memory_mib}},jobs.access.user(owner))
+        print(json.dumps({'job_id':job['id'],'node_id':args.node_id,'owner':owner,'npu':1,'device_id':args.device}));return
+    if args.action in {'inventory-holds','inventory-release'}:
+        runtime=Path(args.controller_state).resolve();jobs=JobStore(runtime,read_json(runtime/'config.json'))
+        if args.action=='inventory-holds':result=jobs.inventory.holds()
+        else:
+            # Match a currently running controller's fresh inventory epoch, not an offline guessed identity.
+            ready=read_json(runtime/'server-ready.json')
+            if not identity_alive(ready) or not isinstance(ready.get('controller_instance'),str):
+                raise SystemExit('A live controller instance is required before releasing an inventory hold')
+            jobs.controller_instance=ready['controller_instance']
+            result=jobs.inventory.release(args.node_id,args.expected_revision)
+        print(json.dumps(result,ensure_ascii=False,indent=2));return
+    if args.action=='node-probe':
+        runtime=Path(args.controller_state).resolve();jobs=JobStore(runtime,read_json(runtime/'config.json'))
+        node=jobs.nodes.node(args.node_id);users=node['profile']['users']
+        owner=args.user or (next(iter(users)) if len(users)==1 else None)
+        if owner not in users or not jobs.access.user(owner):parser.error('Choose a valid mapped --user for this fixed probe')
+        job,_=jobs.submit({'name':'节点环境探测','environment':'worker-python','template':'environment_probe',
+            'parameters':{'node_id':args.node_id,'tools':args.tool,'files':args.file,'packages':args.package,
+                          **({'memory_mib':args.memory_mib} if args.memory_mib is not None else {})}},jobs.access.user(owner))
+        print(json.dumps({'job_id':job['id'],'node_id':args.node_id,'owner':owner,'npu':0}));return
+    if args.action=='node-events':
+        runtime=Path(args.controller_state).resolve();jobs=JobStore(runtime,read_json(runtime/'config.json'))
+        print(json.dumps(jobs.nodes.policy_events(args.node_id),ensure_ascii=False,indent=2));return
+    if args.action.startswith('domain-'):
+        runtime=Path(args.controller_state).resolve();jobs=JobStore(runtime,read_json(runtime/'config.json'))
+        if args.action=='domain-list':result=jobs.resources.summary()
+        elif args.action=='domain-events':result=jobs.resources.events(args.physical_id)
+        else:
+            policy=jobs.resources.get(args.physical_id)['policy'] if args.action=='domain-drain' else {
+                'cpu_ids':[int(cpu) for cpu in args.cpus.split(',')],'memory_mib':args.memory_mib,
+                'shm_mib':args.shm_mib,'max_running':args.max_running}
+            draining=not args.resume if args.action=='domain-drain' else args.drain
+            result=jobs.resources.configure(args.physical_id,policy,args.expected_revision,draining)
+        print(json.dumps(result,ensure_ascii=False,indent=2));return
+    if args.action in {'node-disable','node-rotate','node-templates','node-policy','node-environment'}:
+        runtime=Path(args.controller_state).resolve();config=read_json(runtime/'config.json');jobs=JobStore(runtime,config)
+        if args.action=='node-disable':
+            jobs.nodes.disable(args.node_id);print('Node credential disabled; existing resource reservations remain held.');return
+        path=runtime/'workers'/args.node_id/'config.json'
+        node_config=read_json(path)
+        if not node_config:parser.error('Cannot rotate without the original private node config copy')
+        if args.action=='node-environment':
+            profile=jobs.nodes.certify_environment(args.node_id,args.from_job,args.expected_revision)
+            node_config.update({key:profile[key] for key in ['image','python','environment_setup','environment_manifest','policy_revision']})
+            atomic_json(path,node_config)
+            print('Certified environment saved; transfer the private config and restart the idle node:',path);return
+        if args.action=='node-policy':
+            policy={'cpu_ids':[int(cpu) for cpu in args.cpus.split(',')],'memory_mib':args.memory_mib,
+                    'shm_mib':args.shm_mib,'max_running':args.max_running}
+            profile=jobs.nodes.set_policy(args.node_id,policy,args.expected_revision)
+            node_config.update(policy=profile['policy'],policy_revision=profile['policy_revision']);atomic_json(path,node_config)
+            print('Node policy saved; transfer the private config and restart the stopped node:',path);return
+        if args.action=='node-templates':
+            jobs.nodes.set_templates(args.node_id,args.template)
+            node_config['templates']=sorted(set(args.template));atomic_json(path,node_config)
+            print('Templates updated. Transfer the private config and restart that node:',path);return
+        node_config['node_key']=jobs.nodes.rotate_key(args.node_id);atomic_json(path,node_config)
+        print('Node credential rotated. Transfer the private config and restart that node:',path);return
+    if args.action=='enroll':
+        from workflow_spec import MAX_TIMEOUT_SECONDS
+        if not 1<=args.max_timeout_seconds<=MAX_TIMEOUT_SECONDS:parser.error('Node execution timeout must be within 1..86400 seconds')
+        runtime=Path(args.controller_state).resolve()
+        config=read_json(runtime/'config.json');jobs=JobStore(runtime,config)
+        from lab_client import transport_profile,controller_url,authority_bytes
+        transport={'controller':controller_url({'controller':args.controller_url}) if args.controller_url else controller_url(config),
+                   **({'ca_file':str(Path(args.ca_file).absolute()) if args.ca_file else config['ca_file']} if args.ca_file or config.get('ca_file') else {})}
+        ca_data=authority_bytes(transport['ca_file']) if transport.get('ca_file') else None
+        users={}
+        for mapping in args.user_map:
+            owner,uid,gid=mapping.split(':');users[owner]={'uid':int(uid),'gid':int(gid)}
+        if args.image.startswith('sha256:') and len(args.image)==71:
+            image=args.image
+        else:
+            image=json.loads(subprocess.run(['docker','image','inspect',args.image],capture_output=True,text=True,check=True).stdout)[0]['Id']
+        profile={'name':args.name,'physical_id':args.physical_id,'users':users,'image':image,
+                 'templates':['cpu_demo','isolation_probe','environment_probe'],
+                 'policy':{'cpu_ids':[int(c) for c in args.cpus.split(',')],'memory_mib':args.memory_mib,'shm_mib':args.shm_mib,'max_running':args.max_running}}
+        if args.npu_config:
+            from lab_client import private_profile
+            profile['npu']=private_profile(args.npu_config)
+        if args.workspace_config:
+            from lab_client import private_profile
+            profile['workspace']=private_profile(args.workspace_config)
+        if args.io_config:
+            from lab_client import private_profile
+            profile['io_limits']=private_profile(args.io_config)
+        if args.spool_config:
+            from lab_client import private_profile
+            profile['spool_storage']=private_profile(args.spool_config)
+        if args.cache_config:
+            from lab_client import private_profile
+            profile['persistent_cache']=private_profile(args.cache_config)
+        node_id,key=jobs.nodes.enroll(profile)
+        state=runtime/'workers'/node_id;state.mkdir(mode=0o700,parents=True)
+        node_config={**profile,**transport_profile(transport,state,ca_data),'policy_revision':1,'node_id':node_id,'node_key':key,'state_dir':str(Path(args.node_state_dir).resolve()) if args.node_state_dir else str(state),
+                    'image':image,'python':'/usr/bin/python3',
+                    'max_timeout_seconds':args.max_timeout_seconds,
+                    'probe_forbidden_paths':[str(runtime/'config.json'),str(state/'config.json')]}
+        target=state/'config.json';atomic_json(target,node_config)
+        print(json.dumps({'node_id':node_id,'config':str(target),'physical_id':args.physical_id,'image':image},indent=2));return
+    path=Path(args.config).resolve();config=read_json(path)
+    if not config:parser.error('Missing worker config')
+    state=Path(config['state_dir']).resolve()
+    saved=read_json(state/'worker-process.json')
+    live=identity_alive(saved)
+    if live:
+        argv=Path('/proc')/str(saved['pid'])/'cmdline'
+        live=str(ROOT/'worker.py').encode() in argv.read_bytes().split(b'\0')
+    if args.action=='status':
+        print(json.dumps({'node_id':config['node_id'],'running':bool(live),'pid':saved['pid'] if live else None}));return
+    if args.action=='stop':
+        if live:
+            os.kill(saved['pid'],signal.SIGTERM)
+            deadline=time.monotonic()+12
+            while identity_alive(saved) and time.monotonic()<deadline:time.sleep(.1)
+            if identity_alive(saved):raise SystemExit('Worker stop is still pending; task containers were not killed')
+        print('Worker stopped; allocated containers retain their independent deadline.');return
+    if live:print('Worker already running');return
+    with (state/'worker.log').open('ab') as log:
+        subprocess.Popen(['/usr/bin/python3',str(ROOT/'worker.py'),'--config',str(path)],stdin=subprocess.DEVNULL,
+                          stdout=log,stderr=log,start_new_session=True,close_fds=True,cwd=ROOT)
+    deadline=time.monotonic()+5
+    while time.monotonic()<deadline:
+        saved=read_json(state/'worker-process.json')
+        if identity_alive(saved):print('Worker started:',config['node_id']);return
+        time.sleep(.1)
+    raise SystemExit('Worker did not become ready; inspect its private log')
+
+
+if __name__=='__main__':main()

@@ -1,0 +1,170 @@
+#!/usr/bin/python3
+"""Package/install and administer only one explicitly selected Ascend Lab installation."""
+import argparse
+import json
+import os
+from pathlib import Path
+import subprocess
+import sys
+
+if sys.version_info<(3,10):raise SystemExit('Ascend Lab server tooling requires system Python 3.10 or newer')
+sys.dont_write_bytecode=True
+
+sys.path.insert(0,str(Path(__file__).resolve().parent))
+import deployment as deploy
+from listener import ListenerError
+from maintenance import activate,restore,snapshot
+
+
+def main():
+    os.umask(0o077)
+    parser=argparse.ArgumentParser(description=__doc__)
+    commands=parser.add_subparsers(dest='action',required=True)
+    p=commands.add_parser('bundle');p.add_argument('--output',required=True)
+    p=commands.add_parser('workspace-prepare',help='Prepare UID-quota slots on an explicitly selected, already-mounted empty ext4 filesystem')
+    p.add_argument('--root',required=True);p.add_argument('--limits',required=True);p.add_argument('--output');p.add_argument('--plan',action='store_true')
+    p=commands.add_parser('payload-groups-prepare',help='Provision explicit owner group limits on a new, already quota-enabled dedicated payload filesystem')
+    p.add_argument('--contract',required=True);p.add_argument('--plan',action='store_true')
+    p=commands.add_parser('payload-quota-plan',help='Read-only offline plan to resize one existing central owner quota')
+    p.add_argument('--prefix',required=True);p.add_argument('--owner',required=True)
+    p.add_argument('--mib',type=int,required=True);p.add_argument('--inodes',type=int,required=True);p.add_argument('--output')
+    p=commands.add_parser('payload-quota-apply',help='Apply or resume the same root-private offline quota plan')
+    p.add_argument('--prefix',required=True);p.add_argument('--plan',required=True)
+    p=commands.add_parser('install');p.add_argument('--archive',required=True);p.add_argument('--prefix',required=True)
+    p.add_argument('--state-dir',required=True);p.add_argument('--role',choices=['controller','node'],required=True)
+    p.add_argument('--uid',type=int);p.add_argument('--gid',type=int);p.add_argument('--create-service-user')
+    p.add_argument('--node-config');p.add_argument('--port',type=int,default=18765)
+    p.add_argument('--payload-config',help='Root-private contract for a new separate central ext4 payload filesystem')
+    for flag in ['bind-address','public-url','tls-cert','tls-key','tls-ca']:
+        p.add_argument('--'+flag,default='127.0.0.1' if flag=='bind-address' else None)
+    p.add_argument('--start',action='store_true',help='Start this new installation in process mode after validation')
+    p=commands.add_parser('doctor',aliases=['preflight'],help='Read-only installation prerequisites, exact archive and local daemon checks')
+    p.add_argument('--role',choices=['controller','node'],required=True);p.add_argument('--prefix');p.add_argument('--state-dir')
+    p.add_argument('--archive');p.add_argument('--node-config');p.add_argument('--uid',type=int);p.add_argument('--gid',type=int)
+    p.add_argument('--create-service-user');p.add_argument('--port',type=int,default=18765)
+    p.add_argument('--payload-config')
+    for flag in ['bind-address','public-url','tls-cert','tls-key','tls-ca']:
+        p.add_argument('--'+flag,default='127.0.0.1' if flag=='bind-address' else None)
+    p=commands.add_parser('tls-rotate');p.add_argument('--prefix',required=True)
+    p.add_argument('--tls-cert',required=True);p.add_argument('--tls-key',required=True);p.add_argument('--tls-ca')
+    for action in ['cache-list','cache-plan','cache-prune']:
+        p=commands.add_parser(action);p.add_argument('--prefix',required=True)
+        if action=='cache-plan':p.add_argument('--slot-id',required=True);p.add_argument('--key',required=True)
+        if action=='cache-prune':p.add_argument('--plan',required=True)
+    for action in ['run','start','stop','status','verify','admin','backup','restore','activate','unit-install']:
+        p=commands.add_parser(action);p.add_argument('--prefix',required=True)
+        if action=='admin':p.add_argument('command',nargs=argparse.REMAINDER)
+        if action=='backup':p.add_argument('--output',required=True)
+        if action=='restore':p.add_argument('--archive',required=True);p.add_argument('--new-state-dir',required=True);p.add_argument('--payload-config');p.add_argument('--spool-config');p.add_argument('--cache-config')
+        if action=='activate':
+            group=p.add_mutually_exclusive_group(required=True);group.add_argument('--archive');group.add_argument('--release-id')
+        if action=='unit-install':p.add_argument('--unit-dir',default='/etc/systemd/system');p.add_argument('--enable',action='store_true')
+    args=parser.parse_args()
+    if args.action=='bundle':result=deploy.bundle(args.output)
+    elif args.action=='payload-quota-plan':
+        from payload_quota_admin import plan,write
+        result=plan(args.prefix,args.owner,args.mib*1024**2,args.inodes)
+        if args.output:
+            target=deploy.secure_parent(args.output)
+            if target.exists() or target.is_symlink():raise deploy.DeployError('Choose a new private quota plan output; existing files were not replaced')
+            write(target,result['plan']);result={'read_only':True,'plan_id':result['plan']['id'],'plan_file':str(target),'service_restart_required':True}
+    elif args.action=='payload-quota-apply':
+        deploy.require_root();path=Path(args.plan)
+        if path.lstat().st_uid!=0:raise deploy.DeployError('Quota plans must be root-owned private files')
+        from payload_quota_admin import apply
+        result=apply(args.prefix,deploy.regular_json(path,private=True))
+    elif args.action=='payload-groups-prepare':
+        deploy.require_root()
+        from payload_groups import prepare
+        result=prepare(deploy.regular_json(args.contract,private=True),plan=args.plan)
+    elif args.action=='workspace-prepare':
+        deploy.require_root()
+        from quota_workspace import prepare
+        limits=deploy.regular_json(args.limits,private=True)
+        if set(limits)!={'users'}:raise deploy.DeployError('Quota preparation requires a private users limit list')
+        preview=prepare(args.root,limits['users'],plan=True)
+        if args.plan:result=preview
+        else:
+            if not args.output:parser.error('Choose an explicit new private --output policy file')
+            target=deploy.secure_parent(args.output)
+            if target.exists() or target.is_symlink():
+                if not preview.get('already_prepared') or deploy.regular_json(target,private=True)!=preview['policy']:
+                    raise deploy.DeployError('Existing policy output differs; no filesystem limits were changed')
+                result={'already_prepared':True,'policy_file':str(target),'slots':len(preview['policy']['slots'])}
+            else:
+                prepared=prepare(args.root,limits['users'])
+                with target.open('x') as output:
+                    json.dump(prepared['policy'],output);output.flush();os.fsync(output.fileno())
+                target.chmod(0o600)
+                descriptor=os.open(target.parent,os.O_RDONLY|os.O_DIRECTORY)
+                try:os.fsync(descriptor)
+                finally:os.close(descriptor)
+                result={'already_prepared':prepared['already_prepared'],'policy_file':str(target),'slots':len(prepared['policy']['slots'])}
+    elif args.action in {'doctor','preflight'}:
+        from preflight import plan
+        result=plan(args.role,args.prefix,args.state_dir,args.archive,args.uid,args.gid,args.create_service_user,args.node_config,args.port,
+            args.bind_address,args.public_url,args.tls_cert,args.tls_key,args.tls_ca,args.payload_config)
+        print(json.dumps(result,ensure_ascii=False,indent=2));raise SystemExit(0 if result['install_ready'] else 2)
+    elif args.action=='install':
+        result=deploy.install(args.archive,args.prefix,args.state_dir,args.role,args.uid,args.gid,args.create_service_user,args.node_config,args.port,
+            args.bind_address,args.public_url,args.tls_cert,args.tls_key,args.tls_ca,args.payload_config)
+        if args.start:result['service']=deploy.start(args.prefix)
+    elif args.action=='tls-rotate':
+        from listener import rotate
+        result=rotate(args.prefix,args.tls_cert,args.tls_key,args.tls_ca)
+    elif args.action in {'cache-list','cache-plan','cache-prune'}:
+        deploy.require_root();_,meta,_=deploy.verify(args.prefix)
+        if meta['role']!='node':raise deploy.DeployError('Private cache administration runs on its enrolled node')
+        from persistent_cache import Pool
+        config=deploy.regular_json(Path(meta['state_dir'])/'config.json',private=True)
+        if not config.get('persistent_cache'):raise deploy.DeployError('Node has no registered private persistent cache')
+        cache=Pool(meta['state_dir'],config)
+        if args.action=='cache-list':result=cache.listing()
+        elif args.action=='cache-plan':result=cache.prune(args.slot_id,args.key)
+        else:
+            plan=deploy.regular_json(args.plan,private=True)
+            result=cache.prune(plan.get('slot_id'),plan.get('key'),expected=plan)
+    elif args.action=='run':deploy.run_service(args.prefix);return
+    elif args.action=='start':result=deploy.start(args.prefix)
+    elif args.action=='stop':result=deploy.stop(args.prefix)
+    elif args.action=='status':result=deploy.process_status(args.prefix)
+    elif args.action=='verify':
+        _,meta,_=deploy.verify(args.prefix);result={k:meta[k] for k in ['role','uid','gid','state_dir','release_id','state_schema']};result['verified']=True
+    elif args.action=='backup':result=snapshot(args.prefix,args.output)
+    elif args.action=='restore':result=restore(args.prefix,args.archive,args.new_state_dir,payload_config=args.payload_config,spool_config=args.spool_config,cache_config=args.cache_config)
+    elif args.action=='activate':result=activate(args.prefix,args.archive,args.release_id)
+    elif args.action=='admin':
+        prefix,meta,release=deploy.verify(args.prefix)
+        if meta['role']!='controller':raise deploy.DeployError('Account/node enrollment is administered on the controller installation')
+        if os.geteuid() not in {0,meta['uid']}:raise deploy.DeployError('Service identity or root is required')
+        command=args.command[1:] if args.command[:1]==['--'] else args.command
+        if not command or command[0] not in {'accessctl','workerctl'} or any(x in {'--state-dir','--controller-state'} for x in command[1:]):raise deploy.DeployError('Choose accessctl or workerctl without overriding this installation state')
+        def drop():
+            if os.geteuid()==0:
+                from payload_groups import gids
+                os.setgroups(gids(meta.get('payload_storage')))
+                os.setgid(meta['gid']);os.setuid(meta['uid'])
+        flag='--state-dir' if command[0]=='accessctl' else '--controller-state'
+        code='import runpy,sys;sys.path.insert(0,sys.argv[1]);sys.argv=sys.argv[2:];runpy.run_path(sys.argv[0],run_name="__main__")'
+        completed=subprocess.run(['/usr/bin/python3','-I','-B','-c',code,str(release),str(release/command[0]),flag,meta['state_dir'],*command[1:]],
+                    preexec_fn=drop,env={'PATH':'/usr/local/bin:/usr/bin:/bin','HOME':meta['state_dir'],'LANG':'C.UTF-8'},check=False)
+        raise SystemExit(completed.returncode)
+    else:
+        deploy.require_root();prefix,meta,_=deploy.verify(args.prefix)
+        target=deploy.secure_parent(Path(args.unit_dir)/('ascend-lab-'+meta['role']+'.service'))
+        if target.exists() or target.is_symlink():raise deploy.DeployError('Unit already exists; existing services were not overwritten')
+        with target.open('x') as file:file.write(deploy.unit_text(prefix,meta))
+        target.chmod(0o644)
+        if args.enable:
+            subprocess.run(['systemctl','daemon-reload'],check=True)
+            subprocess.run(['systemctl','enable','--now',target.name],check=True)
+        result={'unit':str(target),'enabled':args.enable}
+    print(json.dumps(result,ensure_ascii=False,indent=2))
+
+
+if __name__=='__main__':
+    try:main()
+    except (deploy.DeployError,RuntimeError,OSError,ValueError,subprocess.SubprocessError) as error:
+        # No config contents, tokens, environment or captured subprocess output.
+        print(str(error) if isinstance(error,(deploy.DeployError,RuntimeError,ListenerError)) else 'Deployment operation failed; inspect the installation state before retrying',file=sys.stderr)
+        raise SystemExit(1)

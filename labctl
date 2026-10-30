@@ -1,0 +1,324 @@
+#!/usr/bin/env python3
+"""Manage only this local demo. Does not install packages or touch shell settings."""
+import argparse
+import base64
+import json
+import os
+from pathlib import Path
+import pwd
+import secrets
+import signal
+import socket
+import subprocess
+import sys
+import time
+import urllib.request
+import urllib.error
+import urllib.parse
+
+from lab_client import Client, ClientError, job_id, private_profile
+
+ROOT = Path(__file__).resolve().parent
+RUN = ROOT / 'runtime'
+
+
+def settings(port):
+    RUN.mkdir(mode=0o700, exist_ok=True)
+    config = RUN / 'config.json'
+    if not config.exists():
+        config.write_text(json.dumps({'username': pwd.getpwuid(os.getuid()).pw_name,
+                                      'container': 'zdl', 'host': '127.0.0.1', 'port': port,
+                                      'interval': 15, 'password': secrets.token_urlsafe(24)}, indent=2) + '\n')
+        config.chmod(0o600)
+    return json.loads(config.read_text())
+
+
+def alive():
+    try:
+        pid = int((RUN / 'server.pid').read_text())
+        # Guard against stale/reused PID files before sending any signal.
+        argv = Path(f'/proc/{pid}/cmdline').read_bytes().split(b'\0')
+        if str(ROOT / 'server.py').encode() not in argv:
+            return None
+        if Path(f'/proc/{pid}').stat().st_uid != os.getuid():
+            return None
+        return pid
+    except (OSError, ValueError):
+        return None
+
+
+def request(config, path, body=None):
+    try:
+        return Client(config).request(path, body)
+    except ClientError as error:
+        raise SystemExit(str(error)) from None
+
+
+def wait_job(config, job_id, seconds, archive_options=None):
+    deadline = time.monotonic() + seconds
+    previous = None
+    while time.monotonic() < deadline:
+        job = request(config, '/api/jobs/' + job_id)['job']
+        if job['state'] != previous:
+            print(job_id, job['state'], job['reason'], flush=True)
+            previous = job['state']
+        if job['state'] in {'succeeded', 'failed', 'cancelled', 'timed_out'}:
+            print(json.dumps(job.get('result'), ensure_ascii=False, indent=2))
+            if archive_options is not None:
+                from client_archive import download
+                print(json.dumps({'local_archive':download(Client(config),job_id,**archive_options)},ensure_ascii=False,indent=2))
+            return 0 if job['state'] == 'succeeded' else 1
+        if job['state']=='needs_attention':
+            print('Execution state is unconfirmed; resources remain reserved. No final archive or replacement task was created.')
+            return 3
+        time.sleep(1)
+    print('Client wait ended; the job remains managed by the scheduler.')
+    return 2
+
+
+def main():
+    os.umask(0o077)
+    p = argparse.ArgumentParser(description='Ascend Lab personal monitor and cooperative job queue')
+    p.add_argument('--profile', help='Private client credentials; cannot manage the server lifecycle')
+    sub = p.add_subparsers(dest='action', required=True)
+    for action in ['start', 'stop', 'status', 'access', 'export']:
+        command = sub.add_parser(action)
+        command.add_argument('--port', type=int, default=18765)
+    command = sub.add_parser('submit', help='Submit a batch job; use -- before the command')
+    command.add_argument('--env')
+    command.add_argument('--name')
+    command.add_argument('--kind', choices=['command', 'build', 'accuracy', 'performance', 'simulation', 'ir'], default='command')
+    command.add_argument('--cwd', default=str(Path.cwd()))
+    command.add_argument('--cpu', type=int, default=1)
+    command.add_argument('--memory-mib', type=int, default=256)
+    command.add_argument('--shm-mib', type=int, default=0)
+    command.add_argument('--npu', type=int, default=0)
+    command.add_argument('--timeout', type=int, default=60)
+    command.add_argument('--key')
+    command.add_argument('--output')
+    command.add_argument('--project')
+    command.add_argument('--template', choices=['cpu_demo','isolation_probe','npu_probe'])
+    command.add_argument('--workflow', help='Versioned workflow request JSON; submit frozen input ID and environment lock')
+    command.add_argument('--archive', action='store_true', help='Wait and download confirmed terminal logs/results to personal storage')
+    command.add_argument('--archive-root', help='Local archive root; never sent to controller')
+    command.add_argument('--local-source', help='Local script or input directory for default sibling archive; never sent to controller')
+    command.add_argument('--wait-seconds', type=int, default=120)
+    command.add_argument('--seconds', type=int, default=2)
+    command.add_argument('argv', nargs=argparse.REMAINDER)
+    command = sub.add_parser('jobs')
+    command.add_argument('--json', action='store_true')
+    sub.add_parser('me', help='Verify personal identity through the controller API')
+    sub.add_parser('nodes', help='Read authorized node status')
+    command=sub.add_parser('input-add',help='Upload and seal a file/directory; hidden files excluded')
+    command.add_argument('path')
+    command=sub.add_parser('input',help='Read own input manifest and upload progress')
+    command.add_argument('input_id')
+    command=sub.add_parser('environment-lock',help='Create a full observed lock from protected evidence of a completed workflow')
+    command.add_argument('job_id');command.add_argument('--output',required=True)
+    command=sub.add_parser('archive', help='Resume verified personal download of a terminal job')
+    command.add_argument('job_id');command.add_argument('--archive-root');command.add_argument('--local-source')
+    command=sub.add_parser('diagnose', help='Read bounded diagnostic evidence for an authorized job; no execution or model call')
+    command.add_argument('job_id')
+    command=sub.add_parser('archive-config', help='Set personal archive preference in the private client profile')
+    choice=command.add_mutually_exclusive_group(required=True)
+    choice.add_argument('--root');choice.add_argument('--sibling', action='store_true')
+    command=sub.add_parser('storage',help='Preview, quarantine, restore or explicitly purge only owned central payloads')
+    storage=command.add_subparsers(dest='storage_action',required=True)
+    listing=storage.add_parser('list');listing.add_argument('--state');listing.add_argument('--limit',type=int,default=100);listing.add_argument('--offset',type=int,default=0)
+    plan=storage.add_parser('plan');plan.add_argument('kind',choices=['input','archive']);plan.add_argument('object_id');plan.add_argument('operation',choices=['trash','restore','purge','resume'])
+    apply=storage.add_parser('apply');apply.add_argument('--plan',required=True);apply.add_argument('--wait-seconds',type=int,default=30)
+    for action in ['job', 'logs', 'cancel', 'wait','retry-inputs']:
+        command = sub.add_parser(action)
+        command.add_argument('job_id')
+        if action == 'logs':
+            command.add_argument('--stream', choices=['stdout', 'stderr'], default='stdout')
+        if action == 'wait':
+            command.add_argument('--seconds', type=int, default=120)
+            command.add_argument('--archive', action='store_true');command.add_argument('--archive-root');command.add_argument('--local-source')
+    args = p.parse_args()
+    if (ROOT/'client-only').exists() and not args.profile:
+        p.error('This portable client requires a personal --profile and cannot manage the controller')
+    if args.profile:
+        if args.action not in {'submit','jobs','job','logs','cancel','wait','me','nodes','input-add','input','environment-lock','archive','archive-config','diagnose','storage','retry-inputs'}:
+            p.error('Client profiles only support job operations')
+        config = private_profile(args.profile)
+    else:
+        config = settings(getattr(args, 'port', 18765))
+    url = Client(config).url
+    pid = alive() if args.action in {'start','stop','status'} else None
+    if hasattr(args,'job_id'):
+        args.job_id = job_id(args.job_id)
+    if args.action == 'start':
+        if pid:
+            print(f'Already running: {url} (PID {pid})')
+            return
+        with socket.socket() as probe:
+            probe.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            try:
+                probe.bind(('127.0.0.1', config['port']))
+            except OSError:
+                sys.exit(f"Port {config['port']} is occupied; no existing service was changed.")
+        with (RUN / 'bootstrap.log').open('a') as out:
+            child = subprocess.Popen(['/usr/bin/python3', '-u', str(ROOT / 'server.py')],
+                                     cwd=ROOT, stdin=subprocess.DEVNULL, stdout=out, stderr=out,
+                                     start_new_session=True)
+        for _ in range(50):
+            if child.poll() is not None:
+                sys.exit('Startup failed. See runtime/bootstrap.log.')
+            try:
+                with urllib.request.urlopen(url + '/healthz', timeout=1) as response:
+                    if response.status == 200:
+                        print(f'Running: {url}\nPrivate credentials: {RUN / "config.json"}\nUse ./labctl access to display login details.')
+                        return
+            except OSError:
+                time.sleep(0.1)
+        sys.exit('Server startup is taking longer than expected; check ./labctl status.')
+    elif args.action == 'stop':
+        if not pid:
+            print('This demo is not running.')
+            return
+        os.kill(pid, signal.SIGTERM)
+        for _ in range(50):
+            if not alive():
+                print('Dashboard/scheduler stopped. Managed job workers continue independently; other processes and containers were not changed.')
+                return
+            time.sleep(0.1)
+        sys.exit('Stop requested; process has not exited yet.')
+    elif args.action == 'status':
+        print(f'Running: {url} (PID {pid})' if pid else 'Stopped')
+    elif args.action == 'access':
+        print(f"Demo web login — independent of your Linux/SSH password.\nURL: {url}\nUsername: {config['username']}\nPassword: {config['password']}\n\nEnter the Password above in the browser, not your SSH password.\nFor remote access, forward port {config['port']} through your existing SSH connection.")
+    elif args.action == 'export':
+        target = RUN / ('export-' + time.strftime('%Y%m%d-%H%M%S') + '.json')
+        target.write_text(json.dumps(request(config, '/api/export'), ensure_ascii=False, indent=2)+'\n')
+        print(target)
+    elif args.action == 'submit':
+        if args.archive and not 1<=args.wait_seconds<=86400:p.error('wait-seconds must be between 1 and 86400')
+        if args.archive_root and not args.archive:p.error('archive-root requires --archive; use archive-config for a permanent preference')
+        if args.local_source:
+            from client_archive import directory, local_path
+            selected=local_path(args.local_source)
+            with directory(selected if selected.is_dir() else selected.parent):pass
+        selected_env=args.env
+        args.env = args.env or (config.get('default_environment','worker-python') if args.profile else 'host-python')
+        argv = args.argv[1:] if args.argv[:1] == ['--'] else args.argv
+        body = {'name': args.name or (Path(argv[0]).name if argv else 'job'), 'environment': args.env,
+                'kind': args.kind, 'cwd': str(Path(args.cwd).resolve()), 'cpu': args.cpu,
+                'memory_mib': args.memory_mib, 'npu': args.npu, 'timeout_seconds': args.timeout, 'argv': argv}
+        body['shm_mib'] = args.shm_mib
+        if args.template:
+            if argv:
+                p.error('Templates cannot accept command overrides')
+            body = {'template':args.template,'parameters':{'seconds':args.seconds} if args.template=='cpu_demo' else {},'environment':args.env,
+                    **({'name':args.name} if args.name else {})}
+            # Profile defaults must come from the authenticated server workspace.
+            if not args.profile:
+                body['cwd'] = str(Path(args.cwd).resolve())
+        if args.workflow:
+            if args.template or argv:p.error('Workflow cannot be combined with template/command overrides')
+            try:body=json.loads(Path(args.workflow).read_text())
+            except (OSError,ValueError):p.error('Cannot read workflow JSON')
+            if not isinstance(body,dict) or body.get('template') not in {'accuracy_v1','performance_v1','simulation_v1','build_v1','ir_v1'}:p.error('Choose a versioned workflow template')
+            if selected_env:body['environment']=selected_env
+            body.setdefault('environment','worker-python')
+            if args.name:body['name']=args.name
+        if args.project:
+            body['project'] = args.project
+        if args.key:
+            body['idempotency_key'] = args.key
+        if args.output:
+            body['output'] = args.output
+        response=request(config, '/api/jobs', body)
+        print(json.dumps(response, ensure_ascii=False, indent=2),flush=True)
+        if args.profile:
+            from client_archive import remember_submission
+            try:remember_submission(args.profile,Client(config),response['job'],source=args.local_source,
+                                    input_id=body.get('parameters',{}).get('input_id'),fallback=Path.cwd())
+            except (ClientError,OSError):raise ClientError('Job '+response['job']['id']+' is already submitted; local archive context could not be saved. Use archive with --local-source; do not resubmit.') from None
+        if args.archive:
+            return wait_job(config,response['job']['id'],args.wait_seconds,
+                            {'profile':args.profile,'root':args.archive_root,'source':args.local_source})
+    elif args.action == 'jobs':
+        summary = request(config, '/api/jobs')
+        if args.json:
+            print(json.dumps(summary, ensure_ascii=False, indent=2))
+        else:
+            print(f"{'JOB':18} {'STATE':16} {'ENV':15} NAME / REASON")
+            for job in summary['jobs']:
+                print(f"{job['id']:18} {job['state']:16} {job['environment']:15} {job['name']} / {job['reason']}")
+    elif args.action in {'me','nodes'}:
+        print(json.dumps(request(config, '/api/'+args.action), ensure_ascii=False, indent=2))
+    elif args.action=='retry-inputs':
+        print(json.dumps(request(config,'/api/jobs/'+args.job_id+'/retry-inputs',{}),ensure_ascii=False,indent=2))
+    elif args.action=='storage':
+        client=Client(config)
+        if args.storage_action=='list':
+            query={'limit':args.limit,'offset':args.offset,**({'state':args.state} if args.state else {})}
+            result=client.request('/api/storage?'+urllib.parse.urlencode(query))
+        elif args.storage_action=='plan':
+            result=client.request('/api/storage/plan',{'kind':args.kind,'id':args.object_id,'action':args.operation})
+        else:
+            if not 1<=args.wait_seconds<=120:p.error('Storage wait must be 1..120 seconds')
+            raw=Path(args.plan).expanduser().read_bytes()
+            if len(raw)>32768:raise ClientError('Storage plan exceeds limit')
+            plan=json.loads(raw);plan=plan.get('plan',plan)
+            end=time.monotonic()+args.wait_seconds
+            result=client.request('/api/storage/apply',plan)
+            while result.get('pending') and time.monotonic()<end:
+                plan=client.request('/api/storage/plan',{'kind':plan['kind'],'id':plan['id'],'action':'resume'})['plan']
+                result=client.request('/api/storage/apply',plan)
+        print(json.dumps(result,ensure_ascii=False,indent=2))
+    elif args.action=='input-add':
+        client=Client(config);bundle=client.upload_input(args.path)
+        if args.profile:
+            from client_archive import remember_input
+            remember_input(args.profile,client,args.path,bundle)
+        print(json.dumps({'input':bundle},ensure_ascii=False,indent=2))
+    elif args.action=='input':
+        if not __import__('re').fullmatch(r'input-[0-9a-f]{24}',args.input_id):p.error('Invalid input ID')
+        print(json.dumps(request(config,'/api/inputs/'+args.input_id),ensure_ascii=False,indent=2))
+    elif args.action=='environment-lock':
+        evidence=json.loads(Client(config).request('/api/jobs/'+args.job_id+'/artifact?name='+urllib.parse.quote('results/_lab/environment.json',safe=''),raw=True))
+        if evidence.get('locked') is not True:raise ClientError('Choose a workflow with a matching protected environment record')
+        observed=evidence['observed'];lock={'python':observed['python'],'image_sha256':observed['image_sha256'],
+            'packages':{k:v if v is not None else '__absent__' for k,v in observed['packages'].items()},
+            'tools':{k:v['sha256'] for k,v in observed['tools'].items() if v is not None},
+            'files':{k:v['sha256'] for k,v in observed['files'].items() if v is not None}}
+        target=Path(args.output).expanduser()
+        with target.open('x') as file:json.dump(lock,file,ensure_ascii=False,indent=2);file.write('\n')
+        print('Observed environment lock written:',target)
+    elif args.action == 'job':
+        print(json.dumps(request(config, '/api/jobs/' + args.job_id), ensure_ascii=False, indent=2))
+    elif args.action == 'logs':
+        data = request(config, '/api/jobs/' + args.job_id + '/log?stream=' + args.stream)
+        print(data['text'], end='')
+        if data['truncated']:
+            print('\n[Showing last 64 KiB; complete retained log is in the job directory.]')
+    elif args.action == 'cancel':
+        print(json.dumps(request(config, '/api/jobs/' + args.job_id + '/cancel', {}), ensure_ascii=False, indent=2))
+    elif args.action == 'wait':
+        if not 1<=args.seconds<=86400:p.error('seconds must be between 1 and 86400')
+        options={'profile':args.profile,'root':args.archive_root,'source':args.local_source} if args.archive else None
+        return wait_job(config, args.job_id, args.seconds, options)
+    elif args.action == 'diagnose':
+        from diagnostic_case import build_case
+        print(json.dumps(build_case(Client(config),args.job_id),ensure_ascii=False,indent=2))
+    elif args.action == 'archive':
+        from client_archive import download
+        print(json.dumps(download(Client(config),args.job_id,profile=args.profile,root=args.archive_root,
+                                  source=args.local_source),ensure_ascii=False,indent=2))
+    elif args.action == 'archive-config':
+        if not args.profile:p.error('archive-config requires a private personal --profile')
+        from client_archive import local_path
+        from lab_client import atomic_json
+        if args.sibling:config.pop('archive_root',None)
+        else:config['archive_root']=str(local_path(args.root))
+        atomic_json(Path(args.profile).expanduser(),config)
+        print('Personal archive preference saved; no controller paths or credentials were changed.')
+
+
+if __name__ == '__main__':
+    try:
+        raise SystemExit(main() or 0)
+    except ClientError as error:
+        raise SystemExit(str(error)) from None

@@ -1,0 +1,84 @@
+#!/usr/bin/env python3
+"""Local account provisioning. No remote privilege-management endpoint."""
+import argparse
+import json
+import os
+from pathlib import Path
+
+from auth import AccessControl, AccessError, IDENTIFIER
+from jobs import ROOT, atomic_json, read_json
+
+
+def main():
+    os.umask(0o077)
+    parser=argparse.ArgumentParser(description='Provision logical test identities inside this Demo only')
+    parser.add_argument('--state-dir',default=str(ROOT/'runtime'))
+    sub=parser.add_subparsers(dest='action',required=True)
+    command=sub.add_parser('user-add');command.add_argument('user')
+    command.add_argument('--storage-manage',action='store_true')
+    command=sub.add_parser('project-grant');command.add_argument('project');command.add_argument('user')
+    command.add_argument('--role',choices=['viewer','editor','manager'],default='editor')
+    command=sub.add_parser('project-revoke');command.add_argument('project');command.add_argument('user')
+    for action in ['user-disable','user-enable']:
+        command=sub.add_parser(action);command.add_argument('user')
+    command=sub.add_parser('quota');command.add_argument('user')
+    for option in ['max-running','max-queued','cpu','memory-mib','shm-mib','npu','input-storage-mib','archive-storage-mib']:
+        command.add_argument('--'+option,type=int)
+    command=sub.add_parser('environment-grant');command.add_argument('user');command.add_argument('environment',choices=['host-python','zdl-python','zdl-mxh-dev','worker-python'])
+    command=sub.add_parser('token-revoke');command.add_argument('--profile',required=True)
+    command=sub.add_parser('token-renew');command.add_argument('--profile',required=True)
+    command.add_argument('--storage-manage',action='store_true')
+    args=parser.parse_args()
+    runtime=Path(args.state_dir).resolve()
+    config=read_json(runtime/'config.json')
+    if not config:parser.error('Start the Demo once before provisioning users')
+    access=AccessControl(runtime,config)
+    try:
+        if args.action=='user-add':
+            if not IDENTIFIER.fullmatch(args.user):parser.error('Invalid user ID')
+            from lab_client import transport_profile,authority_bytes,controller_url
+            controller_url(config)
+            ca_data=authority_bytes(config['ca_file']) if config.get('ca_file') else None
+            directory=runtime/'personas'/args.user
+            directory.mkdir(parents=True,mode=0o700,exist_ok=True)
+            workspace=Path(config.get('identity_workspace_root',runtime/'personas'))/args.user/'workspace'
+            workspace.mkdir(parents=True,mode=0o700,exist_ok=True)
+            password=access.create_user(args.user,workspace)
+            token=access.issue_token(args.user,{'jobs:read','jobs:submit','jobs:cancel'}|({'storage:manage'} if args.storage_manage else set()))
+            profile=directory/'client.json'
+            atomic_json(profile,{'username':args.user,'password':password,'token':token,**transport_profile(config,directory,ca_data)})
+            print(json.dumps({'id':args.user,'credentials':str(profile),'workspace':str(workspace),
+                              'mode':'templates','isolation':'same-uid-logical-simulation',
+                              'token_lifetime_hours':24},ensure_ascii=False,indent=2))
+        elif args.action=='project-grant':
+            access.add_member(args.project,args.user,args.role)
+            print('Project role saved:',args.project,args.user,args.role)
+        elif args.action=='project-revoke':
+            access.remove_member(args.project,args.user)
+            print('Project role revoked:',args.project,args.user)
+        elif args.action in {'user-disable','user-enable'}:
+            access.disable_user(args.user,args.action=='user-disable')
+            print('Account state saved:',args.user,args.action)
+        elif args.action=='quota':
+            changes={key:getattr(args,key) for key in ['max_running','max_queued','cpu','memory_mib','shm_mib','npu','input_storage_mib','archive_storage_mib'] if getattr(args,key) is not None}
+            access.set_quota(args.user,changes)
+            print('User quota saved:',args.user,json.dumps(changes))
+        elif args.action=='environment-grant':
+            access.grant_environment(args.user,args.environment)
+            print('Environment authorized:',args.user,args.environment)
+        else:
+            profile=Path(args.profile).resolve()
+            if not profile.is_relative_to(runtime/'personas'):
+                parser.error('Profile must be inside this Demo personas directory')
+            client=read_json(profile)
+            if not client or not client.get('token'):parser.error('Missing client token')
+            access.revoke_token(client['token'])
+            if args.action=='token-renew':
+                client['token']=access.issue_token(client['username'],{'jobs:read','jobs:submit','jobs:cancel'}|({'storage:manage'} if args.storage_manage else set()))
+                atomic_json(profile,client)
+            print('Client token', 'renewed' if args.action=='token-renew' else 'revoked')
+    except AccessError as error:
+        parser.exit(1,str(error)+'\n')
+
+
+if __name__=='__main__':main()

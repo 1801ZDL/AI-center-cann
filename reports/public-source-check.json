@@ -1,0 +1,28 @@
+{
+  "schema": "ai-center-cann-source-check/v1",
+  "recorded_at": "2026-10-30T08:30:24.110038+00:00",
+  "passed": true,
+  "python_unit_tests": 432,
+  "unit_skipped": 0,
+  "unit_seconds": 100.209,
+  "unit_log_sha256": "b05e7bc7cb45c95f48747bcc1c0c6ccb3f27d92a1eaebcda7f592e35a842542b",
+  "python": "Python 3.12.3",
+  "javascript_syntax_passed": true,
+  "command": "bash scripts/check.sh /usr/bin/python3",
+  "scope": "Current developer checkout through the central queue, CPU only. Not a fresh clone, Root install, multi-host, mixed compiler or NPU acceptance.",
+  "cpu": 2,
+  "memory_mib": 1024,
+  "npu": 0,
+  "model_invocations": 0,
+  "previous_path_python_observation": {
+    "passed": true,
+    "tests": 432,
+    "skipped": 2,
+    "seconds": 129.125,
+    "scope": "PATH-selected Python lacks pidfd; not full process-identity coverage",
+    "skipped_tests": [
+      "test_changed_process_identity_is_not_signalled",
+      "test_process_stop_uses_owned_child_identity_and_pidfd"
+    ]
+  }
+}

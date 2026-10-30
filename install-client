@@ -1,0 +1,47 @@
+#!/usr/bin/env python3
+"""Install a credential-free stdlib client into one new, user-selected directory."""
+import argparse
+import hashlib
+import json
+import os
+from pathlib import Path
+import shutil
+import sys
+import tempfile
+
+
+def main():
+    parser=argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--prefix',required=True,help='New directory; existing installations are never overwritten')
+    args=parser.parse_args()
+    root=Path(__file__).resolve().parent
+    target=Path(args.prefix).expanduser().absolute()
+    if target.exists() or target.is_symlink():parser.error('Choose a new directory; prefix already exists')
+    target.parent.mkdir(parents=True,exist_ok=True)
+    staging=Path(tempfile.mkdtemp(prefix='.ascend-lab-install-',dir=target.parent))
+    try:
+        manifest={}
+        for source,name in [('labctl','labctl'),('lab_client.py','lab_client.py'),
+                            ('io_policy.py','io_policy.py'),
+                            ('client_archive.py','client_archive.py'),
+                            ('diagnostic_case.py','diagnostic_case.py'),
+                            ('mcp_bridge.py','mcp_bridge.py'),('CLIENT.md','CLIENT.md'),('WORKFLOWS.md','WORKFLOWS.md'),
+                            ('WORKSPACE.md','WORKSPACE.md'),('STORAGE.md','STORAGE.md')]:
+            content=(root/source).read_bytes()
+            path=staging/name;path.write_bytes(content)
+            path.chmod(0o555 if name=='labctl' else 0o444)
+            manifest[name]=hashlib.sha256(content).hexdigest()
+        (staging/'manifest.json').write_text(json.dumps({'version':'0.32-client','sha256':manifest},indent=2)+'\n')
+        (staging/'manifest.json').chmod(0o444)
+        # Prevent implicit local-admin mode in the distributed client.
+        (staging/'client-only').write_text('Use a personal --profile; no server lifecycle operations.\n')
+        (staging/'client-only').chmod(0o444)
+        staging.chmod(0o755)
+        staging.rename(target)
+    finally:
+        if staging.exists():shutil.rmtree(staging)
+    print('Client installed:',target)
+    print('No credentials, model configuration, system packages, or service configuration were installed.')
+
+
+if __name__=='__main__':main()

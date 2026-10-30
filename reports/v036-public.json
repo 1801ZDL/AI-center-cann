@@ -1,0 +1,52 @@
+{
+  "version": "0.36-candidate",
+  "verified_at": "2026-10-30T08:10:31.686698+00:00",
+  "milestone_passed": true,
+  "overall_goal_complete": false,
+  "production_ready": false,
+  "scope": "Administrator-enabled long workflow ceiling and node-declared deadline admission before allocation; actual same queued job resumes after node limit change and completes one protected short IR. Native compile/cache/MCP/quota/DAG/spool/restore regression retained; not a two-hour elapsed test, full current-provider compiler build, device or physical multi-host acceptance.",
+  "unit_tests": 432,
+  "unit_skipped": 0,
+  "unit_seconds": 110.011,
+  "unit_python": "3.12.3",
+  "unit_log_sha256": "6f290da90dc3705ecf17493a872ecc144fa9f134006af9febd9904c5eebc0fe6",
+  "unit_scope": "Full432 Python checks including default administrator ceiling, finite typed bounds, reported node limit, legacy refusal for long deadlines and preservation of existing attempts. Installed declared7200-second short IR separately checked; not a two-hour elapsed test.",
+  "root_install_checks": 54,
+  "server_release": "fec682e70c3272f31f8de06be136f19efa0ced727bfaf13ee11584af4511ca1f",
+  "server_archive_sha256": "3277b6f89195d2a65525672102202939abed54c8bf845a239f9c6c3f6ba56b74",
+  "current_protected_runtime": {
+    "container_entry.py": "19b20fd495cd88c68a22dc897afa6c470ec3562b20c5fccaebe6bc6742215a9a",
+    "artifact_export.py": "7206a6895fab6315160cd553a768cca4e3454e733bca185c91cfbca6a4f6cf4b",
+    "environment_probe.py": "0b0e21c1e05b8be5d436718283255e6c88bf447304cc3aa6dd62e37811fbd007",
+    "environment_contract.py": "45789813c6922b41724f695158deda79ccfdfb865ef3d58251e9b1472206a4c8",
+    "workflow_spec.py": "3c1403328db9e4a3ab228056559250127fd3ff985fe009f1f4646045257dfb6a",
+    "device_qualification.py": "227381a9a9a7a28396dedf1a62f630cdbb41c1c2fcb0196610ff66dbd37f7809"
+  },
+  "large_compiler_build_executed_this_turn": false,
+  "domain_agent_installed_or_accepted_this_turn": false,
+  "npu_compute_accepted": false,
+  "remaining": [
+    "Large compiler source build under current UID-quota provider; cache retention automation and new-disk migration. Managed Triton JIT and small CMake/ccache reuse accepted separately",
+    "Actual full compiler/package to device accuracy/performance/simulation pipeline and20-person mixed workloads; atomic multi-job graph creation and explicitly authorized cross-owner publication",
+    "New-owner provisioning and Node workspace/cache quota changes; control database/audit growth hard boundary; actual host power-loss and disk failure acceptance. Existing central owner offline resize accepted separately",
+    "Actual systemd PID1, two physical hosts, full old-controller fencing and organization identity",
+    "Non-root NPU numbering/isolation/ACL/runtime/numerical/performance/simulation; full external LLVM/NPU-IR build and domain-agent acceptance; PUBLIC-001 deferred"
+  ],
+  "schema": "ai-center-cann-public-validation/v1",
+  "source": "Curated historical v0.36 local evidence; raw private reports are not published",
+  "public_source_changes_since_acceptance": "Documentation, publication tooling and unexecuted mixed-workload fixtures; protected runtime hashes unchanged",
+  "reproduced_by_public_ci": false,
+  "raw_evidence_in_repository": false,
+  "physical_hosts_tested": 1,
+  "real_host_accounts_created": false,
+  "prior_full_build": {
+    "scope": "Prior v022/v025 full Triton source build. Current provider verified by protected managed native Triton JIT/ELF and two-TU CMake/ccache, not a new full compiler source build or device run.",
+    "wheel_record_files": 5416,
+    "current_runtime_full_build_reexecuted": false
+  },
+  "important_failures": [
+    "A 90-second native workflow timed out; TLS/cleanup observation also timed out; root cause not established",
+    "A fixture misclassified needs_attention as terminal; observation fixed to retain the original attempt",
+    "Non-root NPU compute acceptance remains missing; earlier device/runtime failures do not establish numerical success"
+  ]
+}
