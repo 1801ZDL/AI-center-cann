@@ -336,22 +336,40 @@ class JobStore:
                 'cwd': str(cwd), 'argv': argv, 'resources': {'cpu': cpu, 'memory_mib': memory, 'shm_mib': shm, 'npu': npu},
                 'timeout_seconds': timeout, 'idempotency_key': key, 'output': output}
 
-    def submit(self, request, principal=None):
+    @contextmanager
+    def submission_transaction(self, staged=False):
+        if staged:
+            with self.nodes.handoff.transaction() as pair:yield pair
+        else:
+            with self.transaction() as db:yield db,None
+
+    def submit(self, request, principal=None, *, _staged_probe=None):
         from unit_start import admission_reason
         reason=admission_reason(self.runtime)
         if reason:raise JobError(reason,503)
         principal = principal or self.access.local
         principal.require('jobs:submit')
+        if _staged_probe is not None:
+            from owner_device_probe import job_request,load
+            with self.connect() as connection:original=load(connection,_staged_probe)
+            if request!=job_request(original['request']) or principal.id!=original['request']['owner']:
+                raise JobError('Staged probes require the original fixed administrator request',403)
         spec = self.normalize(request, principal)
+        if _staged_probe is not None:spec['_staged_device_probe']=_staged_probe
         fingerprint = hashlib.sha256(json.dumps({k: v for k, v in spec.items() if k != 'idempotency_key'}, sort_keys=True).encode()).hexdigest()
-        with self.transaction() as db:
+        with self.submission_transaction(_staged_probe is not None) as (db,identities):
             reason=admission_reason(self.runtime)
             if reason:raise JobError(reason,503)
+            if _staged_probe is not None:
+                from owner_device_probe import validate
+                validate(self,_staged_probe,db,identities)
             existing = db.execute('SELECT data,fingerprint FROM jobs WHERE owner=? AND idem_key=?', (principal.id, spec['idempotency_key'])).fetchone()
             if existing:
                 if existing[1] != fingerprint:
                     raise JobError('该幂等键已经用于不同的任务。', 409)
-                return public(json.loads(existing[0])), True
+                existing_job=json.loads(existing[0])
+                if _staged_probe is not None:validate(self,_staged_probe,db,identities,existing_job)
+                return public(existing_job), True
             if spec.get('input'):
                 self.lifecycle.available('input',spec['input']['id'],db)
             self.dependencies.available(spec,db)
@@ -362,7 +380,7 @@ class JobStore:
                 raise JobError('当前用户等待队列已满。', 409)
             job_id = 'job-' + uuid.uuid4().hex[:12]
             from io_policy import artifacts,MIB,META
-            artifact_limits=artifacts(spec.get('parameters',{}).get('artifacts'))
+            artifact_limits={'file_mib':1,'total_mib':2} if _staged_probe is not None else artifacts(spec.get('parameters',{}).get('artifacts'))
             self.storage.reserve(db,'archive',job_id,principal,artifact_limits['total_mib']*MIB+META)
             directory = self.directory(job_id,owner=principal.id)
             source = None
@@ -397,6 +415,9 @@ class JobStore:
                 job['_dependency_base_input']=job['parameters']['input_id']
                 job['dependency_state']={'status':'waiting','reason':'等待上游成功及阶段输入封存；尚未预留计算资源'}
                 job['reason']=job['dependency_state']['reason']
+            if _staged_probe is not None:
+                from owner_device_probe import bind_job
+                bind_job(self,_staged_probe,job,db,identities)
             atomic_json(directory / 'request.json', public(job))
             db.execute('INSERT INTO jobs VALUES (?,?,?,?,?,?)', (job_id, principal.id, spec['idempotency_key'], fingerprint, job['state'], json.dumps(job, ensure_ascii=False)))
             return public(job), False
@@ -490,11 +511,13 @@ class JobStore:
                 data = f.read(65536)
             return {'text': data.decode(errors='replace'), 'bytes': size, 'truncated': size > 65536}
 
-    def dispatch_permission(self,job,active):
+    def dispatch_permission(self,job,active,db=None,identities=None):
         from unit_start import admission_reason
         reason=admission_reason(self.runtime)
         if reason:return reason
-        principal=self.access.user(job['owner'])
+        from owner_device_probe import dispatch_principal
+        try:principal=dispatch_principal(self,job,db,identities)
+        except (JobError,ValueError,KeyError,TypeError,sqlite3.Error):return '管理员预激活探针原授权已失效；保留原任务等待明确协调'
         if not principal or self.access.project_role(principal,job.get('project','personal:'+job['owner'])) not in {'editor','manager'}:
             return '等待有效账号和项目提交权限；不会启动已撤权的作业'
         if '*' not in principal.environments and job['environment'] not in principal.environments:return '执行环境授权已撤销；不会启动作业'

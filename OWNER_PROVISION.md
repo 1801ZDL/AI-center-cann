@@ -6,7 +6,7 @@
 
 这一步面向**已安装中央、已登记的基线Node和已认证环境**。管理员仍须先准备Linux UID/GID、专用中央存储盘、Node原生work/cache盘、个人parent和同盘Root spool；首个Node的登记/探针身份也须先按SERVER.md准备。协调器不创建OS账号、不格式化系统盘、不复制模型配置、不持有远端Root登录凭据。个人Agent只调用任务API/MCP，不能调用这个Root管理入口。
 
-中央和Node安装包须包含匹配的owner_provision.py。现有运行中央须已加载owner-provision-v1；旧进程会被拒绝，应先排空、按普通升级流程重载。所选Node须已登记并启用，work/cache分别登记为ext4-userquota；新owner/UID不能已有映射。当前协调入口只接受CPU额度，npu必须为0；NPU预激活资格尚未接通。
+中央和Node安装包须包含匹配的owner_provision.py。现有运行中央须已加载owner-provision-v1；旧进程会被拒绝，应先排空、按普通升级流程重载。所选Node须已登记并启用，work/cache分别登记为ext4-userquota；新owner/UID不能已有映射。CPU请求可完成原流程；NPU额度1..2要求每个选定Node已显式登记足够设备及npu_access_probe模板。协调器不自动运行设备探针：绑定/ACK/健康心跳后保持state=nodes、身份禁用且无凭据，由管理员按NPU.md提交固定预激活探针，所需资格通过后重放原请求。设备文件访问资格不等于ACL/数值验收。
 
 Root所有、0600的请求示例；operation_id生成一次后随原请求重试，Node ID和路径按实际替换：
 
@@ -61,7 +61,7 @@ Node再以同一request加--complete完成绑定/ACK，按其既有服务管理�
 
 systemd模式须显式unit_dir且中央管理unit**初始已停止**；协调器使用原unit刷新、manager加载与一次启动计划，不直接执行任意systemctl命令。该组合尚未通过真实PID1验收，不能把进程模式的成功当成systemd或远程推广已完成；依赖基线Node新鲜观察的启动门禁仍保留。
 
-当前627项检查及JS语法通过，73个非文档生产源码与最终Root包一致。同机自有隔离Root验证44个连续中断恢复点、初始中止、第二个新用户一次安装CLI开户和实际个人UID认证/同伴读取拒绝；等待期间旧用户真实IR任务成功。新用户沿交付凭据在第二Node的执行UID完成单attempt IR。七个文件盘的loop/角色/卷已释放，后备文件作为私有证据保留；未创建宿主账号或修改旧容器、驱动及全局服务。完整目标仍未完成。
+当前645项检查及JS语法通过，74个非文档生产源码与最终Root包一致；新增17项预激活固定探针协议检查使用合成设备观测，不是NPU硬件正向。同机自有隔离Root验证44个连续中断恢复点、初始中止、第二个新用户一次安装CLI开户和实际个人UID认证/同伴读取拒绝；等待期间旧用户真实IR任务成功。新用户沿交付凭据在第二Node的执行UID完成单attempt IR。七个文件盘的loop/角色/卷已释放，后备文件作为私有证据保留；未创建宿主账号或修改旧容器、驱动及全局服务。完整目标仍未完成。
 
 ## 最后激活与本地个人目录的一次请求
 

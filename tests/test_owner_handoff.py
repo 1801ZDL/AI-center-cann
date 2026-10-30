@@ -27,7 +27,7 @@ class OwnerHandoffTests(unittest.TestCase):
                                      'scheduler':{'workspace_root':str(self.root)}})
         for owner in ['alice','bob']:(self.root/owner).mkdir(mode=0o700)
         self.jobs.access.create_user('alice',self.root/'alice',environments=['worker-python'])
-        self.stage=self.jobs.access.stage_user('bob',self.root/'bob',quota={'input_storage_mib':4,'archive_storage_mib':getattr(self,'stage_archive_mib',4)})
+        self.stage=self.jobs.access.stage_user('bob',self.root/'bob',quota={'npu':getattr(self,'stage_npu',0),'input_storage_mib':4,'archive_storage_mib':getattr(self,'stage_archive_mib',4)})
         profile={'name':'owner_node','physical_id':self.jobs.backend.physical_id,'users':self.data.before['users'],
             'workspace':self.data.before['workspace'],'persistent_cache':self.data.before['persistent_cache'],
             'image':'sha256:'+'a'*64,'templates':['cpu_demo'],

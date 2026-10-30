@@ -1,6 +1,20 @@
 # 实施进度
 
 
+## 管理员固定预激活NPU访问资格（2026-10-31）
+
+新增owner_device_probe.py与本地服务管理员CLI workerctl owner-device-probe --spec。原disabled/token0阶段不能提交用户任务，但NPU激活要求先有本用户设备访问资格；现在为明确stage/原ready Node计划/物理卡授予一次固定npu_access_probe。它仍经过正常CPU/RAM/NPU/工作区/暂存/归档账本，固定1CPU/单卡/零SHM/120秒/1MiB文件与2MiB总产物；不临时启用身份，不生成凭据或执行用户命令。中央总协调可接受NPU额度，等待管理员显式探针，尚未自动编排探针或验收NPU一键流程。
+
+授权冻结stage、profile、单调身份修订、Node原profile/ready交接、中央storage和受保护host/runtime context。提交/领取/启动许可/结果授予/最后激活均复核，改后恢复原值也失效；claim/start/complete按jobs→identities顺序持有身份写保留直到jobs提交。普通node-device-probe修复空身份回落成服务管理员的风险。原操作重试仍同一job，已提交/完成回执仅历史，不自动重试；新验收须明确新operation_id。授权历史4096条应用上限，包含记录后拒不兼容降级，整个控制盘/DB硬边界仍未完成。
+
+**最终645项/119.488秒/无跳过及JS语法通过；74非文档源码与最终Root及全量快照一致。** 17项新增协议检查覆盖正/负资格、禁用用户无凭据、成功后再撤权阻激活、领取/启动/结果的权限变化、上下文变化、同operation恢复/冲突、固定模板限制、旧入口身份拒绝和身份锁。正向使用合成可信Node观测/回执，不是硬件计算。Root job-3e5d81b12916实际安装CLI拒CPU额度探针及普通入口缺失active身份；原同机真实Svc/Node/个人UID开户、第二用户单命令、配置隔离、第二Node IR及44个中断点仍通过，七个自有文件盘loop/helper/卷释放，后备文件保留私有。
+
+最终全量job-1853b8ddfc01，针对性job-8492c1623ea3。早先642/121.438s及Root job-8423ff2d0b34在普通CLI修复前，保留其冻结范围。首次针对性job-4dc7893ca4c6有6个错误：fixture暂存合同不完整、两个排队任务超过fixture归档额度，以及参数异常类型；修正合同/fixture预算及统一参数错误后通过，没有放松资源门禁。一次首提交请求把资源字段错误嵌套被HTTP400拒绝，未创建job，已修正。完整证据仅本地evidence/owner-device-probe-validation.json，公开摘要reports/public-source-check.json.owner_device_probe。
+
+本轮0 NPU kernel/模型调用、未改全局设备/驱动/账号或既有zdl。已有EBUSY没有新环境事实，不重跑相同探针。尚待：NPU探针显式选卡自动编排和真机设备/ACL/映射/数值/性能/仿真、实际PID1/两OS用户/两物理机、远程个人交付、一般资源变更、控制DB硬边界、组织身份/msagent。PUBLIC-001继续延期，整体目标未完成。
+
+
+
 ## 中央资源开户总协调与个人隔离（2026-10-31）
 
 新增owner_provision.py及安装Root CLI owner-provision/owner-provision-node。固定原请求串联中央credential-free stage、原生GID配额、实际服务进程组加载、保护Node请求、原提案独立批准、Node绑定/认证ACK/健康心跳、最后激活和个人UID交付。初始重复GID/映射UID、错误Node/中央包在副作用前拒绝；批准使用原profile CAS，提交/claim在数据库事务内重查准入门。

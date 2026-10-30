@@ -23,7 +23,8 @@ from deployment import DeployError
 
 class OwnerActivationTests(unittest.TestCase):
     def setUp(self):
-        self.fixture=builder.OwnerHandoffTests();self.fixture.stage_archive_mib=16;self.fixture.stage_hard_mib=64
+        self.fixture=builder.OwnerHandoffTests();self.fixture.stage_archive_mib=getattr(self,'stage_archive_mib',16);self.fixture.stage_hard_mib=64
+        self.fixture.stage_npu=getattr(self,'stage_npu',0)
         self.fixture.setUp();self.jobs=self.fixture.jobs;self.root=self.fixture.root
         self.jobs.access.config.update(host='127.0.0.1',port=18765)
         with self.jobs.transaction() as db:

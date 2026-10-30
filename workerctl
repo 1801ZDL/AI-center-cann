@@ -35,6 +35,7 @@ def main():
     command.add_argument('--output',required=True);command.add_argument('--reauthorize',action='store_true')
     command=sub.add_parser('owner-expand-apply');command.add_argument('--plan',required=True)
     command=sub.add_parser('owner-status');command.add_argument('node_id')
+    command=sub.add_parser('owner-device-probe');command.add_argument('--spec',required=True)
     command=sub.add_parser('node-probe');command.add_argument('node_id');command.add_argument('--user')
     command.add_argument('--memory-mib',type=int,help='Explicit probe memory reservation for large finite tmpfs slots; ordinary quotas still apply')
     command.add_argument('--tool',action='append',default=[]);command.add_argument('--file',action='append',default=[])
@@ -70,6 +71,13 @@ def main():
         command=sub.add_parser(action);command.add_argument('--config',required=True)
     args=parser.parse_args()
     if args.action=='identity':print(physical_identity());return
+    if args.action=='owner-device-probe':
+        from deployment import regular_json
+        from owner_device_probe import authorize
+        runtime=Path(args.controller_state).resolve();jobs=JobStore(runtime,read_json(runtime/'config.json'))
+        path=Path(args.spec)
+        if path.lstat().st_uid!=os.geteuid():parser.error('Staged probe input must belong to this service administrator identity')
+        print(json.dumps(authorize(jobs,regular_json(path,max_bytes=65536,private=True)),ensure_ascii=False,indent=2));return
     if args.action in {'owner-expand-plan','owner-expand-apply'}:
         from deployment import regular_json
         from owner_node_grant import Expansion
@@ -101,6 +109,9 @@ def main():
         runtime=Path(args.controller_state).resolve();jobs=JobStore(runtime,read_json(runtime/'config.json'))
         node=jobs.nodes.node(args.node_id);users=node['profile']['users'];owner=args.user or (next(iter(users)) if len(users)==1 else None)
         if owner not in users:parser.error('Choose a mapped --user')
+        probe_user=jobs.access.user(owner) if args.action=='node-device-probe' else None
+        if args.action=='node-device-probe' and probe_user is None:
+            parser.error('Ordinary device probes require an active mapped identity; use owner-device-probe for a staged owner')
         policy=node['profile'].get('npu')
         if not policy:parser.error('Node has no administrator NPU contract')
         if args.action=='node-device-status':
@@ -109,7 +120,7 @@ def main():
         if args.device not in policy['device_ids'] or PROBE not in node['profile']['templates']:
             parser.error('Explicitly register the selected device and fixed npu_access_probe template first')
         job,_=jobs.submit({'name':'固定设备访问验收','environment':'worker-python','template':PROBE,
-              'parameters':{'node_id':args.node_id,'device_id':args.device,'memory_mib':args.memory_mib}},jobs.access.user(owner))
+              'parameters':{'node_id':args.node_id,'device_id':args.device,'memory_mib':args.memory_mib}},probe_user)
         print(json.dumps({'job_id':job['id'],'node_id':args.node_id,'owner':owner,'npu':1,'device_id':args.device}));return
     if args.action in {'inventory-holds','inventory-release'}:
         runtime=Path(args.controller_state).resolve();jobs=JobStore(runtime,read_json(runtime/'config.json'))

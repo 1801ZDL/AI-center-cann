@@ -80,7 +80,7 @@ class Activation:
         if not identity_alive(ready):raise JobError('Controller changed while validating activation',409)
         return groups
 
-    def readiness(self,spec,db,profile):
+    def readiness(self,spec,db,profile,*,device_access=True):
         """Current, authenticated observations, never just historical online_seen."""
         from environment_contract import verify_config,fingerprint
         from nodes import REQUIRED_CAPABILITIES
@@ -137,13 +137,15 @@ class Activation:
                     raise JobError('Required owner work/cache hard-quota slots are unavailable',409)
             if min(p['policy']['memory_mib'],domain['policy']['memory_mib'])<384 or not set(p['policy']['cpu_ids'])&set(domain['policy']['cpu_ids']):
                 raise JobError('Required Node cannot fit a minimum managed task and execution overhead',409)
-            if quota['npu']:
+            if quota['npu'] and device_access:
                 from device_qualification import decision
                 from datetime import datetime
                 npu=report.get('npu',{})
                 try:fresh=0<=time.time()-datetime.fromisoformat(npu['sampled_at']).timestamp()<=15
                 except (ValueError,KeyError,TypeError):fresh=False
-                devices=[d for d in npu.get('devices',[]) if d.get('health')=='OK' and decision(node,spec['owner'],d['id'])['status']=='verified']
+                from owner_device_probe import activation_allowed
+                devices=[d for d in npu.get('devices',[]) if d.get('health')=='OK' and decision(node,spec['owner'],d['id'])['status']=='verified'
+                         and activation_allowed(self.jobs,node,spec['owner'],d['id'],db)]
                 if not fresh or npu.get('status')!='ok' or len(devices)<quota['npu']:
                     raise JobError('NPU activation requires current per-owner device access qualification on each required Node',409)
             result.append({'node_id':node['id'],'plan_id':target['plan_id'],'ready_ack_id':record['ready_ack']['ack_id'],

@@ -57,9 +57,9 @@ def request(value):
         or type(item['inodes']) is not int or not 128<=item['inodes']<=10**7):raise DeployError('Invalid finite central owner storage request')
     if sum(profile['quota'][k] for k in ['input_storage_mib','archive_storage_mib'])*1024**2+65536>item['bytes']:
         raise DeployError('Central native storage cannot cover the owner budgets and metadata')
-    if (profile['quota']['npu'] or profile['quota']['memory_mib']<256 or profile['quota']['archive_storage_mib']<10
+    if (profile['quota']['npu']>2 or profile['quota']['memory_mib']<256 or profile['quota']['archive_storage_mib']<10
         or any(profile['quota'][k]<1 for k in ['cpu','max_running','max_queued','input_storage_mib'])):
-        raise DeployError('This onboarding requires runnable CPU quotas; NPU pre-activation qualification remains unavailable')
+        raise DeployError('This onboarding requires runnable managed quotas and at most two NPU slots per owner')
     service=value['service']
     if (not isinstance(service,dict) or set(service)!={'mode','unit_dir'} or service['mode'] not in {'process','systemd'}
         or service['unit_dir'] is not None and not _path(service['unit_dir'])
@@ -266,6 +266,10 @@ def _nodes(state,spec):
             row=db.execute('SELECT profile,disabled FROM worker_nodes WHERE id=?',(item['node_id'],)).fetchone()
             if not row or row[1]:raise DeployError('Every requested Node must already be registered and enabled')
             profile=json.loads(row[0])
+            if spec['quota'].get('npu',0):
+                if (len(profile.get('npu',{}).get('device_ids',[]))<spec['quota']['npu']
+                    or 'npu_access_probe' not in profile['templates']):
+                    raise DeployError('NPU onboarding requires explicitly enrolled devices and the fixed access probe on each selected Node')
             if spec['owner'] in profile['users'] or any(x['uid']==item['uid'] for x in profile['users'].values()):
                 raise DeployError('Requested owner/UID is already mapped on a selected Node')
             for role,key in [('workspace','workspace'),('cache','persistent_cache')]:

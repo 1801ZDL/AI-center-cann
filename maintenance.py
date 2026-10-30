@@ -320,6 +320,12 @@ def restore(prefix,archive_path,new_state,max_bytes=10*1024**3,payload_config=No
 
 def require_features(state,role,manifest):
     config=read_json(Path(state)/'config.json') or {}
+    if role=='controller' and 'owner_device_probe.py' not in manifest.get('files',{}):
+        path=Path(state)/'jobs.sqlite3'
+        if path.exists():
+            with sqlite3.connect(path.as_uri()+'?mode=ro',uri=True) as db:
+                if db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='owner_device_probes'").fetchone() and db.execute('SELECT 1 FROM owner_device_probes LIMIT 1').fetchone():
+                    raise DeployError('Staged device probe authorizations require compatible admission support; refusing downgrade')
     if role=='controller' and 'owner_provision.py' not in manifest.get('files',{}) and (Path(state)/'owner-provision').exists():
         raise DeployError('Central owner participant state requires compatible onboarding support; refusing downgrade')
     if role=='node' and 'node_owner_provision.py' not in manifest.get('files',{}):

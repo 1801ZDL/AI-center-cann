@@ -68,9 +68,14 @@ class OwnerProvisionTests(unittest.TestCase):
         for change in [{'bytes':1024**2},{'gid':0},{'gid':True},{'inodes':False}]:
             value=spec();value['storage'].update(change)
             with self.subTest(change=change),self.assertRaises(ValueError):master.request(value)
-        for change in [{'npu':1},{'memory_mib':128},{'max_running':0},{'archive_storage_mib':1}]:
+        for change in [{'npu':3},{'memory_mib':128},{'max_running':0},{'archive_storage_mib':1}]:
             value=spec();value['quota'].update(change)
             with self.subTest(change=change),self.assertRaises(ValueError):master.request(value)
+
+    def test_npu_quota_is_explicit_but_never_implicitly_runs_a_probe(self):
+        value=spec();value['quota']['npu']=1
+        self.assertEqual(master.request(value)['quota']['npu'],1)
+        self.assertNotIn('probe',master.request(value))
 
     def test_required_nodes_uid_paths_and_delivery_cannot_be_implicit(self):
         for nodes in [[],spec()['nodes']*2,[{**spec()['nodes'][0],'node_id':'wrong'}]]:

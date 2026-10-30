@@ -1,5 +1,39 @@
 # NPU 接入与实机验收
 
+
+## 待预配用户的管理员固定探针（2026-10-31）
+
+NPU用户激活要求本用户在所需Node/卡上的有效访问资格；此前禁用且无凭据的stage不能提交探针，形成了预激活死锁。新增**仅中央本地服务管理员**的`workerctl owner-device-probe --spec`，不向HTTP/MCP开放管理操作，也不临时启用账号。它为原stage授予一次固定npu_access_probe任务，仍使用中央队列、本人额度、物理卡账本、Node工作盘、有限暂存和受保护回执。
+
+前置：中央已加载staged-owner-device-probe-v1；对应Node已显式登记NPU设备合同及npu_access_probe模板，原用户绑定/ACK完成并已观察到健康心跳；中央原生存储组、实际服务附加组、认证环境、工作/缓存/暂存和预算都须就绪。npu额度至少1，memory_mib不能超过stage额度。此入口不改驱动、权限、可见编号、Node模板或个人登录状态，不自动探测/重试。
+
+服务UID所有0600请求示例：
+
+```json
+{
+  "operation_id":"0123456789abcdef0123456789abcdef",
+  "owner":"researcher_a",
+  "stage_id":"替换为中央64位stage摘要",
+  "node_id":"worker-0123456789ab",
+  "plan_id":"替换为原Node提案64位摘要",
+  "device_id":0,
+  "memory_mib":256
+}
+```
+
+```bash
+/opt/ascend-lab-controller/current/servicectl admin \
+  --prefix /opt/ascend-lab-controller -- \
+  workerctl owner-device-probe --spec /var/lib/ascend-lab-controller/researcher-a-probe.json
+```
+
+请求只含明确身份/计划/卡/内存，不接受命令、输入、挂载、依赖或自选项目。固定申请1CPU、单卡、零SHM、120秒、单文件1MiB/总产物2MiB；正常归档元数据预留另计，不能因为是管理探针绕过本人存储预算。用户保持disabled/password不可用/token数0。返回中央job ID，管理员沿原任务观察/取消，不因观察超时重提。原node-device-probe只接受有效启用身份；待预配用户必须走本入口，不能把空身份回落成服务管理员。
+
+同operation_id重试只恢复原授权及同一job；完成或已提交请求的重放为历史，不重新上卡。请求改变拒绝。资格过期或原授权失效后要重新验证，须显式新operation_id；旧任务与结果保留；失效且仍排队的原任务应由管理员明确取消，以释放其等待名额和按留存规则处理归档额度。对stage执行user-disable可使单调身份修订变化，从而撤销原探针授权；恢复验证须明确新operation_id。授权历史上限4096条，达到上限要求明确留存处理，不自动清空审计。原stage/profile、单调身份修订、Node全profile/原ready handoff、中央storage以及受保护host/runtime访问context全部冻结。领取、启动许可和资格结果提交时复核，身份改后恢复原值也失效。启动后失效不凭此释放卡；仍须正常终止/清退。成功结果不能跨失效授权授予资格；激活前还会再次验证该资格来自仍有效的原stage探针。
+
+此检查范围仍是**设备文件访问**。即使通过，也不证明ACL初始化、运行时逻辑/物理编号、数值、性能或仿真通过。当前协议正向使用合成Node观测与受保护格式回执；真实安装CLI另有CPU额度拒绝路径，尚无本轮新增NPU硬件正向。现有共享主机的EBUSY没有新环境事实，不重复上卡、不改旧容器/驱动。
+
+
 2026-10-30：旧协作式宿主复查通道支持长任务目录。宿主与容器客户端通过私有目录 FD 的 `/proc/self/fd/<fd>/npu-admission.sock` 寻址，实际 socket 仍位于该任务目录、权限 0600，并验证对端 UID、执行身份、token 及一次性回执；不创建公共 `/tmp` 端点。清理绑定原目录 FD 和 socket 身份，保留后来替换目录中的对象。真实 260 字节宿主路径的跨容器握手使用合成设备观测，只验证通信/身份/清理，不是硬件准入或 NPU 计算验收。新修复的检查范围见 PROGRESS.md，历史 Root 安装验收不自动覆盖此改动。
 
 ## 设备文件访问资格与调度

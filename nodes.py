@@ -338,9 +338,9 @@ class NodeRegistry:
 
     def controller_uid(self):return os.geteuid()
 
-    def placement(self,job,node,domain,active):
+    def placement(self,job,node,domain,active,db=None,identities=None):
         profile=node['profile'];node_id=node['id']
-        reason=self.jobs.dispatch_permission(job,active) or self.jobs.dependencies.reason(job)
+        reason=self.jobs.dispatch_permission(job,active,db,identities) or self.jobs.dependencies.reason(job)
         identity_reason=('用户任务不能使用同机中央服务UID，需管理员重新映射'
             if profile['physical_id']==self.jobs.backend.physical_id and profile['users'][job['owner']]['uid']==self.controller_uid() else None)
         inventory_reason=self.jobs.inventory.reason(profile['physical_id'])
@@ -467,7 +467,7 @@ class NodeRegistry:
         if (not isinstance(excluded,list) or len(excluded)>MAX_SLOTS
             or any(not isinstance(item,str) or not re.fullmatch(r'attempt-[0-9a-f]{32}',item) for item in excluded)
             or len(excluded)!=len(set(excluded))):raise JobError('Invalid active attempt exclusions')
-        with self.jobs.transaction() as db:
+        with self.handoff.transaction() as (db,identities):
             reason=admission_reason(self.jobs.runtime)
             if reason:return {'grant':None,'reason':reason}
             node=self.node(node_id,db);profile=node['profile']
@@ -490,14 +490,14 @@ class NodeRegistry:
             for job in queued:
                 if job['owner'] not in profile['users'] or job.get('template') not in profile['templates']:continue
                 from queue_policy import protected,note_wait,WAIT_REASON
-                placement=self.placement(job,node,domain,active)
+                placement=self.placement(job,node,domain,active,db,identities)
                 reason=placement['reason'];wanted=job['resources']
                 if reason:
-                    idle=self.placement(job,node,domain,[])
+                    idle=self.placement(job,node,domain,[],db,identities)
                     note_wait(self.jobs,job,node_id,domain,profile.get('policy_revision',1),db,
-                              not idle['reason'] and not self.jobs.dispatch_permission(job,active))
+                              not idle['reason'] and not self.jobs.dispatch_permission(job,active,db,identities))
                 else:
-                    guard=protected(self.jobs,rows,profile['physical_id'],db)
+                    guard=protected(self.jobs,rows,profile['physical_id'],db,identities)
                     if guard and guard['id']!=job['id']:reason=WAIT_REASON
                 if reason:
                     job['reason']=reason;self.jobs.write(db,job);continue
@@ -547,7 +547,7 @@ class NodeRegistry:
         return job
 
     def authorize_start(self,node_id,body):
-        with self.jobs.transaction() as db:
+        with self.handoff.transaction() as (db,identities):
             job=self._owned(node_id,body,db)
             if job.get('_start_authorized'):
                 return {'start_permitted':False,'already_authorized':True,'cancel':bool(job.get('_cancel_requested'))}
@@ -557,7 +557,7 @@ class NodeRegistry:
             if inventory_reason:
                 job['reason']=inventory_reason;job['_worker_seen']=time.time();self.jobs.write(db,job)
                 return {'start_permitted':False,'already_authorized':False,'wait':True,'reason':inventory_reason}
-            reason=self.jobs.dispatch_permission(job,[j for j in self.jobs.all(db) if j['state'] in ACTIVE and j['id']!=job['id']])
+            reason=self.jobs.dispatch_permission(job,[j for j in self.jobs.all(db) if j['state'] in ACTIVE and j['id']!=job['id']],db,identities)
             if reason:return {'start_permitted':False,'already_authorized':False,'reason':reason}
             job['_start_authorized']=True;job['_worker_seen']=time.time();self.jobs.write(db,job)
             return {'start_permitted':True,'already_authorized':False}
@@ -631,7 +631,7 @@ class NodeRegistry:
             return {'size':size+len(data),'reused':False}
 
     def complete(self,node_id,body):
-        with self.jobs.transaction() as db:
+        with self.handoff.transaction() as (db,identities):
             job=self._owned(node_id,body,db)
             if job['state'] in TERMINAL:return {'accepted':True,'state':job['state'],'reused':True,'artifact_receipt':job.get('_artifact_receipt')}
             result=body.get('result',{})
@@ -673,7 +673,12 @@ class NodeRegistry:
             from workflow_spec import WORKFLOWS
             if job.get('template') in WORKFLOWS:
                 job['workflow_result']=self.jobs.results.record(job,result,db)
-            qualified=self.qualifications.observe(self.node(node_id,db),job,result,db)
+            staged_valid=True
+            if job.get('_staged_device_probe'):
+                from owner_device_probe import validate
+                try:validate(self.jobs,job['_staged_device_probe'],db,identities,job)
+                except (JobError,ValueError,KeyError,TypeError):staged_valid=False
+            qualified=self.qualifications.observe(self.node(node_id,db),job,result,db) if staged_valid else None
             if job.get('template')=='npu_access_probe' and result['status']=='succeeded' and not qualified:
                 result.update(status='failed',execution_status='succeeded',failure_stage='qualification_evidence',
                               reason='Fixed device probe lacks valid protected access evidence; no qualification was granted')

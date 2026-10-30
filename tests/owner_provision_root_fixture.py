@@ -128,6 +128,22 @@ print(json.dumps({'old_owner_real_ir_succeeded_while_waiting':True}))
     prepared=json.loads(prepared_cli.stdout);assert prepared['state']=='awaiting_approval' and prepared['proposal_id']
     for boundary in ['proposal','approval','approved','local_node','finish_intent']:kill(boundary,local_nodes=True)
     assert read_json(session.state/'service-process.json')['pid']==pid
+    # Installed administrator entry exists, but CPU-only staged quotas cannot
+    # be used to acquire a device or issue a credential.
+    staged_probe=session.state/'staged-probe-spec.json'
+    original_master=read_json(Path(session.prefix)/master.JOURNAL)
+    atomic_json(staged_probe,{'operation_id':uuid.uuid4().hex,'owner':'new_owner','stage_id':session.stage_id,
+        'node_id':session.node_id,'plan_id':original_master['proposals'][session.node_id],'device_id':0,'memory_mib':256})
+    os.chown(staged_probe,23820,23820)
+    refused_probe=subprocess.run(['/usr/bin/python3','-I','-B',session.prefix+'/current/servicectl','admin','--prefix',session.prefix,
+        '--','workerctl','owner-device-probe','--spec',str(staged_probe)],capture_output=True,text=True,timeout=30)
+    assert refused_probe.returncode and 'staged quotas' in refused_probe.stderr
+    ordinary_probe=subprocess.run(['/usr/bin/python3','-I','-B',session.prefix+'/current/servicectl','admin','--prefix',session.prefix,
+        '--','workerctl','node-device-probe',session.node_id,'--user','new_owner','--device','0'],capture_output=True,text=True,timeout=30)
+    assert ordinary_probe.returncode and 'active mapped identity' in ordinary_probe.stderr
+    assert session.command('accessctl','user-status','new_owner')['disabled']
+    with sqlite3.connect(session.state/'identities.sqlite3') as identities:
+        assert identities.execute("SELECT count(*) FROM tokens WHERE user='new_owner'").fetchone()[0]==0
     for boundary in ['journal','activation']:kill(boundary,'finish')
     deploy.stop(session.prefix)
     # Only credential delivery is pending: the same central operation must
@@ -188,6 +204,8 @@ else:raise AssertionError('First owner read second owner profile')
         'single_live_controller_pid_preserved_after_start':True,'maintenance_submit_refused':True,**old_checked,
         'controller_restart_while_waiting_nodes_and_credential_delivery':True,
         'wrong_node_and_controller_packets_refused_before_native_effects':True,'source_stage_disabled_until_final_activation':True,
+        'installed_staged_device_probe_cli_rejects_cpu_quota_without_credentials':True,
+        'ordinary_device_probe_rejects_disabled_owner_without_admin_fallback':True,
         'installed_node_packet_cli_prepared_original_proposal':True,'second_fresh_owner_single_installed_cli_call_delivered':True,
         **second_me,'peer_private_profile_denied':True,
         'old_mapping_environment_and_warm_cache_inode_sha_preserved':True,'manual_credential_copy_used':False,

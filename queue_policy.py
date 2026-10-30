@@ -68,12 +68,12 @@ def note_wait(jobs,job,node_id,domain,node_revision,db,eligible_when_idle):
         'domain_revision':domain['revision'],'node_revision':node_revision,'checked_epoch':time.time()}
 
 
-def protected(jobs,rows,physical_id,db):
+def protected(jobs,rows,physical_id,db,identities=None):
     from jobs import ACTIVE
     epoch=time.time()
     active=[job for job in rows if job['state'] in ACTIVE]
     for job in ordered(rows,jobs.policy,epoch):
         if age(job,epoch)<threshold(jobs.policy):break
         target=valid_target(jobs,job,db,epoch)
-        if target and target['physical_id']==physical_id and not jobs.dispatch_permission(job,active):return job
+        if target and target['physical_id']==physical_id and not jobs.dispatch_permission(job,active,db,identities):return job
     return None
