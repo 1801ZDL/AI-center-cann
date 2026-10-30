@@ -53,10 +53,22 @@ class Detached:
         assert verb in {'cat','stat','ls -p'} and re.fullmatch(r'/[A-Za-z0-9._/+\-]*',path)
         command=['/usr/sbin/debugfs','-R',verb+' '+path,'/proc/self/fd/'+str(self.fd)]
         if output is None:
-            r=subprocess.run(command,pass_fds=(self.fd,),check=True,capture_output=True,timeout=30)
-            assert len(r.stdout)<=2*MIB,'Unexpectedly large metadata record'
-            assert not re.sub(rb'^debugfs [^\n]*\n?',b'',r.stderr).strip(),'Raw filesystem tool reported an error or warning'
-            return r.stdout
+            # Limit bytes while the tool writes, including stderr. Checking a
+            # captured pipe afterwards would already have buffered an arbitrary
+            # raw record in the audit process. The extra byte detects a short
+            # write at the filesystem limit even if the tool exits successfully.
+            ceiling=2*MIB
+            def metadata_bound():
+                resource.setrlimit(resource.RLIMIT_FSIZE,(ceiling+1,ceiling+1))
+                resource.setrlimit(resource.RLIMIT_CORE,(0,0))
+            with tempfile.TemporaryFile() as data,tempfile.TemporaryFile() as errors:
+                subprocess.run(command,pass_fds=(self.fd,),check=True,stdout=data,stderr=errors,
+                               preexec_fn=metadata_bound,timeout=30)
+                data.seek(0);errors.seek(0)
+                content=data.read(ceiling+1);diagnostics=errors.read(ceiling+1)
+            assert len(content)<=ceiling and len(diagnostics)<=ceiling,'Unexpectedly large metadata record'
+            assert not re.sub(rb'^debugfs [^\n]*\n?',b'',diagnostics).strip(),'Raw filesystem tool reported an error or warning'
+            return content
         assert expected is not None and 0<expected<=2048*MIB
         def bound():resource.setrlimit(resource.RLIMIT_FSIZE,(expected,expected))
         descriptor=os.open(output,os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,0o600)

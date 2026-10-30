@@ -1,15 +1,15 @@
 {
   "schema": "ai-center-cann-source-check/v1",
-  "recorded_at": "2026-10-30T09:18:00.831974+00:00",
+  "recorded_at": "2026-10-30T10:54:45.407200+00:00",
   "passed": true,
-  "python_unit_tests": 435,
+  "python_unit_tests": 440,
   "unit_skipped": 0,
-  "unit_seconds": 69.847,
-  "unit_log_sha256": "4914c79b5ab669d1640ada31d4fbbb33ccfe2d0f37075fb406094cfcae93e9d5",
+  "unit_seconds": 70.262,
+  "unit_log_sha256": "2470c45bb12f229612588dc5bc9624792e2dc8528ca6d7a38a77f6b1f3385b0a",
   "python": "Python 3.12.3",
   "javascript_syntax_passed": true,
   "command": "bash scripts/check.sh /usr/bin/python3",
-  "scope": "Current checkout full CPU unit and JS regression with deterministic stale-heartbeat/terminal-ordering barrier and continuing heartbeats during slow ACK. Not new Root54, full mixed build, multi-host or NPU acceptance.",
+  "scope": "Current checkout full CPU unit and JS regression, including worker completion/heartbeat barriers and real child-process metadata output bounds for the independent disk audit. Mixed Root workload and offline persistence audit have separate evidence; not Root54 rerun, physical multi-host or NPU acceptance.",
   "production_source_sha256": {
     "auth.py": "ec3f83745502fcad6ce06b45df659268d50d30d464745e85ed8f4a74bd63a090",
     "backends.py": "ad71569a0d69590e4d4eaafb43c65b62ceefa7a2cdf8bbf79754e4c7005d929e",
@@ -70,7 +70,7 @@
     "diagnostic_case.py": "cca7edb7c45e2942748fbd3e333968dabfb5e7a4857a064d4b96aca6e913dedc"
   },
   "cpu": 2,
-  "memory_mib": 1024,
+  "memory_mib": 2048,
   "npu": 0,
   "model_invocations": 0,
   "prior_socket_portability_acceptance": {
@@ -215,5 +215,20 @@
     "seconds": 73.475,
     "errors": 1,
     "cause": "An existing Worker.__new__ unit fixture lacked the new constructor lock; initialized the fixture consistently and reran full suite"
+  },
+  "prior_worker_fix_full_check": {
+    "recorded_at": "2026-10-30T09:18:00.831974+00:00",
+    "python_unit_tests": 435,
+    "unit_seconds": 69.847,
+    "unit_log_sha256": "4914c79b5ab669d1640ada31d4fbbb33ccfe2d0f37075fb406094cfcae93e9d5"
+  },
+  "offline_metadata_output_regression": {
+    "tests": 5,
+    "passed": true,
+    "single_write_truncation_rejected": true,
+    "continuous_writer_stopped_by_kernel": true,
+    "stderr_flood_rejected": true,
+    "warnings_rejected": true,
+    "production_code_unchanged": true
   }
 }

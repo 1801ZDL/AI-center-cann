@@ -1,10 +1,10 @@
 {
   "schema": "ai-center-cann-mixed-compiler-stage/v1",
-  "recorded_at": "2026-10-30T09:38:03.171122+00:00",
-  "status": "in_progress",
+  "recorded_at": "2026-10-30T10:57:09.673734+00:00",
+  "status": "accepted_same_host_cpu_mixed_case",
   "overall_goal_complete": false,
   "production_ready": false,
-  "full_compiler_accepted": false,
+  "full_compiler_accepted": true,
   "logical_users": 20,
   "host_accounts_created": false,
   "task_uid_count": 20,
@@ -23,28 +23,6 @@
     "cache": 8,
     "spool": 4,
     "central_payload": 8
-  },
-  "next_spool_inodes": 524288,
-  "latest_finished_case": {
-    "counts": {
-      "cancelled": 1,
-      "failed": 19,
-      "succeeded": 39
-    },
-    "cmake_jobs_independently_verified": 38,
-    "cmake_owners": 19,
-    "cold_misses_per_job": 2,
-    "warm_hits_per_job": 2,
-    "warm_misses_per_job": 0,
-    "answer": 42,
-    "peak_compute_slots": 2,
-    "inventory_holds": 0,
-    "cold_source_compiler_started_then_explicitly_cancelled": true,
-    "ir_contract_failures": 19,
-    "failure": "IR artifacts declared below results/ instead of required ir/",
-    "owned_objects_cleaned": true,
-    "loop_associations_released": true,
-    "main_budget_restored": true
   },
   "worker_concurrency_fix": {
     "deterministic_before_failure": true,
@@ -69,25 +47,7 @@
   ],
   "npu_queries": null,
   "npu_kernel_launches": 0,
-  "scope": "Same physical server, owned isolated roles and real UID quota filesystems; successful19-owner small build/cache stage, not full cold/warm compiler, NPU or physical multi-host acceptance",
-  "current_live_case": {
-    "snapshot_at": "2026-10-30T09:38:03.171122+00:00",
-    "source_commit": "4fe280cb0a21c9ab6c57a21d4e52d90489295e4d",
-    "preconditions_passed": 3,
-    "peer_ir_successes": 19,
-    "peer_cmake_successes": 38,
-    "failures": 0,
-    "inventory_holds": 0,
-    "cold_single_attempt": true,
-    "cold_container_running": true,
-    "parent_command_alive": true,
-    "ninja_completed": 308,
-    "ninja_total": 858,
-    "full_compiler_accepted": false,
-    "warm_build_accepted": false,
-    "main_budget_currently_temporary": true,
-    "scope": "Timestamped live original attempt; no full wheel, warm build or cleanup acceptance yet"
-  },
+  "scope": "Same physical server, owned isolated Root roles, 20 logical owners/task UIDs, real file-backed ext4 UID/GID quotas, full Triton source cold/warm wheel plus57 peer tasks and independent readonly raw-image audit. External LLVM/BishengIR reused. Not real host accounts, physical multi-host, NPU or power-loss acceptance.",
   "npu_query_counter_instrumented": false,
   "offline_verifier_preparation": {
     "script": "tests/large_mixed_offline_check.py",
@@ -96,6 +56,137 @@
     "component_source_was_earlier_failed_fixture": true,
     "component_work_slots_empty": 20,
     "component_spool_empty": true,
-    "current_full_case_offline_accepted": false
+    "current_full_case_offline_accepted": true
+  },
+  "prior_finished_case": {
+    "counts": {
+      "cancelled": 1,
+      "failed": 19,
+      "succeeded": 39
+    },
+    "cmake_jobs_independently_verified": 38,
+    "cmake_owners": 19,
+    "cold_misses_per_job": 2,
+    "warm_hits_per_job": 2,
+    "warm_misses_per_job": 0,
+    "answer": 42,
+    "peak_compute_slots": 2,
+    "inventory_holds": 0,
+    "cold_source_compiler_started_then_explicitly_cancelled": true,
+    "ir_contract_failures": 19,
+    "failure": "IR artifacts declared below results/ instead of required ir/",
+    "owned_objects_cleaned": true,
+    "loop_associations_released": true,
+    "main_budget_restored": true
+  },
+  "warm_compiler_accepted": true,
+  "source_commit": "a176ab28b11b63d427760c15f6cd63c14ac296f1",
+  "server_release": "908838467e445a81869acf873d0006891fda345357e1334acbd038b75bc24973",
+  "task_image": "sha256:be46b265fa5b5ffb8d8358e82a5b628f2b045dd9563761cdedc8bd7d022519e8",
+  "spool_inodes": 524288,
+  "accepted_case": {
+    "all_jobs_succeeded": 62,
+    "single_attempts": true,
+    "preconditions_passed": 3,
+    "peer_jobs": 57,
+    "peer_owners": 19,
+    "peer_ir_successes": 19,
+    "peer_cmake_successes": 38,
+    "peer_jobs_overlapping_cold": 35,
+    "peak_compute_slots": 2,
+    "private_peer_tasks": true,
+    "private_cache_namespaces": 20,
+    "cold": {
+      "passed": true,
+      "phase": "complete",
+      "source_commit": "a176ab28b11b63d427760c15f6cd63c14ac296f1",
+      "npuir_commit": "bb13ef6120526aa3df6f950006af5ec0e585d2f6",
+      "source_archive_sha256": "09297b21ac762055b6246ba3a5c5b4591d83b6149470c0f506e1379025c2ffae",
+      "wheel_bytes": 1253270190,
+      "wheel_sha256": "817c6913e6903d72e6f7f9df5d18fe3ac096878b75bbe3dcdeb7f1ca10526a64",
+      "record_files_verified": 5416,
+      "new_extension_sha256": "aaee0b707a3930de4b0607a7316bb02089f08e1aa8aaf7828bd4814720976030",
+      "elapsed_seconds": 4038.445138820971,
+      "external_dependencies_rebuilt": false,
+      "ccache": {
+        "cache_miss": 531,
+        "direct_cache_hit": 0,
+        "preprocessed_cache_hit": 0
+      }
+    },
+    "warm": {
+      "passed": true,
+      "phase": "complete",
+      "source_commit": "a176ab28b11b63d427760c15f6cd63c14ac296f1",
+      "npuir_commit": "bb13ef6120526aa3df6f950006af5ec0e585d2f6",
+      "source_archive_sha256": "09297b21ac762055b6246ba3a5c5b4591d83b6149470c0f506e1379025c2ffae",
+      "wheel_bytes": 1253270190,
+      "wheel_sha256": "1eccd17ccff39078bf3465fe07d079534c5267aaa4975bcb447c24c1fc229fe1",
+      "record_files_verified": 5416,
+      "new_extension_sha256": "aaee0b707a3930de4b0607a7316bb02089f08e1aa8aaf7828bd4814720976030",
+      "elapsed_seconds": 158.10665892099496,
+      "external_dependencies_rebuilt": false,
+      "ccache": {
+        "cache_miss": 0,
+        "direct_cache_hit": 531,
+        "preprocessed_cache_hit": 0
+      }
+    },
+    "independent_personal_downloads": [
+      {
+        "bytes": 1253270190,
+        "sha256": "817c6913e6903d72e6f7f9df5d18fe3ac096878b75bbe3dcdeb7f1ca10526a64",
+        "record_files": 5416,
+        "personal_client_complete": true,
+        "protected_receipt_locked": true
+      },
+      {
+        "bytes": 1253270190,
+        "sha256": "1eccd17ccff39078bf3465fe07d079534c5267aaa4975bcb447c24c1fc229fe1",
+        "record_files": 5416,
+        "personal_client_complete": true,
+        "protected_receipt_locked": true
+      }
+    ],
+    "owned_objects_cleaned": true,
+    "cleanup_errors": [],
+    "loop_associations_released": true,
+    "main_budget_restored": true,
+    "elapsed_seconds": 4788.898541186994
+  },
+  "independent_offline_audit": {
+    "passed": true,
+    "verified_at": "2026-10-30T10:54:46.898946+00:00",
+    "method": "Read-only debugfs through held regular-image FDs and readonly SQLite; no mount, compiler or workload execution",
+    "jobs_verified": 62,
+    "single_attempts": true,
+    "inventory_holds": 0,
+    "peer_artifacts": 57,
+    "peer_owners": 19,
+    "peer_archive_groups_verified": true,
+    "work_slots_empty": 20,
+    "node_spool_empty": true,
+    "cold_warm_same_sealed_input": true,
+    "cold_warm_same_private_cache": true,
+    "all_four_loop_associations_released": true,
+    "owned_roles_volumes_helpers_absent": true,
+    "wheels": [
+      {
+        "bytes": 1253270190,
+        "gid": 24500,
+        "sha256": "817c6913e6903d72e6f7f9df5d18fe3ac096878b75bbe3dcdeb7f1ca10526a64",
+        "record_files": 5416,
+        "new_extension_preserved": true,
+        "node_receipt_matches_database": true
+      },
+      {
+        "bytes": 1253270190,
+        "gid": 24500,
+        "sha256": "1eccd17ccff39078bf3465fe07d079534c5267aaa4975bcb447c24c1fc229fe1",
+        "record_files": 5416,
+        "new_extension_preserved": true,
+        "node_receipt_matches_database": true
+      }
+    ]
   }
 }
