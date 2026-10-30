@@ -164,7 +164,10 @@ class Worker:
         with self.inventory_lock:
             body['attempt_inventory']=attempt_inventory(self.root)
             receipt=self.client.call('heartbeat',body)
-        atomic_json(self.root/'heartbeat-receipt.json',{'node_id':self.config['node_id'],'acknowledged_at':time.time()})
+        if receipt.get('accepted') is not True or receipt.get('node_id')!=self.config['node_id']:raise RuntimeError('Heartbeat did not acknowledge this Node')
+        from unit_start import START_ENV
+        atomic_json(self.root/'heartbeat-receipt.json',{**identity(os.getpid()),'node_id':self.config['node_id'],
+            'acknowledged_at':time.time(),'service_start_id':os.environ.get(START_ENV)})
         return receipt
 
     def auth_body(self,grant):
@@ -409,6 +412,10 @@ class Worker:
                     except Exception:
                         self.artifact_gc_ready=False
                     self.heartbeat()
+                    from unit_start import admission_reason
+                    if admission_reason(self.root):
+                        STOP.wait(.5)
+                        continue
                     for attempt,(future,grant) in list(futures.items()):
                         if not future.done():continue
                         del futures[attempt]

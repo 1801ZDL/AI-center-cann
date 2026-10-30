@@ -33,7 +33,7 @@ class CentralSession:
         staged=self.command('accessctl','user-stage','--spec',str(spec));self.stage_id=staged['stage_id']
         self.unit_proof={}
         if context.get('unit_refresh'):
-            self.unit_dir=Path('/opt/fixture-systemd');self.unit_dir.mkdir(mode=0o755)
+            self.unit_dir=Path('/opt/fixture-systemd');self.unit_dir.mkdir(mode=0o755);self.unit_dir.chmod(0o755)
             self.root_command('unit-install','--prefix',self.prefix,'--unit-dir',str(self.unit_dir))
         value=plan(self.prefix,'new_owner',23832,64*1024**2,512)['plan'];apply(self.prefix,value)
         if context.get('unit_refresh'):self.unit_proof=self.refresh_unit()
@@ -41,6 +41,10 @@ class CentralSession:
         if context.get('unit_manager'):
             from unit_manager_fixture import run
             self.manager_proof=run(self)
+        self.start_proof={}
+        if context.get('unit_start'):
+            from unit_start_fixture import run
+            self.start_proof=run(self)
         node_profile={k:copy.deepcopy(v) for k,v in config.items() if k not in {'node_id','node_key','controller','docker_runtime','state_dir'}}
         node_profile['name']='handoff_node';path=self.state/'node-profile.json';atomic_json(path,node_profile);os.chown(path,23820,23820)
         created=self.service_code('''import json,sys
@@ -225,6 +229,9 @@ print(json.dumps({"profile_sha256":sha(projection(j.nodes.node(r["node_id"])["pr
             assert (target/'ascend-lab-node.service').stat().st_ino==original.st_ino
             deploy.verify(prefix)
             self.unit_proof['node_unchanged_unit_replay']={'passed':True,'installed_inode_preserved':True,'systemd_manager_contacted':False}
+            if self.context.get('unit_start'):
+                from unit_start_fixture import run_node
+                self.start_proof['node_start']=run_node(prefix,target)
         deploy.stop(self.prefix)
         return {'actual_central_contact':True,'fixture_stage_identity_only':False,'real_central_stage_definition_matched':True,
             'central_native_gid_appended':True,'central_approval_replay_stable':True,'node_ack_fault_chain':faults,
@@ -233,7 +240,8 @@ print(json.dumps({"profile_sha256":sha(projection(j.nodes.node(r["node_id"])["pr
             'central_nonroot_uid':23820,'accounts_enabled':False,'full_owner_onboarding_ready':False,
             'scope':'Same-host installed non-root controller plus Root Node, real stage/GID approval and authenticated HTTP commit/ready ACK. Environment enrolled by trusted fixture administrator; not a new protected environment-probe acceptance.',**activation,
             **({'unit_refresh':self.unit_proof} if self.unit_proof else {}),
-            **({'unit_manager':self.manager_proof} if self.manager_proof else {})}
+            **({'unit_manager':self.manager_proof} if self.manager_proof else {}),
+            **({'unit_start':self.start_proof} if self.start_proof else {})}
 
     def abort_uncommitted(self,spec_path):
         from lab_client import read_json

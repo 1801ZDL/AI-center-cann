@@ -55,6 +55,10 @@ def main():
     p.add_argument('--prefix',required=True);p.add_argument('--unit-dir',default='/etc/systemd/system');p.add_argument('--output',required=True)
     for action in ['unit-manager-apply','unit-manager-abort']:
         p=commands.add_parser(action);p.add_argument('--prefix',required=True);p.add_argument('--plan',required=True)
+    p=commands.add_parser('unit-start-plan',help='Plan one systemd startup with admission held until ready/heartbeat confirmation')
+    p.add_argument('--prefix',required=True);p.add_argument('--unit-dir',default='/etc/systemd/system');p.add_argument('--output',required=True)
+    for action in ['unit-start-apply','unit-start-abort']:
+        p=commands.add_parser(action);p.add_argument('--prefix',required=True);p.add_argument('--plan',required=True)
     p=commands.add_parser('install');p.add_argument('--archive',required=True);p.add_argument('--prefix',required=True)
     p.add_argument('--state-dir',required=True);p.add_argument('--role',choices=['controller','node'],required=True)
     p.add_argument('--uid',type=int);p.add_argument('--gid',type=int);p.add_argument('--create-service-user')
@@ -86,6 +90,17 @@ def main():
         if action=='unit-install':p.add_argument('--unit-dir',default='/etc/systemd/system');p.add_argument('--enable',action='store_true')
     args=parser.parse_args()
     if args.action=='bundle':result=deploy.bundle(args.output)
+    elif args.action=='unit-start-plan':
+        from unit_start import plan
+        from payload_quota_admin import write
+        result=plan(args.prefix,args.unit_dir);target=deploy.secure_parent(args.output)
+        if target.exists() or target.is_symlink():raise deploy.DeployError('Choose a new Root-private startup plan output')
+        write(target,result['plan']);result={'read_only':True,'plan_id':result['plan']['id'],'plan_file':str(target),'start_sent':False}
+    elif args.action in {'unit-start-apply','unit-start-abort'}:
+        deploy.require_root();path=Path(args.plan)
+        if path.lstat().st_uid!=0:raise deploy.DeployError('Startup plan must be Root-owned')
+        from unit_start import apply
+        result=apply(args.prefix,deploy.regular_json(path,max_bytes=512*1024,private=True),abort=args.action=='unit-start-abort')
     elif args.action=='unit-manager-check':
         from unit_manager import check
         result=check(args.prefix,args.unit_dir,args.running)

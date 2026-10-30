@@ -1,8 +1,29 @@
 # 中央服务与节点安装
 
+## 受控 systemd 启动与准入交接
+
+在安装、磁盘unit更新和管理器加载核对完成后，Root可生成一次性启动计划。服务必须停止，任务/租约须排空；计划绑定安装文件、配置、管理器身份和当前所有启用Node的定义。以下命令用于管理员服务器，本项目未在当前共享宿主机执行启动写操作：
+
+```bash
+/opt/ascend-lab/current/servicectl unit-start-plan --prefix /opt/ascend-lab --output /root/start-plan.json
+/opt/ascend-lab/current/servicectl unit-start-apply --prefix /opt/ascend-lab --plan /root/start-plan.json
+```
+
+协调器先持久保存`prefix/unit-start-change.json`并发布Root所有的`service-admission.json`，在发送请求前持久保存issued边界。随后只发送一次`StartUnit(name, "fail")`，先释放状态维护排他锁，让真实服务可以取得运行共享锁。服务入口核对管理器MainPID、INVOCATION_ID、进程身份及cgroup，并以O_EXCL持久消费本次nonce后才执行业务代码。依据：[systemd StartUnit接口](https://www.freedesktop.org/software/systemd/man/255/org.freedesktop.systemd1.html)。
+
+启动协调期间，安装服务拒绝新任务提交（HTTP503），中央本地调度、Node领取和Node本地执行也暂停。身份查询、心跳、执行清单对账仍可进行。中央须有匹配nonce的实际就绪进程，原计划全部启用Node须在30秒内向本次controller_instance完成清单对账，且无inventory hold。新中央尚无Node时只确认中央就绪，后续新增Node仍走原登记与准入。Node启动还须匹配本次nonce/PID/boot/starttick和Node ID的最新心跳ACK。
+
+apply可能返回pending。重复相同命令只核对原启动，不再次发送StartUnit；即使崩溃发生在issued持久化后、RPC发送前，也不会猜测“应该没启动”而重发。管理器身份、invocation或文件合同变化会拒绝接管。无法完成时，管理员先通过systemd停止并核对原unit，再执行`unit-start-abort --prefix ... --plan 原计划`，随后生成新计划。abort不会发Start/Stop/Restart，也不释放业务任务租约；在实际服务仍运行、unit有job或状态不明时拒绝中止。
+
+确认就绪后先保存Root私有`prefix/unit-start-history`回执，再清gate与journal，最后才开放准入；两者任一残留都继续暂停，防止清理中断提前开放。已完成计划重放是历史记录，不是当前健康证明。Root历史目录需随安装管理资料保存，服务侧claim保留在私有state/service-start-claims。普通进程模式仍保留，但不能绕过未完成的启动计划；这不是在途灾难接管或多活fencing。
+
+真实Root演练使用固定管理器协议适配器启动实际非root中央及Root Node，验证锁、nonce、HTTP、实际认证心跳和中断恢复；各自只发送一次StartUnit。它不等于真实PID1正向StartUnit或自动重启验收。平台真实PID1、两物理机及NPU仍是管理员试点门槛。
+
 ## systemd 管理器读取与停止状态下的加载计划
 
 `unit-refresh-*` 仅更新磁盘文件。新增 `unit-manager-*` 从固定本地 system bus 读取类型化属性，核对 Root PID1/总线身份、实际 FragmentPath/别名/附加配置、ExecStart、UID/GID/补充组、环境、可写路径及生成的沙箱参数。未知属性类型或配置漂移会拒绝继续；输出只给验证状态和摘要，不导出原始环境属性。实现依据 [systemd 255 D-Bus 接口](https://www.freedesktop.org/software/systemd/man/255/org.freedesktop.systemd1.html)。
+
+RequiresMountsFor保留显式路径检查，同时允许生成配置已知的工作目录、/tmp与/var/tmp隐式依赖，不接受任意额外路径。systemd会自动添加这些执行环境依赖，不能只按unit文本逐字比较。[执行环境隐式依赖](https://www.freedesktop.org/software/systemd/man/255/systemd.exec.html)
 
 默认支持管理员安装到 `/etc/systemd/system` 的标准 unit。先排空、停止服务，完成磁盘 unit 刷新，再由 Root 执行：
 

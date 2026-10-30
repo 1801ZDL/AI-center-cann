@@ -172,7 +172,12 @@ def effective(value,wanted,name,fragment,fresh=True):
         rows=normalized[key]
         if not isinstance(rows,list) or any(not isinstance(row,list) or len(row)!=10 for row in rows):raise DeployError('Malformed executable property: '+key)
         normalized[key]=[row[:3] for row in rows]
-    for key in ['SupplementaryGroups','Environment','ReadWritePaths','RequiresMountsFor']:
+    mounts=normalized['RequiresMountsFor'];declared=wanted['RequiresMountsFor']
+    implicit={wanted['WorkingDirectory'],'/tmp','/var/tmp'}
+    if not set(declared)<=set(mounts) or not set(mounts)<=set(declared)|implicit:
+        raise DeployError('Loaded managed property differs: RequiresMountsFor')
+    normalized['RequiresMountsFor']=declared
+    for key in ['SupplementaryGroups','Environment','ReadWritePaths']:
         if not isinstance(normalized[key],list) or any(not isinstance(x,str) for x in normalized[key]):raise DeployError('Malformed loaded property: '+key)
         if sorted(normalized[key])!=sorted(wanted[key]):raise DeployError('Loaded managed property differs: '+key)
         normalized[key]=wanted[key]
@@ -192,8 +197,8 @@ def inactive(value):
         raise DeployError('Stop and reconcile the selected unit; manager reports a live or pending operation')
 
 
-def _context(prefix):
-    prefix,meta,release=deploy.verify(prefix,manager_recovery=True)
+def _context(prefix,startup_recovery=False):
+    prefix,meta,release=deploy.verify(prefix,manager_recovery=True,startup_recovery=startup_recovery)
     if os.geteuid() not in {0,meta['uid']}:raise DeployError('Root or the selected service identity is required for readback')
     helper=release/Path(__file__).name
     if not helper.is_file() or hashlib.sha256(helper.read_bytes()).digest()!=hashlib.sha256(Path(__file__).read_bytes()).digest():
@@ -212,8 +217,8 @@ def _contract(prefix,meta,state,control,directory):
         'installed':installed,'template':template,'expected':expected(prefix,meta,text)}
 
 
-def check(prefix,unit_dir='/etc/systemd/system',running=False,entry=False,bus=None):
-    prefix,meta,state,control=_context(prefix);contract=_contract(prefix,meta,state,control,unit_dir);bus=bus or Bus();anchor=bus.anchor();value=bus.unit(contract['unit_name'])
+def check(prefix,unit_dir='/etc/systemd/system',running=False,entry=False,bus=None,startup_recovery=False):
+    prefix,meta,state,control=_context(prefix,startup_recovery=startup_recovery);contract=_contract(prefix,meta,state,control,unit_dir);bus=bus or Bus();anchor=bus.anchor();value=bus.unit(contract['unit_name'])
     sha=effective(value,contract['expected'],contract['unit_name'],Path(unit_dir)/contract['unit_name'])
     if running or entry:
         pid=value['MainPID'];saved=read_json(state/'service-process.json') or {}
@@ -244,7 +249,8 @@ def service_entry(prefix):
     invocation=os.environ.get('INVOCATION_ID')
     if invocation is None:return
     if not re.fullmatch('[0-9a-f]{32}',invocation):raise DeployError('Invalid systemd invocation identity')
-    check(prefix,running=True,entry=True)
+    from unit_start import entry
+    entry(prefix)
 
 
 def plan(prefix,unit_dir='/etc/systemd/system',bus=None):

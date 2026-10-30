@@ -459,6 +459,9 @@ class NodeRegistry:
         return {'reason':identity_reason or inventory_reason or spool_reason or reason,'cpu_ids':cpus,'npu_ids':npus,'workspace':workspace,'cache':cache}
 
     def claim(self,node_id,body=None):
+        from unit_start import admission_reason
+        reason=admission_reason(self.jobs.runtime)
+        if reason:return {'grant':None,'reason':reason}
         body={} if body is None else body
         excluded=body.get('exclude_attempts',[])
         if (not isinstance(excluded,list) or len(excluded)>MAX_SLOTS

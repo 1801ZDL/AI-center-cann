@@ -337,6 +337,9 @@ class JobStore:
                 'timeout_seconds': timeout, 'idempotency_key': key, 'output': output}
 
     def submit(self, request, principal=None):
+        from unit_start import admission_reason
+        reason=admission_reason(self.runtime)
+        if reason:raise JobError(reason,503)
         principal = principal or self.access.local
         principal.require('jobs:submit')
         spec = self.normalize(request, principal)
@@ -486,6 +489,9 @@ class JobStore:
             return {'text': data.decode(errors='replace'), 'bytes': size, 'truncated': size > 65536}
 
     def dispatch_permission(self,job,active):
+        from unit_start import admission_reason
+        reason=admission_reason(self.runtime)
+        if reason:return reason
         principal=self.access.user(job['owner'])
         if not principal or self.access.project_role(principal,job.get('project','personal:'+job['owner'])) not in {'editor','manager'}:
             return '等待有效账号和项目提交权限；不会启动已撤权的作业'

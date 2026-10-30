@@ -1,5 +1,17 @@
 # 实施进度
 
+## 一次启动意图、真实进程就绪与准入交接
+
+新增unit_start.py及本地Root命令`unit-start-plan/apply/abort`。绑定安装/配置/已加载unit/管理器/全部启用Node定义，持久journal和Root只读gate，发送前持久issued边界；只调用一次`StartUnit(name,"fail")`，不调用Restart/Stop/enable。响应不明或协调器崩溃后仅核对原请求；即使issued之后、RPC之前中断，也不猜测重发。原unit停止/无job且状态静默后可显式abort并生成新计划，不能在服务仍运行时清理中止记录。
+
+先释放状态EX锁再启动，服务取得SH运行锁。入口严格核MainPID/INVOCATION_ID/UID/GID/cgroup，以O_EXCL持久消费nonce后才执行业务。安装服务通过固定prefix环境读取Root gate/journal；任一存在时提交返回HTTP503，中央本地调度、Node领取和Node本地执行暂停，身份查询、心跳和执行清单对账继续。中央须匹配本nonce的实际就绪进程、计划全部Node新鲜且属于本controller_instance的清单对账、无inventory hold；Node须有本nonce/PID/boot/starttick/NodeID的新鲜真实ACK。Root回执先持久，gate/journal最后清理；完成重放仅为历史，不能当作当前健康证明。管理器挂载依赖读回同时修正为显式路径加已知工作目录/PrivateTmp隐式路径，仍拒绝任意额外路径。
+
+最终 **567项/95.628秒/无跳过** 及JS语法通过，68个非文档生产源码与最后Root包一致。固定管理器协议适配器真实启动中央UID23820和Root Node，各仅一次StartUnit。中央8个SIGKILL边界含“issued但未发送”和“已接受但无响应”，证明前者不重发可abort、后者恢复同一进程；持续HTTP503直到最后发布，身份API可用，live abort/改invocation拒绝。Node另5个边界，以实际安装Worker向中央发送认证心跳，nonce/PID/NodeID匹配，同一进程完成恢复并正常停止。原Node绑定/ACK、激活中止/重新激活、个人UID23802实际IR单attempt及归档仍通过。
+
+独立读取保留的中央plan/claim/Root receipt及Node plan/claim/heartbeat逐项一致；所有自有角色/辅助容器/卷缺失、四盘loop均释放，原盘保留，旧zdl启动时间/Memory/SHM不变。完整私有证据evidence/unit-start-validation.json，公开精选reports/public-source-check.json.unit_start。两个失败Root均保留：第一次测试适配器在导入startup子类前替换Bus导致TypeError；第二次测试目录受umask变成0700，实际服务UID无法读回unit。仅修测试导入顺序、目录权限及可信Root测试的凭据读取方式，未放宽生产校验；两次loop释放/原盘保留。最初564项不是最终源码范围；首成功Root只含中央启动，最后Root增加实际Node启动，不相互重标。
+
+本轮没有调用当前宿主systemd、创建宿主账户、运行NPU/model或修改他人容器。**固定适配器不能证明真实PID1的加载/启动/自动重启，两物理机和NPU验收仍缺。** 完整目标继续未完成；下一步为完整开户协调/私有交付、已激活用户扩新Node与资源合同重授权，及管理员试点的真实系统服务验收。
+
 ## systemd 生效配置读取、加载计划与中断恢复
 
 新增 unit_manager.py 及本地 `unit-manager-check/plan/apply/abort` 管理命令。固定本地 system bus、清理继承的总线/进程环境、有界子进程输出与超时、Root PID1/总线身份绑定；严格核对属性及嵌套D-Bus类型、实际unit来源/别名/生成来源/附加配置、命令/身份/组/环境/可写路径与沙箱参数。不会导出原始环境属性。systemd启动入口还核对INVOCATION_ID、实际MainPID/UID/GID/存储组与cgroup；进程模式保持兼容。
@@ -127,7 +139,7 @@ Root在停止并排空时计划，持久journal后执行管理器Reload及选定
 
 ## 当前代码检查
 
-当前完整回归 **554 项/81.133 秒/无跳过**、网页 JavaScript 语法通过；此前541项为未提交激活中止、525项为unit离线更新、515项为最后激活、497项为中央/Node交接、486项为Node本地绑定、478项为中央存储组、469项为待预配身份、457项为原生槽追加、440项为独立原盘核验工具阶段。公开摘要 [reports/public-source-check.json](reports/public-source-check.json) 保存受测 67 个生产代码摘要。
+当前完整回归 **567 项/95.628 秒/无跳过**、网页 JavaScript 语法通过；此前554项为manager读回/加载恢复、541项为未提交激活中止、525项为unit离线更新、515项为最后激活、497项为中央/Node交接、486项为Node本地绑定、478项为中央存储组、469项为待预配身份、457项为原生槽追加、440项为独立原盘核验工具阶段。公开摘要 [reports/public-source-check.json](reports/public-source-check.json) 保存受测 68 个生产代码摘要。
 
 新增 5 个核验工具回归使用真实子进程，覆盖有效元数据、单次短写截断、持续写达到内核文件限额、stderr 洪泛和文件系统警告拒绝。小记录输出在子进程写入时就受 2MiB 上限约束，避免 capture_output 读完后才检查大小；不影响已冻结的生产代码或构建工作负载。
 

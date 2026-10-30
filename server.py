@@ -422,7 +422,9 @@ def main():
     from owner_handoff import CAPABILITY as OWNER_HANDOFF
     from owner_activation import CAPABILITY as OWNER_ACTIVATION
     from owner_activation_abort import CAPABILITY as OWNER_ABORT
-    atomic_json(runtime/'server-ready.json',{**identity(os.getpid()),'controller_instance':jobs.controller_instance,'capabilities':[OWNER_HANDOFF,OWNER_ACTIVATION,OWNER_ABORT]})
+    from unit_start import START_ENV,CAPABILITY as STARTUP
+    atomic_json(runtime/'server-ready.json',{**identity(os.getpid()),'controller_instance':jobs.controller_instance,
+        'service_start_id':os.environ.get(START_ENV),'capabilities':[OWNER_HANDOFF,OWNER_ACTIVATION,OWNER_ABORT,STARTUP]})
     logging.info('Started controller listener using %s on port %s',listener_info['scheme'],config['port'])
 
     def stop(signum, frame):
