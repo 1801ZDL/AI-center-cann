@@ -140,6 +140,8 @@ def apply(prefix,value):
     prefix,meta,state,config=_context(prefix,recovery=True)
     with state_lock(state,exclusive=True):
         from maintenance import assert_quiescent
+        other=prefix/'payload-owner-change.json'
+        if other.exists() or other.is_symlink():raise DeployError('Finish the original pending owner storage append before resizing quotas')
         assert_quiescent(state,'controller')
         journal=prefix/JOURNAL;history=prefix/HISTORY;receipt_path=history/(value['id']+'.json')
         if history.exists():

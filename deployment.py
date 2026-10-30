@@ -29,7 +29,7 @@ ROOT=Path(__file__).resolve().parent
 CORE=['auth.py','owner_identity.py','backends.py','collector.py','container_engine.py','container_entry.py','artifact_export.py',
       'environment_probe.py','environment_contract.py','device_qualification.py','attempt_inventory.py','executor.py','npu_admission.py','npu_device.py','inputs.py','jobs.py','lab_client.py','client_archive.py','archive_api.py','nodes.py','server.py',
       'templates.py','worker.py','workflow_runner.py','workflow_spec.py','workflow_results.py',
-      'state_lock.py','resources.py','queue_policy.py','docker_runtime.py','listener.py','preflight.py','workspace_slots.py','filesystem_quota.py','quota_workspace.py','workspace_quota_admin.py','group_quota.py','payload_groups.py','payload_quota_admin.py','io_policy.py','storage_io.py','payload_storage.py','storage_budget.py','storage_files.py','storage_lifecycle.py','node_storage.py','deployment.py','maintenance.py','servicectl','accessctl','workerctl',
+      'state_lock.py','resources.py','queue_policy.py','docker_runtime.py','listener.py','preflight.py','workspace_slots.py','filesystem_quota.py','quota_workspace.py','workspace_quota_admin.py','group_quota.py','payload_groups.py','payload_quota_admin.py','payload_owner_admin.py','io_policy.py','storage_io.py','payload_storage.py','storage_budget.py','storage_files.py','storage_lifecycle.py','node_storage.py','deployment.py','maintenance.py','servicectl','accessctl','workerctl',
       'spool_storage.py','spool_transfer.py','persistent_cache.py','dependencies.py','labctl','install-client','mcp_bridge.py','diagnostic_case.py','CLIENT.md','SERVER.md','API.md','WORKFLOWS.md','NPU.md','WORKSPACE.md','STORAGE.md','CACHE.md','DEPENDENCIES.md',
       'README.md','DEPLOYMENT.md','HARNESS.md','ENVIRONMENTS.md','RECOVERY.md','HTTPS.md','SPOOL.md','OWNER_PROVISION.md']
 SCHEMA=1
@@ -37,7 +37,7 @@ EXECUTABLES={'servicectl','accessctl','workerctl','labctl','install-client'}
 # Bundles always include these helpers, but earlier compatible service releases
 # do not need them to run existing workspaces. Do not make their absence alone
 # prevent verification/rollback of an otherwise intact historical installation.
-OPTIONAL_ADMIN_FILES={'workspace_quota_admin.py','OWNER_PROVISION.md','owner_identity.py'}
+OPTIONAL_ADMIN_FILES={'workspace_quota_admin.py','OWNER_PROVISION.md','owner_identity.py','payload_owner_admin.py'}
 
 
 class DeployError(ValueError):pass
@@ -223,6 +223,8 @@ def verify(prefix,quota_recovery=False):
     if meta['role']=='controller':
         config=regular_json(Path(meta['state_dir'])/'config.json',private=True)
         if not quota_recovery:
+            if (prefix/'payload-owner-change.json').exists() or (prefix/'payload-owner-change.json').is_symlink():
+                raise DeployError('Finish the pending owner storage append with its original plan before starting or maintaining this installation')
             if (prefix/'payload-quota-change.json').exists() or (prefix/'payload-quota-change.json').is_symlink():
                 raise DeployError('Finish the pending payload quota change with its original plan before starting or maintaining this installation')
             if config.get('scheduler',{}).get('payload_storage')!=meta.get('payload_storage'):raise DeployError('Controller payload policy differs from the installed binding')

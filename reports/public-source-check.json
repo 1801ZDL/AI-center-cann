@@ -1,15 +1,15 @@
 {
   "schema": "ai-center-cann-source-check/v1",
-  "recorded_at": "2026-10-30T12:49:49.524731+00:00",
+  "recorded_at": "2026-10-30T13:07:45.065662+00:00",
   "passed": true,
-  "python_unit_tests": 469,
+  "python_unit_tests": 478,
   "unit_skipped": 0,
-  "unit_seconds": 79.426,
-  "unit_log_sha256": "196fa4f29654b01aac6cec6d24cdcfa4ccc2edc7c47549c9ac56e17a3dbaacc6",
+  "unit_seconds": 78.009,
+  "unit_log_sha256": "57a7bab55752f8bf09b4921d5c9288c99a741e88711739c724bb1edad11be0bb",
   "python": "Python 3.12.3",
   "javascript_syntax_passed": true,
   "command": "bash scripts/check.sh /usr/bin/python3",
-  "scope": "Current59 production source CPU/JS regression, including packaged credential-free staged identity CLI, HTTP authentication denial, Node prebinding, concurrent token disable/re-enable and offline restore/downgrade guards. This is not a new Root service installation or full owner onboarding. Prior native UID append, Root54 and mixed compiler checks retain frozen releases. No NPU, model or physical multi-host acceptance.",
+  "scope": "Current60 production code CPU/JS checks plus the separately scoped installed central owner-group append acceptance below. Native storage preparation remains incomplete owner onboarding. Earlier Node native append, Root54 and mixed compiler checks retain frozen releases; no real host account, NPU, systemd PID1 or physical multi-host acceptance.",
   "production_source_sha256": {
     "auth.py": "6a59a9be593c32bf3717dd8f825e490d4235c2f458d121578201ccf2d2a76031",
     "owner_identity.py": "323830cacdcb122347e6ccf50d5b91d14362ac5eea34245d8efebc21044218b0",
@@ -49,7 +49,8 @@
     "workspace_quota_admin.py": "6ed57fce784038d2b8a569872bbb1da7c627f4911f8abef584189820bc8455f0",
     "group_quota.py": "3137ba8af5c5803fab0a2e4f547063ee883fc5fae3aa3349767585f4a61429d4",
     "payload_groups.py": "6377b078e9f1032a2e33862ba2995c3b94992a731a68a42044a57c6ac77e54d8",
-    "payload_quota_admin.py": "6e342966263700d0ffd2fe872d8484ff340360c03937d8c880913d97eb809621",
+    "payload_quota_admin.py": "b93541ebd312cc8e195cb5e6065dfe40d969a5166df6b7270b4dea9b3146cbf0",
+    "payload_owner_admin.py": "f34f7dc3d761a425d8ea42d343f4c14f34c9b9304593803c4bcc7cfe52134b07",
     "io_policy.py": "4e265b10e40fcfece83edc5a2d3ec9db08d22bce60b9825feea821570eaeafec",
     "storage_io.py": "99152ca78d5f1cd32b682121cb86f6c6786c54c1aee81664cd6a45073cfedd37",
     "payload_storage.py": "4091fd672211d19a51918064ec2eb3bea5c089d07f426379c361a827611512f0",
@@ -57,9 +58,9 @@
     "storage_files.py": "c2dfe4aec3a4dec6bf8802655eb9e72a414e307d5eb6f4725da99f0484642ebf",
     "storage_lifecycle.py": "cc5778edf04bf1118ac940f6954cc488ae7ceedbee373568af87c6add3cde098",
     "node_storage.py": "185bdeb757c0644cf6319460d74ea15061cf6329b4707354696f8e156a16370c",
-    "deployment.py": "28fa792613f11401b2e1133164bcd21c1a6cbeeb8449bf570aca09bc2453ba1c",
+    "deployment.py": "a6b8a6fb239c3069cb2509ab27a2eb65637c9bdc30482dd5cdff076f43a4ec46",
     "maintenance.py": "9df559eedcbd966de6c80eda2793c617c90af81ff1fb23ccb98e800434ee5d66",
-    "servicectl": "3f919b3388322ce57cd4b3aca7be065cead1eeeaa3e3e52e949a2cc8b0e1a3ab",
+    "servicectl": "cc207126712dbee99b38145412a507f21190907528453142b5fb6d76fe1ef9b5",
     "accessctl": "88c1e2173a82f279adc9a850da7c8d33022ae86e8933c3fa970dd5966b197201",
     "workerctl": "a889433c37e8f53c31391956515cdc1d1aa2667cd18c8a97dc9ab47d343d9800",
     "spool_storage.py": "c8a579146e0b24077ebf504050dd5344505f8023f6e33be1c1cb6e9ff312fea4",
@@ -422,5 +423,101 @@
     "npu_kernel_launches": 0,
     "model_invocations": 0,
     "scope": "Same-UID isolated test state, real SQLite/threads/HTTP/package CLI and offline identity relocation. Native central GID append, coordinated Node workspace/cache binding and final credential activation are not implemented."
+  },
+  "prior_staged_identity_full_check": {
+    "recorded_at": "2026-10-30T12:49:49.524731+00:00",
+    "python_unit_tests": 469,
+    "unit_seconds": 79.426,
+    "unit_log_sha256": "196fa4f29654b01aac6cec6d24cdcfa4ccc2edc7c47549c9ac56e17a3dbaacc6"
+  },
+  "central_owner_storage_append": {
+    "passed": true,
+    "installed_controller": true,
+    "installed_cli_plan_apply_stage_status": true,
+    "read_only_plan_observed": true,
+    "shared_state_lock_rejected": true,
+    "faults": [
+      {
+        "boundary": "journal",
+        "sigkill_observed": true,
+        "same_plan_resumed": true,
+        "old_owners_preserved": true
+      },
+      {
+        "boundary": "quota",
+        "sigkill_observed": true,
+        "same_plan_resumed": true,
+        "old_owners_preserved": true
+      },
+      {
+        "boundary": "config",
+        "sigkill_observed": true,
+        "same_plan_resumed": true,
+        "old_owners_preserved": true
+      },
+      {
+        "boundary": "metadata",
+        "sigkill_observed": true,
+        "same_plan_resumed": true,
+        "old_owners_preserved": true
+      },
+      {
+        "boundary": "binding",
+        "sigkill_observed": true,
+        "same_plan_resumed": true,
+        "old_owners_preserved": true
+      },
+      {
+        "boundary": "receipt",
+        "sigkill_observed": true,
+        "same_plan_resumed": true,
+        "old_owners_preserved": true
+      },
+      {
+        "boundary": "published",
+        "sigkill_observed": true,
+        "same_plan_resumed": true,
+        "old_owners_preserved": true
+      }
+    ],
+    "resize_interleaving_rejected": true,
+    "stale_plan_rejected_before_quota": true,
+    "compatible_unknown_quota_not_adopted": true,
+    "changed_stage_definition_rejected_before_quota": true,
+    "old_owner_data_and_limits_preserved": true,
+    "owner_still_staged_disabled": true,
+    "new_group_kernel_quota": {
+      "uid": 23820,
+      "storage_gid": 23856,
+      "written": 16773120,
+      "errno": 122,
+      "cap_effective": "0000000000000000",
+      "no_new_privileges": "1"
+    },
+    "peer_wrote_while_new_group_full": true,
+    "receipt_replay_after_new_data": true,
+    "service_restart_observed_new_supplementary_groups": true,
+    "service_uid": 23820,
+    "service_cap_effective": "0000000000000000",
+    "genuine_historical_rollback_reupgrade": true,
+    "rollback_baseline_commit": "60c20025edc552c7138918b1759e416350cb3b2b",
+    "old_target_new_administration_rejected": true,
+    "full_owner_onboarding_ready": false,
+    "systemd_pid1_tested": false,
+    "scope": "Same-host isolated installed controller, actual native group quota and process crash/restart. Node workspace/cache binding and final owner activation remain incomplete.",
+    "at": "2026-10-30T13:04:07.886939+00:00",
+    "server_release": "6eb40f1e8c6e1a8ee03671d997754245f0abc164ae3510f2804f86e5da6c5767",
+    "npu_kernel_launches": 0,
+    "model_invocations": 0,
+    "cleanup_confirmed": true,
+    "new_unit_tests": 9,
+    "root_source_hashes_match_current60": true,
+    "host_accounts_created": false,
+    "main_reloaded_this_stage": false,
+    "first_fixture_failure": "Fixed unprivileged writer could not import Root-private test code; failed before identity/owner append. Switched to installed code; failure and cleanup preserved.",
+    "own_roles_and_volumes_independently_absent": true,
+    "unit_tests": 478,
+    "unit_seconds": 78.009,
+    "root_fixture_source_sha256": "005457d8eb2711636d73016c8ad65234e82cf871fdc694003e548a9444d0680f"
   }
 }

@@ -4,7 +4,7 @@
 
 继续采用“个人 harness / CLI / 网页 → 统一 API → 程序化调度与资源账本 → 各服务器 Node → 任务容器”。新增服务器通过登记节点和管理员策略接入；不要求每个用户更换 harness、复制中央私有目录或共享模型密钥。这里的“平滑扩展”指保留客户端任务接口及证据格式，不表示新机器免配置、免权限迁移或免验收。
 
-历史 v0.36 的公开范围见 [reports/v036-public.json](reports/v036-public.json)：432 项单元检查及 54 项自有 Root 容器安装检查通过，`production_ready=false`。已有身份/项目授权、物理域账本、环境锁、受限工作区、中央载荷配额、Node 暂存、私有缓存、阶段依赖及备份恢复实现。个人 Main 保留原兼容配置，**并未自动启用新安装的全部硬限制**。过去完整 Triton wheel 构建使用旧 tmpfs 提供器；当前 UID quota 下的完整 Triton 冷暖构建、20 个逻辑用户混合负载和独立原盘核验已通过；最新全量回归为 457 项，证据见 reports/mixed-compiler-stage.json 和 reports/public-source-check.json。历史 Root54 不自动覆盖后续修复；混合案例绑定其冻结发布包，不等于重新执行全部安装检查。随后旧命令产物合同修复另有450项回归和独立CLI升级验收。随后原生UID槽追加有独立的安装CLI、7个SIGKILL及相邻旧包兼容验收；它尚未接通完整开户，见OWNER_PROVISION.md。Root 容器中的不同 UID 不代表真实宿主账号或两台物理机。
+历史 v0.36 的公开范围见 [reports/v036-public.json](reports/v036-public.json)：432 项单元检查及 54 项自有 Root 容器安装检查通过，`production_ready=false`。已有身份/项目授权、物理域账本、环境锁、受限工作区、中央载荷配额、Node 暂存、私有缓存、阶段依赖及备份恢复实现。个人 Main 保留原兼容配置，**并未自动启用新安装的全部硬限制**。过去完整 Triton wheel 构建使用旧 tmpfs 提供器；当前 UID quota 下的完整 Triton 冷暖构建、20 个逻辑用户混合负载和独立原盘核验已通过；最新全量回归为 478 项，证据见 reports/mixed-compiler-stage.json 和 reports/public-source-check.json。历史 Root54 不自动覆盖后续修复；混合案例绑定其冻结发布包，不等于重新执行全部安装检查。随后旧命令产物合同修复另有450项回归和独立CLI升级验收。随后原生UID槽追加有独立的安装CLI、7个SIGKILL及相邻旧包兼容验收；它尚未接通完整开户，见OWNER_PROVISION.md。Root 容器中的不同 UID 不代表真实宿主账号或两台物理机。
 
 | 优先级 | 继续开发或冻结的约定 | 推广前必须取得的证据 |
 |---|---|---|
@@ -19,7 +19,9 @@
 
 推荐推广顺序：当前账号内的 CPU 混合负载已通过，继续补齐用户生命周期与可迁移发布包；再在首台管理员服务器开两名真实用户和少量专用卡；接入第二台物理服务器验证跨机故障；最后扩大到约 20 人峰值并验收混合负载。首个节点可只开放通过验收的 CPU/IR 模板，不等待所有 NPU 能力一起开放。中央初期继续单活，不因增加计算节点同时引入第二个独立调度账本。
 
-用户生命周期最新增加了中央待预配身份：禁用且不生成凭据，Node管理侧可提前登记，资源各层尚未确认前不能通过普通启用或续发令牌绕过。469项完整回归包含真实HTTP/SQLite/安装包CLI和恢复/降级检查；尚未把中央GID、Node工作区及缓存绑定与最后激活连成完整开户。该阶段没有重跑Root54或在真实宿主创建账号，操作及交付条件见 [OWNER_PROVISION.md](OWNER_PROVISION.md)。
+用户生命周期的身份阶段增加了中央待预配身份：禁用且不生成凭据，Node管理侧可提前登记，资源各层尚未确认前不能通过普通启用或续发令牌绕过。469项完整回归包含真实HTTP/SQLite/安装包CLI和恢复/降级检查；尚未把中央GID、Node工作区及缓存绑定与最后激活连成完整开户。该阶段没有重跑Root54或在真实宿主创建账号，操作及交付条件见 [OWNER_PROVISION.md](OWNER_PROVISION.md)。
+
+随后中央owner存储组追加已接通独立安装CLI、7个SIGKILL恢复、原生EDQUOT和其他组继续写入、进程重启补充组及相邻旧代码回滚。最新478项回归通过，60个生产源码摘要与该Root案例一致。账号仍待预配，Node工作/缓存绑定和最后激活未接通；已有systemd unit补充组更新仍须补齐，不能由进程模式结果推导真实systemd验收通过。
 
 个人 Agent 可放在用户自己的主机账号或开发容器中；两种位置使用相同 API。公共 harness 二进制和公共能力包可只读分发，HOME/XDG、会话、模型凭据和个人配置按真实用户隔离。进入不同项目目录不构成权限隔离；OpenCode 还会合并全局与项目配置，接入器应检查最终生效配置。[OpenCode 配置规则](https://docs.opencode.ai/docs/config/)。普通用户和个人 Agent 不取得 Docker socket；Docker 管理权限属于主机信任边界。[Docker 官方权限说明](https://docs.docker.com/engine/install/linux-postinstall/)。
 
