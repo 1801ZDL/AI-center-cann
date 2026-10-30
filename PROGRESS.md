@@ -1,5 +1,24 @@
 # 实施进度
 
+## 追加无关用户后的资格兼容审计（2026-10-31）
+
+新增qualification_compatibility.py，中央stage批准与active-owner扩Node授权均在jobs→identities写保留内冻结原资格、成功固定probe来源、旧完整profile/新profile SHA、当前个人权限单调修订。只证明单个新用户及各一个原生work/cache槽的精确追加；旧UID/GID/槽及所有非追加字段必须相同。全局policy_revision继续递增并进入原受保护context，六个运行文件/设备协议无需改版；不是删除版本校验。
+
+原ready交接与新鲜健康Node心跳到位后，比对当前boot/驱动/Docker及protected runtime、旧context、原资格和权限修订，再关联新context。原job/attempt/receipt/recorded_at/expires_at不变、不发新probe、不续30分钟有效期。连续追加保留原probe_context及此前兼容指针。新增用户/禁用stage/失败/过期/来源变化的资格不继承；首次不匹配记录skipped，后来恢复原值也不会再自动继承。等同域其他Node的当前库存时保留pending，并阻配置变更/离线维护/备份；原心跳和中央重启可恢复。资格、Node观察与完成审计在同一事务，重复HB不续期，备份恢复仍使verified过期。存在审计后拒缺少模块的旧中央包。
+
+新管理员只读CLI workerctl node-qualification-compatibility NODE --limit/--offset返回历史计划计数，不输出旧profile/路径，不代表当前卡资格；当前状态仍用node-device-status。最多1024计划/4096候选每计划、每记录预留2MiB、总128MiB，超限明确处理历史，不自动删数据；不冒充SQLite/控制盘内核硬配额。
+
+**最终739项/119.284秒/无跳过及JS语法通过；77个非文档生产源码与最终Root/全量/最终focused冻结完全一致。** focused job-307f6ad5c663为24/3.877秒。24项包括精确追加与设备/用户隔离、旧expiry/receipt不变、连续两次真实中央批准及保留历史、普通accuracy任务取得新context/旧卡grant且无新probe、active-owner扩Node、权限改后恢复、驱动变化后恢复、缺观测、被替换资格、expiry、policy实际API改后恢复仍需新probe、两受控事务异常回滚与重复HB、身份写锁、重开JobStore恢复、源意图篡改、审计预算回滚、恢复备份不复活、同域peer库存等待后正常确认、本地摘要CLI。设备观测和原生盘描述为合成可信协议，未执行设备打开或kernel。
+
+最终Root job-2a550b58921b succeeded：原49 SIGKILL、忙队列排空/中止恢复、UID23801运行期间激活交付UID23802及个人实际IR排队/单attempt、第二新用户一次CLI、peer拒读、Node2 UID23812实际IR等均通过。已安装审计CLI读CPU节点空历史通过；host独立确认qualification_compatibility=0/device_qualifications=0，不能据此说Root/NPU资格继承正向通过。七文件盘loop/helper/角色/卷释放，backing files留private；/opt和/personal仍为角色tmpfs，host仅核持久DB/Node metadata，不宣称当前挂载quota或留存Root历史。
+
+最终全量job-22adfa68b212。初始repro job-73b5d5b4dce3因fixture旧Alice默认NPU0在正常配额门拒绝；显式设置合法额度后job-f85eab8828c1正确复现无关追加导致stale。初步focused job-33f7bc0d4954为1/0.148秒；job-b519f1a5ffc6的19项有两个fixture错误：新计划rev4仍用旧硬编码回执rev2、错误引用JobStore.path；按原计划取回执版本与真实runtime DB路径修正。job-b45b01c2ef98为22/3.695秒，最终另补peer等待和CLI两项至24。失败留存，不放松准入。完整证据本地evidence/qualification-compatibility-validation.json，精选reports/public-source-check.json.qualification_compatibility。
+
+Main空闲0nonterminal/有效hold时重载，原configSHA/CPU254,255/2048MiB/SHM1024MiB/1槽及19Node profile SHA不变；新表为空，旧Node未升级、fresh inventory无豁免。0 NPU kernel/模型调用、protected6仍原v036哈希；未改驱动/宿主账号/既有zdl。
+
+下一优先：固定预激活探针内存须在stage前验证Node/物理域静态运行边界（含128MiB开销），不要把临时占用当成不可能运行。真实NPU资格继承及ACL/数值/性能/仿真、实际PID1/宿主真实多用户/两物理机、远程交付/fencing、一般资源合同及控制盘硬边界、组织身份/msagent仍待。PUBLIC-001继续延期，整体目标未完成。下方为历史阶段。
+
+
 ## 已知任务并行期间的身份激活与个人排队（2026-10-31）
 
 最后激活不再复用结构交接的全Node空闲门。其他用户的已知reserved/running/cancelling任务可继续，原attempt、分配和资源账本不变；满载只让新用户任务排队。结构变更/绑定/ACK仍要求静默；同域未知执行（即使相关Node已禁用）、有效库存hold/过期轮次、待完成交接、draining、环境/存储或目标用户槽位异常仍阻断。其他物理域的其他用户未知任务不自动隔离本域。本用户自身排队/活动预激活任务会阻止最后改变身份，避免遗留授权失效任务。

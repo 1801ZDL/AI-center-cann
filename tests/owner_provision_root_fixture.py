@@ -220,6 +220,8 @@ else:raise AssertionError('First owner read second owner profile')
     # proves the centrally delivered profile works and credentials stay single.
     from owner_expand_fixture import run as expand
     expansion=expand(session,current)
+    compatibility_status=session.command('workerctl','node-qualification-compatibility',session.node_id,'--limit','1')
+    assert compatibility_status['records']==[] and not compatibility_status['more']
     session.command('accessctl','user-disable','new_owner',json_output=False)
     replay=json.loads(subprocess.run(cli,capture_output=True,text=True,check=True,timeout=30).stdout)
     assert replay['historical_receipt_only'] and session.command('accessctl','user-status','new_owner')['disabled']
@@ -234,6 +236,7 @@ else:raise AssertionError('First owner read second owner profile')
         'wrong_node_and_controller_packets_refused_before_native_effects':True,'source_stage_disabled_until_final_activation':True,
         'installed_staged_device_probe_cli_rejects_cpu_quota_without_credentials':True,
         'ordinary_device_probe_rejects_disabled_owner_without_admin_fallback':True,
+        'installed_qualification_compatibility_audit_cpu_empty_history':True,
         'installed_node_packet_cli_prepared_original_proposal':True,'second_fresh_owner_single_installed_cli_call_delivered':True,
         **second_me,'peer_private_profile_denied':True,
         'old_mapping_environment_and_warm_cache_inode_sha_preserved':True,'manual_credential_copy_used':False,

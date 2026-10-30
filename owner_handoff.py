@@ -37,6 +37,8 @@ class Handoff:
         with self.jobs.connect() as db:
             db.execute('CREATE TABLE IF NOT EXISTS owner_node_handoffs(plan_id TEXT PRIMARY KEY,node_id TEXT NOT NULL,owner TEXT NOT NULL,state TEXT NOT NULL,record TEXT NOT NULL)')
             db.execute('CREATE TABLE IF NOT EXISTS owner_node_expansions(id TEXT PRIMARY KEY,plan_id TEXT NOT NULL,state TEXT NOT NULL,record TEXT NOT NULL)')
+            from qualification_compatibility import initialize
+            initialize(db)
 
     def get(self,plan_id,db):
         row=db.execute('SELECT record FROM owner_node_handoffs WHERE plan_id=?',(plan_id,)).fetchone()
@@ -89,6 +91,8 @@ class Handoff:
 
     def mutable(self,node_id,db):
         if self.pending(node_id,db):raise JobError('Finish the approved owner handoff before changing this Node configuration',409)
+        from qualification_compatibility import pending
+        if pending(db,node_id):raise JobError('Finish the qualification compatibility decision before changing this Node configuration',409)
         for row in db.execute("SELECT record FROM owner_node_handoffs WHERE node_id=? AND state='ready'",(node_id,)):
             if not json.loads(row[0]).get('node_online_seen'):
                 raise JobError('Wait for the acknowledged Node healthy heartbeat before changing configuration',409)
@@ -110,6 +114,9 @@ class Handoff:
                 value.update(node_online_seen=True,node_online_seen_at=now());self.save(db,value);self._event(db,value,'online-observed')
                 if value.get('authorization'):
                     db.execute("UPDATE owner_node_expansions SET state='complete' WHERE id=?",(value['authorization']['id'],))
+            if sha(profile)==sha(value['after_profile']):
+                from qualification_compatibility import observe
+                observe(self.jobs,value,profile,report,db,identities)
 
     def _idle(self,node_id,profile,db):
         if any(j.get('node_id')==node_id and j['state'] in ACTIVE for j in self.jobs.all(db)):
@@ -166,7 +173,7 @@ class Handoff:
             raise JobError('Reload this controller with owner handoff admission support before approving',409)
         owner=value['request']['owner'];stage_id=value['request']['stage_id']
         if not isinstance(stage_id,str):raise JobError('Stage digest must be a string',400)
-        with self.jobs.transaction() as db:
+        with self.transaction() as (db,identities):
             existing=db.execute('SELECT record FROM owner_node_handoffs WHERE plan_id=?',(value['id'],)).fetchone()
             if existing:
                 record=json.loads(existing[0])
@@ -182,6 +189,8 @@ class Handoff:
                 'before_profile_sha256':sha(profile),'prepared_projection':value['after'],'before_projection_sha256':sha(value['before']),
                 'after_profile':after,'node_owner_revision':value['revision']+1,'storage':storage,'approved_at':now()}
             self.save(db,record)
+            from qualification_compatibility import prepare
+            prepare(self.jobs,record,profile,db,identities)
             db.execute('UPDATE worker_nodes SET last_seen=0,report=? WHERE id=?',('{}',node_id))
             self._event(db,record,'approved')
             return {'approval':self.public(record),'reused':False}

@@ -43,6 +43,8 @@ def main():
     command=sub.add_parser('node-device-probe');command.add_argument('node_id');command.add_argument('--user')
     command.add_argument('--device',type=int,required=True);command.add_argument('--memory-mib',type=int,default=256)
     command=sub.add_parser('node-device-status');command.add_argument('node_id');command.add_argument('--user')
+    command=sub.add_parser('node-qualification-compatibility');command.add_argument('node_id')
+    command.add_argument('--limit',type=int,default=20);command.add_argument('--offset',type=int,default=0)
     sub.add_parser('inventory-holds')
     command=sub.add_parser('inventory-release');command.add_argument('node_id');command.add_argument('--expected-revision',type=int,required=True)
     sub.add_parser('domain-list')
@@ -71,6 +73,10 @@ def main():
         command=sub.add_parser(action);command.add_argument('--config',required=True)
     args=parser.parse_args()
     if args.action=='identity':print(physical_identity());return
+    if args.action=='node-qualification-compatibility':
+        from qualification_compatibility import status
+        runtime=Path(args.controller_state).resolve();jobs=JobStore(runtime,read_json(runtime/'config.json'))
+        print(json.dumps(status(jobs,args.node_id,args.limit,args.offset),ensure_ascii=False,indent=2));return
     if args.action=='owner-device-probe':
         from deployment import regular_json
         from owner_device_probe import authorize

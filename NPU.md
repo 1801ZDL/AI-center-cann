@@ -1,8 +1,29 @@
 # NPU 接入与实机验收
 
 
-2026-10-31：开户总协调器已可接受显式device_probes候选计划，逐张提交固定探针并沿原job观察；--adopt-probe只采用管理员已成功的新任务，不启动重试。成功采用会在中央事务中禁止旧授权继续提交，保留原失败与新旧任务关系。候选卡数可大于同时使用额度。操作、观察到期和finishing阶段的区别见 [OWNER_PROVISION.md](OWNER_PROVISION.md)。当前676项回归及31项编排检查通过；NPU正向仍是合成观测，0新kernel，实际设备/ACL/数值/性能/仿真未验收。
+2026-10-31：开户总协调器已可接受显式device_probes候选计划，逐张提交固定探针并沿原job观察；--adopt-probe只采用管理员已成功的新任务，不启动重试。成功采用会在中央事务中禁止旧授权继续提交，保留原失败与新旧任务关系。候选卡数可大于同时使用额度。操作、观察到期和finishing阶段的区别见 [OWNER_PROVISION.md](OWNER_PROVISION.md)。此前该编排阶段676项回归及31项编排检查通过；NPU正向仍是合成观测，0新kernel，实际设备/ACL/数值/性能/仿真未验收。
 
+
+## 追加无关用户后的设备资格兼容
+
+中央的qualification_compatibility.py只处理一种变更：已批准且完成绑定/ACK的Node，按原计划追加一个新用户和各一个原生工作/缓存槽。它逐项证明所有旧UID/GID、旧槽及其他执行字段保持原值；镜像、Python/CANN环境、设备策略、物理域和资源策略不允许夹带改变。全局policy_revision仍递增，并继续进入受保护的设备访问context，没有删除版本校验。
+
+批准时在jobs→identities写保留内保存原资格、原成功固定probe、旧完整profile及新profile摘要、原用户单调安全修订。只有已启用、允许NPU的个人用户可成为候选；新增用户、仍禁用的stage、失败/过期或来源不匹配的资格不会继承。正常stage批准与已激活用户扩Node授权均使用同一规则。
+
+Node确认原ready交接并产生新鲜、健康心跳后，中央核对当前boot/驱动/Docker指纹、六个受保护运行文件、原用户权限修订及原资格是否仍相同，再核算旧context与新context。条件全部成立才关联到新配置；原job、attempt、receipt、recorded_at和expires_at不变，不提交新probe、不延长30分钟有效期。记录保留probe_context_sha256及兼容意图指针，连续追加用户会保留此前审计链。资格仍只证明设备文件访问，不代表ACL初始化、数值、性能或仿真通过。
+
+首次有效观察发现权限、指纹、资格来源或有效期不匹配时，保存skipped历史，之后恢复原值或重复心跳不会重新继承，需显式新探针。等待其他同域Node的当前库存对账时保留pending；期间配置变更、离线维护/备份被阻断，正常心跳和中央重启可继续恢复。资格变更、完成审计和Node观察位于同一事务；响应丢失重放不续期、不重复写入。备份恢复仍使verified资格过期，已完成的兼容记录不会将其复活。
+
+本地服务管理员可读取分页审计摘要，不能通过此入口重发许可或修改记录：
+
+```bash
+workerctl --controller-state /var/lib/ascend-lab-controller \
+  node-qualification-compatibility worker-替换为实际NodeID --limit 20 --offset 0
+```
+
+输出是历史计划及carried/skipped计数；当前能否用卡仍以node-device-status及正常任务准入为准。完整旧profile只保存在中央私有数据库，不通过摘要输出。计划最多1024条、每计划最多4096个候选且记录预留不超过2MiB、总预留128MiB；超限要求管理员明确保留/归档后再推进，不自动删历史。这是应用元数据上限，不是整个控制盘/SQLite的内核硬限额。存在兼容记录后拒绝切换到缺少该模块的旧中央包。
+
+本阶段设备正向来自合成可信协议，CPU Root安装演练只验证原资源/交付恢复和已安装审计CLI的空历史；真实NPU沿用资格仍待硬件验收。完整检查和证据范围见PROGRESS.md。
 
 ## 待预配用户的管理员固定探针（2026-10-31）
 

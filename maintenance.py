@@ -62,6 +62,9 @@ def assert_quiescent(state,role,check_spool=True):
                 if db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='owner_node_handoffs'").fetchone():
                     if db.execute("SELECT 1 FROM owner_node_handoffs WHERE state IN ('approved','committed') LIMIT 1").fetchone():
                         raise DeployError('Finish pending owner handoffs before offline controller maintenance')
+                if db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='qualification_compatibility'").fetchone():
+                    if db.execute("SELECT 1 FROM qualification_compatibility WHERE state='pending' LIMIT 1").fetchone():
+                        raise DeployError('Finish pending qualification compatibility decisions before offline maintenance')
                 if db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='storage_lifecycle'").fetchone():
                     if db.execute("SELECT 1 FROM storage_lifecycle WHERE state IN ('moving_to_trash','restoring','purging') LIMIT 1").fetchone():
                         raise DeployError('Finish pending storage maintenance before offline backup or activation')
@@ -320,6 +323,12 @@ def restore(prefix,archive_path,new_state,max_bytes=10*1024**3,payload_config=No
 
 def require_features(state,role,manifest):
     config=read_json(Path(state)/'config.json') or {}
+    if role=='controller' and 'qualification_compatibility.py' not in manifest.get('files',{}):
+        path=Path(state)/'jobs.sqlite3'
+        if path.exists():
+            with sqlite3.connect(path.as_uri()+'?mode=ro',uri=True) as db:
+                if db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='qualification_compatibility'").fetchone() and db.execute('SELECT 1 FROM qualification_compatibility LIMIT 1').fetchone():
+                    raise DeployError('Qualification compatibility audit state requires compatible support; refusing downgrade')
     if role=='controller' and 'owner_probe_adoption.py' not in manifest.get('files',{}):
         path=Path(state)/'jobs.sqlite3'
         if path.exists():

@@ -132,6 +132,9 @@ class Expansion:
             record.update(storage=storage,authorization={'id':value['id'],'authority_sha256':authority})
             db.execute('INSERT INTO owner_node_expansions VALUES(?,?,?,?)',(value['id'],node_plan['id'],'pending',json.dumps(value)))
             self.h.save(db,record)
+            if not previous:
+                from qualification_compatibility import prepare
+                prepare(self.jobs,record,profile,db,identities)
             db.execute('UPDATE worker_nodes SET last_seen=0,report=? WHERE id=?',('{}',value['node_id']))
             self.h._event(db,record,'expansion-reauthorized' if previous else 'expansion-approved')
             return {'grant_id':value['id'],'approval':self.h.public(record),'reused':False,'historical_receipt_only':False}
