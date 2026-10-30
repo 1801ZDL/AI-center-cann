@@ -36,7 +36,7 @@ def _checkpoint(stage):
 
 
 def guard(state):
-    for name in [JOURNAL,AWAIT]:
+    for name in [JOURNAL,AWAIT,'node-owner-ack-progress.json']:
         path=Path(state)/name
         if path.exists() or path.is_symlink():
             raise DeployError('Finish the original Node owner binding and central acknowledgement before startup or maintenance')
@@ -67,7 +67,7 @@ def control(state):
 def request(value):
     if (not isinstance(value,dict) or set(value)!={'owner','stage_id','uid','gid','workspace_slot','cache_slot'}
         or not isinstance(value['owner'],str) or not re.fullmatch('[a-zA-Z][a-zA-Z0-9_-]{0,47}',value['owner'])
-        or not re.fullmatch('[0-9a-f]{64}',str(value['stage_id']))
+        or not isinstance(value['stage_id'],str) or not re.fullmatch('[0-9a-f]{64}',value['stage_id'])
         or any(type(value[k]) is not int or not 1000<=value[k]<2**31 for k in ['uid','gid'])
         or any(not isinstance(value[k],str) or not re.fullmatch('[A-Za-z0-9_-]{1,64}',value[k]) for k in ['workspace_slot','cache_slot'])):
         raise DeployError('Owner binding needs one staged owner ID, definition SHA, non-root UID/GID and prepared slot IDs')

@@ -33,6 +33,8 @@ def main():
     p.add_argument('--prefix',required=True);p.add_argument('--spec',required=True);p.add_argument('--output',required=True)
     p=commands.add_parser('node-owner-apply',help='Resume the same Node owner/cache binding; central acknowledgement remains required')
     p.add_argument('--prefix',required=True);p.add_argument('--plan',required=True)
+    p=commands.add_parser('node-owner-ack',help='Persist central commit/ready ACKs, then unblock this prepared Node')
+    p.add_argument('--prefix',required=True);p.add_argument('--plan-id',required=True)
     p=commands.add_parser('payload-quota-plan',help='Read-only offline plan to resize one existing central owner quota')
     p.add_argument('--prefix',required=True);p.add_argument('--owner',required=True)
     p.add_argument('--mib',type=int,required=True);p.add_argument('--inodes',type=int,required=True);p.add_argument('--output')
@@ -88,6 +90,9 @@ def main():
         if path.lstat().st_uid!=0:raise deploy.DeployError('UID append plans must be Root-owned private files')
         from workspace_quota_admin import apply
         result=apply(args.prefix,deploy.regular_json(path,private=True))
+    elif args.action=='node-owner-ack':
+        from node_owner_ack import complete
+        result=complete(args.prefix,args.plan_id)
     elif args.action=='node-owner-plan':
         deploy.require_root();path=Path(args.spec)
         if path.lstat().st_uid!=0:raise deploy.DeployError('Node owner requests must be Root-owned private files')

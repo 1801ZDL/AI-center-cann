@@ -2,7 +2,7 @@
 
 面向 Triton-Ascend / AscendNPU-IR 开发服务器的 AI 任务调度与实验管理原型。程序化中央服务负责资源分配和可靠执行，个人 Agent 通过 MCP/API 提交任务、读取日志和分析结果。
 
-**当前为 v0.36 基线加后续修复，尚非生产就绪。** 当前 486 项检查通过；中央待预配身份、owner组配额追加、原生Node UID槽与本地用户/工作/缓存绑定已有独立验证。新增用户后旧IR缓存仍命中；Node本地交接有10个连续SIGKILL恢复验证。中央批准/确认、systemd组更新和最后凭据交付仍未接通，见 [OWNER_PROVISION.md](OWNER_PROVISION.md)。此前同机20个逻辑用户的完整Triton冷暖构建、57项IR/CMake混合任务、GiB归档及独立原盘核验保留原发布范围。历史Root54不重标；真实宿主多用户、非root NPU数值/性能/仿真及两台物理机仍待验收。最新进度以 [PROGRESS.md](PROGRESS.md) 为准。
+**当前为 v0.36 基线加后续修复，尚非生产就绪。** 当前497项检查通过；中央真实stage/GID与Node绑定、批准和持久ACK已连通，本地10个及ACK9个连续SIGKILL边界可恢复，旧IR缓存仍命中。新账号尚未激活，最后凭据交付和systemd组更新仍待做，见 [OWNER_PROVISION.md](OWNER_PROVISION.md)。此前同机20个逻辑用户的完整Triton冷暖构建、57项IR/CMake混合任务、GiB归档及原盘核验保留原范围。历史Root54不重标；真实宿主多用户、非root NPU数值/性能/仿真及两台物理机仍待验收。最新进度以 [PROGRESS.md](PROGRESS.md) 为准。
 
 ```mermaid
 flowchart LR

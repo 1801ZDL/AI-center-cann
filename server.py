@@ -360,7 +360,8 @@ def handler_class(store, config, jobs=None):
                 if not isinstance(body,dict):raise JobError('Node body must be an object')
                 action=urlsplit(self.path).path.removeprefix('/api/worker/')
                 methods={'heartbeat':jobs.nodes.heartbeat,'start':jobs.nodes.authorize_start,'update':jobs.nodes.update,
-                         'blob':jobs.nodes.upload,'complete':jobs.nodes.complete,'input':jobs.nodes.input_chunk}
+                         'blob':jobs.nodes.upload,'complete':jobs.nodes.complete,'input':jobs.nodes.input_chunk,
+                         'owner-commit':jobs.nodes.handoff.commit,'owner-ready':jobs.nodes.handoff.ready}
                 if action=='claim':result=jobs.nodes.claim(node_id,body)
                 elif action in methods:result=methods[action](node_id,body)
                 else:raise JobError('Unknown node operation',404)
@@ -418,7 +419,8 @@ def main():
     scheduler_thread.start()
     (runtime / 'server.pid').write_text(str(os.getpid()))
     from jobs import atomic_json,identity
-    atomic_json(runtime/'server-ready.json',{**identity(os.getpid()),'controller_instance':jobs.controller_instance})
+    from owner_handoff import CAPABILITY as OWNER_HANDOFF
+    atomic_json(runtime/'server-ready.json',{**identity(os.getpid()),'controller_instance':jobs.controller_instance,'capabilities':[OWNER_HANDOFF]})
     logging.info('Started controller listener using %s on port %s',listener_info['scheme'],config['port'])
 
     def stop(signum, frame):

@@ -63,7 +63,7 @@ class NodeOwnerTests(unittest.TestCase):
             with self.assertRaises(DeployError):admin.extend(self.before,self.request,work,private)
 
     def test_request_and_plan_digest_boundaries_reject_aliases_or_tampering(self):
-        for patch in [{'uid':True},{'gid':0},{'stage_id':'wrong'},{'workspace_slot':'../x'},{'owner':'../x'}]:
+        for patch in [{'uid':True},{'gid':0},{'stage_id':'wrong'},{'stage_id':int('1'*64)},{'workspace_slot':'../x'},{'owner':'../x'}]:
             with self.subTest(patch=patch),self.assertRaises(DeployError):admin.request({**self.request,**patch})
         with self.assertRaises(DeployError):admin._plan_check({**self.value,'revision':1})
         with self.assertRaises(DeployError):admin._plan_check(self.sign({**self.value,'control_identity':{'device':True,'inode':1}}))

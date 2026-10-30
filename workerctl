@@ -30,6 +30,8 @@ def main():
     command=sub.add_parser('node-events');command.add_argument('node_id')
     command=sub.add_parser('node-environment');command.add_argument('node_id')
     command.add_argument('--from-job',required=True);command.add_argument('--expected-revision',type=int,required=True)
+    command=sub.add_parser('owner-approve');command.add_argument('node_id');command.add_argument('--plan',required=True)
+    command=sub.add_parser('owner-status');command.add_argument('node_id')
     command=sub.add_parser('node-probe');command.add_argument('node_id');command.add_argument('--user')
     command.add_argument('--memory-mib',type=int,help='Explicit probe memory reservation for large finite tmpfs slots; ordinary quotas still apply')
     command.add_argument('--tool',action='append',default=[]);command.add_argument('--file',action='append',default=[])
@@ -65,6 +67,15 @@ def main():
         command=sub.add_parser(action);command.add_argument('--config',required=True)
     args=parser.parse_args()
     if args.action=='identity':print(physical_identity());return
+    if args.action in {'owner-approve','owner-status'}:
+        runtime=Path(args.controller_state).resolve();jobs=JobStore(runtime,read_json(runtime/'config.json'))
+        if args.action=='owner-status':result=jobs.nodes.handoff.status(args.node_id)
+        else:
+            from deployment import regular_json
+            path=Path(args.plan)
+            if path.lstat().st_uid!=os.getuid():parser.error('Owner approval plan must belong to this service identity')
+            result=jobs.nodes.handoff.approve(args.node_id,regular_json(path,max_bytes=8*1024**2,private=True))
+        print(json.dumps(result,ensure_ascii=False,indent=2));return
     if args.action in {'node-device-probe','node-device-status'}:
         from device_qualification import PROBE,decision
         runtime=Path(args.controller_state).resolve();jobs=JobStore(runtime,read_json(runtime/'config.json'))
@@ -137,7 +148,10 @@ def main():
             node_config['templates']=sorted(set(args.template));atomic_json(path,node_config)
             print('Templates updated. Transfer the private config and restart that node:',path);return
         node_config['node_key']=jobs.nodes.rotate_key(args.node_id);atomic_json(path,node_config)
-        print('Node credential rotated. Transfer the private config and restart that node:',path);return
+        with jobs.connect() as db:pending=jobs.nodes.handoff.pending(args.node_id,db)
+        if pending:print('Owner handoff pending: finish local binding, then transfer only node_key from this private file into the bound Node config; preserve its projection:',path)
+        else:print('Node credential rotated. Transfer the private config and restart that node:',path)
+        return
     if args.action=='enroll':
         from workflow_spec import MAX_TIMEOUT_SECONDS
         if not 1<=args.max_timeout_seconds<=MAX_TIMEOUT_SECONDS:parser.error('Node execution timeout must be within 1..86400 seconds')

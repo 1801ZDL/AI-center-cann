@@ -167,6 +167,19 @@ NPUgrant增加npu_policy_sha256，固定管理员合同。节点启动前及Dock
 `GET /api/jobs/{job_id}/artifact-chunk?name=ENCODED&offset=0&length=262144`只读已登记普通文件，逐层目录FD拒绝符号链接，拒绝硬链接/特殊文件。length为1..262144，offset为非负且不超过文件大小；返回name/offset/size、Base64 data和该块sha256。客户端依清单最终全文件SHA核对，不能把块校验当成完整归档校验。认证、项目访问撤销同样作用于每次续传。
 
 个人archive_root、本地源文件和下载进度均留在客户端，不提交给中央。此接口是拉取归档，不在中央执行个人路径上的写入。
+## 待预配用户的中央与节点交接
+
+中央本地管理员通过 `workerctl owner-approve NODE --plan FILE` 批准原始 Node 绑定计划，以 `owner-status NODE` 查询交接状态。计划文件须由中央服务 UID 所有且仅本人可读；普通用户及节点无批准接口。批准核对真实禁用且无凭据的待预配身份、中央原生存储配额、原 Node 投影及修订、空闲执行与物理域清单。未完成交接的节点暂停新领取；已分配资源不因交接或密钥撤销而释放。
+
+以下 POST 仅接受该登记 Node 的 Bearer 密钥，沿用节点 JSON 的 1MiB 上限；个人或管理员登录凭据无权调用：
+
+| 路由 | 合同 |
+|---|---|
+| `/api/worker/owner-commit` | `{receipt: 本地绑定回执}`，核对已批准计划后原子提交登记投影，返回稳定的 commit ACK |
+| `/api/worker/owner-ready` | `{plan_id, commit_ack_id}`，核对原 commit ACK 后返回稳定的 ready ACK |
+
+Root Node 使用 `servicectl node-owner-ack --prefix PREFIX --plan-id ID` 持久保存两阶段 ACK、更新本地 ready 投影并清理启动阻断。网络超时或进程中断后重复同一命令，不另建计划。完成后的实际健康心跳才记录 `node_online_seen=true`；此前仍禁止后续 Node 配置变更。回执绑定节点、物理域、owner、stage 摘要、计划及投影修订；两接口均不启用用户、不签发个人凭据。完整管理与恢复步骤见 [OWNER_PROVISION.md](OWNER_PROVISION.md)。
+
 # 文件系统工作区节点（v0.12）
 
 节点可登记workspace.slots，由管理员指定独立有限文件系统；用户不可指定宿主路径。能力filesystem-workspace-v1与workspace_observation.policy_sha256必须匹配合同；观测只含slot ID、状态、是否干净、剩余字节/inode，不含私有路径或任务内容。新分配在事务中独占storage_id，needs_attention和完成回执尚未确认的任务仍占用。grant附workspace_policy_sha256，allocation.workspace记录slot_id/storage_id/bytes/inodes/durable。任务引导器再次验证实际挂载身份。

@@ -1,6 +1,6 @@
 # 用户预配：当前阶段与交付条件
 
-当前提供**中央待预配身份**、**中央新 owner 存储组追加**、**原生 UID 槽追加**及**Node 本地用户/工作区/缓存绑定**。中央批准和确认 Node 回执、systemd 组更新、最终身份激活及个人凭据交付尚未接通，完整开户仍未完成。
+当前提供**中央待预配身份/GID配额**、**Node原生槽与本地绑定**及**中央批准/Node ACK交接**。systemd组更新、最终身份激活及个人凭据交付尚未接通，完整开户仍未完成。
 
 ## 中央待预配身份
 
@@ -88,9 +88,37 @@
 
 中断后保留原计划，重复同一 `node-owner-apply`。完成后有 `central_acknowledgement_still_required=true` 和 `startup_blocked=true`，Root 私有状态留下 `node-owner-awaiting-controller.json`。普通启动/维护、直接 Worker 启动、另一原生 UID 追加和代码回滚都被阻断；不能删除标记或手工改中央 profile 绕过。
 
-**中央批准/确认命令尚未实现，所以当前只在隔离演练 Node 验证本步骤。** Node 侧接受管理员提供的 stage 摘要，不证明该身份已获中央授权。后续仍须让中央核对真实身份、分配、策略修订和 Node 回执，再确认恢复服务；不要用本阶段工具给正在服务团队的 Node 留下无法自动完成的待确认状态。
+Node 本地接受管理员提供的stage摘要，仍需下述中央批准和ACK才能恢复启动。不能把本地回执当作中央授权；新账号此时仍无登录凭据。
+
+## 中央批准及Node确认
+
+中央服务须运行支持 `owner-handoff-v1` 的代码；旧运行实例会被管理工具拒绝。把Node输出的原始计划复制到中央的私有管理目录，并交给中央服务UID所有、仅本人可读。该计划包含预配元数据，不需要个人SSH、模型密钥或会话内容。
+
+```bash
+/opt/ascend-lab-controller/current/servicectl admin \
+  --prefix /opt/ascend-lab-controller -- \
+  workerctl owner-approve worker-替换为实际ID --plan /var/lib/ascend-lab-controller/node-owner-plan.json
+```
+
+推荐在Node执行 `node-owner-apply` 前批准。中央核对真实禁用/无凭据身份、stage摘要、原Node映射及策略修订、中央硬配额和其他Node的存储分配；有在途任务或物理执行清单hold时拒绝。批准后该Node暂停新领取，其他Node继续受原资源域约束；配置修改与不兼容代码切换被阻断。待交接节点即使撤销凭据，其存储也保持分配，不能被新登记接管。
+
+完成本地绑定后，在同一Node执行：
+
+```bash
+/opt/ascend-lab-node/current/servicectl node-owner-ack \
+  --prefix /opt/ascend-lab-node --plan-id 替换为原计划64位摘要
+/opt/ascend-lab-node/current/servicectl start --prefix /opt/ascend-lab-node
+/opt/ascend-lab-controller/current/servicectl admin \
+  --prefix /opt/ascend-lab-controller -- workerctl owner-status worker-替换为实际ID
+```
+
+Node使用本节点凭据调用专用HTTP接口，普通个人token无权代办。中央先原子提交匹配登记并返回稳定commit ACK；Node落盘后更新本地ready投影并请求ready ACK，保存最终回执后才清理启动阻断标记。网络超时或进程中断后重复同一命令；不另建计划、不删除进度文件。中央收到更新后Node的健康心跳才记录 `node_online_seen=true`，此前仍不允许继续修改Node配置。身份始终待预配，后续还需最终激活/凭据发布步骤。
+
+撤销节点凭据始终有效；若交接中轮换密钥，先完成已有本地绑定，再只更新实际Node配置中的 `node_key`，保留已绑定的映射/缓存投影，随后用原计划继续ACK。不要把旧登记配置整体覆盖到已绑定的Node。当前验证是同机隔离角色和进程模式，不是两台真机或systemd PID1验收。
 
 ## 已验证范围
+
+中央/Node交接：同一隔离Root角色内的实际非Root中央UID23820与Root Node，真实stage定义、中央GID追加和HTTP节点认证。旧本地10断点后，ACK另有9个连续SIGKILL边界(含中央已提交但本地未落盘、AWAIT已删除但进度未清理)及同计划恢复。中央/本地投影、两阶段稳定ACK和本地回执独立一致，实际Worker健康心跳确认后可继续配置管理；新账号仍禁用、密码标记不可用、token0。没有新用户凭据交付或队列任务验收；不是两机、systemd或新的中央保护环境探针验收。
 
 Node本地绑定：真实安装、fixture stage摘要、独立的两个128MiB ext4 UID盘；同一计划的10个连续持久化边界SIGKILL、原计划继续恢复和CLI回执重放通过。活跃缓存租约、服务共享锁及变化的旧控制记录被拒绝；暖命中前完整旧控制元数据符合预期迁移，仅绑定和generation变化。旧UID23801的真实BishengIR答案42迁移后仍命中原inode/UID/GID/SHA，新UID23802另编译成功。交接未获中央确认时，普通/直接Worker启动、原生追加和代码回滚均被拒绝。该验证没有连接中央，也没有启用账号。
 
@@ -104,7 +132,7 @@ Node本地绑定：真实安装、fixture stage摘要、独立的两个128MiB ex
 
 1. 已有中央不可登录的待预配身份、定义摘要及项目预登记；仍须与后续各层操作组合。
 2. 已有中央 owner GID/硬配额追加、Node 原生槽与本地用户/工作/缓存绑定原语；仍需中央协调及 systemd 组更新。
-3. 中央批准与确认 Node 回执、更新登记并完成有修订的交接尚未接通；Node 本地回执已保留缓存和环境边界。实际两机接入不要求中央持有个人 SSH 或模型密钥。
+3. 已有中央批准、登记提交与Node持久ACK、健康心跳观察；实际两机接入和真实systemd仍待验收，不要求中央持有个人SSH或模型密钥。
 4. 校验各层就绪后再启用身份和交付个人客户端凭据；中断不能留下已启用但无可用资源的账号。
 
 当前阶段不会把底层槽追加成功当成这四步已完成。最新验收与缺口见 [PROGRESS.md](PROGRESS.md)。

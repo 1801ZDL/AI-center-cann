@@ -25,6 +25,8 @@
 
 Node本地用户/工作/缓存绑定随后已验证，当前486项回归通过。旧BishengIR缓存保留原key/inode/归属并暖命中，新UID使用独立缓存；同一计划10个连续SIGKILL边界可恢复。该Node使用fixture stage ID，完成后保留待中央确认标记并拒绝启动。正式推广仍需中央批准/ACK、登记同步、最后身份激活及systemd组更新，不能将本地绑定回执当作完整开户或两机验收。操作和阻断条件见OWNER_PROVISION.md。
 
+中央批准/ACK阶段随后已连通，当前497项回归通过。实际安装的非Root中央与Root Node使用真实stage/GID和节点凭据，额外9个连续ACK中断点可恢复；本地/登记投影及回执一致，实际Worker健康心跳已观察。新身份仍禁用且无令牌，不能把交接成功当成凭据交付完成。最后激活、systemd组更新、两实际系统用户/两机和NPU资格仍需验证；本Demo当前已加载该能力，既有预算未改。
+
 个人 Agent 可放在用户自己的主机账号或开发容器中；两种位置使用相同 API。公共 harness 二进制和公共能力包可只读分发，HOME/XDG、会话、模型凭据和个人配置按真实用户隔离。进入不同项目目录不构成权限隔离；OpenCode 还会合并全局与项目配置，接入器应检查最终生效配置。[OpenCode 配置规则](https://docs.opencode.ai/docs/config/)。普通用户和个人 Agent 不取得 Docker socket；Docker 管理权限属于主机信任边界。[Docker 官方权限说明](https://docs.docker.com/engine/install/linux-postinstall/)。
 
 PUBLIC-001 夜间回归继续作为后续公共项目：专用机器人身份、低优先级资源预算、冻结基线/候选环境及结果归档。凌晨 02:00 是最早提交时间，不保证立即占卡；资源不足继续等待。PR 归因优先产出可复现实验和修改/revert 建议，公共分支变更另走明确授权与审查。

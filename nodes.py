@@ -36,6 +36,8 @@ class NodeRegistry:
             ''')
         from device_qualification import Qualifications
         self.qualifications=Qualifications(jobs)
+        from owner_handoff import Handoff
+        self.handoff=Handoff(self)
 
     def enroll(self,profile):
         if not isinstance(profile,dict) or not re.fullmatch(r'[a-zA-Z][a-zA-Z0-9_-]{0,47}',profile.get('name','')):raise JobError('Invalid node name')
@@ -97,7 +99,7 @@ class NodeRegistry:
         node_id='worker-'+uuid.uuid4().hex[:12];key=secrets.token_urlsafe(36)
         with self.jobs.transaction() as db:
             self.jobs.resources.validate_node(profile,db)
-            held={j.get('node_id') for j in self.jobs.all(db) if j['state'] in ACTIVE}
+            held={j.get('node_id') for j in self.jobs.all(db) if j['state'] in ACTIVE}|self.handoff.held_nodes(db)
             for old_id,raw,disabled in db.execute('SELECT id,profile,disabled FROM worker_nodes'):
                 old=json.loads(raw)
                 if old['physical_id']!=profile['physical_id'] or disabled and old_id not in held:continue
@@ -115,7 +117,7 @@ class NodeRegistry:
             if profile.get('workspace'):
                 from quota_workspace import sharing,capacity
                 combined=list(profile['workspace']['slots'])
-                held={j.get('node_id') for j in self.jobs.all(db) if j['state'] in ACTIVE}
+                held={j.get('node_id') for j in self.jobs.all(db) if j['state'] in ACTIVE}|self.handoff.held_nodes(db)
                 for old_id,raw,disabled in db.execute('SELECT id,profile,disabled FROM worker_nodes'):
                     old=json.loads(raw)
                     if old['physical_id']!=profile['physical_id'] or disabled and old_id not in held:continue
@@ -136,6 +138,7 @@ class NodeRegistry:
         policy=validate_policy(policy)
         with self.jobs.transaction() as db:
             profile=self.node(node_id,db)['profile']
+            self.handoff.mutable(node_id,db)
             revision=profile.get('policy_revision',1)
             if type(expected_revision) is not int or expected_revision!=revision:raise JobError('Node policy revision changed; inspect before retrying',409)
             if any(job['state'] in ACTIVE and job.get('node_id')==node_id for job in self.jobs.all(db)):
@@ -158,6 +161,7 @@ class NodeRegistry:
         from archive_api import open_artifact
         with self.jobs.transaction() as db:
             node=self.node(node_id,db);profile=node['profile'];revision=profile.get('policy_revision',1)
+            self.handoff.mutable(node_id,db)
             if type(expected_revision) is not int or expected_revision!=revision:raise JobError('Node revision changed',409)
             if any(job['state'] in ACTIVE and job.get('node_id')==node_id for job in self.jobs.all(db)):
                 raise JobError('Finish or reconcile every node attempt before certifying its environment',409)
@@ -194,8 +198,9 @@ class NodeRegistry:
 
     def set_templates(self,node_id,templates):
         if not isinstance(templates,list) or not templates or set(templates)-set(SCRIPTS):raise JobError('Unknown node template')
-        with self.jobs.connect() as db:
+        with self.jobs.transaction() as db:
             profile=self.node(node_id,db)['profile'];profile['templates']=sorted(set(templates))
+            self.handoff.mutable(node_id,db)
             db.execute('UPDATE worker_nodes SET profile=? WHERE id=?',(json.dumps(profile),node_id))
 
     def rotate_key(self,node_id):
@@ -309,6 +314,7 @@ class NodeRegistry:
             updated=db.execute('UPDATE worker_nodes SET last_seen=?,report=? WHERE id=? AND profile=? AND disabled=0',
                 (time.time(),json.dumps(report),node_id,json.dumps(profile)))
             if updated.rowcount!=1:raise JobError('Node configuration changed while validating heartbeat; retry with current configuration',409)
+            self.handoff.observe(node_id,profile,report,db)
         return {'node_id':node_id,'accepted':True}
 
     def _grant(self,job):
@@ -468,6 +474,7 @@ class NodeRegistry:
             assigned=[job for job in active if job.get('_remote') and job.get('node_id')==node_id]
             recovery=next((job for job in assigned if job['attempt_id'] not in excluded),None)
             if recovery:return {'grant':self._grant(recovery)}
+            if self.handoff.pending(node_id,db):return {'grant':None,'reason':'Node owner handoff awaits durable central readiness'}
             if self.jobs.policy.get('require_pinned_docker') and PINNED_RUNTIME not in node['report'].get('capabilities',[]):
                 raise JobError('Node must upgrade to pinned-docker-runtime-v1 before receiving new work',409)
             if self.jobs.policy.get('require_environment_contract') and (ENVIRONMENT not in node['report'].get('capabilities',[]) or not profile.get('image')):

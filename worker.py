@@ -37,7 +37,7 @@ class NodeClient:
                             **({'ca_file':config['ca_file']} if config.get('ca_file') else {})})
 
     def call(self,action,body):
-        if action not in {'heartbeat','claim','start','update','blob','complete','input'}:
+        if action not in {'heartbeat','claim','start','update','blob','complete','input','owner-commit','owner-ready'}:
             raise ValueError('Invalid worker operation')
         try:
             return self.client.request('/api/worker/'+action,body)

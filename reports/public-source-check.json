@@ -1,18 +1,20 @@
 {
   "schema": "ai-center-cann-source-check/v1",
-  "recorded_at": "2026-10-30T13:45:33.117302+00:00",
+  "recorded_at": "2026-10-30T14:54:00.691003+00:00",
   "passed": true,
-  "python_unit_tests": 486,
+  "python_unit_tests": 497,
   "unit_skipped": 0,
-  "unit_seconds": 75.161,
-  "unit_log_sha256": "6076e8dcde5af6ef0ab11e6911f715dcb6caab2e4dca90b55cd8b05c92abcbca",
+  "unit_seconds": 83.05,
+  "unit_log_sha256": "2c0649568215b18d62d5fa3cf3247a63129fa1d81f9425d422ffa84e47eb3a88",
   "python": "Python 3.12.3",
   "javascript_syntax_passed": true,
   "command": "bash scripts/check.sh /usr/bin/python3",
-  "scope": "Current61 production CPU/JS checks plus separate installed Node owner/cache-binding acceptance. Fixture stage ID only; Node startup remains blocked for central acknowledgement. Prior central GID, Node native append, Root54 and mixed compiler checks retain frozen releases. No user activation, physical multi-host, systemd PID1 or NPU acceptance.",
+  "scope": "Current63 production CPU/JS checks plus installed same-host central approval and durable Node ACK acceptance. Real staged identity/GID and HTTP node credentials used; account activation/private credential delivery remain incomplete. Prior Root54, mixed compiler and individual storage/binding checks retain frozen releases. Not physical multi-host/systemd PID1/NPU acceptance.",
   "production_source_sha256": {
     "auth.py": "6a59a9be593c32bf3717dd8f825e490d4235c2f458d121578201ccf2d2a76031",
     "owner_identity.py": "323830cacdcb122347e6ccf50d5b91d14362ac5eea34245d8efebc21044218b0",
+    "owner_handoff.py": "094e815dec288eaaab140806ab13f8f1472bf184b1b0081542e4fc8fa83ae7b8",
+    "node_owner_ack.py": "18a3457115a0380080772dcea802502037b11dfc2900be72891690d822a4404f",
     "backends.py": "ad71569a0d69590e4d4eaafb43c65b62ceefa7a2cdf8bbf79754e4c7005d929e",
     "collector.py": "d2ebaa14f4dbca07c368a5c483cf7ccb608d8bbc7fbb2ea3996c72f30e183071",
     "container_engine.py": "12887405ee02072feebff5fae506adf3bb31b883e2b96070c6cc525ea5146008",
@@ -30,10 +32,10 @@
     "lab_client.py": "4fc2f9a95d7e0bdee0f628b8237e4a3935d19bfcde7bfba85ce95854c0429527",
     "client_archive.py": "eec04a9574e8a87d90dc54c556d4bfe6462dfb92f0332bdc6996ad64e7121c97",
     "archive_api.py": "3e9f6539e3760cb4d68b2f85a8f01b751441e3d79b70675aac1f45e90a527e57",
-    "nodes.py": "dcb187c4b628099168f6278cb6ef386c14ae28e5c9da2aa2650b5693b6f0ff32",
-    "server.py": "59578f849775e60df61496a56da34db8b697a425d98b9e9635e14e7d42a86fda",
+    "nodes.py": "82e5caa266ec6e7fce9d4d2e5499aefc4908a92bcf2248ec099bbc58e766894d",
+    "server.py": "71797272dd61db23ea3d413980f39f2887e73e7154bb1e884856451380c1fe68",
     "templates.py": "6ada33ac5851c5ef28a3e7b5f34206962c87c469c6054f10e8d33c68a623d3ba",
-    "worker.py": "41437fa41655632c3617ca39c140182f9a085e46623e897dccc2d267087628d9",
+    "worker.py": "e0d3607a715fef735f595df5bbcfea6cd9be1191b17fe4c3638a46b8dc9ae9aa",
     "workflow_runner.py": "239bbcb5eca6414d85f7172808a710896d9743660289039626e54672088078f7",
     "workflow_spec.py": "3c1403328db9e4a3ab228056559250127fd3ff985fe009f1f4646045257dfb6a",
     "workflow_results.py": "4af089654e6867b3609e7719ec392c7792977ccb79d8d09f1af3ac58fff22377",
@@ -47,7 +49,7 @@
     "filesystem_quota.py": "f298cd3dacacfa9d344ee1e040feb30b5cf51adb009802abde2db69ddb662d53",
     "quota_workspace.py": "f836673c97ed36d3f0a3c8589860b004fd22058f0fedb305f9afcf0571cbb287",
     "workspace_quota_admin.py": "7dea3194c837d9ba34ec48d679a9044e8919bf00fc253af0050d5c3d652b31dd",
-    "node_owner_admin.py": "537945b03ae1bb4bcf8c3d19eea658886027a4a29fb49e38eabe9c6152d2850a",
+    "node_owner_admin.py": "4ecec3e030131b47b74ced9c6aa36e0a7f2fa3091be24838f42f7a4871f5b324",
     "group_quota.py": "3137ba8af5c5803fab0a2e4f547063ee883fc5fae3aa3349767585f4a61429d4",
     "payload_groups.py": "6377b078e9f1032a2e33862ba2995c3b94992a731a68a42044a57c6ac77e54d8",
     "payload_quota_admin.py": "b93541ebd312cc8e195cb5e6065dfe40d969a5166df6b7270b4dea9b3146cbf0",
@@ -59,11 +61,11 @@
     "storage_files.py": "c2dfe4aec3a4dec6bf8802655eb9e72a414e307d5eb6f4725da99f0484642ebf",
     "storage_lifecycle.py": "cc5778edf04bf1118ac940f6954cc488ae7ceedbee373568af87c6add3cde098",
     "node_storage.py": "185bdeb757c0644cf6319460d74ea15061cf6329b4707354696f8e156a16370c",
-    "deployment.py": "c2a2e966b47fbc07d5001b3ab99b2c7088ad64a94dc4ce4f347c7dac6b67c929",
-    "maintenance.py": "9df559eedcbd966de6c80eda2793c617c90af81ff1fb23ccb98e800434ee5d66",
-    "servicectl": "c554f187d20f924b2232541cde9a929b38a94502f9aed881e3422feb70e11a13",
+    "deployment.py": "c0f26dbb70f39940b2e896aff73526639aaaaf0e3f641f5e18d68c818fc1f712",
+    "maintenance.py": "5ec6d6cba8af9a6dc21726f89c3fd39e147929a7503bb411f736d0727fc2e7c4",
+    "servicectl": "b628c6e6c186fa4e03928bef72b9654d2e9f3dfb4c750b4de7a1bf6455e78723",
     "accessctl": "88c1e2173a82f279adc9a850da7c8d33022ae86e8933c3fa970dd5966b197201",
-    "workerctl": "a889433c37e8f53c31391956515cdc1d1aa2667cd18c8a97dc9ab47d343d9800",
+    "workerctl": "48de8588e4b8032e1492a3c2b27874d5a9d9caffe2fc0135e39b9cece10fe162",
     "spool_storage.py": "c8a579146e0b24077ebf504050dd5344505f8023f6e33be1c1cb6e9ff312fea4",
     "spool_transfer.py": "885bc83a4b4cbc7d4a81c2ab1efd1df1c84b986166911f0e642bc3b214f2dd7b",
     "persistent_cache.py": "d70d394a48ae2068fe25a0a075d0882b1361ff6dda6b2d7ca3717d7fac35bd0b",
@@ -652,7 +654,6 @@
     "handoff_plan_matches": true,
     "own_roles_and_volumes_absent": true,
     "new_unit_tests": 8,
-    "root_source_hashes_match_current61": true,
     "first_fixture_failure": "Outer umask masked public test payload directory permissions; non-root IR actor failed before owner planning/migration. Fixed directory permissions and closed refused-start state lock explicitly; original failed evidence retained.",
     "main_reloaded_this_stage": true,
     "host_accounts_created": false,
@@ -667,6 +668,209 @@
       "cpu_memory_shm_slots_unchanged": true,
       "history_or_raw_evidence_deleted": false,
       "scope": "Own Demo legacy admin application archive capacity, after CPU/Root checks passed; no tested native limits changed"
-    }
+    },
+    "root_source_hashes_matched_frozen61": true,
+    "rerun_with_current_handoff_code": false
+  },
+  "prior_node_binding_full_check": {
+    "recorded_at": "2026-10-30T13:45:33.117302+00:00",
+    "python_unit_tests": 486,
+    "unit_seconds": 75.161,
+    "unit_log_sha256": "6076e8dcde5af6ef0ab11e6911f715dcb6caab2e4dca90b55cd8b05c92abcbca"
+  },
+  "owner_central_node_handoff": {
+    "passed": true,
+    "installed_node_cli_plan_apply": true,
+    "fixture_stage_identity_only": false,
+    "actual_central_contact": true,
+    "active_lease_rejected": true,
+    "shared_service_lock_rejected": true,
+    "read_only_plan": true,
+    "stale_cache_control_plan_rejected_before_mutation": true,
+    "old_cache_metadata_exact_before_warm_reacquire": true,
+    "fault_chain": [
+      {
+        "boundary": "journal",
+        "sigkill_observed": true,
+        "same_plan_used": true,
+        "old_data_preserved": true
+      },
+      {
+        "boundary": "cache_control",
+        "sigkill_observed": true,
+        "same_plan_used": true,
+        "old_data_preserved": true
+      },
+      {
+        "boundary": "cache_marker",
+        "sigkill_observed": true,
+        "same_plan_used": true,
+        "old_data_preserved": true
+      },
+      {
+        "boundary": "new_control",
+        "sigkill_observed": true,
+        "same_plan_used": true,
+        "old_data_preserved": true
+      },
+      {
+        "boundary": "new_marker",
+        "sigkill_observed": true,
+        "same_plan_used": true,
+        "old_data_preserved": true
+      },
+      {
+        "boundary": "config",
+        "sigkill_observed": true,
+        "same_plan_used": true,
+        "old_data_preserved": true
+      },
+      {
+        "boundary": "metadata",
+        "sigkill_observed": true,
+        "same_plan_used": true,
+        "old_data_preserved": true
+      },
+      {
+        "boundary": "receipt",
+        "sigkill_observed": true,
+        "same_plan_used": true,
+        "old_data_preserved": true
+      },
+      {
+        "boundary": "handoff",
+        "sigkill_observed": true,
+        "same_plan_used": true,
+        "old_data_preserved": true
+      },
+      {
+        "boundary": "published",
+        "sigkill_observed": true,
+        "same_plan_used": true,
+        "old_data_preserved": true
+      }
+    ],
+    "fault_scope": "Ten successive SIGKILL boundaries in one unchanged plan, followed by installed CLI receipt replay",
+    "old_namespace_inode_uid_gid_and_ir_sha_preserved": true,
+    "old_cache_control_keys_preserved": true,
+    "cold_ir": {
+      "uid": 23801,
+      "compiled": true,
+      "calls": 1,
+      "sha256": "90891b1316f1310b85eb0300ffd001f2d80ffd5cdefb695cda0544f457dba737",
+      "inode": 15,
+      "cap_effective": "0000000000000000",
+      "no_new_privileges": "1"
+    },
+    "warm_ir": {
+      "uid": 23801,
+      "compiled": false,
+      "calls": 1,
+      "sha256": "90891b1316f1310b85eb0300ffd001f2d80ffd5cdefb695cda0544f457dba737",
+      "inode": 15,
+      "cap_effective": "0000000000000000",
+      "no_new_privileges": "1"
+    },
+    "new_owner_ir": {
+      "uid": 23802,
+      "compiled": true,
+      "calls": 1,
+      "sha256": "90891b1316f1310b85eb0300ffd001f2d80ffd5cdefb695cda0544f457dba737",
+      "inode": 20,
+      "cap_effective": "0000000000000000",
+      "no_new_privileges": "1"
+    },
+    "same_old_namespace_key": true,
+    "old_mapping_slots_environment_preserved": true,
+    "new_uid_work_and_cache_bound": true,
+    "worker_startup_blocked_before_central_ack": true,
+    "native_append_blocked_before_central_ack": true,
+    "rollback_blocked_before_central_ack": true,
+    "genuine_prior_code_rollback_reupgrade_before_binding": true,
+    "old_target_new_administration_rejected": true,
+    "rollback_baseline_commit": "9d025e05d25dc419824da0cfc1d8b87c92e09f8d",
+    "accounts_enabled": false,
+    "full_owner_onboarding_ready": false,
+    "scope": "Same-host installed non-root controller plus Root Node, real stage/GID approval and authenticated HTTP commit/ready ACK, no user activation or queued new-owner workload. Environment enrolled by trusted fixture administrator; not a new protected environment-probe acceptance.",
+    "real_central_stage_definition_matched": true,
+    "central_native_gid_appended": true,
+    "central_approval_replay_stable": true,
+    "node_ack_fault_chain": [
+      {
+        "boundary": "intent",
+        "sigkill_observed": true,
+        "same_plan_replayed": true
+      },
+      {
+        "boundary": "commit_response",
+        "sigkill_observed": true,
+        "same_plan_replayed": true
+      },
+      {
+        "boundary": "committed",
+        "sigkill_observed": true,
+        "same_plan_replayed": true
+      },
+      {
+        "boundary": "config_ready",
+        "sigkill_observed": true,
+        "same_plan_replayed": true
+      },
+      {
+        "boundary": "ready_response",
+        "sigkill_observed": true,
+        "same_plan_replayed": true
+      },
+      {
+        "boundary": "ready_saved",
+        "sigkill_observed": true,
+        "same_plan_replayed": true
+      },
+      {
+        "boundary": "receipt",
+        "sigkill_observed": true,
+        "same_plan_replayed": true
+      },
+      {
+        "boundary": "awaiting_removed",
+        "sigkill_observed": true,
+        "same_plan_replayed": true
+      },
+      {
+        "boundary": "published",
+        "sigkill_observed": true,
+        "same_plan_replayed": true
+      }
+    ],
+    "registered_and_local_projections_match": true,
+    "node_unblocked_after_durable_ready_ack": true,
+    "healthy_real_worker_heartbeat_observed": true,
+    "identity_still_staged_and_token_count_zero": true,
+    "central_nonroot_uid": 23820,
+    "at": "2026-10-30T14:46:10.561927+00:00",
+    "server_release": "5e5399125a8805accecdf01e320ef2c6efcc9546c6376e1fa6692a0ae4269304",
+    "npu_kernel_launches": 0,
+    "model_invocations": 0,
+    "cleanup_confirmed": true,
+    "registered_and_local_projections_independently_verified": true,
+    "stored_commit_ready_and_local_receipts_equal": true,
+    "stage_definition_independently_verified": true,
+    "new_owner_disabled_impossible_password_no_tokens": true,
+    "controller_uid_from_ready_metadata": 23820,
+    "all_owned_roles_and_volumes_absent": true,
+    "no_user_activation_or_credential_delivery": true,
+    "root_source_hashes_match_current63": true,
+    "new_unit_tests": 11,
+    "unit_tests": 497,
+    "unit_seconds": 83.05,
+    "root_fixture_source_sha256": {
+      "tests/node_owner_binding_check.py": "dd739f1bd4b23339475f5392b6d19f7e336160d6b18611a91ddc4e979e9e88ac",
+      "tests/owner_handoff_root_fixture.py": "29b0fe44dd8b5f0c103b6966c04f594304105576fd6d01326f0326308fb89c89"
+    },
+    "fixture_failures_preserved": 4,
+    "failure_scope": "Import path, group-quota mount options, actual ext4 capacity and spool minimum were corrected in owned test fixtures; production gates not relaxed.",
+    "main_reloaded_this_stage": true,
+    "main_config_and_budgets_unchanged": true,
+    "live_main_advertises_owner_handoff_v1": true
   }
 }

@@ -68,6 +68,16 @@ def controller():
                     'packages':{},'tools':{'bishengir-opt':{'realpath':tool,'sha256':tool_sha}},'files':{}},
         'source':{'job_id':context['job_id'],'attempt_id':context['attempt_id'],
                   'receipt_sha256':hashlib.sha256(Path('/payload/probe.py').read_bytes()).hexdigest(),'node_revision':1}}
+    session=None
+    if context.get('central_handoff'):
+        sys.path.insert(0,'/payload')
+        from handoff_fixture import CentralSession
+        spool=Path('/spool-quota');spool.chmod(0o700)
+        if (spool/'lost+found').exists():(spool/'lost+found').rmdir()
+        info=spool.stat();space=os.statvfs(spool)
+        config['spool_storage']={'path':str(spool),'filesystem':'ext4','device':info.st_dev,'root_inode':info.st_ino,
+            'bytes':space.f_blocks*space.f_frsize,'inodes':space.f_files,'storage_id':uuid.uuid4().hex}
+        session=CentralSession(config,context);config=session.config
     atomic_json(Path('/state/enroll.json'),config)
     deploy.install('/payload/server.tar.gz',prefix,str(state),'node',node_config='/state/enroll.json')
     config=read_json(state/'config.json');old=Pool(state,config);original_config=json.loads(json.dumps(config))
@@ -109,7 +119,7 @@ def controller():
     cache_plan=slots.plan(prefix,private,limits(23802))['plan'];cache_result=slots.apply(prefix,cache_plan)
     work_slot=next(s for s in work_result['policy']['slots'] if s['quota_uid']==23802)
     cache_slot=next(s for s in cache_result['policy']['slots'] if s['quota_uid']==23802)
-    request={'owner':'new_owner','stage_id':'c'*64,'uid':23802,'gid':23802,'workspace_slot':work_slot['id'],'cache_slot':cache_slot['id']}
+    request={'owner':'new_owner','stage_id':session.stage_id if session else 'c'*64,'uid':23802,'gid':23802,'workspace_slot':work_slot['id'],'cache_slot':cache_slot['id']}
     # The native source append has not changed the old configured policy/key.
     held=Lease(old,grant(config,'old_owner',2));held.prepare()
     try:admin.plan(prefix,request)
@@ -134,6 +144,7 @@ def controller():
     subprocess.run([*cli,'node-owner-plan','--prefix',prefix,'--spec','/state/owner-spec.json','--output','/state/bind-plan.json'],
                    capture_output=True,text=True,check=True,timeout=30)
     value=read_json(Path('/state/bind-plan.json'))
+    if session:session.approve(Path('/state/bind-plan.json'))
     assert read_json(state/'config.json')==original_config
     key=grant(config,'old_owner',2)['allocation']['cache']['key']
     output=Path(old_slot['path'])/key/'canonical.mlir';original=output.stat();sha=hashlib.sha256(output.read_bytes()).hexdigest()
@@ -179,7 +190,7 @@ a._checkpoint=crash;a.apply("/opt/owner-node",json.load(open("/state/bind-plan.j
     try:activate(prefix,archive_path='/payload/server-before-owner.tar.gz')
     except deploy.DeployError:pass
     else:raise AssertionError('Code rollback bypassed pending central acknowledgement')
-    print(json.dumps({'passed':True,'installed_node_cli_plan_apply':True,'fixture_stage_identity_only':True,
+    report={'passed':True,'installed_node_cli_plan_apply':True,'fixture_stage_identity_only':True,
         'actual_central_contact':False,'active_lease_rejected':True,'shared_service_lock_rejected':True,'read_only_plan':True,
         'stale_cache_control_plan_rejected_before_mutation':True,'old_cache_metadata_exact_before_warm_reacquire':True,
         'fault_chain':faults,'fault_scope':'Ten successive SIGKILL boundaries in one unchanged plan, followed by installed CLI receipt replay',
@@ -190,10 +201,12 @@ a._checkpoint=crash;a.apply("/opt/owner-node",json.load(open("/state/bind-plan.j
         'rollback_blocked_before_central_ack':True,'genuine_prior_code_rollback_reupgrade_before_binding':True,
         'old_target_new_administration_rejected':True,'rollback_baseline_commit':BASELINE,
         'accounts_enabled':False,'full_owner_onboarding_ready':False,
-        'scope':'Same-host installed Node, fixture stage ID, private native cache preservation and Root metadata migration only. Central approval/ACK, final identity activation and real multi-host remain unimplemented.'}),flush=True)
+        'scope':'Same-host installed Node, fixture stage ID, private native cache preservation and Root metadata migration only. Central approval/ACK, final identity activation and real multi-host remain unimplemented.'}
+    if session:report.update(session.finish(prefix,value,current))
+    print(json.dumps(report),flush=True)
 
 
-def parent():
+def parent(central_handoff=False):
     root=Path(__file__).resolve().parents[1];sys.path.insert(0,str(root));sys.path.insert(0,str(root/'tests'))
     from deployment import bundle,unpack_release,CORE
     from docker_runtime import discover,command,binary
@@ -210,32 +223,37 @@ def parent():
     old=runpy.run_path(str(historical/'deployment.py'));assert 'node_owner_admin.py' not in old['CORE']
     old['bundle'](payload/'server-before-owner.tar.gz',source=historical)
     (payload/'probe.py').write_bytes(Path(__file__).read_bytes());(payload/'probe.py').chmod(0o444)
+    if central_handoff:
+        (payload/'handoff_fixture.py').write_bytes((root/'tests/owner_handoff_root_fixture.py').read_bytes());(payload/'handoff_fixture.py').chmod(0o444)
     (payload/'input.mlir').write_text('module { func.func @add() -> i32 { %a = arith.constant 19 : i32\n %b = arith.constant 23 : i32\n %r = arith.addi %a, %b : i32\n return %r : i32 } }\n');(payload/'input.mlir').chmod(0o444)
-    binding,_=discover();cpus=job['allocation']['cpu_ids'];atomic_json(payload/'context.json',{'job_id':job['id'],'attempt_id':job['attempt_id'],'runtime':binding})
+    binding,_=discover();cpus=job['allocation']['cpu_ids'];atomic_json(payload/'context.json',{'job_id':job['id'],'attempt_id':job['attempt_id'],'runtime':binding,'central_handoff':central_handoff})
     def docker(args,check=True,timeout=45):
         argv,env=command(binding,['docker',*map(str,args)]);r=subprocess.run(argv,env=env,capture_output=True,text=True,timeout=timeout)
         if check and r.returncode:raise RuntimeError('Owned Node owner fixture failed: '+r.stderr[-1600:])
         return r
     prefix='ascend-lab-nodeowner-'+uuid.uuid4().hex[:8];name=prefix+'-node';volumes=[];disks=[];made_role=False;report=None
     try:
-        for folder,destination in [('quota-workspace','/work-quota'),('cache-workspace','/cache-quota')]:
-            disk=OwnedDisk(base,prefix+'-'+folder,IMAGE,cpus,docker,folder_name=folder,image_mib=128,inodes=4096,quota_type='user');disks.append(disk)
+        choices=[('quota-workspace','/work-quota',128,'user'),('cache-workspace','/cache-quota',128,'user')]
+        if central_handoff:choices += [('central-payload','/central-quota',256,'group'),('spool-workspace','/spool-quota',128,None)]
+        for folder,destination,size,quota_type in choices:
+            disk=OwnedDisk(base,prefix+'-'+folder,IMAGE,cpus,docker,folder_name=folder,image_mib=size,inodes=4096,quota_type=quota_type);disks.append(disk)
             device=disk.create();volume=prefix+'-'+folder
+            options='nosuid,nodev'+(',grpquota' if quota_type=='group' else ',usrquota' if quota_type=='user' else '')
             docker(['volume','create','--label','io.ascend-lab.nodeowner='+prefix,'--driver','local','--opt','type=ext4',
-                '--opt','device='+device,'--opt','o=nosuid,nodev,usrquota',volume]);volumes.append((volume,destination))
+                '--opt','device='+device,'--opt','o='+options,volume]);volumes.append((volume,destination))
         socket=binding['endpoint'].removeprefix('unix://')
         args=['create','--name',name,'--label','io.ascend-lab.nodeowner='+prefix,'--network','none','--ipc','none','--read-only',
             '--cap-drop','ALL','--cap-add','SYS_ADMIN','--cap-add','CHOWN','--cap-add','FOWNER','--cap-add','DAC_OVERRIDE',
-            '--cap-add','SETUID','--cap-add','SETGID','--security-opt','no-new-privileges:true','--security-opt','seccomp=unconfined',
+            '--cap-add','SETUID','--cap-add','SETGID','--cap-add','KILL','--security-opt','no-new-privileges:true','--security-opt','seccomp=unconfined',
             '--memory','512m','--memory-swap','512m','--cpuset-cpus',str(cpus[0]),'--cpus','0.8','--pids-limit','96',
             '--tmpfs','/opt:rw,nosuid,nodev,size=32m,mode=755','--tmpfs','/tmp:rw,nosuid,nodev,size=16m,mode=1777',
             '--mount','type=bind,src='+str(payload)+',dst=/payload,readonly','--mount','type=bind,src='+str(state)+',dst=/state',
             '--mount','type=bind,src='+binary()+',dst=/usr/bin/docker,readonly','--mount','type=bind,src=/etc/machine-id,dst=/etc/machine-id,readonly',
             '--mount','type=bind,src='+socket+',dst='+socket]
         for volume,destination in volumes:args+=['--mount','type=volume,src='+volume+',dst='+destination]
-        args+=['--entrypoint','/usr/bin/timeout',IMAGE,'--kill-after=3s','240s','/usr/bin/python3','-I','-B','/payload/probe.py','--controller']
+        args+=['--entrypoint','/usr/bin/timeout',IMAGE,'--kill-after=3s','300s','/usr/bin/python3','-I','-B','/payload/probe.py','--controller']
         docker(args);made_role=True
-        result=docker(['start','--attach',name],check=False,timeout=250)
+        result=docker(['start','--attach',name],check=False,timeout=310)
         atomic_json(base/'role-exit.json',{'returncode':result.returncode});(base/'role.stdout').write_text(result.stdout);(base/'role.stderr').write_text(result.stderr)
         info=json.loads(docker(['inspect',name]).stdout)[0];assert not info['State']['Running']
         if result.returncode or info['State']['ExitCode']:raise RuntimeError('Node owner Root acceptance failed; original logs retained')
@@ -258,12 +276,12 @@ def parent():
 
 if __name__=='__main__':
     parser=argparse.ArgumentParser();parser.add_argument('--actor',action='store_true');parser.add_argument('--controller',action='store_true')
-    parser.add_argument('--with-regression',action='store_true');args=parser.parse_args()
+    parser.add_argument('--with-regression',action='store_true');parser.add_argument('--central-handoff',action='store_true');args=parser.parse_args()
     if args.actor:actor()
     elif args.controller:controller()
     else:
         root=Path(__file__).resolve().parents[1]
         if args.with_regression:
             subprocess.run(['/usr/bin/python3','-m','unittest','discover','-s','tests','-p','test_node_owner_admin.py','-v'],cwd=root,check=True)
-        parent()
+        parent(args.central_handoff)
         if args.with_regression:subprocess.run(['bash','scripts/check.sh','/usr/bin/python3'],cwd=root,check=True)
