@@ -28,6 +28,19 @@ class CentralSession:
                        payload_config='/state/central-payload.json',port=18769)
         self.command('accessctl','user-add','old_owner')
         self.command('accessctl','environment-grant','old_owner','worker-python',json_output=False)
+        if context.get('owner_provision'):
+            self.unit_proof={};self.manager_proof={};self.start_proof={}
+            node_profile={k:copy.deepcopy(v) for k,v in config.items() if k not in {'node_id','node_key','controller','docker_runtime','state_dir'}}
+            node_profile['name']='onboarding_node';path=self.state/'node-profile.json';atomic_json(path,node_profile);os.chown(path,23820,23820)
+            created=self.service_code('''import json,sys
+from pathlib import Path
+from jobs import JobStore
+from lab_client import read_json
+s=Path(sys.argv[1]);j=JobStore(s,read_json(s/'config.json'));node,key=j.nodes.enroll(read_json(s/'node-profile.json'))
+print(json.dumps({'node_id':node,'node_key':key}))
+''')
+            self.node_id=created['node_id'];self.config={**config,**created,'controller':'http://127.0.0.1:18769'}
+            return
         spec=self.state/'new-owner.json';atomic_json(spec,{'user':'new_owner','environments':['worker-python'],
             'quota':{'input_storage_mib':4,'archive_storage_mib':32}});os.chown(spec,23820,23820)
         staged=self.command('accessctl','user-stage','--spec',str(spec));self.stage_id=staged['stage_id']
@@ -146,7 +159,7 @@ u._checkpoint=crash;u.apply("/opt/handoff-controller",json.load(open("/state/uni
         def drop():
             import deployment as deploy
             from payload_groups import gids
-            os.setgroups(gids(deploy.verify(self.prefix)[1]['payload_storage']));os.setgid(23820);os.setuid(23820)
+            os.setgroups(gids(deploy.verify(self.prefix,owner_recovery=True,delivery_recovery=True,finish_recovery=True)[1]['payload_storage']));os.setgid(23820);os.setuid(23820)
         wrapper='import sys;sys.path.insert(0,"'+self.prefix+'/current");'+code
         r=subprocess.run(['/usr/bin/python3','-I','-B','-c',wrapper,str(self.state)],capture_output=True,text=True,preexec_fn=drop,
                          env={'PATH':'/usr/bin:/bin','HOME':str(self.state),'LANG':'C.UTF-8'},timeout=30)

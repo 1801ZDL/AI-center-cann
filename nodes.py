@@ -468,6 +468,8 @@ class NodeRegistry:
             or any(not isinstance(item,str) or not re.fullmatch(r'attempt-[0-9a-f]{32}',item) for item in excluded)
             or len(excluded)!=len(set(excluded))):raise JobError('Invalid active attempt exclusions')
         with self.jobs.transaction() as db:
+            reason=admission_reason(self.jobs.runtime)
+            if reason:return {'grant':None,'reason':reason}
             node=self.node(node_id,db);profile=node['profile']
             if time.time()-node['last_seen']>30:raise JobError('Node heartbeat is stale',409)
             if not REQUIRED_CAPABILITIES<=set(node['report'].get('capabilities',[])):raise JobError('Node capabilities require an upgrade',409)

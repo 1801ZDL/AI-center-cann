@@ -197,11 +197,14 @@ def inactive(value):
         raise DeployError('Stop and reconcile the selected unit; manager reports a live or pending operation')
 
 
-def _context(prefix,startup_recovery=False,credential_recovery=False):
+def _context(prefix,startup_recovery=False,credential_recovery=False,owner_recovery=False):
     if credential_recovery:
         _,selected,_=deploy.load_installation(prefix);credential_recovery=selected['role']=='controller'
     prefix,meta,release=deploy.verify(prefix,manager_recovery=True,startup_recovery=startup_recovery,
-        delivery_recovery=credential_recovery,finish_recovery=credential_recovery)
+        delivery_recovery=credential_recovery,finish_recovery=credential_recovery,owner_recovery=owner_recovery or credential_recovery)
+    if owner_recovery or credential_recovery:
+        from owner_provision import service_guard
+        service_guard(prefix,meta)
     if os.geteuid() not in {0,meta['uid']}:raise DeployError('Root or the selected service identity is required for readback')
     helper=release/Path(__file__).name
     if not helper.is_file() or hashlib.sha256(helper.read_bytes()).digest()!=hashlib.sha256(Path(__file__).read_bytes()).digest():
@@ -221,7 +224,7 @@ def _contract(prefix,meta,state,control,directory):
 
 
 def check(prefix,unit_dir='/etc/systemd/system',running=False,entry=False,bus=None,startup_recovery=False,credential_recovery=False):
-    prefix,meta,state,control=_context(prefix,startup_recovery=startup_recovery,credential_recovery=credential_recovery);contract=_contract(prefix,meta,state,control,unit_dir);bus=bus or Bus();anchor=bus.anchor();value=bus.unit(contract['unit_name'])
+    prefix,meta,state,control=_context(prefix,startup_recovery=startup_recovery,credential_recovery=credential_recovery,owner_recovery=entry);contract=_contract(prefix,meta,state,control,unit_dir);bus=bus or Bus();anchor=bus.anchor();value=bus.unit(contract['unit_name'])
     sha=effective(value,contract['expected'],contract['unit_name'],Path(unit_dir)/contract['unit_name'])
     if running or entry:
         pid=value['MainPID'];saved=read_json(state/'service-process.json') or {}

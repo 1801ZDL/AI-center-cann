@@ -158,7 +158,7 @@ class Handoff:
         self.jobs.resources.validate_node(after,db)
         return after
 
-    def approve(self,node_id,value):
+    def approve(self,node_id,value,expected_before_sha256=None):
         try:_plan_check(value)
         except (ValueError,KeyError,TypeError):raise JobError('Invalid private Node owner plan',400) from None
         ready=read_json(self.jobs.runtime/'server-ready.json') or {}
@@ -173,6 +173,8 @@ class Handoff:
                 if record['node_id']!=node_id:raise JobError('Plan was approved for another Node',409)
                 return {'approval':self.public(record),'reused':True}
             node=self.nodes.node(node_id,db);profile=node['profile'];self.mutable(node_id,db);self._idle(node_id,profile,db)
+            if expected_before_sha256 is not None and sha(profile)!=expected_before_sha256:
+                raise JobError('Registered Node profile changed since central onboarding began',409)
             stage=self._stage(owner,stage_id);storage=self._storage(owner,stage)
             after=self._after(node_id,profile,value,db)
             record={'format':'ascend-lab-owner-approval/v1','plan_id':value['id'],'approval_id':uuid.uuid4().hex,

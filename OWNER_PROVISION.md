@@ -1,6 +1,67 @@
 # 用户预配：当前阶段与交付条件
 
-当前提供**中央待预配身份/GID配额**、**Node原生槽与本地绑定**、**中央批准/Node ACK交接**及**最后就绪校验与私有凭据发布**。新增一个固定请求完成最后激活及本地个人UID交付，已有实际个人UID排队IR任务验收。资源预配各阶段仍须先完成，远程个人目录交付、完整跨服务器开户协调、真实宿主账号/两机与PID1/NPU仍需补齐。系统服务启动协调的独立范围见SERVER.md。
+当前增加中央总协调器，把**待预配身份、中央GID配额、服务生命周期、Node原生槽/独立批准/ACK、最后激活与个人UID交付**串成可恢复请求。已验证同机进程模式的一次命令开户；跨主机仍须管理员传递受保护请求/提案并启动远端Node，不是远程安装器。真实宿主账号、两物理机、PID1和NPU仍待验收。下文保留各独立步骤供诊断和恢复。
+
+## 中央资源开户协调（2026-10-31）
+
+这一步面向**已安装中央、已登记的基线Node和已认证环境**。管理员仍须先准备Linux UID/GID、专用中央存储盘、Node原生work/cache盘、个人parent和同盘Root spool；首个Node的登记/探针身份也须先按SERVER.md准备。协调器不创建OS账号、不格式化系统盘、不复制模型配置、不持有远端Root登录凭据。个人Agent只调用任务API/MCP，不能调用这个Root管理入口。
+
+中央和Node安装包须包含匹配的owner_provision.py。现有运行中央须已加载owner-provision-v1；旧进程会被拒绝，应先排空、按普通升级流程重载。所选Node须已登记并启用，work/cache分别登记为ext4-userquota；新owner/UID不能已有映射。当前协调入口只接受CPU额度，npu必须为0；NPU预激活资格尚未接通。
+
+Root所有、0600的请求示例；operation_id生成一次后随原请求重试，Node ID和路径按实际替换：
+
+```json
+{
+  "operation_id":"0123456789abcdef0123456789abcdef",
+  "owner":"researcher_a",
+  "quota":{"cpu":2,"memory_mib":2048,"npu":0,"max_running":1,"max_queued":20,"input_storage_mib":512,"archive_storage_mib":2048},
+  "storage":{"gid":23034,"bytes":3221225472,"inodes":131072},
+  "service":{"mode":"process","unit_dir":null},
+  "nodes":[{
+    "node_id":"worker-0123456789ab","uid":23004,"gid":23004,
+    "workspace":{"root":"/srv/ascend-work","bytes":4294967296,"inodes":131072},
+    "cache":{"root":"/srv/ascend-cache","bytes":4294967296,"inodes":131072}
+  }],
+  "delivery":{"owner":"researcher_a","parent":"/home/researcher_a","name":"ascend-lab","uid":23004,"gid":23004,"spool":"/home/.ascend-lab-delivery"}
+}
+```
+
+中央原生字节额度至少覆盖input_storage_mib与archive_storage_mib之和加65536字节元数据；实际盘剩余空间、GID冲突及Node映射也会在stage之前检查。执行UID是每Node本地映射，可以与个人客户端UID不同。delivery.parent须已属于指定个人UID/GID，name目标不存在，spool是同盘同挂载的Root0700目录。不会自动选另一盘或覆盖已有客户端配置。
+
+同机、进程模式、所选Node已停止时，可显式指定本地安装路径：
+
+```bash
+/opt/ascend-lab-controller/current/servicectl owner-provision \
+  --prefix /opt/ascend-lab-controller --spec /root/researcher-a.json \
+  --local-node worker-0123456789ab=/opt/ascend-lab-node
+```
+
+该映射只表示同机已安装Node，不是SSH地址；可重复指定。它准备槽位/提案、中央独立批准、完成绑定/认证ACK，并以普通进程入口启动Node。不会自动停止正在运行的Node；共享锁冲突时保留原操作，管理员须按原流程排空/停止后恢复。中央只在配额变更窗口暂停准入，要求既有排队/活动任务和未知库存先处理；恢复服务并确认新组生效后开放旧用户任务，在等待新Node时仍可运行。新用户只有所有指定Node就绪后才激活。
+
+跨主机时省略--local-node，中央返回state=nodes和node_requests中的request_file。由可信管理员通过保护传输交给对应Node的Root，保持Root所有0600；包内绑定Node、物理域、中央URL/CA和原stage，没有个人模型密钥。Node执行：
+
+```bash
+/opt/ascend-lab-node/current/servicectl owner-provision-node \
+  --prefix /opt/ascend-lab-node --request /root/researcher-a-node.json
+```
+
+把返回proposal_path指向的**原提案**保护传回中央，由中央原请求加--proposal批准：
+
+```bash
+/opt/ascend-lab-controller/current/servicectl owner-provision \
+  --prefix /opt/ascend-lab-controller --spec /root/researcher-a.json \
+  --proposal /root/researcher-a-node-proposal.json
+```
+
+Node再以同一request加--complete完成绑定/ACK，按其既有服务管理方式启动并产生健康心跳；最后重放中央原请求完成个人交付。这个包/提案协议已在同机安装CLI验证；真实跨机传输和远端个人HOME交付尚未验收。中央不代替管理员传包或远程启动。
+
+中断后保留原operation_id、请求、计划与提案，重复同一命令；普通verify/备份/代码切换在主journal存在时拒绝。Root主journal在prefix/owner-provision-change.json，公开准入门在prefix/owner-provision-admission.json，原计划/回执在prefix/owner-provision-history。固定服务UID子程序只执行stage、空闲检查、独立批准、就绪和进程组检查，不接收用户shell。批准会比较登记Node原profile摘要，不能悄悄采用并发变化。
+
+--abort仅适用于held阶段，尚未产生持久身份/资源；之后要求完成或明确协调原状态，不自动回收配额、删目录或撤销用户。完成重放只返回historical_receipt_only，不重新启用后续被禁用的账号、不重新签发凭据、不覆盖个人偏好。主历史记录最多128个操作/4096文件/128MiB，单记录12MiB；服务参数另有4096文件/128MiB限制。这些是应用元数据限制，不是整个控制盘/SQLite的内核硬配额。
+
+systemd模式须显式unit_dir且中央管理unit**初始已停止**；协调器使用原unit刷新、manager加载与一次启动计划，不直接执行任意systemctl命令。该组合尚未通过真实PID1验收，不能把进程模式的成功当成systemd或远程推广已完成；依赖基线Node新鲜观察的启动门禁仍保留。
+
+当前627项检查及JS语法通过，73个非文档生产源码与最终Root包一致。同机自有隔离Root验证44个连续中断恢复点、初始中止、第二个新用户一次安装CLI开户和实际个人UID认证/同伴读取拒绝；等待期间旧用户真实IR任务成功。新用户沿交付凭据在第二Node的执行UID完成单attempt IR。七个文件盘的loop/角色/卷已释放，后备文件作为私有证据保留；未创建宿主账号或修改旧容器、驱动及全局服务。完整目标仍未完成。
 
 ## 最后激活与本地个人目录的一次请求
 
@@ -29,7 +90,7 @@ Root私有0600请求示例（摘要/Node ID/UID/GID按实际替换）：
 
 放弃未完成请求可重复同一命令并加`--abort`。协调器只处理自己原始激活/交付：未提交激活沿原中止流程清理，已提交激活仅完成其恢复，不自动禁用或撤销；已交给个人的文件、未知副本、原生资源和未完成的Root私有文件均不删除。返回prior_state_retained=true，管理员仍须按实际状态决定禁用/撤销及留存文件清理。完成回执是历史记录，不是当前文件/令牌有效性证明；Source已变或凭据已过期而尚未交接时拒绝继续，不另发凭据绕过。
 
-对已完成激活、仅需交付的用户，也可分别调用`owner-delivery-plan --prefix ... --spec Root私有delivery定义 --output Root新计划`、`owner-delivery-apply --prefix ... --plan 原计划`及`owner-delivery-abort`。该定义就是上例delivery对象。跨主机个人目录仍通过可信加密交付渠道处理，本命令不会远程登录；完整资源预配的一键协调尚未实现。
+对已完成激活、仅需交付的用户，也可分别调用`owner-delivery-plan --prefix ... --spec Root私有delivery定义 --output Root新计划`、`owner-delivery-apply --prefix ... --plan 原计划`及`owner-delivery-abort`。该定义就是上例delivery对象。跨主机个人目录仍通过可信加密交付渠道处理，本命令不会远程登录；资源预配总协调参见本页开头，owner-finish单独使用仍要求其前置条件。
 
 ## 中央待预配身份
 

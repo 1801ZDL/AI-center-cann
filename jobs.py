@@ -345,6 +345,8 @@ class JobStore:
         spec = self.normalize(request, principal)
         fingerprint = hashlib.sha256(json.dumps({k: v for k, v in spec.items() if k != 'idempotency_key'}, sort_keys=True).encode()).hexdigest()
         with self.transaction() as db:
+            reason=admission_reason(self.runtime)
+            if reason:raise JobError(reason,503)
             existing = db.execute('SELECT data,fingerprint FROM jobs WHERE owner=? AND idem_key=?', (principal.id, spec['idempotency_key'])).fetchone()
             if existing:
                 if existing[1] != fingerprint:

@@ -320,6 +320,8 @@ def restore(prefix,archive_path,new_state,max_bytes=10*1024**3,payload_config=No
 
 def require_features(state,role,manifest):
     config=read_json(Path(state)/'config.json') or {}
+    if role=='controller' and 'owner_provision.py' not in manifest.get('files',{}) and (Path(state)/'owner-provision').exists():
+        raise DeployError('Central owner participant state requires compatible onboarding support; refusing downgrade')
     if role=='node' and 'node_owner_provision.py' not in manifest.get('files',{}):
         if (Path(state)/'node-owner-provision-change.json').exists() or (Path(state)/'node-owner-provision-history').exists():
             raise DeployError('Node participant recovery/history requires compatible provisioning support; refusing downgrade')

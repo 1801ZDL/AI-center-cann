@@ -2,7 +2,7 @@
 
 面向 Triton-Ascend / AscendNPU-IR 开发服务器的 AI 任务调度与实验管理原型。程序化中央服务负责资源分配和可靠执行，个人 Agent 通过 MCP/API 提交任务、读取日志和分析结果。
 
-**当前为 v0.36 基线加后续修复，尚非生产就绪。** 当前607项检查通过。Node侧新增单请求协调：准备原生工作/缓存槽、导出固定提案，中央批准后恢复绑定/ACK；实际45个中断点、中止保留和节点密钥轮换恢复已验收。已激活用户扩第二Node仍沿用原凭据及原节点；个人客户端已在第二执行UID下完成实际排队IR任务。最后激活+本地个人UID交付也可单请求恢复。中央身份/存储组/服务生命周期与Node参与步骤的总协调器尚未接通，不是完整资源开户自动化。真实PID1、一般资源合同变更、真实宿主多用户、NPU精度/性能/仿真与两物理机仍待。流程见 [OWNER_PROVISION.md](OWNER_PROVISION.md)，推广见 [DEPLOYMENT.md](DEPLOYMENT.md)。此前完整Triton冷暖构建、20逻辑用户混合和历史Root54均保留原范围，最新进度见 [PROGRESS.md](PROGRESS.md)。
+**当前为 v0.36 基线加后续修复，尚非生产就绪。** 当前627项检查通过。中央新增可恢复资源开户协调器，串联身份、中央GID配额、服务生命周期、Node原生工作/缓存槽、独立批准与ACK，最后交付个人配置。同机进程模式的第二个新用户已通过一次安装CLI开户；44个中断恢复点、等待期间旧用户IR任务、个人配置隔离及原凭据扩第二Node的实际IR任务均已验证。跨机仍须管理员传递保护包并管理远端服务；真实PID1、一般资源合同变更、真实宿主多用户、NPU精度/性能/仿真与两物理机仍待。流程见 [OWNER_PROVISION.md](OWNER_PROVISION.md)，推广见 [DEPLOYMENT.md](DEPLOYMENT.md)。历史完整Triton冷暖构建、20逻辑用户混合和Root54保留原验收范围，最新进度见 [PROGRESS.md](PROGRESS.md)。
 
 ```mermaid
 flowchart LR

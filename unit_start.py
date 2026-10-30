@@ -65,6 +65,8 @@ def admission_reason(state):
         prefix,meta,_=deploy.load_installation(prefix);files._directory(prefix)
         if str(Path(state))!=meta['state_dir']:return HOLD
         if any(p.exists() or p.is_symlink() for p in [prefix/JOURNAL,prefix/GATE]):return HOLD
+        from owner_provision import admission
+        if admission(prefix,state):return '中央开户维护暂停新任务；已有任务及日志继续保留'
     except (OSError,ValueError):return HOLD
     return None
 
@@ -91,7 +93,7 @@ def entry(prefix):
         manager.check(prefix,running=True,entry=True,credential_recovery=True)
         return
     if gate['phase']!='issued' or os.geteuid()!=gate['uid'] or os.getegid()!=gate['gid']:raise DeployError('This invocation has no issued startup permission')
-    prefix,meta,_,_ = manager._context(prefix,startup_recovery=True)
+    prefix,meta,_,_ = manager._context(prefix,startup_recovery=True,owner_recovery=True)
     if any(gate[k]!=meta[k] for k in ['state_dir','uid','gid','role','release_id']):raise DeployError('Startup entry contract changed')
     manager.check(prefix,gate['unit_dir'],running=True,entry=True,startup_recovery=True)
     _claim(meta['state_dir'],gate)

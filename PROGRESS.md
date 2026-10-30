@@ -1,5 +1,20 @@
 # 实施进度
 
+
+## 中央资源开户总协调与个人隔离（2026-10-31）
+
+新增owner_provision.py及安装Root CLI owner-provision/owner-provision-node。固定原请求串联中央credential-free stage、原生GID配额、实际服务进程组加载、保护Node请求、原提案独立批准、Node绑定/认证ACK/健康心跳、最后激活和个人UID交付。初始重复GID/映射UID、错误Node/中央包在副作用前拒绝；批准使用原profile CAS，提交/claim在数据库事务内重查准入门。
+
+资源维护先暂停准入并要求排空，在服务确认新组后开放旧用户；等待新Node时旧用户实际UID23801的IR任务单attempt成功。中央在等待Node和纯凭据阶段可沿原请求重启。中止只允许held，完成重放历史不复活账号、不重发凭据。元数据每记录12MiB、Root历史128操作/4096文件/128MiB及Svc参数4096文件/128MiB；整个控制盘/DB硬限制仍待。
+
+最终**627项/127.415秒/无跳过及JS语法通过，73个非文档生产源码与最终Root包一致**。自有隔离Root连续44个中断恢复点（含初始无身份中止），另一个新用户使用普通安装CLI一次完成开户；实际个人UID23803认证成功，UID23802读取其私有配置被拒绝。首个新用户使用程序交付凭据在第二Node执行UID23812完成实际BishengIR单attempt任务，原Node/缓存/偏好及唯一原token保持，后来禁用后的历史重放不复活。七个文件后备盘的loop/helper/卷/角色已释放，原文件作为私有证据保留。
+
+最终Root job-265951c1c22a；全量job-f7b3afe0b2ef。早先Root3/4通过但未覆盖第二用户普通CLI场景，保留原范围；失败保留：首次发现并修复finish pending恢复校验，随后receipt清理分支漏测试中断点；一次focused和一次625项全量因fixture误用atomic_json(mode=...)产生同3个错误，修正后当前627全通过。公开摘要reports/public-source-check.json.owner_provision；完整日志与独立host身份/Node元数据核验仅本地evidence/owner-provision-validation.json。
+
+只验证同机进程模式，未运行新NPU/模型、创建宿主账号或改变旧zdl/全局服务。既有Main节点未自动升级，不豁免fresh inventory。跨主机仍管理员保护交付；真实PID1、两名宿主用户/两物理机、NPU预激活与精度性能仿真、一般资源合同变化、控制DB硬边界、组织身份和msagent案例仍待。PUBLIC-001继续延期，整体目标保持未完成。
+
+以下为此前冻结阶段进度，不能用其“尚未实现”覆盖上方最新范围。
+
 ## Node资源准备、提案与确认的参与步骤
 
 新增node_owner_provision.py及Root本地`servicectl node-owner-provision --prefix ... --spec ... [--complete|--abort]`。同一operation_id绑定原请求，默认准备原生work/cache槽并导出固定绑定提案；中央使用已有stage批准或active扩容授权后，complete推进原本地绑定及authenticated commit/ready ACK。Node不持有中央管理员身份，不创建宿主账号或远程Root通道、不发凭据、不启动服务。bound回执仍须等待正常Node启动/新鲜心跳及中央身份确认；完成后重放是历史，不复活被禁用用户。

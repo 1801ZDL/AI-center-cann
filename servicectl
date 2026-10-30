@@ -27,6 +27,13 @@ def main():
         p=commands.add_parser(action);p.add_argument('--prefix',required=True);p.add_argument('--plan',required=True)
     p=commands.add_parser('owner-finish',help='Resume final activation and private UID credential delivery from one Root-owned spec')
     p.add_argument('--prefix',required=True);p.add_argument('--spec',required=True);p.add_argument('--plan',action='store_true');p.add_argument('--abort',action='store_true')
+    p=commands.add_parser('owner-provision',help='Coordinate central stage/storage/lifecycle, protected Node proposals and final private delivery')
+    p.add_argument('--prefix',required=True);p.add_argument('--spec',required=True);p.add_argument('--proposal',action='append',default=[])
+    p.add_argument('--local-node',action='append',default=[],help='Explicit same-host node_id=/installed/prefix mapping; never a remote shell')
+    p.add_argument('--abort',action='store_true')
+    p=commands.add_parser('owner-provision-node',help='Apply one Root-approved packet only to its bound Node/controller')
+    p.add_argument('--prefix',required=True);p.add_argument('--request',required=True)
+    group=p.add_mutually_exclusive_group();group.add_argument('--complete',action='store_true');group.add_argument('--abort',action='store_true')
     p=commands.add_parser('node-owner-provision',help='Prepare native work/cache and one immutable proposal; explicitly complete after central approval')
     p.add_argument('--prefix',required=True);p.add_argument('--spec',required=True)
     group=p.add_mutually_exclusive_group();group.add_argument('--complete',action='store_true');group.add_argument('--abort',action='store_true')
@@ -99,6 +106,23 @@ def main():
         if action=='unit-install':p.add_argument('--unit-dir',default='/etc/systemd/system');p.add_argument('--enable',action='store_true')
     args=parser.parse_args()
     if args.action=='bundle':result=deploy.bundle(args.output)
+    elif args.action in {'owner-provision','owner-provision-node'}:
+        deploy.require_root();path=Path(args.request if args.action=='owner-provision-node' else args.spec)
+        if path.lstat().st_uid!=0:raise deploy.DeployError('Participant request must be Root-owned')
+        from owner_provision import provision,node_participate
+        value=deploy.regular_json(path,max_bytes=65536,private=True)
+        if args.action=='owner-provision-node':result=node_participate(args.prefix,value,'abort' if args.abort else 'complete' if args.complete else 'prepare')
+        else:
+            proposals=[];local={}
+            for name in args.proposal:
+                candidate=Path(name)
+                if candidate.lstat().st_uid!=0:raise deploy.DeployError('Protected proposal must be Root-owned')
+                proposals.append(deploy.regular_json(candidate,max_bytes=8*1024**2,private=True))
+            for item in args.local_node:
+                node,selected=item.split('=',1)
+                if node in local:raise deploy.DeployError('Local Node mapping is duplicated')
+                local[node]=selected
+            result=provision(args.prefix,value,proposals=proposals,local_nodes=local,abort=args.abort)
     elif args.action=='node-owner-provision':
         deploy.require_root();path=Path(args.spec)
         if path.lstat().st_uid!=0:raise deploy.DeployError('Node participant request must be Root-owned')
@@ -273,7 +297,7 @@ def main():
     elif args.action=='restore':result=restore(args.prefix,args.archive,args.new_state_dir,payload_config=args.payload_config,spool_config=args.spool_config,cache_config=args.cache_config)
     elif args.action=='activate':result=activate(args.prefix,args.archive,args.release_id)
     elif args.action=='admin':
-        prefix,meta,release=deploy.verify(args.prefix)
+        prefix,meta,release=deploy.verify(args.prefix,owner_recovery=True,delivery_recovery=True,finish_recovery=True)
         if meta['role']!='controller':raise deploy.DeployError('Account/node enrollment is administered on the controller installation')
         if os.geteuid() not in {0,meta['uid']}:raise deploy.DeployError('Service identity or root is required')
         command=args.command[1:] if args.command[:1]==['--'] else args.command
