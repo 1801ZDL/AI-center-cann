@@ -284,8 +284,17 @@ class JobStore:
             env['gid']=device_gid
         input_manifest=None
         from io_policy import artifacts,fits
-        artifact_request=artifacts(request.get('parameters',{}).get('artifacts'))
+        parameters=request.get('parameters',{})
+        if not isinstance(parameters,dict):raise JobError('parameters must be an object')
+        if 'template' not in request and set(parameters)-{'artifacts'}:
+            raise JobError('Legacy command parameters only support artifacts')
+        try:artifact_request=artifacts(parameters.get('artifacts'))
+        except ValueError as error:raise JobError(str(error)) from None
         if not fits(artifact_request,self.policy['io_limits']):raise JobError('Artifact request exceeds administrator IO limits',403)
+        # Keep default command fingerprints unchanged for pre-upgrade retries.
+        # A non-default declaration must participate in the saved spec and its
+        # fingerprint, just as it already does for validated workflow templates.
+        legacy_parameters={'artifacts':artifact_request} if 'template' not in request and artifact_request!=artifacts() else None
         if request.get('template') in __import__('workflow_spec').WORKFLOWS:
             if request['parameters'].get('workspace') and env['type']!='worker':raise JobError('Bounded workspace workflows require a managed worker')
             bundle=self.inputs.get(request['parameters']['input_id'],principal)
@@ -322,6 +331,7 @@ class JobStore:
                 **({'input':input_manifest} if input_manifest is not None else {}),
                 **({'project':project} if 'project' in request or not principal.legacy else {}),
                 **({'template':request['template'],'parameters':request['parameters']} if 'template' in request else {}),
+                **({'parameters':legacy_parameters} if legacy_parameters is not None else {}),
                 **({'origin': origin} if origin is not None else {}),
                 'cwd': str(cwd), 'argv': argv, 'resources': {'cpu': cpu, 'memory_mib': memory, 'shm_mib': shm, 'npu': npu},
                 'timeout_seconds': timeout, 'idempotency_key': key, 'output': output}
@@ -359,7 +369,8 @@ class JobStore:
                     if path.is_relative_to(Path(principal.workspace)) or spec.get('template') and path==SCRIPTS.get(spec['template']):
                         try:
                             if not path.is_file():continue
-                            if path.stat().st_size > 4 * 1024**2:raise JobError('入口源码超过 4 MiB，请使用较小的入口脚本。')
+                            if path.stat().st_size > min(4*MIB,artifact_limits['file_mib']*MIB):
+                                raise JobError('入口源码超过单文件归档额度或 4 MiB，请调整申报或使用较小的入口脚本。')
                             content=path.read_bytes()
                         except OSError:raise JobError('无法读取入口源码，请核对授权路径和安装文件权限。',403)
                         source={'path':str(path),'sha256':hashlib.sha256(content).hexdigest()}

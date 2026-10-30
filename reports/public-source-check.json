@@ -1,15 +1,15 @@
 {
   "schema": "ai-center-cann-source-check/v1",
-  "recorded_at": "2026-10-30T10:54:45.407200+00:00",
+  "recorded_at": "2026-10-30T11:25:25.367824+00:00",
   "passed": true,
-  "python_unit_tests": 440,
+  "python_unit_tests": 450,
   "unit_skipped": 0,
-  "unit_seconds": 70.262,
-  "unit_log_sha256": "2470c45bb12f229612588dc5bc9624792e2dc8528ca6d7a38a77f6b1f3385b0a",
+  "unit_seconds": 75.213,
+  "unit_log_sha256": "c106c7c5a8f5ef6641fd68086d03ef8c44bd0c08d2554e16d492c1daccc90fb2",
   "python": "Python 3.12.3",
   "javascript_syntax_passed": true,
   "command": "bash scripts/check.sh /usr/bin/python3",
-  "scope": "Current checkout full CPU unit and JS regression, including worker completion/heartbeat barriers and real child-process metadata output bounds for the independent disk audit. Mixed Root workload and offline persistence audit have separate evidence; not Root54 rerun, physical multi-host or NPU acceptance.",
+  "scope": "Current production source full CPU/JS regression, including ten legacy artifact contract cases with exact2000/2001-file boundary. Installed CLI/API upgrade and archive cases below were accepted separately; original mixed compiler and Root54 evidence retain their frozen releases. Not filesystem-hard-quota, physical multi-host or NPU acceptance.",
   "production_source_sha256": {
     "auth.py": "ec3f83745502fcad6ce06b45df659268d50d30d464745e85ed8f4a74bd63a090",
     "backends.py": "ad71569a0d69590e4d4eaafb43c65b62ceefa7a2cdf8bbf79754e4c7005d929e",
@@ -21,11 +21,11 @@
     "environment_contract.py": "45789813c6922b41724f695158deda79ccfdfb865ef3d58251e9b1472206a4c8",
     "device_qualification.py": "227381a9a9a7a28396dedf1a62f630cdbb41c1c2fcb0196610ff66dbd37f7809",
     "attempt_inventory.py": "51bb1fa8f75cacd07ffe28e4c790fbc37db6c7907be94af80b2cb5ec631ade1c",
-    "executor.py": "133a73c790b96666acfa75161d8fadf526d28d6fe56b81184d3ba17ceb04ff2b",
+    "executor.py": "42cdad27b62cf936263ee8cc41d11ea75260120a4e90a7b4213df5ad82fb677b",
     "npu_admission.py": "c6d39a24b5f4acde33041864e07642f9c1d72d70bb17ce6ef862d7dbda698f1e",
     "npu_device.py": "97cc78f229163dae267a7ed351fce92b3fc0bbeb781d70d758cedef3d30ea47e",
     "inputs.py": "ce565e9c7f4dbf603d8eb8274877238eeaa1074954d109e55ab2b267c69dc5d4",
-    "jobs.py": "40d135adacbfb832f5312024c92fe03d2592c6bab2f98bcaeb3cea30eff6be40",
+    "jobs.py": "ab0c296805fc24ad1973caf5143b4515972f51d67a988aab1b6af2d6525fae07",
     "lab_client.py": "4fc2f9a95d7e0bdee0f628b8237e4a3935d19bfcde7bfba85ce95854c0429527",
     "client_archive.py": "eec04a9574e8a87d90dc54c556d4bfe6462dfb92f0332bdc6996ad64e7121c97",
     "archive_api.py": "3e9f6539e3760cb4d68b2f85a8f01b751441e3d79b70675aac1f45e90a527e57",
@@ -64,7 +64,7 @@
     "spool_transfer.py": "885bc83a4b4cbc7d4a81c2ab1efd1df1c84b986166911f0e642bc3b214f2dd7b",
     "persistent_cache.py": "d70d394a48ae2068fe25a0a075d0882b1361ff6dda6b2d7ca3717d7fac35bd0b",
     "dependencies.py": "222c432de7e6c2b14f85e677a68247d1b3d8269a89090845963f2249fd586cc3",
-    "labctl": "e22883afd025079decbe1390c0ca058099afa58e089c3f0dfbffae9d0d81f0b1",
+    "labctl": "499152912cb90803f8ed3bb1eaf21c76dfd9406d3c2b8acbabb08170ef541af3",
     "install-client": "e9ea6b75847c8157ddd016add9760ac3d0fa391dac4815fdb1015e0fd35062a3",
     "mcp_bridge.py": "cac3f84a2e1cf6668352c7e41bb495e1be74c83bba6d80fe2ab7eb73e97a0be1",
     "diagnostic_case.py": "cca7edb7c45e2942748fbd3e333968dabfb5e7a4857a064d4b96aca6e913dedc"
@@ -230,5 +230,73 @@
     "stderr_flood_rejected": true,
     "warnings_rejected": true,
     "production_code_unchanged": true
+  },
+  "prior_mixed_offline_tool_full_check": {
+    "recorded_at": "2026-10-30T10:54:45.407200+00:00",
+    "python_unit_tests": 440,
+    "unit_seconds": 70.262,
+    "unit_log_sha256": "2470c45bb12f229612588dc5bc9624792e2dc8528ca6d7a38a77f6b1f3385b0a"
+  },
+  "legacy_artifact_contract": {
+    "focused_tests": 9,
+    "before_failed": true,
+    "before_failure_events": 6,
+    "before_error_events": 4,
+    "before_includes_subtests": true,
+    "focused_after_passed": true,
+    "declaration_saved_and_reserved": true,
+    "changed_budget_same_key_rejected": true,
+    "default_fingerprints_preserved": true,
+    "oversized_originals_retained": true,
+    "failed_logs_downloadable": true,
+    "archive_above_old_128mib_copy_ceiling_tested": true,
+    "source_snapshot_and_log_file_cap_checked": true,
+    "independently_installed_cli": true,
+    "pre_upgrade_ignored_budget_not_reinterpreted": true,
+    "pre_upgrade_default_retry_same_job": true,
+    "invalid_parameter_schema_http400": true,
+    "configuration_unchanged": true,
+    "resource_policy_unchanged": true,
+    "no_active_or_unknown_jobs": true,
+    "live_cases": [
+      {
+        "state": "succeeded",
+        "single_attempt": true,
+        "download_complete": true,
+        "artifact_limits": {
+          "file_mib": 1,
+          "total_mib": 2
+        }
+      },
+      {
+        "state": "failed",
+        "single_attempt": true,
+        "download_complete": true,
+        "artifact_limits": {
+          "file_mib": 1,
+          "total_mib": 2
+        }
+      }
+    ],
+    "live_within_limit_bytes": 524288,
+    "live_over_limit_bytes": 2097152,
+    "scope": "Cooperative post-execution validation, not host filesystem hard quota; controlled Node contracts unchanged",
+    "current_artifact_tests": 10,
+    "additional_file_count_tests": 1,
+    "exact_2000_files_accepted": true,
+    "actual_2001_files_rejected_originals_retained": true,
+    "final_full_tests": 450,
+    "final_full_passed": true,
+    "final_job_declared_artifacts": {
+      "file_mib": 8,
+      "total_mib": 16
+    },
+    "final_job_declaration_honored_by_running_controller": true
+  },
+  "legacy_before_count_boundary_full_check": {
+    "recorded_at": "2026-10-30T11:20:25.538065+00:00",
+    "python_unit_tests": 449,
+    "unit_seconds": 77.939,
+    "unit_log_sha256": "d666308ade3be41deff0de99d0797ea17169ddb2ae7242573e00ededce559ab1"
   }
 }

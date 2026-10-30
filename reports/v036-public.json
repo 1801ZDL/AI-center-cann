@@ -34,10 +34,13 @@
   ],
   "schema": "ai-center-cann-public-validation/v1",
   "source": "Curated historical v0.36 local evidence; raw private reports are not published",
-  "public_source_changes_since_acceptance": "Documentation/publication tooling, mixed-workload fixtures, legacy cooperative Unix-socket portability and Worker heartbeat/completion ordering fixes; protected six-file runtime hashes unchanged. Historical Root54 is not a new acceptance of these edits.",
+  "public_source_changes_since_acceptance": "Documentation/publication tooling, mixed-workload fixtures, legacy cooperative Unix-socket portability, Worker heartbeat/completion ordering and legacy command artifact declaration/collection fixes; protected six-file runtime hashes unchanged. Historical Root54 is not a new acceptance of these edits; later mixed and legacy CLI acceptance retain separate scopes.",
   "production_source_changes_since_acceptance": [
+    "executor.py",
     "npu_admission.py",
-    "worker.py"
+    "jobs.py",
+    "worker.py",
+    "labctl"
   ],
   "reproduced_by_public_ci": false,
   "raw_evidence_in_repository": false,

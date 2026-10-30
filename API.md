@@ -1,5 +1,9 @@
 # 作业 API v0.7
 
+2026-10-30：旧非模板命令支持 `parameters.artifacts={file_mib,total_mib}`。非默认限额进入保存的请求、幂等指纹与归档预留；改变限额后重用同一键返回409。`parameters`必须为对象，旧命令只接受`artifacts`字段，错误结构返回400；模板仍使用各自原有验证器。省略参数、空对象和显式64/128MiB默认值保持旧默认请求的幂等兼容。
+
+升级前曾被忽略的非默认限额不能追溯修改原任务：以保存的`artifact_limits`为准；升级后原键提交新的有效限额返回409，应查询原任务，不能自动换键重复计算。旧协作式执行在确认结束后检查`ir/profile/results`输出；超额时原件保留、输出不进入归档，成功命令改记`failed/failure_stage=artifact_budget`，日志和失败说明仍可下载。该检查不是文件系统硬配额；生产节点继续使用受控工作区和暂存合同。CLI与完整范围见[STORAGE.md](STORAGE.md)。
+
 v0.30 Node摘要增加`spool_storage.enforced/filesystem/bytes/inodes/status/free_bytes/free_inodes`，不返回宿主路径或storage_id。作业`state=needs_attention`时可有`output_pending=true`，节点确认进程结束后另有`execution_ended=true`，表示保留原尝试等待产物恢复；不是新任务或重新执行许可。成功终态清除此暂存等待标记。配置见SPOOL.md。
 
 v0.29中央载荷启用owner组配额时，`/api/me`及本人作业摘要的`storage.filesystem_quota`增加`byte_hard,bytes_used,inode_hard,inodes_used,enforced,shared_by`。这些是本人所有输入、归档和回收站合计的内核硬边界，不包含GID或其他用户映射。未预置owner的提交/上传返回409；实际限额或目录归属变化返回503且无目录回退；写入EDQUOT沿用HTTP507/原偏移续传。个人客户端无需新配置，完整范围见STORAGE.md。

@@ -115,21 +115,38 @@ print(json.dumps(d))'''
     return result
 
 
-def artifact_index(directory):
+class ArtifactBudgetError(RuntimeError):
+    pass
+
+
+def artifact_index(directory, include_workload=True, strict=False):
     files = []
-    candidates = [directory / name for name in ARTIFACT_NAMES if name != 'artifacts.json']
-    for folder in ['ir', 'profile', 'results', 'source']:
-        base = directory / folder
-        if base.exists() and not base.is_symlink():
-            for parent, dirs, names in os.walk(base, followlinks=False):
-                dirs[:] = [name for name in dirs if not (Path(parent)/name).is_symlink()]
-                candidates.extend(Path(parent)/name for name in names)
-                if len(candidates) > 2000:
-                    break
-    for path in candidates[:2000]:
+    def candidates():
+        yield from (directory/name for name in ARTIFACT_NAMES if name!='artifacts.json')
+        for folder in (['ir','profile','results','source'] if include_workload else ['source']):
+            base=directory/folder
+            if base.exists() and not base.is_symlink():
+                for parent,dirs,names in os.walk(base,followlinks=False):
+                    dirs[:]=[name for name in dirs if not (Path(parent)/name).is_symlink()]
+                    yield from (Path(parent)/name for name in names)
+    for path in candidates():
         if path.is_file() and not path.is_symlink() and path.resolve().is_relative_to(directory.resolve()):
+            if len(files)==2000:
+                if strict:raise ArtifactBudgetError('任务输出文件数量超过归档上限')
+                break
             files.append({'name': str(path.relative_to(directory)), 'bytes': path.stat().st_size})
     return files
+
+
+def checked_artifacts(directory,job):
+    from io_policy import for_job,MIB
+    budget=for_job(job);entries=artifact_index(directory,strict=True)
+    workload=[entry for entry in entries if entry['name'].split('/',1)[0] in {'ir','profile','results'}]
+    if any(entry['bytes']>budget['file_mib']*MIB for entry in workload):
+        raise ArtifactBudgetError('单个任务输出文件超过申报额度')
+    if sum(entry['bytes'] for entry in workload)>budget['total_mib']*MIB:
+        raise ArtifactBudgetError('任务输出合计超过申报额度')
+    return entries
 
 
 def finish(directory, job, result):
@@ -137,14 +154,27 @@ def finish(directory, job, result):
                   node_id=job.get('node_id'),attempt_id=job.get('attempt_id'),
                   reported_at=now(), finished_at=None if result['status'] == 'needs_attention' else now())
     atomic_json(directory / 'result.json', result)
-    atomic_json(directory / 'artifacts.json', {'files': artifact_index(directory)})
+    rejected=False
+    if result['status']!='needs_attention':
+        try:checked_artifacts(directory,job)
+        except ArtifactBudgetError as error:
+            rejected=True
+            result['artifact_rejection']={'reason':str(error),'originals_retained':True,
+                'scope':'Cooperative post-execution validation, not a filesystem hard quota'}
+            if result['status']=='succeeded':
+                result.update(execution_status='succeeded',status='failed',failure_stage='artifact_budget',
+                              reason='任务输出超出申报；原件保留，日志和失败说明可归档')
+    def index():return artifact_index(directory,include_workload=not rejected)
+    atomic_json(directory / 'result.json', result)
+    atomic_json(directory / 'artifacts.json', {'files': index()})
     if job.get('output') and result['status'] != 'needs_attention':
         try:
             output = Path(job['output']) / job['id']
             output.mkdir(mode=0o700, parents=True, exist_ok=False)
-            entries = artifact_index(directory)
-            if sum(x['bytes'] for x in entries) > 128 * 1024**2:
-                raise RuntimeError('本 Demo 单次归档复制上限为 128 MiB；完整原件保留在作业目录')
+            from io_policy import for_job,MIB,META
+            budget=for_job(job);entries = index()
+            if any(x['bytes']>budget['file_mib']*MIB for x in entries) or sum(x['bytes'] for x in entries)>budget['total_mib']*MIB+META:
+                raise RuntimeError('归档复制超过申报额度；完整原件保留在作业目录')
             for entry in entries:
                 source = directory / entry['name']
                 target = output / entry['name']
@@ -155,7 +185,7 @@ def finish(directory, job, result):
             result.update(execution_status=result['status'], status='failed', failure_stage='archive',
                           reason='归档复制失败；原始日志保留在作业目录', archive_error=str(exc)[:500])
     atomic_json(directory / 'result.json', result)
-    atomic_json(directory / 'artifacts.json', {'files': artifact_index(directory)})
+    atomic_json(directory / 'artifacts.json', {'files': index()})
     if result.get('published_archive'):
         shutil.copy2(directory / 'result.json', Path(result['published_archive']) / 'result.json')
         shutil.copy2(directory / 'artifacts.json', Path(result['published_archive']) / 'artifacts.json')
@@ -238,8 +268,11 @@ def run_command(directory, job):
             child.wait()
             raise RuntimeError('无法确认启动进程的身份')
         atomic_json(directory / 'command-process.json', {**child_identity, 'token': job['_token']})
+        from io_policy import for_job,MIB
+        # Leave space for pump's truncation notice inside the declared file cap.
+        log_limit=min(job.get('_max_log_bytes',2*MIB),for_job(job)['file_mib']*MIB-128)
         for stream, name in ((child.stdout, 'stdout.log'), (child.stderr, 'stderr.log')):
-            thread = threading.Thread(target=pump, args=(stream, directory/name, job.get('_max_log_bytes', 2*1024**2)), daemon=True)
+            thread = threading.Thread(target=pump, args=(stream, directory/name,log_limit), daemon=True)
             thread.start()
             threads.append(thread)
         deadline = time.monotonic() + job['timeout_seconds']

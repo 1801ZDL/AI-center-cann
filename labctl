@@ -96,6 +96,8 @@ def main():
     command.add_argument('--timeout', type=int, default=60)
     command.add_argument('--key')
     command.add_argument('--output')
+    command.add_argument('--artifact-file-mib',type=int,help='Legacy command single archived file limit; use together with --artifact-total-mib')
+    command.add_argument('--artifact-total-mib',type=int,help='Legacy command output budget; managed workflows declare parameters.artifacts in JSON')
     command.add_argument('--project')
     command.add_argument('--template', choices=['cpu_demo','isolation_probe','npu_probe'])
     command.add_argument('--workflow', help='Versioned workflow request JSON; submit frozen input ID and environment lock')
@@ -222,6 +224,13 @@ def main():
             if selected_env:body['environment']=selected_env
             body.setdefault('environment','worker-python')
             if args.name:body['name']=args.name
+        if (args.artifact_file_mib is None)!=(args.artifact_total_mib is None):
+            p.error('artifact-file-mib and artifact-total-mib must be supplied together')
+        if args.artifact_file_mib is not None:
+            if args.template or args.workflow:p.error('Artifact flags are for legacy commands; set parameters.artifacts in workflow JSON')
+            from io_policy import artifacts
+            try:body['parameters']={'artifacts':artifacts({'file_mib':args.artifact_file_mib,'total_mib':args.artifact_total_mib})}
+            except ValueError as error:p.error(str(error))
         if args.project:
             body['project'] = args.project
         if args.key:
