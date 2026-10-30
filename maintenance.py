@@ -45,6 +45,9 @@ def tree(root):
 
 def assert_quiescent(state,role,check_spool=True):
     state=Path(state)
+    if role=='node':
+        from node_owner_provision import guard
+        guard(state)
     if role=='controller':
         if list((state/'owner-activations').glob('*.pending.json')):
             raise DeployError('Finish pending owner activation credential delivery before offline maintenance')
@@ -317,6 +320,9 @@ def restore(prefix,archive_path,new_state,max_bytes=10*1024**3,payload_config=No
 
 def require_features(state,role,manifest):
     config=read_json(Path(state)/'config.json') or {}
+    if role=='node' and 'node_owner_provision.py' not in manifest.get('files',{}):
+        if (Path(state)/'node-owner-provision-change.json').exists() or (Path(state)/'node-owner-provision-history').exists():
+            raise DeployError('Node participant recovery/history requires compatible provisioning support; refusing downgrade')
     if role=='controller' and 'owner_node_grant.py' not in manifest.get('files',{}):
         path=Path(state)/'jobs.sqlite3'
         if path.exists():

@@ -118,6 +118,16 @@ def controller():
     except deploy.DeployError as error:assert 'matching owner-binding' in str(error)
     else:raise AssertionError('New owner administration targeted old code without its guards')
     activate(prefix,release_id=before_release);assert read_json(state/'config.json')==original_config
+    if context.get('node_provision'):
+        from node_provision_fixture import run as provision_node
+        value,current,proof=provision_node(session,prefix,config,cold,run,grant,first)
+        report={'passed':True,'node_owner_provision':proof,'accounts_enabled':False,'full_owner_onboarding_ready':False}
+        report.update(session.finish(prefix,value,current,already_acknowledged=True))
+        import node_owner_provision as participant
+        later=participant.provision(prefix,read_json(Path('/state/node-provision-spec.json')),'complete')
+        assert later['historical_receipt_only'] and later['credentials_issued'] is False
+        proof['completed_offline_replay_after_central_disable_is_historical']=True
+        print(json.dumps(report),flush=True);return
     work_plan=slots.plan(prefix,work,limits(23802))['plan'];work_result=slots.apply(prefix,work_plan)
     cache_plan=slots.plan(prefix,private,limits(23802))['plan'];cache_result=slots.apply(prefix,cache_plan)
     work_slot=next(s for s in work_result['policy']['slots'] if s['quota_uid']==23802)
@@ -209,7 +219,7 @@ a._checkpoint=crash;a.apply("/opt/owner-node",json.load(open("/state/bind-plan.j
     print(json.dumps(report),flush=True)
 
 
-def parent(central_handoff=False,activate_owner=False,unit_refresh=False,activation_abort=False,unit_manager=False,unit_start=False,owner_finish=False,owner_expand=False):
+def parent(central_handoff=False,activate_owner=False,unit_refresh=False,activation_abort=False,unit_manager=False,unit_start=False,owner_finish=False,owner_expand=False,node_provision=False):
     root=Path(__file__).resolve().parents[1];sys.path.insert(0,str(root));sys.path.insert(0,str(root/'tests'))
     from deployment import bundle,unpack_release,CORE
     from docker_runtime import discover,command,binary
@@ -236,9 +246,11 @@ def parent(central_handoff=False,activate_owner=False,unit_refresh=False,activat
         (payload/'owner_finish_fixture.py').write_bytes((root/'tests/owner_finish_root_fixture.py').read_bytes());(payload/'owner_finish_fixture.py').chmod(0o444)
     if owner_expand:
         (payload/'owner_expand_fixture.py').write_bytes((root/'tests/owner_expand_root_fixture.py').read_bytes());(payload/'owner_expand_fixture.py').chmod(0o444)
+    if node_provision:
+        (payload/'node_provision_fixture.py').write_bytes((root/'tests/node_provision_root_fixture.py').read_bytes());(payload/'node_provision_fixture.py').chmod(0o444)
     (payload/'input.mlir').write_text('module { func.func @add() -> i32 { %a = arith.constant 19 : i32\n %b = arith.constant 23 : i32\n %r = arith.addi %a, %b : i32\n return %r : i32 } }\n');(payload/'input.mlir').chmod(0o444)
     binding,_=discover();cpus=job['allocation']['cpu_ids']
-    context={'job_id':job['id'],'attempt_id':job['attempt_id'],'runtime':binding,'central_handoff':central_handoff,'activate_owner':activate_owner,'unit_refresh':unit_refresh,'activation_abort':activation_abort,'unit_manager':unit_manager,'unit_start':unit_start,'owner_finish':owner_finish,'owner_expand':owner_expand}
+    context={'job_id':job['id'],'attempt_id':job['attempt_id'],'runtime':binding,'central_handoff':central_handoff,'activate_owner':activate_owner,'unit_refresh':unit_refresh,'activation_abort':activation_abort,'unit_manager':unit_manager,'unit_start':unit_start,'owner_finish':owner_finish,'owner_expand':owner_expand,'node_provision':node_provision}
     if activate_owner:context['node_state']=str(state/'node')
     def docker(args,check=True,timeout=45):
         argv,env=command(binding,['docker',*map(str,args)]);r=subprocess.run(argv,env=env,capture_output=True,text=True,timeout=timeout)
@@ -299,15 +311,16 @@ def parent(central_handoff=False,activate_owner=False,unit_refresh=False,activat
 
 if __name__=='__main__':
     parser=argparse.ArgumentParser();parser.add_argument('--actor',action='store_true');parser.add_argument('--controller',action='store_true')
-    parser.add_argument('--with-regression',action='store_true');parser.add_argument('--central-handoff',action='store_true');parser.add_argument('--activate-owner',action='store_true');parser.add_argument('--unit-refresh',action='store_true');parser.add_argument('--activation-abort',action='store_true');parser.add_argument('--unit-manager',action='store_true');parser.add_argument('--unit-start',action='store_true');parser.add_argument('--owner-finish',action='store_true');parser.add_argument('--owner-expand',action='store_true');args=parser.parse_args()
+    parser.add_argument('--with-regression',action='store_true');parser.add_argument('--central-handoff',action='store_true');parser.add_argument('--activate-owner',action='store_true');parser.add_argument('--unit-refresh',action='store_true');parser.add_argument('--activation-abort',action='store_true');parser.add_argument('--unit-manager',action='store_true');parser.add_argument('--unit-start',action='store_true');parser.add_argument('--owner-finish',action='store_true');parser.add_argument('--owner-expand',action='store_true');parser.add_argument('--node-provision',action='store_true');args=parser.parse_args()
     if args.actor:actor()
     elif args.controller:controller()
     else:
         root=Path(__file__).resolve().parents[1]
+        if args.node_provision:args.owner_expand=True
         if args.owner_expand:args.owner_finish=True
         if args.with_regression:
             subprocess.run(['/usr/bin/python3','-m','unittest','discover','-s','tests','-p','test_node_owner_admin.py','-v'],cwd=root,check=True)
         parent(args.central_handoff or args.activate_owner or args.unit_refresh or args.activation_abort or args.unit_manager or args.unit_start or args.owner_finish,
                args.activate_owner or args.unit_refresh or args.activation_abort or args.unit_manager or args.unit_start or args.owner_finish,args.unit_refresh or args.activation_abort or args.unit_manager or args.unit_start or args.owner_finish,
-               args.activation_abort or args.unit_manager or args.unit_start or args.owner_finish,args.unit_manager or args.unit_start or args.owner_finish,args.unit_start or args.owner_finish,args.owner_finish,args.owner_expand)
+               args.activation_abort or args.unit_manager or args.unit_start or args.owner_finish,args.unit_manager or args.unit_start or args.owner_finish,args.unit_start or args.owner_finish,args.owner_finish,args.owner_expand,args.node_provision)
         if args.with_regression:subprocess.run(['bash','scripts/check.sh','/usr/bin/python3'],cwd=root,check=True)

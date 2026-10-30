@@ -27,6 +27,9 @@ def main():
         p=commands.add_parser(action);p.add_argument('--prefix',required=True);p.add_argument('--plan',required=True)
     p=commands.add_parser('owner-finish',help='Resume final activation and private UID credential delivery from one Root-owned spec')
     p.add_argument('--prefix',required=True);p.add_argument('--spec',required=True);p.add_argument('--plan',action='store_true');p.add_argument('--abort',action='store_true')
+    p=commands.add_parser('node-owner-provision',help='Prepare native work/cache and one immutable proposal; explicitly complete after central approval')
+    p.add_argument('--prefix',required=True);p.add_argument('--spec',required=True)
+    group=p.add_mutually_exclusive_group();group.add_argument('--complete',action='store_true');group.add_argument('--abort',action='store_true')
     p=commands.add_parser('workspace-prepare',help='Prepare UID-quota slots on an explicitly selected, already-mounted empty ext4 filesystem')
     p.add_argument('--root',required=True);p.add_argument('--limits',required=True);p.add_argument('--output');p.add_argument('--plan',action='store_true')
     p=commands.add_parser('payload-groups-prepare',help='Provision explicit owner group limits on a new, already quota-enabled dedicated payload filesystem')
@@ -96,6 +99,12 @@ def main():
         if action=='unit-install':p.add_argument('--unit-dir',default='/etc/systemd/system');p.add_argument('--enable',action='store_true')
     args=parser.parse_args()
     if args.action=='bundle':result=deploy.bundle(args.output)
+    elif args.action=='node-owner-provision':
+        deploy.require_root();path=Path(args.spec)
+        if path.lstat().st_uid!=0:raise deploy.DeployError('Node participant request must be Root-owned')
+        from node_owner_provision import provision
+        result=provision(args.prefix,deploy.regular_json(path,max_bytes=65536,private=True),
+            'abort' if args.abort else 'complete' if args.complete else 'prepare')
     elif args.action=='owner-finish':
         deploy.require_root();path=Path(args.spec)
         if path.lstat().st_uid!=0:raise deploy.DeployError('Finish request must be Root-owned')

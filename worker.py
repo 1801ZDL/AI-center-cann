@@ -56,7 +56,9 @@ class Worker:
         self.root.mkdir(parents=True,mode=0o700,exist_ok=True)
         self.state_lock=state_lock(self.root)
         from node_owner_admin import guard
-        try:guard(self.root)
+        try:
+            from node_owner_provision import guard as participant_guard
+            participant_guard(self.root);guard(self.root)
         except BaseException:
             self.state_lock.close();raise
         self.previous_cpu=None
@@ -408,6 +410,8 @@ class Worker:
         with ThreadPoolExecutor(max_workers=slots,thread_name_prefix='attempt') as pool:
             while not STOP.is_set():
                 try:
+                    from node_owner_provision import guard as participant_guard
+                    participant_guard(self.root)
                     try:self.reap()
                     except Exception:
                         self.artifact_gc_ready=False

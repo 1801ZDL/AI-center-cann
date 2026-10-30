@@ -174,14 +174,14 @@ u._checkpoint=crash;u.apply("/opt/handoff-controller",json.load(open("/state/uni
         if r.returncode:raise RuntimeError('Personal UID client operation failed: '+r.stderr[-1200:])
         return json.loads(r.stdout)
 
-    def finish(self,prefix,value,current):
+    def finish(self,prefix,value,current,already_acknowledged=False):
         import deployment as deploy
         from lab_client import read_json
         from worker import Worker
         from node_owner_admin import AWAIT,projection,sha
         from node_owner_ack import PROGRESS
         faults=[]
-        for boundary in ['intent','commit_response','committed','config_ready','ready_response','ready_saved','receipt','awaiting_removed','published']:
+        for boundary in ([] if already_acknowledged else ['intent','commit_response','committed','config_ready','ready_response','ready_saved','receipt','awaiting_removed','published']):
             killed=subprocess.run(['/usr/bin/python3','-I','-B','-c','''import sys,os,signal
 sys.path.insert(0,"/payload/code");import node_owner_ack as a
 def crash(stage):

@@ -243,3 +243,51 @@ Node本地绑定：真实安装、fixture stage摘要、独立的两个128MiB ex
 交接完成后的 apply/ACK 重放仅返回历史结果，不作为当前权限或健康证明，也不恢复后来被禁用的账号。实际任务继续检查当前用户权限。数据库中存在扩容授权记录后，拒绝降级到缺少该协议的发布包。此增量不等于完整一键开户、远程管理员操作自动化、真实两台物理机或 NPU 验收。
 
 2026-10-31验收：590项检查及JS语法通过，包含新增12项扩容检查。同机隔离Root使用实际服务UID23820、原个人UID23802及第二Node任务UID23812，原凭据仅一个、不新增；通过安装后的CLI计划/批准、10个绑定与9个ACK连续SIGKILL、两次改后恢复权限导致拒绝并明确重授权、真实个人客户端排队BishengIR `19+23=42`、单attempt及产物读取。原Node登记投影、已有缓存文件inode/SHA及个人配置保持不变，七个自有盘均释放。完整记录保存在本地私有证据，公开范围见reports/public-source-check.json.owner_expansion。此验收未创建真实宿主账号，未使用第二物理机、NPU或实际systemd PID1。
+
+## Node侧原生资源与绑定的单请求协调
+
+`node-owner-provision` 是完整开户流程的 Node 参与步骤：一个 Root 私有请求固定 operation_id、owner/stage、UID/GID、已登记的工作/缓存配额盘和额度。默认命令会**实际追加原生配额槽**，随后生成唯一绑定提案，等待中央独立批准。它不创建 Linux 账号、不启动服务、不发个人凭据、不远程登录，也不把中央变成任意 Root 命令的执行入口。
+
+节点管理员准备0600的请求文件。下例额度仅适合小IR演练；完整编译须按实际工作盘/缓存消耗配置。两个root必须是本Node已经登记并由管理员预先准备的独立原生UID配额文件系统；新UID不能已有数据、配额或节点映射。不要先手动追加同一UID再调用此协调器。
+
+```json
+{
+  "operation_id": "0123456789abcdef0123456789abcdef",
+  "owner": "researcher_a",
+  "stage_id": "替换为中央已有身份的64位stage摘要",
+  "uid": 23003,
+  "gid": 23003,
+  "workspace": {"root": "/srv/ascendlab-work", "bytes": 16777216, "inodes": 128},
+  "cache": {"root": "/srv/ascendlab-cache", "bytes": 16777216, "inodes": 128}
+}
+```
+
+```bash
+/opt/ascend-lab-node/current/servicectl node-owner-provision \
+  --prefix /opt/ascend-lab-node --spec /root/new-owner-node.json
+```
+
+返回awaiting_approval、proposal_id及Root私有proposal_path；运行同一请求保留原提案和资源，不重新分配。operation_id在本安装中唯一，同ID改请求即使旧流程已经完成/中止也拒绝。提案只包含原有Node身份/配置、原生槽及空闲缓存快照，不包含节点密钥或个人凭据。经受保护的管理员交付渠道将原提案转为中央服务UID所有的0600文件；新stage使用前述owner-approve，已激活用户增加节点使用owner-expand-plan/apply。当前该管理员交付和中央批准仍是明确步骤，不代表跨主机运输已自动化。
+
+中央批准后，节点管理员运行：
+
+```bash
+/opt/ascend-lab-node/current/servicectl node-owner-provision \
+  --prefix /opt/ascend-lab-node --spec /root/new-owner-node.json --complete
+```
+
+此命令应用同一原始绑定计划，经节点自己的凭据完成中央commit/ready ACK，再保存bound回执。中央尚未批准时确认失败，保留本地绑定和原请求，节点仍禁止启动；批准后重试同一请求即可继续。bound只说明资源绑定与ACK完成，仍须正常启动Node、取得当前健康心跳，再由中央激活/交付个人凭据。完成重放是历史结果，不代表现在健康或当前用户仍有权限。
+
+若本地绑定已完成、正在恢复ACK时管理员撤销并更新节点密钥，可以仅将新node_key安全更新到原Node私有config；同一参与请求会用新凭据继续确认，保留原提案和ACK。此例外仅适用于acknowledging/acknowledged阶段，控制地址、信任配置、设备/存储及其他配置指纹仍必须完全匹配。绑定前更新凭据会使原计划失效，不自动改写或重签资源计划。
+
+工作区/缓存的原始追加计划先于副作用持久化；Node共用一个原生追加journal，恢复只推进当前未完成步骤。提案写出但父阶段未更新时采用原文件，不重新生成；提案丢失或变动、安装/物理主机/非本流程配置改变、异物子事务或未知执行均拒绝。准备前通过独占状态锁排除现有Worker/租约；持久journal发布后，直接Worker、服务启动、普通验证/备份/升级和其他配额操作均阻断。内部恢复仅允许当前Root进程针对精确Node状态目录执行，不接受用户参数或环境变量绕过。
+
+仅在原生准备阶段、尚未写出提案时可以加`--abort`。中止会完成已开始的原生子事务并保留已分配额度/目录，不分配尚未开始的另一盘，不删除数据或清空配额。已经写出提案后，无法凭本地状态判断中央是否批准，须保留原请求并与中央协调；不会直接中止或改计划。此行为避免把未知远端状态当作未批准。
+
+单条控制记录最多12MiB，历史最多256个文件且总量128MiB，新请求预留后续元数据空间；遗留原子写入临时文件保留并计入有限预算。未知文件、权限异常或超限拒绝推进，不自动删除审计记录。这些是模块的应用边界，不能替代整个控制盘的内核配额或运维保留策略。
+
+Node回执不能证明中央身份状态。`central_owner_activation_still_required`是新开户的保守前置提示；已经激活的用户扩新Node时，中央核对既有身份和当前权限，沿用原凭据，不因Node回执重新激活或发放token。
+
+2026-10-31验收：607项检查和JS语法通过，新增17项参与步骤检查；72个非文档生产源码与最终Root包匹配。真实隔离Root中12个协调边界、14个原生配额边界、10个绑定边界、9个ACK边界共45次连续SIGKILL恢复，另有两个原生quota中断后的显式中止。一个中止保留work且cache未分配，另一个恢复正在进行的cache而保留已完成work。中央未批准时ACK拒绝且身份仍stage；批准后恢复同一提案。commit响应之后实际轮换Node密钥，旧密钥HTTP401、新密钥继续同一ACK。operation_id改请求、丢失提案、未知历史文件和未确认启动均拒绝。
+
+随后原流程实际观察健康心跳、最后激活/个人UID交付、个人客户端单attempt排队BishengIR，以及第二Node扩容和原凭据复用仍通过；源用户禁用、中央停止后，Node完成请求仅重放历史。七个自有测试盘释放，旧用户映射/槽/环境及暖缓存IR的inode/SHA/namespace保留。首次Root发现并修复共享原生journal恢复顺序问题；另一轮测试因同一宿主目录的两个bind挂载之间rename触发EXDEV，修正fixture后通过。原始证据仅本地保存，公开范围见reports/public-source-check.json.node_owner_provision。中央身份/存储组/服务生命周期的总协调器、跨机受保护交付、真实PID1与NPU仍待；本增量不是完整一键开户已完成。

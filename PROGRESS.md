@@ -1,5 +1,19 @@
 # 实施进度
 
+## Node资源准备、提案与确认的参与步骤
+
+新增node_owner_provision.py及Root本地`servicectl node-owner-provision --prefix ... --spec ... [--complete|--abort]`。同一operation_id绑定原请求，默认准备原生work/cache槽并导出固定绑定提案；中央使用已有stage批准或active扩容授权后，complete推进原本地绑定及authenticated commit/ready ACK。Node不持有中央管理员身份，不创建宿主账号或远程Root通道、不发凭据、不启动服务。bound回执仍须等待正常Node启动/新鲜心跳及中央身份确认；完成后重放是历史，不复活被禁用用户。
+
+原生计划先于副作用持久化；准备步骤跳过已完成资源，避免重放work撞到cache共用journal。Root内部作用域仅当前精确Node状态目录，普通验证、quota/startup恢复、Worker、备份/代码切换不能绕过；初次journal在独占状态锁下发布，关闭Worker进入窗口。提案写出后父阶段丢失可采用原文件，缺失/改变不能重生成。同ID换请求、换安装或物理机、无关子事务均拒绝。ACK阶段允许仅node_key轮换，其他配置摘要不变，仍用原计划/ACK。中止仅准备且未导出提案，先完成已开始的原生子事务，已分配资源保留、不创建未开始的另一盘。
+
+模块单条记录12MiB、历史256文件/128MiB并预留后续空间，原子写入遗留Root文件保留且有界；不是整个控制盘/DB的内核配额。包含参与历史后拒降级到缺少协议的发布包。
+
+最终**607项/109.872秒/无跳过及JS语法通过，72个非文档生产源码与Root包一致**。Root45次SIGKILL=协调器12+原生14+绑定10+ACK9，另两个quota中断后中止：work保留/cache未分配，以及cache在途恢复且work保留。原提案完整SHA保持；未批准ACK404、stage/token0保持，后续批准同计划恢复；commit response之后实际轮换Node密钥，旧key401、新key沿原ACK继续。新operation条件、提案丢失和未知历史文件均拒绝。原Node映射/槽/环境与缓存inode/IR SHA/namespace保留；随后真实健康心跳、激活/个人UID交付、单attempt实际IR、既有第二Node扩容/原凭据复用和禁用后历史重放仍通过，七个自有盘全部清理。
+
+原始报告仅本地evidence/node-provision-validation.json；公开摘要为reports/public-source-check.json.node_owner_provision。保留两失败：首次真实缓存子事务恢复发现并修复work重放冲突；另一次fixture跨同源两个bind mount执行rename触发EXDEV，调整为同挂载内移出历史目录。早先606项及两份Root正向在节点密钥恢复改动前，只保留其原冻结范围，不重标当前验收。
+
+完整目标继续未完成。下一步是中央stage/GID/配额、服务生命周期、Node请求/提案/回执及最后个人交付的总协调；跨主机只通过受保护的参与协议，不能把同机prefix调用当远程自动化。一般资源变更、控制DB增长、真实用户/PID1/两物理机、NPU数值/性能/仿真、组织身份及msagent案例仍待；PUBLIC-001继续延期。
+
 ## 已激活用户扩展第二个Node
 
 新增owner_node_grant.py及服务UID本地`workerctl owner-expand-plan/apply`。经典owner-approve继续只接受禁用且无凭据的stage；扩容独立绑定已提交激活、单调权限版本、当前身份/凭据/成员/配置/中央存储指纹及完整不可变Node计划。权限触发器也覆盖直接SQL和改后恢复，不依赖字节恢复后仍相同的profile摘要。批准、ACK、首次健康心跳持有身份写保留锁直到资源数据库提交；批准后的槽位立即进入Node间冲突/容量预留。首次健康心跳前始终暂停新claim。
