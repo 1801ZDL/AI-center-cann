@@ -47,7 +47,7 @@ def _path(value):
 def request(value):
     from auth import IDENTIFIER
     import owner_identity
-    if (not isinstance(value,dict) or set(value)!={'operation_id','owner','quota','storage','nodes','service','delivery'}
+    if (not isinstance(value,dict) or set(value)-{'device_probes'}!={'operation_id','owner','quota','storage','nodes','service','delivery'}
         or not isinstance(value['operation_id'],str) or not re.fullmatch('[0-9a-f]{32}',value['operation_id'])
         or not isinstance(value['owner'],str) or not IDENTIFIER.fullmatch(value['owner'])):raise DeployError('Provision requires one explicit operation, owner, quota, storage, Nodes, service and delivery')
     profile,_=owner_identity.definition(value['owner'],'unused',['worker-python'],value['quota'],1000)
@@ -72,6 +72,23 @@ def request(value):
             or not re.fullmatch('worker-[0-9a-f]{12}',node['node_id']) or node['node_id'] in seen):raise DeployError('Required Node IDs must be unique and explicit')
         node_request({'operation_id':'0'*32,'owner':value['owner'],'stage_id':'0'*64,**{k:node[k] for k in ['uid','gid','workspace','cache']}})
         seen.add(node['node_id'])
+    if 'device_probes' in value:
+        plans=value['device_probes'];selected=set();count=0
+        if not profile['quota']['npu'] or not isinstance(plans,list) or len(plans)!=len(nodes):
+            raise DeployError('Automatic probes require explicit NPU quotas and one selection per required Node')
+        for plan in plans:
+            if (not isinstance(plan,dict) or set(plan)!={'node_id','device_ids','memory_mib'}
+                or not isinstance(plan['node_id'],str) or plan['node_id'] not in seen or plan['node_id'] in selected or not isinstance(plan['device_ids'],list)
+                or not profile['quota']['npu']<=len(plan['device_ids'])<=64
+                or any(type(d) is not int or not 0<=d<256 for d in plan['device_ids'])
+                or len(set(plan['device_ids']))!=len(plan['device_ids'])
+                or type(plan['memory_mib']) is not int or not 256<=plan['memory_mib']<=min(65536,profile['quota']['memory_mib'])):
+                raise DeployError('Select each required Node and at least its NPU quota of unique physical cards with finite memory')
+            selected.add(plan['node_id']);count+=len(plan['device_ids'])
+        if count>64:raise DeployError('An automatic onboarding plan supports at most 64 explicit card checks')
+        from io_policy import MIB,META
+        if profile['quota']['archive_storage_mib']*MIB<(count+1)*(2*MIB+META):
+            raise DeployError('Archive budget must cover all fixed probes and one subsequent minimum managed task')
     if delivery.request(value['delivery'])['owner']!=value['owner']:raise DeployError('Personal delivery must select the same logical owner')
     return copy.deepcopy(value)
 
@@ -182,7 +199,7 @@ def _params(state,meta,identifier,action,value):
 
 
 def _service(prefix,meta,identifier,action,value):
-    if action not in {'stage','quiescent','approve','ready','groups'}:raise DeployError('Unknown fixed service participant operation')
+    if action not in {'stage','quiescent','approve','ready','groups','probe','probe_adoption_status','probe_adopt'}:raise DeployError('Unknown fixed service participant operation')
     state=Path(meta['state_dir']);path=_params(state,meta,identifier,action,value)
     code='''import json,sys
 from pathlib import Path
@@ -203,6 +220,12 @@ elif action=='quiescent':
   assert_quiescent(s,'controller')
  result={'quiescent':True}
 elif action=='approve':result=j.nodes.handoff.approve(v['node_id'],v['proposal'],v['expected_before_sha256'])
+elif action=='probe':
+ from owner_device_probe import advance
+ result=advance(j,v)
+elif action in {'probe_adoption_status','probe_adopt'}:
+ from owner_probe_adoption import adoption_status,adopt
+ result=adoption_status(j,v) if action=='probe_adoption_status' else adopt(j,v)
 elif action=='groups':
  from owner_activation import Activation
  groups=Activation(j).controller_groups();result={'groups':sorted(groups)}
@@ -270,6 +293,9 @@ def _nodes(state,spec):
                 if (len(profile.get('npu',{}).get('device_ids',[]))<spec['quota']['npu']
                     or 'npu_access_probe' not in profile['templates']):
                     raise DeployError('NPU onboarding requires explicitly enrolled devices and the fixed access probe on each selected Node')
+                selected=next((p for p in spec.get('device_probes',[]) if p['node_id']==item['node_id']),None)
+                if selected and not set(selected['device_ids'])<=set(profile['npu']['device_ids']):
+                    raise DeployError('Automatic probe selection contains a device outside the registered Node contract')
             if spec['owner'] in profile['users'] or any(x['uid']==item['uid'] for x in profile['users'].values()):
                 raise DeployError('Requested owner/UID is already mapped on a selected Node')
             for role,key in [('workspace','workspace'),('cache','persistent_cache')]:
@@ -358,6 +384,7 @@ def _children(prefix,record,directory,meta,config):
             if not expected.exists():raise DeployError('An unrelated child provisioning transaction is pending')
             child=_read(path);actual=child.get('plan') if name=='startup' else child
             if actual!=_read(expected):raise DeployError('A child provisioning transaction differs from its original plan')
+    if 'device_probes' in record['request'] and record['phase']=='finishing':_probe_snapshot(record,directory)
     finish_path=prefix/'owner-finish-change.json';delivery_path=prefix/'owner-delivery-change.json'
     if finish_path.exists() or finish_path.is_symlink():
         if record['phase']!='finishing' or _read(finish_path).get('request')!=_read(directory/'finish.json'):
@@ -392,10 +419,176 @@ def _lifecycle(prefix,meta,record,directory,bus):
     return True
 
 
+
+def _base_probe_specs(record):
+    for plan in sorted(record['request']['device_probes'],key=lambda v:v['node_id']):
+        for device in sorted(plan['device_ids']):
+            node=plan['node_id']
+            yield {'operation_id':sha({'flow':record['id'],'node':node,'device':device})[:32],
+                'owner':record['request']['owner'],'stage_id':record['stage_id'],'node_id':node,
+                'plan_id':record['proposals'][node],'device_id':device,'memory_mib':plan['memory_mib']}
+
+
+
+def _check_adoptions(record,base,rows):
+    if not isinstance(rows,list) or len(rows)>8:raise DeployError('Invalid bounded explicit probe adoption history')
+    current=base;jobs=set()
+    from owner_device_probe import request as probe_request
+    for revision,item in enumerate(rows,1):
+        if (not isinstance(item,dict) or set(item)!={'flow_id','parent_sha256','revision','previous_request','request','job_id','id'}
+            or item['flow_id']!=record['id'] or item['parent_sha256']!=sha(record['request']) or type(item['revision']) is not int
+            or item['revision']!=revision or item['previous_request']!=current
+            or item['id']!=sha({k:v for k,v in item.items() if k!='id'})
+            or not isinstance(item['job_id'],str) or not re.fullmatch('job-[0-9a-f]{12}',item['job_id']) or item['job_id'] in jobs):
+            raise DeployError('Original probe adoption history changed')
+        try:new=probe_request(item['request'])
+        except ValueError as error:raise DeployError(str(error)) from None
+        if new['operation_id']==current['operation_id'] or any(new[k]!=current[k] for k in current if k!='operation_id'):
+            raise DeployError('An adopted probe cannot change its original resource or identity contract')
+        current=new;jobs.add(item['job_id'])
+    return current
+
+
+def _adoption_files(directory,base):
+    prefix='probe-adopt-'+base['node_id']+'-'+str(base['device_id'])+'-'
+    paths=list(directory.glob(prefix+'*.json'));ordered={}
+    for path in paths:
+        suffix=path.name[len(prefix):-5]
+        if not re.fullmatch('[1-8]',suffix):raise DeployError('Unknown or excessive original probe adoption cache entry')
+        ordered[int(suffix)]=path
+    if set(ordered)!=set(range(1,len(ordered)+1)):raise DeployError('An original probe adoption cache entry is missing')
+    return [ordered[i] for i in sorted(ordered)]
+
+
+def _probe_specs(record,directory=None):
+    for base in _base_probe_specs(record):
+        rows=[_read(p) for p in _adoption_files(directory,base)] if directory is not None else []
+        yield _check_adoptions(record,base,rows)
+
+
+def _sync_adoptions(prefix,meta,record,directory,requested):
+    bases=list(_base_probe_specs(record));pairs={(b['node_id'],b['device_id']) for b in bases}
+    if set(requested)-pairs:raise DeployError('Adoption selected a card outside the original plan')
+    for base in bases:
+        scope={'flow_id':record['id'],'parent_sha256':sha(record['request']),'base_request':base}
+        response=_service(prefix,meta,record['id'],'probe_adoption_status',scope)
+        if not isinstance(response,dict) or set(response)!={'records'}:raise DeployError('Invalid adoption status response')
+        rows=response['records'];current=_check_adoptions(record,base,rows)
+        old_paths=_adoption_files(directory,base);cached=[_read(p) for p in old_paths]
+        _check_adoptions(record,base,cached)
+        if len(cached)>len(rows) or cached!=rows[:len(cached)]:raise DeployError('Central adoption history is older than the original Root cache')
+        selected=requested.get((base['node_id'],base['device_id']))
+        if selected is not None:
+            response=_service(prefix,meta,record['id'],'probe_adopt',{**scope,'expected_authorization_id':sha({'request':current}),'job_id':selected})
+            _checkpoint('probe_adoption_response')
+            if (not isinstance(response,dict) or set(response)!={'records','historical_receipt_only'}
+                or type(response['historical_receipt_only']) is not bool):raise DeployError('Invalid completed-probe adoption response')
+            rows=response['records'];_check_adoptions(record,base,rows)
+            if len(cached)>len(rows) or cached!=rows[:len(cached)]:raise DeployError('An adoption response changed the original Root history')
+        for item in rows[len(cached):]:
+            path=directory/('probe-adopt-'+base['node_id']+'-'+str(base['device_id'])+'-'+str(item['revision'])+'.json')
+            _write(path,item);_checkpoint('probe_adoption_saved')
+
+
+def _snapshot_path(record,directory):
+    current=[sha({'request':v}) for v in _probe_specs(record,directory)]
+    original=[sha({'request':v}) for v in _base_probe_specs(record)]
+    return directory/('probes.json' if current==original else 'probes-'+sha(current)+'.json')
+
+
+def _probe_entries(spec,entries,complete=True):
+    pairs=sorted((p['node_id'],d) for p in spec['device_probes'] for d in p['device_ids'])
+    if not isinstance(entries,list) or len(entries)!=(len(pairs) if complete else 0):raise DeployError('Incomplete original probe evidence')
+    jobs=set()
+    for entry,pair in zip(entries,pairs):
+        if (not isinstance(entry,dict) or set(entry)!={'authorization_id','node_id','device_id','job_id','state','status','reason'}
+            or (entry['node_id'],entry['device_id'])!=pair or entry['status']!='verified' or entry['state']!='succeeded'
+            or entry['reason'] is not None or not isinstance(entry['authorization_id'],str)
+            or not re.fullmatch('[0-9a-f]{64}',entry['authorization_id']) or not isinstance(entry['job_id'],str)
+            or not re.fullmatch('job-[0-9a-f]{12}',entry['job_id']) or entry['job_id'] in jobs):
+            raise DeployError('Invalid or duplicate original fixed-probe evidence')
+        jobs.add(entry['job_id'])
+
+
+def _probe_paths(directory,spec):
+    name='probe-'+spec['node_id']+'-'+str(spec['device_id'])+'-'+spec['operation_id']
+    return directory/(name+'.request.json'),directory/(name+'.binding.json')
+
+
+def _probe_snapshot(record,directory):
+    value=_read(_snapshot_path(record,directory))
+    if (set(value)!={'format','flow_id','request_sha256','probes','id'} or value['format']!='ascend-lab-owner-probes/v1'
+        or value['flow_id']!=record['id'] or value['request_sha256']!=sha(record['request'])
+        or value['id']!=sha({k:v for k,v in value.items() if k!='id'})):
+        raise DeployError('Original probe completion snapshot changed')
+    _probe_entries(record['request'],value['probes'])
+    for spec,result in zip(_probe_specs(record,directory),value['probes']):
+        intent,binding=_probe_paths(directory,spec)
+        expected={'authorization_id':sha({'request':spec}),'node_id':spec['node_id'],
+                  'device_id':spec['device_id'],'job_id':result['job_id']}
+        if _read(intent)!=spec or _read(binding)!=expected or result['authorization_id']!=expected['authorization_id']:
+            raise DeployError('Original probe snapshot does not match its durable request/job binding')
+    return value
+
+
+def _drive_probes(prefix,meta,record,directory,adoptions=None):
+    """Submit at most one unfinished fixed probe; all retries keep its operation."""
+    _sync_adoptions(prefix,meta,record,directory,adoptions or {})
+    results=[]
+    for spec in _probe_specs(record,directory):
+        intent,binding=_probe_paths(directory,spec)
+        if intent.exists() or intent.is_symlink():
+            if _read(intent)!=spec:raise DeployError('Original fixed-probe request changed')
+        else:_write(intent,spec);_checkpoint('probe_intent')
+        result=_service(prefix,meta,record['id'],'probe',spec);_checkpoint('probe_response')
+        from jobs import ACTIVE,TERMINAL
+        if (not isinstance(result,dict) or set(result)!={'authorization_id','node_id','device_id','job_id','state','status','reason'}
+            or result['authorization_id']!=sha({'request':spec}) or result['node_id']!=spec['node_id']
+            or type(result['device_id']) is not int or result['device_id']!=spec['device_id']
+            or not isinstance(result['status'],str) or result['status'] not in {'waiting','verified','attention'}
+            or result['state'] is not None and (not isinstance(result['state'],str) or result['state'] not in ACTIVE|TERMINAL|{'queued'})
+            or result['reason'] is not None and (not isinstance(result['reason'],str) or len(result['reason'])>512)
+            or result['job_id'] is not None and (not isinstance(result['job_id'],str) or not re.fullmatch('job-[0-9a-f]{12}',result['job_id']))
+            or result['status']=='verified' and (result['state']!='succeeded' or result['job_id'] is None or result['reason'] is not None)
+            or result['status']=='waiting' and (result['job_id'] is None or result['state'] not in {'queued','reserved','running','cancelling'})):
+            raise DeployError('Fixed service probe returned inconsistent bounded progress')
+        if binding.exists() or binding.is_symlink():
+            original=_read(binding)
+            if original!={k:result[k] for k in ['authorization_id','node_id','device_id','job_id']}:
+                raise DeployError('Original fixed-probe job binding differs; never replace an uncertain job')
+        elif result['job_id'] is not None:
+            _write(binding,{k:result[k] for k in ['authorization_id','node_id','device_id','job_id']});_checkpoint('probe_bound')
+        results.append(result)
+        if result['status']!='verified':return {'ready':False,'probes':results,'reason':result['reason'] or 'Waiting for the original fixed probe'}
+        _checkpoint('probe_verified')
+    _probe_entries(record['request'],results)
+    snapshot={'format':'ascend-lab-owner-probes/v1','flow_id':record['id'],'request_sha256':sha(record['request']),'probes':results}
+    snapshot['id']=sha(snapshot);path=_snapshot_path(record,directory)
+    if path.exists() or path.is_symlink():
+        if _probe_snapshot(record,directory)!=snapshot:raise DeployError('Original probe completion snapshot differs')
+    else:_write(path,snapshot);_checkpoint('probes_ready')
+    return {'ready':True,'probes':results,'reason':None}
+
+
+def watch(operation,seconds):
+    """Bounded CLI observation of one original operation; never changes its spec."""
+    import time
+    if type(seconds) is not int or not 1<=seconds<=900:raise DeployError('Wait must be 1..900 seconds')
+    deadline=time.monotonic()+seconds
+    while True:
+        result=operation()
+        if result['state'] in {'delivered','aborted'} or any(p['status']=='attention' for p in result.get('device_probes',[])):
+            return {**result,'wait':{'seconds':seconds,'expired':False}}
+        remaining=deadline-time.monotonic()
+        if remaining<=0:return {**result,'wait':{'seconds':seconds,'expired':True}}
+        time.sleep(min(2,remaining))
+
+
 def _result(record,directory,packets=None,state=None,reason=None):
     return {'format':FORMAT,'id':record['id'],'operation_id':record['request']['operation_id'],'owner':record['request']['owner'],
         'state':state or record['phase'],'stage_id':record['stage_id'],'node_requests':packets or [],'reason':reason,
-        'credentials_in_output':False,'historical_receipt_only':False}
+        'credentials_in_output':False,'historical_receipt_only':False,
+        **({'device_probes':[]} if 'device_probes' in record['request'] else {})}
 
 
 def _record_check(record,identifier,spec,context):
@@ -422,7 +615,7 @@ def _receipt(saved,identifier,spec):
     if (not isinstance(saved,dict) or set(saved)!={'id','request','result'} or saved['id']!=identifier or saved['request']!=spec
         or not isinstance(saved['result'],dict)):raise DeployError('Central historical request differs')
     result=saved['result'];base={'format','id','operation_id','owner','state','stage_id','node_requests','reason','credentials_in_output','historical_receipt_only'}
-    expected=base|({'activation_id','finish_id'} if result.get('state')=='delivered' else set())
+    expected=base|({'activation_id','finish_id'} if result.get('state')=='delivered' else set())|({'device_probes'} if 'device_probes' in spec else set())
     if (set(result)!=expected or result['format']!=FORMAT or result['id']!=identifier or result['operation_id']!=spec['operation_id']
         or result['owner']!=spec['owner'] or result['state'] not in {'delivered','aborted'} or result['credentials_in_output'] is not False
         or result['historical_receipt_only'] is not False or result['node_requests']!=[] or result['reason'] is not None):raise DeployError('Central historical result differs')
@@ -430,16 +623,22 @@ def _receipt(saved,identifier,spec):
         for key,size in [('stage_id',64),('activation_id',32),('finish_id',64)]:
             if not isinstance(result[key],str) or not re.fullmatch('[0-9a-f]{'+str(size)+'}',result[key]):raise DeployError('Historical activation identity differs')
     elif result['stage_id'] is not None:raise DeployError('Aborted initial operation unexpectedly staged an owner')
+    if 'device_probes' in spec:
+        _probe_entries(spec,result['device_probes'],complete=result['state']=='delivered')
     return result
 
 
-def provision(prefix,value,proposals=(),local_nodes=None,abort=False,bus=None):
+def provision(prefix,value,proposals=(),local_nodes=None,abort=False,bus=None,probe_adoptions=None):
     deploy.require_root();spec=request(value);prefix,meta,release=deploy.load_installation(prefix);state=Path(meta['state_dir'])
     helper=release/Path(__file__).name
     if meta['role']!='controller' or not helper.is_file() or hashlib.sha256(helper.read_bytes()).digest()!=hashlib.sha256(Path(__file__).read_bytes()).digest():raise DeployError('Use matching installed controller provisioning code')
     identifier=sha({'prefix':str(prefix),'operation_id':spec['operation_id']});history=prefix/HISTORY;directory=history/identifier
     journal=prefix/JOURNAL;receipt=directory/'receipt.json';local_nodes={} if local_nodes is None else dict(local_nodes)
     if set(local_nodes)-{x['node_id'] for x in spec['nodes']}:raise DeployError('Local mapping contains an unrequested Node')
+    probe_adoptions={} if probe_adoptions is None else dict(probe_adoptions)
+    selected={(p['node_id'],d) for p in spec.get('device_probes',[]) for d in p['device_ids']}
+    if (set(probe_adoptions)-selected or any(not isinstance(j,str) or not re.fullmatch('job-[0-9a-f]{12}',j) for j in probe_adoptions.values())
+        or abort and probe_adoptions):raise DeployError('Adopt only explicit successful jobs for selected cards, separately from abort')
     fd=os.open(prefix/'.owner-provision.lock',os.O_RDWR|os.O_CREAT|os.O_NOFOLLOW,0o600);token=None
     try:
         info=os.fstat(fd)
@@ -448,6 +647,8 @@ def provision(prefix,value,proposals=(),local_nodes=None,abort=False,bus=None):
         except BlockingIOError:raise DeployError('Another central owner participant is running') from None
         _budget(history);record=_read(journal) if journal.exists() or journal.is_symlink() else None
         if record is not None and (record.get('id')!=identifier or record.get('request')!=spec):raise DeployError('Resume only the original central provisioning request')
+        if probe_adoptions and (record is None or record.get('phase')!='nodes'):
+            raise DeployError('Completed probe adoption is available only while the original flow waits in its Node phase')
         existing_gate=_gate(prefix,state)
         if existing_gate is not None and (record is None or existing_gate['id']!=record['id']):raise DeployError('An orphan or unrelated admission gate exists')
         token=_ROOT.set(str(prefix))
@@ -540,8 +741,14 @@ def provision(prefix,value,proposals=(),local_nodes=None,abort=False,bus=None):
             if len(record['proposals'])!=len(spec['nodes']):return _result(record,directory,packets,reason='Waiting for protected Node proposals and independent central approval')
             activation={'owner':spec['owner'],'stage_id':record['stage_id'],
                 'required_nodes':[{'node_id':item['node_id'],'plan_id':record['proposals'][item['node_id']]} for item in spec['nodes']]}
+            if 'device_probes' in spec:
+                progress=_drive_probes(prefix,meta,record,directory,probe_adoptions)
+                if not progress['ready']:
+                    return {**_result(record,directory,packets,reason=progress['reason']),'device_probes':progress['probes']}
             ready=_service(prefix,meta,identifier,'ready',activation)
-            if not ready['ready']:return _result(record,directory,packets,reason=ready['reason'])
+            if not ready['ready']:
+                return {**_result(record,directory,packets,reason=ready['reason']),
+                    **({'device_probes':progress['probes']} if 'device_probes' in spec else {})}
             parent,spool,dirs=delivery._directories(spec['delivery'])
             try:
                 if dirs!=record['directories']:raise DeployError('Original personal delivery directories changed')
@@ -552,6 +759,7 @@ def provision(prefix,value,proposals=(),local_nodes=None,abort=False,bus=None):
         result=finish(prefix,_read(directory/'finish.json'));_checkpoint('finished')
         if result['state']!='delivered':raise DeployError('Original final delivery did not complete')
         result={**_result(record,directory,state='delivered'),'activation_id':result['activation_id'],'finish_id':result['id']}
+        if 'device_probes' in spec:result['device_probes']=_probe_snapshot(record,directory)['probes']
         _write(receipt,{'id':identifier,'request':spec,'result':result});_checkpoint('receipt')
         (prefix/GATE).unlink(missing_ok=True);files.sync(prefix);_checkpoint('gate_removed');journal.unlink();files.sync(prefix);_checkpoint('published')
         return result

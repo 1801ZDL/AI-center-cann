@@ -44,13 +44,20 @@ m.provision('/opt/handoff-controller',spec,local_nodes={spec['nodes'][0]['node_i
         assert result.returncode==-signal.SIGKILL,(component,boundary,result.returncode,result.stderr[-2400:])
         faults.append({'component':component,'boundary':boundary,'sigkill_observed':True})
 
-    for conflict in ['gid','uid']:
+    for conflict in ['gid','uid','automatic_probe']:
         bad=copy.deepcopy(spec)
         if conflict=='gid':bad['storage']['gid']=23831
-        else:bad['nodes'][0]['uid']=23801
+        elif conflict=='uid':bad['nodes'][0]['uid']=23801
+        else:
+            bad['quota']['npu']=1
+            bad['device_probes']=[{'node_id':session.node_id,'device_ids':[0],'memory_mib':256}]
         atomic_json(source,bad);refused=subprocess.run(cli,capture_output=True,text=True,timeout=30)
         assert refused.returncode and not (Path(session.prefix)/master.JOURNAL).exists()
         with sqlite3.connect(session.state/'identities.sqlite3') as db:assert not db.execute("SELECT 1 FROM users WHERE id='new_owner'").fetchone()
+
+    atomic_json(source,spec)
+    invalid_wait=subprocess.run([*cli,'--wait-seconds','-1'],capture_output=True,text=True,timeout=30)
+    assert invalid_wait.returncode and not (Path(session.prefix)/master.JOURNAL).exists()
 
     abandoned=copy.deepcopy(spec);abandoned['operation_id']=uuid.uuid4().hex;abandoned['owner']='abandoned_owner'
     abandoned['delivery'].update(owner='abandoned_owner',name='unused')
@@ -76,7 +83,8 @@ print(json.dumps({'maintenance_submit_503':True}))
 ''');assert maintenance['maintenance_submit_503']
     for boundary in ['service_ready','packets']:kill(boundary)
     assert read_json(session.state/'service-process.json')['pid']==pid
-    pending=json.loads(subprocess.run(cli,capture_output=True,text=True,check=True,timeout=30).stdout)
+    pending=json.loads(subprocess.run([*cli,'--wait-seconds','1'],capture_output=True,text=True,check=True,timeout=30).stdout)
+    assert pending['wait']=={'seconds':1,'expired':True}
     assert pending['state']=='nodes' and len(pending['node_requests'])==1
     deploy.stop(session.prefix)
     recovered=json.loads(subprocess.run(cli,capture_output=True,text=True,check=True,timeout=30).stdout)
@@ -169,8 +177,9 @@ print(json.dumps({'old_owner_real_ir_succeeded_while_waiting':True}))
     second['delivery'].update(owner='second_owner',parent=str(second_parent),uid=23803,gid=23803)
     second_source=Path('/state/second-master-spec.json');atomic_json(second_source,second)
     second_cli=['/usr/bin/python3','-I','-B',session.prefix+'/current/servicectl','owner-provision','--prefix',session.prefix,
-        '--spec',str(second_source),*local]
+        '--spec',str(second_source),*local,'--wait-seconds','5']
     second_done=json.loads(subprocess.run(second_cli,capture_output=True,text=True,check=True,timeout=60).stdout)
+    assert second_done['wait']=={'seconds':5,'expired':False}
     assert second_done['state']=='delivered' and not second_done['historical_receipt_only'] and not second_done['credentials_in_output']
     original_personal=session.personal_path;session.personal_path=second_parent/'agent'
     second_me=session.personal_code('''import json,sys,os
@@ -200,6 +209,8 @@ else:raise AssertionError('First owner read second owner profile')
     deploy.stop(session.prefix)
     return {'passed':True,'fault_chain':faults,'fault_count':len(faults),'initial_abort_before_identity_has_no_user_row':True,
         'duplicate_gid_and_mapped_uid_refused_before_stage_or_journal':True,
+        'automatic_probe_on_cpu_only_node_refused_before_stage':True,
+        'installed_wait_expiry_preserves_pending_and_single_call_cpu_completion':True,
         'changed_completed_request_refused':True,'central_staged_gid_lifecycle_node_and_delivery_coordinated':True,
         'single_live_controller_pid_preserved_after_start':True,'maintenance_submit_refused':True,**old_checked,
         'controller_restart_while_waiting_nodes_and_credential_delivery':True,

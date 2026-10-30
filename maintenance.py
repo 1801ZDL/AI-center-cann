@@ -320,6 +320,12 @@ def restore(prefix,archive_path,new_state,max_bytes=10*1024**3,payload_config=No
 
 def require_features(state,role,manifest):
     config=read_json(Path(state)/'config.json') or {}
+    if role=='controller' and 'owner_probe_adoption.py' not in manifest.get('files',{}):
+        path=Path(state)/'jobs.sqlite3'
+        if path.exists():
+            with sqlite3.connect(path.as_uri()+'?mode=ro',uri=True) as db:
+                if db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='owner_probe_adoptions'").fetchone() and db.execute('SELECT 1 FROM owner_probe_adoptions LIMIT 1').fetchone():
+                    raise DeployError('Probe adoption history requires compatible fencing/admission support; refusing downgrade')
     if role=='controller' and 'owner_device_probe.py' not in manifest.get('files',{}):
         path=Path(state)/'jobs.sqlite3'
         if path.exists():

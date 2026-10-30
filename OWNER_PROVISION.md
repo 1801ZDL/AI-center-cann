@@ -6,7 +6,7 @@
 
 这一步面向**已安装中央、已登记的基线Node和已认证环境**。管理员仍须先准备Linux UID/GID、专用中央存储盘、Node原生work/cache盘、个人parent和同盘Root spool；首个Node的登记/探针身份也须先按SERVER.md准备。协调器不创建OS账号、不格式化系统盘、不复制模型配置、不持有远端Root登录凭据。个人Agent只调用任务API/MCP，不能调用这个Root管理入口。
 
-中央和Node安装包须包含匹配的owner_provision.py。现有运行中央须已加载owner-provision-v1；旧进程会被拒绝，应先排空、按普通升级流程重载。所选Node须已登记并启用，work/cache分别登记为ext4-userquota；新owner/UID不能已有映射。CPU请求可完成原流程；NPU额度1..2要求每个选定Node已显式登记足够设备及npu_access_probe模板。协调器不自动运行设备探针：绑定/ACK/健康心跳后保持state=nodes、身份禁用且无凭据，由管理员按NPU.md提交固定预激活探针，所需资格通过后重放原请求。设备文件访问资格不等于ACL/数值验收。
+中央和Node安装包须包含匹配的owner_provision.py。现有运行中央须已加载owner-provision-v1；旧进程会被拒绝，应先排空、按普通升级流程重载。所选Node须已登记并启用，work/cache分别登记为ext4-userquota；新owner/UID不能已有映射。CPU请求可完成原流程；NPU额度1..2要求每个选定Node已显式登记足够设备及npu_access_probe模板。未提供device_probes计划时不自动运行设备探针：绑定/ACK/健康心跳后保持state=nodes、身份禁用且无凭据，由管理员按NPU.md提交固定预激活探针，所需资格通过后重放原请求；显式计划的自动推进见下节。设备文件访问资格不等于ACL/数值验收。
 
 Root所有、0600的请求示例；operation_id生成一次后随原请求重试，Node ID和路径按实际替换：
 
@@ -61,7 +61,45 @@ Node再以同一request加--complete完成绑定/ACK，按其既有服务管理�
 
 systemd模式须显式unit_dir且中央管理unit**初始已停止**；协调器使用原unit刷新、manager加载与一次启动计划，不直接执行任意systemctl命令。该组合尚未通过真实PID1验收，不能把进程模式的成功当成systemd或远程推广已完成；依赖基线Node新鲜观察的启动门禁仍保留。
 
-当前645项检查及JS语法通过，74个非文档生产源码与最终Root包一致；新增17项预激活固定探针协议检查使用合成设备观测，不是NPU硬件正向。同机自有隔离Root验证44个连续中断恢复点、初始中止、第二个新用户一次安装CLI开户和实际个人UID认证/同伴读取拒绝；等待期间旧用户真实IR任务成功。新用户沿交付凭据在第二Node的执行UID完成单attempt IR。七个文件盘的loop/角色/卷已释放，后备文件作为私有证据保留；未创建宿主账号或修改旧容器、驱动及全局服务。完整目标仍未完成。
+当前676项检查及JS语法通过，75个非文档生产源码与最终Root包一致；新增31项编排/采用/观察检查及既有17项预激活固定探针检查使用合成设备观测，不是NPU硬件正向。同机自有隔离Root验证44个连续中断恢复点、初始中止、第二个新用户一次安装CLI开户和实际个人UID认证/同伴读取拒绝；等待期间旧用户真实IR任务成功。新用户沿交付凭据在第二Node的执行UID完成单attempt IR。七个文件盘的loop/角色/卷已释放，后备文件作为私有证据保留；未创建宿主账号或修改旧容器、驱动及全局服务。完整目标仍未完成。
+
+## 显式 NPU 探针计划与同一开户请求的观察
+
+在完整开户请求中可选增加以下字段；不增加该字段时仍使用前述管理员手动探针流程，不会隐式上卡：
+
+```json
+{"device_probes":[{"node_id":"worker-0123456789ab","device_ids":[0,1],"memory_mib":256}]}
+```
+
+quota.npu须大于0，每个必需Node恰好一项，候选卡全部在该Node登记合同内且不重复。候选数量至少覆盖npu并发额度，可以多于额度：例如同时只用一张卡的用户预先验证两张候选卡，普通任务随后可选择其中空闲的一张。整个请求最多64个卡检查；memory_mib为256..65536且不超过用户额度。每个探针最坏预留2MiB产物加8MiB元数据，因此archive_storage_mib至少覆盖全部探针再加一次最小托管任务；例如两个候选需要至少30MiB。不足在任何stage/资源副作用之前拒绝。
+
+```bash
+/opt/ascend-lab-controller/current/servicectl owner-provision \
+  --prefix /opt/ascend-lab-controller --spec /root/researcher-a.json \
+  --local-node worker-0123456789ab=/opt/ascend-lab-node --wait-seconds 300
+```
+
+原Node绑定、ACK与健康心跳到位后，Root先保存固定探针请求，再由固定服务UID操作提交。按Node/物理卡ID顺序逐个验证；只有前一个通过才提交下一个，不同时持有多张卡。所有选定候选通过才进入最后激活。返回device_probes中的job_id/authorization_id/state/status，等待时仅包含已处理的计划前缀。排队和执行沿原job观察，响应丢失或Root中断不另发任务。失败、取消、needs_attention、权限变化、过期或证据被替换返回status=attention，保持身份禁用、配额和原任务，不自动重试、重置或放弃原租约。
+
+当前开始维护前仍须先处理既有队列、活动任务和未知库存；观察模式不会替代忙服务器的排空协议。若在held阶段发现既有排队任务被维护门暂停，可用原请求加--abort恢复原准入，保留这些任务，再按新的operation_id安排维护。无损自动排空是下一项工作。
+
+--wait-seconds为1..900秒的观察循环预算；0或省略则执行一次推进。它不打断正在执行的固定管理步骤，单步耗时可能超出观察预算。到期返回wait.expired=true，任务继续；再次运行**同一请求**可接着观察。attention立即结束观察。CLI成功退出仅表示返回了合法进度，必须检查state是否delivered，不能把退出0当成开户完成。
+
+### 显式采用已成功的新探针
+
+原探针失败/过期后，先由管理员处理原因；原任务仍排队、运行或不确定时，先沿原job取消并确认清退。使用NPU.md的owner-device-probe，以新operation_id显式验证**同一owner/stage/Node/原plan/卡/内存**。这个新任务确认成功且资格仍有效后，可在原开户仍为state=nodes时执行：
+
+```bash
+/opt/ascend-lab-controller/current/servicectl owner-provision \
+  --prefix /opt/ascend-lab-controller --spec /root/researcher-a.json \
+  --adopt-probe worker-0123456789ab:0=job-替换为已成功任务ID --wait-seconds 300
+```
+
+采用操作本身不启动新任务。中央在同一jobs→identities事务内验证新任务、确认旧任务已终止或尚未提交、禁止旧授权后续提交，并追加父流程/原请求/新旧任务关联。原提交只有intent且响应未知时也被这一事务禁止晚到提交；不把缺失响应当成未执行证明。中央记录是响应丢失后的恢复依据，Root只缓存已提交记录；历史重复采用不会倒退到更早的任务。每个候选最多8次采用、中央最多4096条采用记录，达到上限要求明确留存处理。旧任务、原意图、旧完成快照与失败日志都保留，不覆盖原资源合同或个人配置。
+
+--adopt-probe是仅限nodes阶段的一次性管理动作。若调用中断后流程已进入finishing，去掉该选项、继续使用原--spec恢复；已提交的采用记录不会丢失，不需要再次采用。进入finishing后不再采用新任务到这份前置计划；若最后激活尚未提交而访问资格过期，可用上述独立管理员探针显式续验，再恢复原开户请求。最后激活仍检查当前有效来源；Root的device_probes保留进入最后阶段前的历史检查记录，后续独立续验来源记录在中央资格账本。已提交激活则仅恢复原凭据交付，不重新签发或再次启用。
+
+自动编排和采用的NPU正向目前是合成可信Node协议验证；真实Root安装演练只验证CPU开户、等待/超时及拒绝CPU节点的NPU计划。不能据此声称真实设备打开、ACL、数值、性能、仿真或跨机/PID1已通过。
 
 ## 最后激活与本地个人目录的一次请求
 

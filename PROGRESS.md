@@ -1,6 +1,24 @@
 # 实施进度
 
 
+## 显式候选卡开户编排、观察与已成功任务采用（2026-10-31）
+
+开户请求可选device_probes，每个所需Node显式列候选物理卡与有限内存；未选择不自动上卡。候选数量至少覆盖npu并发额度，可以多于额度，合计最多64个检查。预留全部固定探针再加一次最小托管任务的归档预算，Node/卡未登记、重复/布尔参数或预算不足在stage之前拒绝。Root逐个持久保存原意图、原job绑定和完成快照，固定Svc advance只提交一次并查询原job；失败、取消、未知、过期、权限变化和证据替换都停为attention，不自动重试。
+
+新增owner_probe_adoption.py：Root --adopt-probe只接受管理员另行显式验证且当前仍有效的同owner/stage/Node/plan/卡/内存新任务。原任务仍queued/active/needs_attention时拒绝，保留原租约；原intent尚未提交时也在同一jobs→identities事务内禁止旧授权晚到提交，并追加CAS父流程采用链。中央提交记录是响应丢失后的权威，Root只缓存已提交记录；历史重复不倒退，旧失败/意图/快照保留。每卡最多8次采用、全局4096条应用限额，包含采用记录拒降级缺少模块。finishing阶段不改变前置计划，独立显式资格续验仍由最后激活检查当前来源。
+
+servicectl owner-provision --wait-seconds 1..900观察同一请求；预算不打断管理步骤，到期不取消原job，attention立即返回。当前仍要求开始前排空；忙队列的无损维护门转换尚未实现，不将watch当作自动drain。
+
+**最终676项/117.613秒/无跳过及JS语法通过；75非文档生产源码与最终Root及全量冻结一致。** 31项新协议检查覆盖逐卡/双卡、单并发额度多候选并真正选择空闲卡1的合法任务grant、原意图五个连续异常边界、Svc丢响应、job冲突/快照破坏、失败/取消/未知/过期与同ID恢复、显式采用/响应丢失/孤立意图禁止晚到提交/旧任务未终止拒绝/保持历史快照/不兼容降级、观察预算与历史回执。Root文件IO在非Root单测中适配，设备观测与回执均为合成，不是实际NPU执行。
+
+最终Root job-6915ee7dad6a实际安装CLI验证：CPU节点的自动NPU计划在stage前拒绝；负等待参数无副作用；等待1秒返回pending而保留原请求；第二用户普通单CLI+wait完成CPU开户。原44个SIGKILL、Svc23820/个人23802与23803隔离、第二Node执行UID23812实际IR仍通过；七个文件盘loop/helper/角色/卷释放，后备文件保留私有。最终全量job-e47b5402877e，原Root75/full676另有早期冻结job-9db4525295e3/job-dfc8bc6960b8（118.512秒）；最终只规范化一个EOF空行并重核相同包源码。
+
+早先focused job-0aa3e18144a5 20通过；job-42d80cbaf767 23项有一个fixture错误（目标Node未登记accuracy_v1，合法任务未领取）；job-6ed3e1a97168 31项有一个fixture断言错误（篡改回包也污染只读采用状态，先被更早门禁拒绝）。补齐fixture模板并限制篡改到目标probe回包后job-22badb71a08b 31通过。失败保留，不弱化准入。完整证据本地evidence/owner-probe-flow-validation.json，公开摘要reports/public-source-check.json.owner_probe_flow。
+
+本轮0 NPU kernel/模型调用；protected六文件哈希不变，未改共享驱动/账号/既有zdl。真实硬件/ACL/数值/性能/仿真、真实PID1/两OS用户/两物理机、无损维护排空、普通用户并发下的预激活、Node无关用户追加的资格稳定性、一般资源合同与控制DB硬边界、组织身份/msagent仍待。PUBLIC-001继续延期，整体目标未完成。
+
+
+
 ## 管理员固定预激活NPU访问资格（2026-10-31）
 
 新增owner_device_probe.py与本地服务管理员CLI workerctl owner-device-probe --spec。原disabled/token0阶段不能提交用户任务，但NPU激活要求先有本用户设备访问资格；现在为明确stage/原ready Node计划/物理卡授予一次固定npu_access_probe。它仍经过正常CPU/RAM/NPU/工作区/暂存/归档账本，固定1CPU/单卡/零SHM/120秒/1MiB文件与2MiB总产物；不临时启用身份，不生成凭据或执行用户命令。中央总协调可接受NPU额度，等待管理员显式探针，尚未自动编排探针或验收NPU一键流程。

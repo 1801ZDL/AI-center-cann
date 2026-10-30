@@ -43,10 +43,11 @@ def load(db,identifier):
     row=db.execute('SELECT record FROM '+TABLE+' WHERE id=?',(identifier,)).fetchone()
     if not row:raise JobError('No original administrator staged probe authorization exists',409)
     value=json.loads(row[0]);spec=request(value['request'])
-    if (set(value)!={'format','id','request','identity_revision','profile_sha256','node_profile_sha256','storage','access_context','created_at','job_id'}
+    if (set(value)-{'superseded_by'}!={'format','id','request','identity_revision','profile_sha256','node_profile_sha256','storage','access_context','created_at','job_id'}
         or value['format']!=FORMAT or value['id']!=identifier or identifier!=digest({'request':spec})
         or type(value['identity_revision']) is not int or value['identity_revision']<1
         or any(not isinstance(value[k],str) or not re.fullmatch('[0-9a-f]{64}',value[k]) for k in ['profile_sha256','node_profile_sha256','access_context'])
+        or 'superseded_by' in value and (not isinstance(value['superseded_by'],str) or not re.fullmatch('[0-9a-f]{64}',value['superseded_by']))
         or value['job_id'] is not None and (not isinstance(value['job_id'],str) or not re.fullmatch('job-[0-9a-f]{12}',value['job_id']))):
         raise JobError('Invalid original staged probe authorization',409)
     return value
@@ -91,7 +92,9 @@ def _current(jobs,spec,db,identities):
 
 
 def validate(jobs,identifier,db,identities,job=None):
-    value=load(db,identifier);spec=value['request'];profile,current=_current(jobs,spec,db,identities)
+    value=load(db,identifier)
+    if value.get('superseded_by'):raise JobError('This original probe was explicitly superseded; it cannot submit or authorize new work',409)
+    spec=value['request'];profile,current=_current(jobs,spec,db,identities)
     if any(value[k]!=v for k,v in current.items()):raise JobError('Original staged probe authority/environment changed; submit a new explicit operation',409)
     if job is not None:
         if (value['job_id']!=job['id'] or job['owner']!=spec['owner'] or job['environment']!='worker-python'
@@ -177,3 +180,37 @@ def activation_allowed(jobs,node,owner,device,db):
         with jobs.access.connect() as identities:validate(jobs,job['_staged_device_probe'],db,identities,job)
         return True
     except (JobError,ValueError,KeyError,TypeError,sqlite3.Error):return False
+
+
+def advance(jobs,value):
+    """One explicit coordinator operation; retries observe its original job only."""
+    spec=request(value);identifier=digest({'request':spec})
+    result={'authorization_id':identifier,'node_id':spec['node_id'],'device_id':spec['device_id'],
+            'job_id':None,'state':None,'status':'attention','reason':None}
+    try:
+        authorized=authorize(jobs,spec)
+        result['job_id']=authorized['job']['id'];result['state']=authorized['job']['state']
+        with jobs.nodes.handoff.transaction() as (db,identities):
+            record=load(db,identifier);job=jobs.get(record['job_id'],db)
+            result.update(job_id=job['id'],state=job['state'])
+            validate(jobs,identifier,db,identities,job)
+            if job['state']=='succeeded':
+                node=jobs.nodes.node(spec['node_id'],db);status=decision(node,spec['owner'],spec['device_id'])
+                evidence=next((r for r in node.get('device_qualifications',[]) if r['owner']==spec['owner'] and r['device_id']==spec['device_id']),{})
+                if (status['status']=='verified' and evidence.get('job_id')==job['id']
+                    and evidence.get('attempt_id')==job.get('attempt_id')):
+                    result.update(status='verified',reason=None)
+                else:result['reason']='Original probe no longer supplies a current qualification; explicit administrator reconciliation is required'
+            elif job['state'] in {'queued','reserved','running','cancelling'}:
+                result.update(status='waiting',reason='Waiting for the original fixed probe; no replacement job will be submitted')
+            else:result['reason']='Original probe failed, was cancelled or has uncertain execution; retain it for explicit administrator reconciliation'
+    except JobError as error:
+        # A failure can occur after a durable authorization/job binding. Never
+        # describe the absence of a response as proof that nothing was sent.
+        with jobs.connect() as db:
+            exists=db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name=?",(TABLE,)).fetchone()
+            if exists and db.execute('SELECT 1 FROM '+TABLE+' WHERE id=?',(identifier,)).fetchone():
+                record=load(db,identifier);result['job_id']=record['job_id']
+                if record['job_id']:result['state']=jobs.get(record['job_id'],db)['state']
+        result['reason']=str(error)[:512]
+    return result

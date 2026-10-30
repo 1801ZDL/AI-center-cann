@@ -21,7 +21,7 @@ from deployment import DeployError
 
 class StagedDeviceProbeTests(unittest.TestCase):
     def setUp(self):
-        self.fixture=activation_fixture.OwnerActivationTests();self.fixture.stage_npu=1;self.fixture.stage_archive_mib=32;self.fixture.setUp()
+        self.fixture=activation_fixture.OwnerActivationTests();self.fixture.stage_npu=getattr(self,'stage_npu',1);self.fixture.stage_archive_mib=32;self.fixture.setUp()
         self.jobs=self.fixture.jobs;self.node=self.fixture.fixture.node;self.root=self.fixture.root
         policy={'device_ids':[0,1],'visible_ids':{'0':0,'1':0},'device_gid':1001,
             'management_devices':['/dev/davinci_manager'],'driver_paths':['/usr/local/Ascend/driver'],

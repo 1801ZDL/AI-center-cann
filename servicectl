@@ -30,6 +30,8 @@ def main():
     p=commands.add_parser('owner-provision',help='Coordinate central stage/storage/lifecycle, protected Node proposals and final private delivery')
     p.add_argument('--prefix',required=True);p.add_argument('--spec',required=True);p.add_argument('--proposal',action='append',default=[])
     p.add_argument('--local-node',action='append',default=[],help='Explicit same-host node_id=/installed/prefix mapping; never a remote shell')
+    p.add_argument('--wait-seconds',type=int,default=0,help='Observe the same operation with a 1..900-second loop budget; never restart failed probes')
+    p.add_argument('--adopt-probe',action='append',default=[],help='Explicit node_id:device_id=already-successful-job-id; never starts a replacement probe')
     p.add_argument('--abort',action='store_true')
     p=commands.add_parser('owner-provision-node',help='Apply one Root-approved packet only to its bound Node/controller')
     p.add_argument('--prefix',required=True);p.add_argument('--request',required=True)
@@ -113,7 +115,7 @@ def main():
         value=deploy.regular_json(path,max_bytes=65536,private=True)
         if args.action=='owner-provision-node':result=node_participate(args.prefix,value,'abort' if args.abort else 'complete' if args.complete else 'prepare')
         else:
-            proposals=[];local={}
+            proposals=[];local={};adoptions={}
             for name in args.proposal:
                 candidate=Path(name)
                 if candidate.lstat().st_uid!=0:raise deploy.DeployError('Protected proposal must be Root-owned')
@@ -122,7 +124,19 @@ def main():
                 node,selected=item.split('=',1)
                 if node in local:raise deploy.DeployError('Local Node mapping is duplicated')
                 local[node]=selected
-            result=provision(args.prefix,value,proposals=proposals,local_nodes=local,abort=args.abort)
+            for item in args.adopt_probe:
+                try:
+                    selected,job=item.split('=',1);node,device=selected.rsplit(':',1);device=int(device)
+                except ValueError:raise deploy.DeployError('Adoption must select node_id:device_id=job-ID') from None
+                if (node,device) in adoptions:raise deploy.DeployError('Probe adoption selection is duplicated')
+                adoptions[(node,device)]=job
+            if not 0<=args.wait_seconds<=900 or args.abort and args.wait_seconds:
+                raise deploy.DeployError('Wait must be 0..900 seconds and cannot be combined with abort')
+            operation=lambda:provision(args.prefix,value,proposals=proposals,local_nodes=local,abort=args.abort,probe_adoptions=adoptions)
+            if args.wait_seconds:
+                from owner_provision import watch
+                result=watch(operation,args.wait_seconds)
+            else:result=operation()
     elif args.action=='node-owner-provision':
         deploy.require_root();path=Path(args.spec)
         if path.lstat().st_uid!=0:raise deploy.DeployError('Node participant request must be Root-owned')
