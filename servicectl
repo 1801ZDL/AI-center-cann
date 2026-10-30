@@ -45,6 +45,10 @@ def main():
     p.add_argument('--mib',type=int,required=True);p.add_argument('--inodes',type=int,required=True);p.add_argument('--output',required=True)
     p=commands.add_parser('payload-owner-apply',help='Apply or resume the same new-owner storage plan; does not activate its identity')
     p.add_argument('--prefix',required=True);p.add_argument('--plan',required=True)
+    p=commands.add_parser('unit-refresh-plan',help='Preview a stopped managed unit refresh; never contacts the systemd manager')
+    p.add_argument('--prefix',required=True);p.add_argument('--unit-dir',default='/etc/systemd/system');p.add_argument('--output',required=True)
+    p=commands.add_parser('unit-refresh-apply',help='Apply/resume the original offline unit plan with durable private backups')
+    p.add_argument('--prefix',required=True);p.add_argument('--plan',required=True)
     p=commands.add_parser('install');p.add_argument('--archive',required=True);p.add_argument('--prefix',required=True)
     p.add_argument('--state-dir',required=True);p.add_argument('--role',choices=['controller','node'],required=True)
     p.add_argument('--uid',type=int);p.add_argument('--gid',type=int);p.add_argument('--create-service-user')
@@ -76,6 +80,17 @@ def main():
         if action=='unit-install':p.add_argument('--unit-dir',default='/etc/systemd/system');p.add_argument('--enable',action='store_true')
     args=parser.parse_args()
     if args.action=='bundle':result=deploy.bundle(args.output)
+    elif args.action=='unit-refresh-plan':
+        from unit_refresh import plan
+        from payload_quota_admin import write
+        result=plan(args.prefix,args.unit_dir);target=deploy.secure_parent(args.output)
+        if target.exists() or target.is_symlink():raise deploy.DeployError('Choose a new Root-private unit plan output')
+        write(target,result['plan']);result={'read_only':True,'plan_id':result['plan']['id'],'plan_file':str(target),'unit_changed':result['unit_changed'],'systemd_manager_contacted':False}
+    elif args.action=='unit-refresh-apply':
+        deploy.require_root();path=Path(args.plan)
+        if path.lstat().st_uid!=0:raise deploy.DeployError('Unit refresh plan must be Root-owned')
+        from unit_refresh import apply
+        result=apply(args.prefix,deploy.regular_json(path,max_bytes=512*1024,private=True))
     elif args.action=='workspace-add-plan':
         deploy.require_root()
         from workspace_quota_admin import plan

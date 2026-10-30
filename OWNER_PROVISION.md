@@ -1,6 +1,6 @@
 # 用户预配：当前阶段与交付条件
 
-当前提供**中央待预配身份/GID配额**、**Node原生槽与本地绑定**、**中央批准/Node ACK交接**及**最后就绪校验与私有凭据发布**。已有同机隔离角色与个人UID的CPU任务验收；systemd组更新、自动化全流程协调、真实宿主账号/两机和NPU仍需补齐。
+当前提供**中央待预配身份/GID配额**、**Node原生槽与本地绑定**、**中央批准/Node ACK交接**及**最后就绪校验与私有凭据发布**。已有同机隔离角色与个人UID的CPU任务验收，新增既有systemd unit的离线预览/CAS/备份与可恢复文件更新。实际manager加载/重启、自动化全流程协调、真实宿主账号/两机和NPU仍需补齐。
 
 ## 中央待预配身份
 
@@ -40,7 +40,7 @@
 
 计划绑定待预配 `stage_id`、禁用且无凭据状态、发布版本、完整配置基线、控制目录设备/inode、原 owner 用量及配额修订。先写 Root 私有日志，再追加原生组配额，依次发布配置、安装元数据、载荷绑定和回执。中断后重复同一计划恢复；未完成时阻断普通启动/备份/代码切换，以及原 owner 的另一配额调整操作。不要删除日志或另起计划绕过。
 
-返回仍有 `owner_activation_still_required=true`。进程模式重新启动时根据新合同设置补充存储组；若使用 systemd，现有 unit 的 `SupplementaryGroups` 也必须按新合同更新并重新加载，不能直接沿用旧组列表。当前没有自动更新既有 unit 的操作，且真实 systemd PID1 尚未验收，这也是统一交付仍需补齐的部分。
+返回仍有 `owner_activation_still_required=true`。进程模式重新启动时根据新合同设置补充存储组；若使用 systemd，现有 unit 的 `SupplementaryGroups` 也必须按新合同更新并重新加载。现在可使用 `unit-refresh-plan` / `unit-refresh-apply` 在停机且静默时更新受管文件，保留原始备份并恢复中断；不会调用manager或重启。随后仍须管理员完成daemon-reload及所选服务启动并核对实际进程组。具体步骤见 [DEPLOYMENT.md](DEPLOYMENT.md)；真实PID1加载/重启尚未验收，不能仅凭文件已更新启用账号。
 
 ## 当前可用的存储步骤
 
@@ -118,7 +118,7 @@ Node使用本节点凭据调用专用HTTP接口，普通个人token无权代办�
 
 ## 已验证范围
 
-最后激活：实际安装的中央CLI、服务UID23820与Root Node，明确指定原交接计划。激活同一操作在intent/trust/client/before_commit/committed/receipt/published七个边界连续SIGKILL恢复；最终只有一份令牌。Root管理员将0600凭据复制给私有0700目录的个人UID23802，由该UID真实调用API、上传输入、幂等提交同一个IR任务并读取产物；peer UID23801无法读个人凭据，另一个应用账号无法读该任务，个人token不能调用Node ACK接口。受控任务实际UID23802、零capability/NoNewPriv1，真实BishengIR编译19+23=42、单次尝试、归档和清理通过。之后管理员禁用账号，重复激活不重新启用或签发。暂存盘为新建1024MiB/262144inode；没有放宽现有准入。当前完整515项/无跳过，64个生产源码摘要与最终Root包一致。这是同机数值UID模拟，没有创建宿主账号；环境由可信fixture管理员登记，不是新保护探针/NPU/systemd验收。
+最后激活：实际安装的中央CLI、服务UID23820与Root Node，明确指定原交接计划。激活同一操作在intent/trust/client/before_commit/committed/receipt/published七个边界连续SIGKILL恢复；最终只有一份令牌。Root管理员将0600凭据复制给私有0700目录的个人UID23802，由该UID真实调用API、上传输入、幂等提交同一个IR任务并读取产物；peer UID23801无法读个人凭据，另一个应用账号无法读该任务，个人token不能调用Node ACK接口。受控任务实际UID23802、零capability/NoNewPriv1，真实BishengIR编译19+23=42、单次尝试、归档和清理通过。之后管理员禁用账号，重复激活不重新启用或签发。暂存盘为新建1024MiB/262144inode；没有放宽现有准入。该激活阶段完整515项/无跳过，64个生产源码摘要与最终Root包一致。这是同机数值UID模拟，没有创建宿主账号；环境由可信fixture管理员登记，不是新保护探针/NPU/systemd验收。
 
 中央/Node交接：同一隔离Root角色内的实际非Root中央UID23820与Root Node，真实stage定义、中央GID追加和HTTP节点认证。旧本地10断点后，ACK另有9个连续SIGKILL边界(含中央已提交但本地未落盘、AWAIT已删除但进度未清理)及同计划恢复。中央/本地投影、两阶段稳定ACK和本地回执独立一致，实际Worker健康心跳确认后可继续配置管理；新账号仍禁用、密码标记不可用、token0。没有新用户凭据交付或队列任务验收；不是两机、systemd或新的中央保护环境探针验收。
 

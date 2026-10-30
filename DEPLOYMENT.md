@@ -220,3 +220,27 @@ v0.12已补工作区硬边界接口与实际tmpfs验收，详见WORKSPACE.md：�
 ## 当前增量：最后激活与个人UID
 
 最后激活现有515项回归和同机安装演练：中央服务及管理CLI的实际补充组、每个明确指定Node的当前状态/回执/环境/工作缓存/暂存门槛通过后，私有凭据先落盘，再提交启用和token摘要。七个连续SIGKILL边界可恢复；可信管理员将凭据交给独立个人UID，实际API上传/幂等提交/单次BishengIR编译及归档清理通过，他人UID无法读取凭据。当前64个非文档生产源码与最终Root冻结包一致。个人目录交付仍由管理员执行，真实systemd组更新、未提交intent中止重规划、已激活用户扩到新Node、NPU预激活资格、组织身份和两物理机仍待。CPU数值UID演练不是完整生产验收，操作见OWNER_PROVISION.md。
+
+## 既有 systemd unit 的离线更新
+
+`unit-install` 仍拒绝覆盖已有文件。新增Root管理命令针对**已停止且静默的一个安装实例**，预览并更新由本项目生成的既有unit；不调用systemctl，不自动启用/重启服务，不操作其他unit。以下示例用于具有管理员权限的部署机，当前个人Demo没有修改宿主systemd。
+
+先排空该中央/Node的作业、未知尝试、产物回执和缓存租约，再由实际服务管理器停止选定服务。中央追加存储组完成后，应在批准Node交接前完成unit文件更新和服务启动；已进入未完成交接或激活的操作仍需先按原流程恢复。
+
+```bash
+systemctl stop ascend-lab-controller.service
+/opt/ascend-lab-controller/current/servicectl unit-refresh-plan \
+  --prefix /opt/ascend-lab-controller --output /root/controller-unit-plan.json
+/opt/ascend-lab-controller/current/servicectl unit-refresh-apply \
+  --prefix /opt/ascend-lab-controller --plan /root/controller-unit-plan.json
+systemctl daemon-reload
+systemctl start ascend-lab-controller.service
+```
+
+Node同样支持，替换为其安装前缀及 `ascend-lab-node.service`。默认unit目录为 `/etc/systemd/system`，`--unit-dir` 可显式选择隔离安装目录。计划输出须是新的Root私有文件。程序核对当前安装/配置摘要、控制目录身份、目标目录、既有unit与模板的设备/inode/时间/内容/权限；只接受当前完整生成文本，或仅缺少新分配存储组的历史生成文本。自定义ExecStart、安全设置、未知组、链接、硬链接和常见unit/名称前缀/type-wide drop-in目录拒绝自动更新，不覆盖现有管理配置。附加配置的规则见 [systemd.unit官方说明](https://www.freedesktop.org/software/systemd/man/251/systemd.unit.html)。这些文件检查不代替实际manager的FragmentPath/DropInPaths/生效属性确认。
+
+应用在独占状态锁下先写Root持久journal，再保存目标unit和安装模板的原始字节，随后原子替换目标文件和模板、发布回执并清journal。六个持久边界可沿同一计划恢复；中断后重复同一 `unit-refresh-apply`，不另建计划或删journal。未完成时正常验证/启动、备份、代码切换和其他配额维护均被阻断，配额恢复选项也不能绕过。已有内容无需变化时保留目标inode，仍保存审计回执；重复完成操作不再次替换。原始备份及回执在安装前缀的 `unit-refresh-history/<plan_id>/`，Root私有；应随安装管理资料保存，中央状态备份不代替该目录。
+
+输出始终明确 `systemd_manager_contacted=false`，保留daemon-reload和服务启动的后续动作。最后开户检查还会读取真实中央进程的补充组，文件成功并不代表进程已加载。当前未提供自动回写旧unit的回滚命令；管理员需核对当前配置后决定恢复，不能把旧组列表直接覆盖回新存储合同。
+
+已验收：真实安装Root CLI、中央存储GID追加、同计划六个连续SIGKILL及恢复、备份SHA一致、过期inode/手工内容/drop-in/活跃服务锁拒绝、未完成时备份/代码切换拒绝、无关unit保留，以及Node无需变化时的重放和inode保持。之后原中央/Node交接、个人UID激活、真实排队IR和归档清理继续通过；实际生成unit另经本机systemd-analyze校验。当前525项完整回归、65个非文档生产源码匹配最终Root包。Root演练只改隔离目录，中央实际以进程模式启动；**没有验收systemd PID1的加载/重启、别名或其他manager覆盖路径的生效配置、宿主账号或两机**。

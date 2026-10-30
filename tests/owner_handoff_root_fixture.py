@@ -31,7 +31,12 @@ class CentralSession:
         spec=self.state/'new-owner.json';atomic_json(spec,{'user':'new_owner','environments':['worker-python'],
             'quota':{'input_storage_mib':4,'archive_storage_mib':32}});os.chown(spec,23820,23820)
         staged=self.command('accessctl','user-stage','--spec',str(spec));self.stage_id=staged['stage_id']
+        self.unit_proof={}
+        if context.get('unit_refresh'):
+            self.unit_dir=Path('/opt/fixture-systemd');self.unit_dir.mkdir(mode=0o755)
+            self.root_command('unit-install','--prefix',self.prefix,'--unit-dir',str(self.unit_dir))
         value=plan(self.prefix,'new_owner',23832,64*1024**2,512)['plan'];apply(self.prefix,value)
+        if context.get('unit_refresh'):self.unit_proof=self.refresh_unit()
         node_profile={k:copy.deepcopy(v) for k,v in config.items() if k not in {'node_id','node_key','controller','docker_runtime','state_dir'}}
         node_profile['name']='handoff_node';path=self.state/'node-profile.json';atomic_json(path,node_profile);os.chown(path,23820,23820)
         created=self.service_code('''import json,sys
@@ -43,6 +48,85 @@ print(json.dumps({"node_id":node,"node_key":key}))
 ''')
         self.node_id=created['node_id'];self.config={**config,**created,'controller':'http://127.0.0.1:18769'}
         self.server=deploy.start(self.prefix);assert self.server['running']
+
+    def root_command(self,*args):
+        r=subprocess.run(['/usr/bin/python3','-I','-B',self.prefix+'/current/servicectl',*args],capture_output=True,text=True,timeout=30)
+        if r.returncode:raise RuntimeError('Installed Root unit command rejected fixture: '+r.stderr[-1200:])
+        return json.loads(r.stdout)
+
+    def refresh_unit(self):
+        import hashlib
+        import deployment as deploy
+        import unit_refresh as unit
+        from state_lock import state_lock
+        from lab_client import read_json,atomic_json
+        installed=self.unit_dir/'ascend-lab-controller.service';original=installed.read_text();old_sha=hashlib.sha256(installed.read_bytes()).hexdigest()
+        assert 'SupplementaryGroups=23831\n' in original
+        with state_lock(self.state):
+            try:unit.plan(self.prefix,str(self.unit_dir))
+            except RuntimeError:pass
+            else:raise AssertionError('Live controller lock allowed offline unit refresh')
+        drop=self.unit_dir/'ascend-.service.d';drop.mkdir(mode=0o755)
+        try:
+            try:unit.plan(self.prefix,str(self.unit_dir))
+            except deploy.DeployError:pass
+            else:raise AssertionError('Prefix drop-in allowed automatic unit rewrite')
+        finally:drop.rmdir()
+        # Metadata identity, not just equal text, makes a pre-journal plan stale.
+        stale=unit.plan(self.prefix,str(self.unit_dir))['plan'];unit._publish(installed,original,0o644)
+        try:unit.apply(self.prefix,stale)
+        except deploy.DeployError:pass
+        else:raise AssertionError('Recreated unit bypassed CAS')
+        assert not Path(self.prefix,unit.JOURNAL).exists()
+        installed.write_text(original+'\n# custom setting\n');installed.chmod(0o644)
+        try:unit.plan(self.prefix,str(self.unit_dir))
+        except deploy.DeployError:pass
+        else:raise AssertionError('Customized unit was adopted')
+        installed.write_text(original);installed.chmod(0o644)
+        output=Path('/state/unit-plan.json')
+        preview=self.root_command('unit-refresh-plan','--prefix',self.prefix,'--unit-dir',str(self.unit_dir),'--output',str(output))
+        value=read_json(output);assert preview['read_only'] and preview['unit_changed'] and installed.read_text()==original
+        unrelated=self.unit_dir/'unrelated.service';unrelated.write_text('untouched fixture');sentinel=unrelated.read_bytes()
+        faults=[]
+        for boundary in ['journal','backup','installed','template','receipt','published']:
+            killed=subprocess.run(['/usr/bin/python3','-I','-B','-c','''import sys,os,signal,json
+sys.path.insert(0,"/opt/handoff-controller/current");import unit_refresh as u
+def crash(stage):
+ if stage==sys.argv[1]:os.kill(os.getpid(),signal.SIGKILL)
+u._checkpoint=crash;u.apply("/opt/handoff-controller",json.load(open("/state/unit-plan.json")))
+''',boundary],capture_output=True,text=True,timeout=30)
+            assert killed.returncode==-signal.SIGKILL,(boundary,killed.stderr[-1200:])
+            if boundary!='published':
+                for recover in [False,True]:
+                    try:deploy.verify(self.prefix,quota_recovery=recover)
+                    except deploy.DeployError:pass
+                    else:raise AssertionError('Pending unit refresh allowed normal verify/start/other quota maintenance')
+                from maintenance import snapshot,activate
+                for operation in [lambda:snapshot(self.prefix,'/opt/should-not-exist.tar.gz'),
+                                  lambda:activate(self.prefix,release_id=value['binding']['release_id'])]:
+                    try:operation()
+                    except deploy.DeployError:pass
+                    else:raise AssertionError('Pending unit refresh allowed backup or code activation')
+            faults.append({'boundary':boundary,'sigkill_observed':True,'same_plan_resumed':True})
+        replay=self.root_command('unit-refresh-apply','--prefix',self.prefix,'--plan',str(output));assert replay['already_applied']
+        assert replay['daemon_reload_required'] and replay['service_restart_required'] and replay['systemd_manager_contacted'] is False
+        expected=deploy.unit_text(self.prefix,deploy.verify(self.prefix)[1]);assert installed.read_text()==expected and 'SupplementaryGroups=23831 23832\n' in expected
+        assert Path(self.prefix,'units',installed.name).read_text()==expected and installed.stat().st_mode&0o777==0o644
+        history=Path(self.prefix,unit.HISTORY,value['id']);assert (history/'installed-before.service').read_text()==original
+        assert (history/'template-before.service').read_text()==original and history.stat().st_mode&0o777==0o700
+        assert (history/'installed-before.service').stat().st_mode&0o777==0o600 and unrelated.read_bytes()==sentinel
+        try:self.root_command('unit-install','--prefix',self.prefix,'--unit-dir',str(self.unit_dir))
+        except RuntimeError:pass
+        else:raise AssertionError('Initial unit install overwrote an existing unit')
+        import shutil
+        proof=Path('/state/unit-refresh-proof');shutil.copytree(history,proof)
+        (proof/'desired.service').write_text(expected);(proof/'desired.service').chmod(0o600)
+        return {'passed':True,'fault_chain':faults,'old_groups':[23831],'new_groups':[23831,23832],
+            'old_unit_sha256':old_sha,'desired_sha256':hashlib.sha256(expected.encode()).hexdigest(),
+            'installed_cli_plan_apply':True,'shared_service_lock_rejected':True,'drop_in_rejected':True,'stale_inode_plan_rejected':True,
+            'custom_unit_rejected':True,'old_unit_backups_exact':True,'backup_and_code_activation_blocked_while_pending':True,
+            'unrelated_unit_unchanged':True,'systemd_manager_contacted':False,'systemd_pid1_tested':False,
+            'scope':'Installed Root offline unit files only; real central process starts separately afterward, not through systemd PID1.'}
 
     def command(self,*args,json_output=True):
         r=subprocess.run(['/usr/bin/python3','-I','-B',self.prefix+'/current/servicectl','admin','--prefix',self.prefix,'--',*args],
@@ -125,13 +209,26 @@ print(json.dumps({"profile_sha256":sha(projection(j.nodes.node(r["node_id"])["pr
 ''')
         assert verified['profile_sha256']==sha(projection(config)) and verified['tokens']==0 and verified['user_auth_closed']
         activation=self.activate(prefix,value,config) if self.context.get('activate_owner') else {}
+        if self.context.get('unit_refresh'):
+            import unit_refresh as unit
+            target=Path('/opt/node-fixture-systemd');target.mkdir(mode=0o755)
+            cli=['/usr/bin/python3','-I','-B',prefix+'/current/servicectl']
+            subprocess.run([*cli,'unit-install','--prefix',prefix,'--unit-dir',str(target)],capture_output=True,text=True,check=True,timeout=30)
+            preview=unit.plan(prefix,str(target));assert not preview['unit_changed']
+            original=(target/'ascend-lab-node.service').stat()
+            first=unit.apply(prefix,preview['plan']);again=unit.apply(prefix,preview['plan'])
+            assert not first['already_applied'] and again['already_applied'] and not first['unit_changed']
+            assert (target/'ascend-lab-node.service').stat().st_ino==original.st_ino
+            deploy.verify(prefix)
+            self.unit_proof['node_unchanged_unit_replay']={'passed':True,'installed_inode_preserved':True,'systemd_manager_contacted':False}
         deploy.stop(self.prefix)
         return {'actual_central_contact':True,'fixture_stage_identity_only':False,'real_central_stage_definition_matched':True,
             'central_native_gid_appended':True,'central_approval_replay_stable':True,'node_ack_fault_chain':faults,
             'registered_and_local_projections_match':True,'node_unblocked_after_durable_ready_ack':True,
             'healthy_real_worker_heartbeat_observed':True,'identity_still_staged_and_token_count_zero':True,
             'central_nonroot_uid':23820,'accounts_enabled':False,'full_owner_onboarding_ready':False,
-            'scope':'Same-host installed non-root controller plus Root Node, real stage/GID approval and authenticated HTTP commit/ready ACK. Environment enrolled by trusted fixture administrator; not a new protected environment-probe acceptance.',**activation}
+            'scope':'Same-host installed non-root controller plus Root Node, real stage/GID approval and authenticated HTTP commit/ready ACK. Environment enrolled by trusted fixture administrator; not a new protected environment-probe acceptance.',**activation,
+            **({'unit_refresh':self.unit_proof} if self.unit_proof else {})}
 
     def activate(self,prefix,plan,config):
         from lab_client import atomic_json,read_json
