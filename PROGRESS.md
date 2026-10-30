@@ -32,6 +32,8 @@ v0.36 私有验收记录为 432 项单元检查、54 项自有 Root 容器安装
 
 下一轮先跑真实 IR 合同与冻结源码 CMake 配置检查，再启动完整编译；配置检查使用独立缓存 namespace，不污染完整冷构建。IR 输出类别已修正，暂存 inode 也按两个工作流的保守预留配足。完整 wheel 冷暖、实际重叠、独立下载/RECORD 和后续 NPU 仍需取得新证据。阶段摘要见 [reports/mixed-compiler-stage.json](reports/mixed-compiler-stage.json)。
 
+第五轮已通过环境认证、IR 合同和源码配置三个前置检查；19 名其他逻辑用户的 57 项 IR/CMake 任务全部成功，当前无失败或 inventory hold。完整冷编译已在独立 UID 配额工作盘中运行，单 attempt、1CPU/8GiB、无网络/只读根，取样进度为 Ninja 308/858。此为有时间戳的在途观察：完整 wheel、暖构建及最终清理仍未通过，不能以该进度宣称验收完成。当前外层预算需保持至原任务真实终态和自有对象清理后再恢复。
+
 首次公开源核查已通过：经中央队列运行 `bash scripts/check.sh /usr/bin/python3`，Python 3.12.3 的 432 项检查/100.209 秒/无跳过，网页 JavaScript 语法通过。此前 PATH 解释器缺少 pidfd，跳过两项检查，已保留该观察；不将跳过当通过。见 [reports/public-source-check.json](reports/public-source-check.json)。此项不是新一轮 Root 安装、大型混合任务或 NPU 验收。
 
 初始源码已推送到 `main`（`a2870fc`），重新克隆后 249 个文件的字节和执行模式均与清单一致。该深层克隆的首次全量检查随后发现 9 个 `AF_UNIX path too long` 错误，不能记为迁移验证通过。已修复旧协作式宿主 NPU 复查通道：使用私有目录 FD 下的短地址绑定/连接，保持文件权限、对端 UID、attempt/token 和一次性回执检查；按原目录 FD 清理，不删除后来替换的目录内容。

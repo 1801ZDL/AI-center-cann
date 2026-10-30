@@ -1,6 +1,6 @@
 {
   "schema": "ai-center-cann-publication/v1",
-  "recorded_at": "2026-10-30T09:29:24.570638+00:00",
+  "recorded_at": "2026-10-30T09:43:26.026082+00:00",
   "files": {
     ".gitignore": {
       "sha256": "a6287d1d645bcba2ddfec87d1055724b00577eea69200b919302f4d46cf3680d",
@@ -63,8 +63,8 @@
       "mode": "100644"
     },
     "PROGRESS.md": {
-      "sha256": "0b69b7535eadb12dcdcba2e5f65af7d0dd51da3cf85361fc411dfd2a47f38e89",
-      "bytes": 6755,
+      "sha256": "c1004486cd4847574fe8917b7e6878c7bf00f4100c5642c8a7eb8cf2c9b4805d",
+      "bytes": 7291,
       "mode": "100644"
     },
     "README.md": {
@@ -393,8 +393,8 @@
       "mode": "100644"
     },
     "reports/mixed-compiler-stage.json": {
-      "sha256": "0abe7fd681166ab26172d538f6e2b8c1ab380295a0aad092ff8cf4317d8df354",
-      "bytes": 2384,
+      "sha256": "1f609adbf71e4f4b92c164cd6b6167dcc57c493102f64d071a831512d1eba4a3",
+      "bytes": 3068,
       "mode": "100644"
     },
     "reports/public-source-check.json": {
@@ -1264,9 +1264,9 @@
     }
   },
   "files_count": 252,
-  "total_bytes": 2465708,
-  "known_private_values_checked": 1185,
-  "private_fixture_files_considered": 940,
+  "total_bytes": 2466928,
+  "known_private_values_checked": 1248,
+  "private_fixture_files_considered": 962,
   "model_keys_read": false,
   "raw_runtime_or_evidence_included": false,
   "passed": true

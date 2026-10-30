@@ -1,7 +1,7 @@
 {
   "schema": "ai-center-cann-mixed-compiler-stage/v1",
-  "recorded_at": "2026-10-30T09:29:23.815160+00:00",
-  "status": "partial-stage-not-full-acceptance",
+  "recorded_at": "2026-10-30T09:38:03.171122+00:00",
+  "status": "in_progress",
   "overall_goal_complete": false,
   "production_ready": false,
   "full_compiler_accepted": false,
@@ -67,7 +67,26 @@
     "Frozen-source CMake configuration passes using a different cache namespace",
     "Two conservative workflow spool inode reservations fit"
   ],
-  "npu_queries": 0,
+  "npu_queries": null,
   "npu_kernel_launches": 0,
-  "scope": "Same physical server, owned isolated roles and real UID quota filesystems; successful19-owner small build/cache stage, not full cold/warm compiler, NPU or physical multi-host acceptance"
+  "scope": "Same physical server, owned isolated roles and real UID quota filesystems; successful19-owner small build/cache stage, not full cold/warm compiler, NPU or physical multi-host acceptance",
+  "current_live_case": {
+    "snapshot_at": "2026-10-30T09:38:03.171122+00:00",
+    "source_commit": "4fe280cb0a21c9ab6c57a21d4e52d90489295e4d",
+    "preconditions_passed": 3,
+    "peer_ir_successes": 19,
+    "peer_cmake_successes": 38,
+    "failures": 0,
+    "inventory_holds": 0,
+    "cold_single_attempt": true,
+    "cold_container_running": true,
+    "parent_command_alive": true,
+    "ninja_completed": 308,
+    "ninja_total": 858,
+    "full_compiler_accepted": false,
+    "warm_build_accepted": false,
+    "main_budget_currently_temporary": true,
+    "scope": "Timestamped live original attempt; no full wheel, warm build or cleanup acceptance yet"
+  },
+  "npu_query_counter_instrumented": false
 }
