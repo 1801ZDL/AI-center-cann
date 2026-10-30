@@ -13,6 +13,7 @@ PROVIDER='ext4-userquota'
 CAPABILITY='uid-quota-workspace-v1'
 MARKER='.ascend-lab-userquota.json'
 INTENT='.ascend-lab-userquota-preparing.json'
+EXTEND_INTENT='.ascend-lab-userquota-extending.json'
 FORMAT='ascend-lab-userquota/v1'
 EXTRA={'quota_uid','filesystem_id','filesystem_bytes','filesystem_inodes'}
 
@@ -123,6 +124,7 @@ def prepare(path,quotas,plan=False):
     with directory(path) as fd:
         fs=os.fstatvfs(fd);info=os.fstat(fd);names=set(os.listdir(fd))
         if INTENT in names:raise ValueError('Interrupted quota preparation remains; reconcile it before retrying')
+        if EXTEND_INTENT in names:raise ValueError('Resume the original pending UID slot append before preparation')
         if MARKER in names:
             marker=read_marker(fd);slots=marker['slots']
             if [{'uid':s['quota_uid'],'bytes':s['bytes'],'inodes':s['inodes']} for s in slots]!=requested:

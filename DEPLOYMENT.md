@@ -4,7 +4,7 @@
 
 继续采用“个人 harness / CLI / 网页 → 统一 API → 程序化调度与资源账本 → 各服务器 Node → 任务容器”。新增服务器通过登记节点和管理员策略接入；不要求每个用户更换 harness、复制中央私有目录或共享模型密钥。这里的“平滑扩展”指保留客户端任务接口及证据格式，不表示新机器免配置、免权限迁移或免验收。
 
-历史 v0.36 的公开范围见 [reports/v036-public.json](reports/v036-public.json)：432 项单元检查及 54 项自有 Root 容器安装检查通过，`production_ready=false`。已有身份/项目授权、物理域账本、环境锁、受限工作区、中央载荷配额、Node 暂存、私有缓存、阶段依赖及备份恢复实现。个人 Main 保留原兼容配置，**并未自动启用新安装的全部硬限制**。过去完整 Triton wheel 构建使用旧 tmpfs 提供器；当前 UID quota 下的完整 Triton 冷暖构建、20 个逻辑用户混合负载和独立原盘核验已通过；最新全量回归为 450 项，证据见 reports/mixed-compiler-stage.json 和 reports/public-source-check.json。历史 Root54 不自动覆盖后续修复；混合案例绑定其冻结发布包，不等于重新执行全部安装检查。随后旧命令产物合同修复另有450项回归和独立CLI升级验收。Root 容器中的不同 UID 不代表真实宿主账号或两台物理机。
+历史 v0.36 的公开范围见 [reports/v036-public.json](reports/v036-public.json)：432 项单元检查及 54 项自有 Root 容器安装检查通过，`production_ready=false`。已有身份/项目授权、物理域账本、环境锁、受限工作区、中央载荷配额、Node 暂存、私有缓存、阶段依赖及备份恢复实现。个人 Main 保留原兼容配置，**并未自动启用新安装的全部硬限制**。过去完整 Triton wheel 构建使用旧 tmpfs 提供器；当前 UID quota 下的完整 Triton 冷暖构建、20 个逻辑用户混合负载和独立原盘核验已通过；最新全量回归为 457 项，证据见 reports/mixed-compiler-stage.json 和 reports/public-source-check.json。历史 Root54 不自动覆盖后续修复；混合案例绑定其冻结发布包，不等于重新执行全部安装检查。随后旧命令产物合同修复另有450项回归和独立CLI升级验收。随后原生UID槽追加有独立的安装CLI、7个SIGKILL及相邻旧包兼容验收；它尚未接通完整开户，见OWNER_PROVISION.md。Root 容器中的不同 UID 不代表真实宿主账号或两台物理机。
 
 | 优先级 | 继续开发或冻结的约定 | 推广前必须取得的证据 |
 |---|---|---|

@@ -56,6 +56,8 @@ def private_values():
         files.update(r.glob(pattern))
     for pattern in ['jobs/*/tmp/large-mixed/client-*.json','jobs/*/tmp/large-mixed/*-private-config.json']:
         files.update(r.glob(pattern))
+    for pattern in ['jobs/*/tmp/native-uid-append/control/node/config.json','jobs/*/tmp/native-uid-append/control/enroll.json']:
+        files.update(r.glob(pattern))
     for p in files:
         if p.is_file() and not p.is_symlink():collect(read_json(p))
     return values,len(files)
@@ -77,7 +79,7 @@ def main():
                         and hashlib.sha256((ROOT/n).read_bytes()).hexdigest()!=old['source_files'].get(n)]
         public.update(schema='ai-center-cann-public-validation/v1',
             source='Curated historical v0.36 local evidence; raw private reports are not published',
-            public_source_changes_since_acceptance='Documentation/publication tooling, mixed-workload fixtures, legacy cooperative Unix-socket portability, Worker heartbeat/completion ordering and legacy command artifact declaration/collection fixes; protected six-file runtime hashes unchanged. Historical Root54 is not a new acceptance of these edits; later mixed and legacy CLI acceptance retain separate scopes.',
+            public_source_changes_since_acceptance='Documentation/publication tooling, mixed-workload fixtures, legacy cooperative Unix-socket portability, Worker heartbeat/completion ordering, legacy command artifact fixes and native UID-slot append administration/compatible historical manifest validation; protected six-file runtime hashes unchanged. Historical Root54 is not a new acceptance of these edits; later mixed, legacy CLI and native-append acceptance retain separate scopes.',
             production_source_changes_since_acceptance=source_changes,
             reproduced_by_public_ci=False,raw_evidence_in_repository=False,
             physical_hosts_tested=1,real_host_accounts_created=False,

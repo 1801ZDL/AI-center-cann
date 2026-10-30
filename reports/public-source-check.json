@@ -1,15 +1,15 @@
 {
   "schema": "ai-center-cann-source-check/v1",
-  "recorded_at": "2026-10-30T11:25:25.367824+00:00",
+  "recorded_at": "2026-10-30T12:24:57.368547+00:00",
   "passed": true,
-  "python_unit_tests": 450,
+  "python_unit_tests": 457,
   "unit_skipped": 0,
-  "unit_seconds": 75.213,
-  "unit_log_sha256": "c106c7c5a8f5ef6641fd68086d03ef8c44bd0c08d2554e16d492c1daccc90fb2",
+  "unit_seconds": 77.634,
+  "unit_log_sha256": "3e5c7def51a338bf8ea6f0e0fb2b64466f4d78abb4b4e5d692990a36b17ebb96",
   "python": "Python 3.12.3",
   "javascript_syntax_passed": true,
   "command": "bash scripts/check.sh /usr/bin/python3",
-  "scope": "Current production source full CPU/JS regression, including ten legacy artifact contract cases with exact2000/2001-file boundary. Installed CLI/API upgrade and archive cases below were accepted separately; original mixed compiler and Root54 evidence retain their frozen releases. Not filesystem-hard-quota, physical multi-host or NPU acceptance.",
+  "scope": "Current58 production source full CPU/JS regression. Installed Node native UID append, seven SIGKILL boundaries and real prior-code rollback acceptance are separate below. Native append is a storage prerequisite, not complete owner onboarding. Earlier Root54 and mixed compiler evidence retain frozen releases; no NPU or physical multi-host acceptance.",
   "production_source_sha256": {
     "auth.py": "ec3f83745502fcad6ce06b45df659268d50d30d464745e85ed8f4a74bd63a090",
     "backends.py": "ad71569a0d69590e4d4eaafb43c65b62ceefa7a2cdf8bbf79754e4c7005d929e",
@@ -44,7 +44,8 @@
     "preflight.py": "c4437bc8954c66f15749c3c26f24e62679c2092ab63aebdacea317956c5864a6",
     "workspace_slots.py": "1dfd1dafaf787ef955c78aef686198686d5799306a65ec0d24453aef3e73260c",
     "filesystem_quota.py": "f298cd3dacacfa9d344ee1e040feb30b5cf51adb009802abde2db69ddb662d53",
-    "quota_workspace.py": "446fe4fd6bd02f6d67128ef496a29e834ed895281aca6c81f011a2c64d9fb2e5",
+    "quota_workspace.py": "f836673c97ed36d3f0a3c8589860b004fd22058f0fedb305f9afcf0571cbb287",
+    "workspace_quota_admin.py": "6ed57fce784038d2b8a569872bbb1da7c627f4911f8abef584189820bc8455f0",
     "group_quota.py": "3137ba8af5c5803fab0a2e4f547063ee883fc5fae3aa3349767585f4a61429d4",
     "payload_groups.py": "6377b078e9f1032a2e33862ba2995c3b94992a731a68a42044a57c6ac77e54d8",
     "payload_quota_admin.py": "6e342966263700d0ffd2fe872d8484ff340360c03937d8c880913d97eb809621",
@@ -55,9 +56,9 @@
     "storage_files.py": "c2dfe4aec3a4dec6bf8802655eb9e72a414e307d5eb6f4725da99f0484642ebf",
     "storage_lifecycle.py": "cc5778edf04bf1118ac940f6954cc488ae7ceedbee373568af87c6add3cde098",
     "node_storage.py": "185bdeb757c0644cf6319460d74ea15061cf6329b4707354696f8e156a16370c",
-    "deployment.py": "fc82ef38ee1fa5877e1fcc0c5b3875d890be4d6469e11cdbff30b525856419d8",
+    "deployment.py": "c56a53c7bab3de16a1d0ecd563e48148687636c2c455df4cbc3aaf12a275ba6e",
     "maintenance.py": "9d24ee04cf8d347027a59a0bc0a8c0897144f7b9d76d39ce9b5265a1b9057a0a",
-    "servicectl": "419d2fe1ff6cc8f5d992dca0ab2116e2af91ac91feb5446af69af8cea199e571",
+    "servicectl": "3f919b3388322ce57cd4b3aca7be065cead1eeeaa3e3e52e949a2cc8b0e1a3ab",
     "accessctl": "edcbc6cf57844297e1cba3bea16056e2fa8b69da9715baed1fdc4df60dbf1717",
     "workerctl": "a889433c37e8f53c31391956515cdc1d1aa2667cd18c8a97dc9ab47d343d9800",
     "spool_storage.py": "c8a579146e0b24077ebf504050dd5344505f8023f6e33be1c1cb6e9ff312fea4",
@@ -298,5 +299,90 @@
     "python_unit_tests": 449,
     "unit_seconds": 77.939,
     "unit_log_sha256": "d666308ade3be41deff0de99d0797ea17169ddb2ae7242573e00ededce559ab1"
+  },
+  "prior_legacy_artifact_full_check": {
+    "recorded_at": "2026-10-30T11:25:25.367824+00:00",
+    "python_unit_tests": 450,
+    "unit_seconds": 75.213,
+    "unit_log_sha256": "c106c7c5a8f5ef6641fd68086d03ef8c44bd0c08d2554e16d492c1daccc90fb2"
+  },
+  "native_uid_append_stage": {
+    "passed": true,
+    "at": "2026-10-30T12:17:43.790600+00:00",
+    "server_release": "b8208406b1d9a6f00fc9d46cfe9e7c57f253b8598e17479cd3e7f448fa0f16e2",
+    "read_only_plan_observed": true,
+    "installed_node_prefix": true,
+    "installed_cli_plan_and_apply_passed": true,
+    "shared_service_state_lock_rejected": true,
+    "faults": [
+      {
+        "boundary": "journal",
+        "sigkill_observed": true,
+        "same_plan_resumed": true,
+        "old_owner_unchanged": true
+      },
+      {
+        "boundary": "intent",
+        "sigkill_observed": true,
+        "same_plan_resumed": true,
+        "old_owner_unchanged": true
+      },
+      {
+        "boundary": "quota",
+        "sigkill_observed": true,
+        "same_plan_resumed": true,
+        "old_owner_unchanged": true
+      },
+      {
+        "boundary": "directory",
+        "sigkill_observed": true,
+        "same_plan_resumed": true,
+        "old_owner_unchanged": true
+      },
+      {
+        "boundary": "marker",
+        "sigkill_observed": true,
+        "same_plan_resumed": true,
+        "old_owner_unchanged": true
+      },
+      {
+        "boundary": "receipt",
+        "sigkill_observed": true,
+        "same_plan_resumed": true,
+        "old_owner_unchanged": true
+      },
+      {
+        "boundary": "published",
+        "sigkill_observed": true,
+        "same_plan_resumed": true,
+        "old_owner_unchanged": true
+      }
+    ],
+    "stale_plan_rejected_before_new_quota": true,
+    "existing_path_rejected_before_new_quota": true,
+    "unknown_native_quota_not_adopted": true,
+    "new_uid_kernel_quota": {
+      "uid": 23808,
+      "written": 16773120,
+      "errno": 122,
+      "cap_effective": "0000000000000000",
+      "no_new_privileges": "1"
+    },
+    "old_owner_data_and_limits_preserved": true,
+    "node_configuration_unchanged": true,
+    "receipt_replay_with_new_data_passed": true,
+    "genuine_pre_native_code_rollback_and_reupgrade_passed": true,
+    "rollback_baseline_commit": "34d33c4b835b4aa491ba31297c4827e39761e214",
+    "old_code_native_administration_rejected_before_mutation": true,
+    "accounts_enabled": false,
+    "node_enrollment_changed": false,
+    "controller_contacted": false,
+    "cleanup_confirmed": true,
+    "full_owner_onboarding_ready": false,
+    "root_case_source_hashes_match_current58": true,
+    "host_accounts_created": false,
+    "first_fixture_failure": "Role image lacked system Docker CLI; failed before Node installation/native append, owned resources cleaned and failure retained",
+    "native_disk_mib": 256,
+    "scope": "Same-host installed Node with test enrollment; native UID allocation and process-crash recovery only. Central identity/quota, Node user/cache binding and client credential delivery remain incomplete."
   }
 }

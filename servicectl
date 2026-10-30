@@ -25,6 +25,10 @@ def main():
     p.add_argument('--root',required=True);p.add_argument('--limits',required=True);p.add_argument('--output');p.add_argument('--plan',action='store_true')
     p=commands.add_parser('payload-groups-prepare',help='Provision explicit owner group limits on a new, already quota-enabled dedicated payload filesystem')
     p.add_argument('--contract',required=True);p.add_argument('--plan',action='store_true')
+    p=commands.add_parser('workspace-add-plan',help='Read-only offline native UID slot append; does not enable an owner')
+    p.add_argument('--prefix',required=True);p.add_argument('--root',required=True);p.add_argument('--limits',required=True);p.add_argument('--output',required=True)
+    p=commands.add_parser('workspace-add-apply',help='Apply/resume the same native UID append plan; owner enrollment remains separate')
+    p.add_argument('--prefix',required=True);p.add_argument('--plan',required=True)
     p=commands.add_parser('payload-quota-plan',help='Read-only offline plan to resize one existing central owner quota')
     p.add_argument('--prefix',required=True);p.add_argument('--owner',required=True)
     p.add_argument('--mib',type=int,required=True);p.add_argument('--inodes',type=int,required=True);p.add_argument('--output')
@@ -61,6 +65,20 @@ def main():
         if action=='unit-install':p.add_argument('--unit-dir',default='/etc/systemd/system');p.add_argument('--enable',action='store_true')
     args=parser.parse_args()
     if args.action=='bundle':result=deploy.bundle(args.output)
+    elif args.action=='workspace-add-plan':
+        deploy.require_root()
+        from workspace_quota_admin import plan
+        from payload_quota_admin import write
+        limits=deploy.regular_json(args.limits,private=True)
+        if set(limits)!={'users'}:raise deploy.DeployError('Quota append requires a private users limit list')
+        result=plan(args.prefix,args.root,limits['users']);target=deploy.secure_parent(args.output)
+        if target.exists() or target.is_symlink():raise deploy.DeployError('Choose a new private UID append plan output')
+        write(target,result['plan']);result={'read_only':True,'plan_id':result['plan']['id'],'plan_file':str(target),'accounts_or_node_configuration_changed':False}
+    elif args.action=='workspace-add-apply':
+        deploy.require_root();path=Path(args.plan)
+        if path.lstat().st_uid!=0:raise deploy.DeployError('UID append plans must be Root-owned private files')
+        from workspace_quota_admin import apply
+        result=apply(args.prefix,deploy.regular_json(path,private=True))
     elif args.action=='payload-quota-plan':
         from payload_quota_admin import plan,write
         result=plan(args.prefix,args.owner,args.mib*1024**2,args.inodes)

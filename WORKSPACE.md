@@ -1,5 +1,7 @@
 # 有硬边界的任务工作区
 
+2026-10-30：当前 UID quota 完整构建/混合负载范围见 PROGRESS.md，下文版本段落保留历史。新增已安装 Node 的原生 UID 槽追加、持久计划/恢复日志与相邻旧包兼容验证，命令及边界见 [OWNER_PROVISION.md](OWNER_PROVISION.md)。它只预配存储，不代表新账号、中央配额或 Node/缓存绑定已自动就绪。
+
 ## v0.28 候选：专用 ext4 上的每用户 UID 硬配额
 
 当前已发布验收基线仍为v0.27；以下provider已接入候选源码，完整安装验收尚未通过，不代表生产就绪。原独立ext4/tmpfs provider保持可用。
