@@ -45,7 +45,12 @@
           <label>工作目录<input id="job-cwd" placeholder="当前用户的工作区目录" required></label>
           <label>执行命令<textarea id="job-command" rows="2" required spellcheck="false">python -u examples/cpu_task.py --seconds 6</textarea><small>按引号拆分参数，不解释管道。多步任务请先保存为脚本；请勿在命令中填写密钥。</small></label>
           <div class="job-resources"><label>CPU 核数<input id="job-cpu" type="number" min="1" max="2" value="1" required></label><label>总内存 / MiB<input id="job-memory" type="number" min="64" max="2048" value="256" required></label><label>其中共享内存 / MiB<input id="job-shm" type="number" min="0" max="1024" value="0" required></label><label>NPU 数量<input id="job-npu" type="number" min="0" max="2" value="0" required></label><label>执行时限 / 秒<input id="job-timeout" type="number" min="1" max="3600" value="60" required></label></div>
-          <div class="job-form-bottom"><span id="job-policy">正在读取队列配置…</span><button class="button dark" id="submit-job" type="submit">提交到队列 ↗</button></div><div id="job-form-message" role="status" class="job-form-message" hidden></div>
+          <div class="job-form-bottom"><span id="job-policy">正在读取队列配置…</span><div class="job-form-actions"><button class="button" id="preview-job" type="button" disabled>检查可运行节点</button><button class="button dark" id="submit-job" type="submit" disabled>提交到队列 ↗</button></div></div>
+          <p id="job-access-note" class="muted small" hidden></p>
+          <section id="job-preview" class="placement-preview" aria-labelledby="preview-title" hidden>
+            <h3 id="preview-title" aria-live="polite"></h3><p id="preview-summary"></p><ul id="preview-candidates"></ul><p id="preview-note"></p>
+          </section>
+          <div id="job-form-message" role="status" class="job-form-message" hidden></div>
         </form>
       </section>
       <section class="panel section" data-section="overview jobs">

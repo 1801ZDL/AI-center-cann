@@ -1,5 +1,20 @@
 # 实施进度
 
+## 网页可运行性预览与请求生命周期（2026-10-31）
+
+“托管作业”当前表单新增“检查可运行节点”，与“提交到队列”独立；两者共用jobRequest构造，保留原提交幂等键。预览仅请求原POST /api/jobs/preview，不创建任务或归档，也不因blocked而禁止用户显式排队等待未来节点/环境。候选和原因用DOM textContent显示，未映射peer不进入预览候选（已有授权共享节点总览仍按原范围展示）。只读凭据禁用两按钮，服务端原授权不变。
+
+表单变化、身份/提交权限变化和显式提交使旧预览失效；AbortController取消旧读取，序列/身份/请求指纹检查防迟到结果重绘。读取15秒未完成时提示可重试，成功结果15秒后标记历史；这不是任务执行时限、资源预留或开始时间承诺。503等读取失败不回退真实提交。
+
+**最终浏览器job-8e019f3ca141：11组检查通过，browser errors=0、stderr干净，JS语法通过。** 从实际生成的服务发布包加载最终三个网页资产并验证SHA，测试真实HTTP/API；另通过当前Main网页实际预览，HTTP200/0.108秒，前后无新增job。桌面1440与手机390截图保留私有，已检查布局无横向溢出。验证包含真实15秒历史标记、真实服务端延迟导致请求超时/重试、表单修改及提交期间的迟到结果、授权按钮、候选隐私范围、恶意字符串文本显示、失败不提交，以及blocked仍能显式排队。自有fixture两逻辑用户、合成CPU节点观测，两任务均queued后取消/0attempt；不构成OS用户、NPU或真实Node执行验收。
+
+失败及前期证据保留：首轮job-5b8887356afe为原9组通过。加入真实过期计时后job-935416191a85在最后Main浏览器读取超出测试原5秒等待，随后直调同API0.02秒，原因未证实；当前UI补了15秒超时/取消，测试等待有界结束。job-c279c9c9c685的11功能检查通过、Main HTTP200/5.39秒，但故意悬置Playwright route在清理时报CancelledError；改用事件延迟实际fixture服务端读取，最终无此回调告警。不把超时处理称作后端性能修复。
+
+77非md后端文件及所有已发现unit源码均与上一阶段778项/Root49基线完全相同，本轮未重跑重型后端全量或Root。当前网页SHA由实际浏览器验证；测试包中网页是最终资产，文档后续更新，不把此当新整包Root安装验收。Main配置/物理域/19Node profile不变，未重启中央、未升级旧Node、无库存豁免；最终0nonterminal/有效hold，protected6仍v036原SHA。0NPU kernel/模型调用。证据本地evidence/web-preview-validation.json，精选reports/public-source-check.json.web_preview。
+
+下一：真实日志/IR与领域工具的诊断闭环、五类冻结工作流网页提交；控制盘增长/留存、一般资源合同和真实管理员部署验收继续。已有网页结果/状态并不表示五类工作流JSON提交入口已实现。实际PID1/宿主用户/两机fencing/NPU ACL与精度性能仿真、msagent真实能力仍待；PUBLIC-001延期，整体目标未完成。下方为历史阶段。
+
+
 ## 本人任务的只读可运行性预览（2026-10-31）
 
 新增POST /api/jobs/preview、labctl submit --preview、MCP preview_job。沿原normalize核对本人输入、环境、任务及资源授权，再用query_only账本读事务列本人已映射Node。静态容量仅检查Node/物理域共同CPU、负载内存+128MiB、SHM上限；当前心跳、停用、模板、并发能力、交接、Docker/环境能力门后，复用真正Node placement与现有排队保护。库存检查现在复用传入的账本连接。个人协作入口复用本地Scheduler placement及现有采样。

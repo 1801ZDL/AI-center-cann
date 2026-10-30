@@ -9,7 +9,7 @@
   "python": "Python 3.12.3",
   "javascript_syntax_passed": true,
   "command": "bash scripts/check.sh /usr/bin/python3",
-  "scope": "Final source: full unit checks and JavaScript syntax; read-only placement API/CLI/MCP, actual separate installed CLI/stdio preview and same-host owned Root CPU regression. No new NPU compute or model call.",
+  "scope": "Backend and discovered unit sources unchanged from778-check / same-host Root49 baseline; current web preview verified separately in actual packaged and live browsers. No new full backend/Root run, NPU compute or model invocation.",
   "production_source_sha256": {
     "auth.py": "ec1f1ead3824d5e7bdeed7bfdd8a4464a3c2e0cd0e7ffa3eac8f0832c54fc047",
     "owner_identity.py": "5a48cf78584b2f717ac45594a73da569589cde6d9441037a0aedffe423f1515b",
@@ -5902,6 +5902,72 @@
         "skipped": 2,
         "reason": "Old MCP protocol assertion expected7 tools; now verifies8 and preview read-only annotation. Default Conda Python lacked pidfd; final full uses installer system Python with0 skips."
       }
+    ]
+  },
+  "web_preview": {
+    "passed": true,
+    "recorded_at": "2026-10-30T22:21:28.581308+00:00",
+    "browser_job": "job-8e019f3ca141",
+    "browser_checks": 11,
+    "web_sha256": {
+      "web/app.js": "0ef84940fec15b97054c7a8f51cab9058f4efef6ea122ae9a9ed3fa472f918d5",
+      "web/index.html": "21d23e69fca5918e762ab2689e2ac090f0274539ed70d075c5d2f547fea8279a",
+      "web/style.css": "873628be7142abc3246a078206b102cf5c40cb105afd3c5912f7d82eff067183"
+    },
+    "checks": [
+      "Packaged UI uses real preview API; preview candidates exclude unmapped peer and ledger is unchanged",
+      "A real fresh preview expires after its display window without any task or ledger write",
+      "Form edits invalidate results and late real responses cannot repaint a different request",
+      "Old observations are marked historical rather than guaranteed runnable",
+      "Candidate and reason text cannot inject executable HTML",
+      "Preview failures never create tasks or invoke submission fallback",
+      "Real stalled network request times out after15 seconds, creates no job and permits retry",
+      "Blocked preview stays separate from explicit queue submission; desktop/mobile fit",
+      "Explicit submission invalidates an in-flight preview without duplicate jobs",
+      "Read-only credentials cannot trigger preview or submission controls",
+      "Actual personal demo browser preview uses live backend without adding a task"
+    ],
+    "tested_ui_bundle_release": "4df58f0300ca2f3515b15e024c34b4ecac715aa6e9fbb499f4c21df333f4ca03",
+    "fixture_execution_attempts": 0,
+    "fixture_queued_then_cancelled": 2,
+    "live_added_jobs": 0,
+    "live_preview_http_status": 200,
+    "live_preview_seconds": 0.108,
+    "browser_errors": 0,
+    "stderr_clean": true,
+    "javascript_syntax_passed": true,
+    "backend77_files_unchanged": true,
+    "discovered_unit_sources_unchanged": true,
+    "previous_full_unit_tests": 778,
+    "full_backend_regression_rerun": false,
+    "previous_root_recovery_boundaries": 49,
+    "root_install_rerun": false,
+    "main_config_domains_and19_node_profiles_preserved": true,
+    "protected_runtime_unchanged": true,
+    "existing_nodes_upgraded": false,
+    "inventory_waiver": false,
+    "npu_kernel_launches": 0,
+    "model_invocations": 0,
+    "raw_screenshots_and_fixture_data_public": false,
+    "production_ready": false,
+    "failures_retained": [
+      {
+        "job": "job-935416191a85",
+        "scope": "Fixture checks reached live browser stage; main preview did not finish within test default5 seconds. Direct API then returned0.02 seconds. Cause not proven.",
+        "resolution": "UI aborts stale reads and times out pending reads after15 seconds; browser waits for bounded completion. Later observed live200 at5.39s then final0.108s."
+      },
+      {
+        "job": "job-c279c9c9c685",
+        "scope": "All11 functional checks passed, but deliberately unfulfilled Playwright route emitted CancelledError at teardown.",
+        "resolution": "Final fixture delays its actual server read with an event and releases it after client abort; clean final stdout/stderr."
+      }
+    ],
+    "coverage_limits": [
+      "Browser fixture uses two logical identities and synthetic CPU Node observations; its two jobs were explicitly queued then cancelled with0 attempts. Not OS-user or NPU execution proof.",
+      "Preview covers current command/CPU/isolation form. Five frozen workflow JSON submission through the webpage remains pending; existing CLI/MCP unchanged.",
+      "The15-second request and history windows are browser behavior, not queue execution limits, leases, start guarantees or server-side scheduling deadlines.",
+      "Final browser loads static assets from a generated service bundle and exercises the live personal service. Documentation may be updated later; this is not a new full Root installation acceptance.",
+      "Backend and discovered unit sources are unchanged from778-check and Root49 baseline. Those heavyweight regressions were not repeated in this UI-only stage."
     ]
   }
 }

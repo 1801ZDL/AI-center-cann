@@ -13,6 +13,8 @@ let lastProcessFocus = null;
 let jobSummary = null;
 let identity = null;
 let pendingSubmission = null;
+let previewSequence = 0, previewTimer = null, submittingJob = false;
+let previewController = null;
 let resultOffset=0;
 const views = {
   overview: ['运行总览','看清资源占用，让每一次实验有据可循。'],
@@ -23,8 +25,9 @@ const views = {
   experiments: ['实验记录','把结果与原始证据联系起来，继续推进下一次实验。']
 };
 
-async function api(path, body) {
+async function api(path, body, signal) {
   const response = await fetch(path, {cache:'no-store', credentials:'same-origin',
+    ...(signal?{signal}:{}),
     ...(body === undefined ? {} : {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})});
   if (!response.ok) {
     let message='状态服务暂时不可用。';
@@ -154,7 +157,11 @@ async function refresh(manual=false) {
   refreshing=true;
   $('refresh').disabled=true;
   try {
+    const previousIdentity=identity;
     identity=await api('/api/me');
+    if(previousIdentity&&(previousIdentity.id!==identity.id||
+       previousIdentity.scopes.includes('jobs:submit')&&!identity.scopes.includes('jobs:submit')))clearJobPreview();
+    updateJobActions();
     const monitor=identity.scopes.includes('monitor:read');
     $('sidebar-user').textContent=identity.id;
     $('scope-user').textContent=identity.id;
@@ -339,18 +346,110 @@ $('job-body').addEventListener('click',event=>{
   const button=event.target.closest('[data-job-id]');
   if(button) showJob(button.dataset.jobId);
 });
+function updateJobActions() {
+  const allowed=Boolean(identity?.scopes.includes('jobs:submit'));
+  $('submit-job').disabled=!allowed||submittingJob;
+  $('preview-job').disabled=!allowed||submittingJob||$('job-preview').dataset.loading==='true';
+  $('job-access-note').textContent=identity&&!allowed?'当前凭据只有查看权限，不能预览或提交新任务。':'';
+  $('job-access-note').hidden=!identity||allowed;
+}
+
+function clearJobPreview() {
+  previewSequence++;
+  previewController?.abort();previewController=null;
+  clearTimeout(previewTimer);
+  $('job-preview').hidden=true;
+  $('job-preview').dataset.loading='false';
+  $('job-preview').dataset.expired='false';
+  $('preview-candidates').replaceChildren();
+  updateJobActions();
+}
+
+function jobRequest() {
+  let body={name:$('job-name').value,environment:$('job-environment').value,
+    kind:$('job-kind').value,cwd:$('job-cwd').value,command:$('job-command').value,
+    cpu:Number($('job-cpu').value),memory_mib:Number($('job-memory').value),shm_mib:Number($('job-shm').value),npu:Number($('job-npu').value),
+    timeout_seconds:Number($('job-timeout').value)};
+  if($('job-template').value!=='command') body={name:$('job-name').value,environment:$('job-environment').value,cwd:$('job-cwd').value,template:$('job-template').value,parameters:$('job-template').value==='cpu_demo'?{seconds:Number($('job-seconds').value)}:{}};
+  if($('job-project').value) body.project=$('job-project').value;
+  return body;
+}
+
+function showJobPreview(result) {
+  if(result.version!==1||result.scope!=='placement'||!Array.isArray(result.candidates)||
+     result.reservation_created!==false||result.start_guaranteed!==false||
+     !['eligible_snapshot','blocked','no_visible_node'].includes(result.status)) {
+    throw new Error('服务返回了不支持的预览格式，请更新服务后重新检查。');
+  }
+  const titles={eligible_snapshot:'当前检查未发现运行阻碍',blocked:'当前候选仍有运行阻碍',no_visible_node:'当前没有映射给本人的节点'};
+  $('preview-title').textContent=titles[result.status];
+  $('preview-summary').textContent=`检查于 ${clock(result.observed_at)} · ${result.eligible_count} / ${result.candidate_count} 个候选当前未发现阻碍${result.truncated?' · 仅展示前 128 个候选':''}。`;
+  $('preview-note').textContent='预览不入队、不预留资源，也不保证开始时间。提交和启动时会重新检查；当前无匹配节点的普通任务仍可提交等待。';
+  $('preview-candidates').replaceChildren();
+  for(const item of result.candidates) {
+    const row=document.createElement('li');
+    const heading=document.createElement('div');
+    const label=document.createElement('code');label.textContent=item.node_id;
+    const state=document.createElement('span');state.className='preview-state';
+    state.textContent=item.status==='eligible_snapshot'?'当前未发现阻碍':'当前受阻';
+    heading.append(label,state);row.append(heading);
+    const reason=document.createElement('p');reason.textContent=item.reason||'实际启动仍需重新确认资源、权限及环境。';row.append(reason);
+    if(typeof item.capacity_fits==='boolean') {
+      const capacity=document.createElement('small');
+      capacity.textContent=item.capacity_fits?'CPU / 内存 / SHM 上限可容纳申报；其他运行条件见当前检查。':'CPU / 内存 / SHM 申报超过当前上限。';
+      row.append(capacity);
+    }
+    $('preview-candidates').append(row);
+  }
+  const sequence=previewSequence;
+  const expire=()=>{
+    if(sequence!==previewSequence)return;
+    $('job-preview').dataset.expired='true';
+    $('preview-title').textContent='这份预览已过时，请重新检查';
+    $('preview-note').textContent='节点和资源状态可能已改变。历史检查没有预留资源，也不保证实际启动。';
+  };
+  const sampled=Date.parse(result.observed_at);
+  const remaining=Number.isFinite(sampled)?Math.max(0,15000-Math.max(0,Date.now()-sampled)):0;
+  if(remaining)previewTimer=setTimeout(expire,remaining);else expire();
+}
+
+$('job-form').addEventListener('input',clearJobPreview);
+$('job-form').addEventListener('change',clearJobPreview);
+$('preview-job').addEventListener('click',async()=>{
+  if(!$('job-form').reportValidity())return;
+  clearJobPreview();
+  const sequence=previewSequence,body=jobRequest(),fingerprint=JSON.stringify(body),actor=identity?.id;
+  const controller=new AbortController();previewController=controller;
+  let timedOut=false;
+  const deadline=setTimeout(()=>{timedOut=true;controller.abort();},15000);
+  $('job-preview').hidden=false;
+  $('job-preview').dataset.loading='true';
+  $('preview-title').textContent='正在检查当前可见节点…';
+  $('preview-summary').textContent='';$('preview-note').textContent='只读取当前条件，不创建或启动任务。';
+  updateJobActions();
+  try {
+    const result=await api('/api/jobs/preview',body,controller.signal);
+    if(sequence!==previewSequence||actor!==identity?.id||fingerprint!==JSON.stringify(jobRequest()))return;
+    showJobPreview(result);
+  } catch(error) {
+    if(sequence!==previewSequence)return;
+    $('preview-title').textContent='预览未完成';$('preview-summary').textContent=timedOut?'检查超过 15 秒，请确认连接后重试。':error.message;
+    $('preview-note').textContent='没有创建任务。可以修正请求或连接后重新预览；提交仍是独立操作。';
+  } finally {
+    clearTimeout(deadline);
+    if(previewController===controller)previewController=null;
+    if(sequence===previewSequence){$('job-preview').dataset.loading='false';updateJobActions();}
+  }
+});
+
 $('job-form').addEventListener('submit',async event=>{
   event.preventDefault();
-  $('submit-job').disabled=true;
+  clearJobPreview();
+  submittingJob=true;updateJobActions();
   $('job-form-message').textContent='';
   $('job-form-message').hidden=true;
   try {
-    let body={name:$('job-name').value,environment:$('job-environment').value,
-      kind:$('job-kind').value,cwd:$('job-cwd').value,command:$('job-command').value,
-      cpu:Number($('job-cpu').value),memory_mib:Number($('job-memory').value),shm_mib:Number($('job-shm').value),npu:Number($('job-npu').value),
-      timeout_seconds:Number($('job-timeout').value)};
-    if($('job-template').value!=='command') body={name:$('job-name').value,environment:$('job-environment').value,cwd:$('job-cwd').value,template:$('job-template').value,parameters:$('job-template').value==='cpu_demo'?{seconds:Number($('job-seconds').value)}:{}};
-    if($('job-project').value) body.project=$('job-project').value;
+    const body=jobRequest();
     const fingerprint=JSON.stringify(body);
     if(!pendingSubmission||pendingSubmission.fingerprint!==fingerprint) pendingSubmission={fingerprint,key:crypto.randomUUID()};
     const result=await api('/api/jobs',{...body,idempotency_key:pendingSubmission.key});
@@ -360,7 +459,7 @@ $('job-form').addEventListener('submit',async event=>{
     await refresh();
     toast('作业已进入统一队列。');
   } catch(error){$('job-form-message').textContent=error.message;$('job-form-message').hidden=false;}
-  finally{$('submit-job').disabled=false;}
+  finally{submittingJob=false;updateJobActions();}
 });
 $('auto-refresh').title='暂停页面刷新不会暂停或取消托管作业。';
 
