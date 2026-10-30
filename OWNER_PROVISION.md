@@ -1,6 +1,28 @@
 # 用户预配：当前阶段与交付条件
 
-当前只完成**已安装 Node 上的底层 UID 配额槽追加**，不是完整开户。中央账号、中央归档组配额、Node 用户映射、缓存绑定和个人凭据的统一流程尚未接通。`workspace-add-apply`返回`node_and_central_owner_binding_still_required=true`，不得据此启用账号或交付可用凭据。
+当前完成**中央待预配身份**和**已安装 Node 上的底层 UID 配额槽追加**，尚未接通完整开户。中央归档组配额、Node 用户映射、缓存绑定和个人凭据交付仍需协调。`workspace-add-apply`返回`node_and_central_owner_binding_still_required=true`，不得据此启用账号或交付可用凭据。
+
+## 中央待预配身份
+
+在选定中央的管理端使用 `accessctl user-stage --spec FILE`。请求文件必须是运行管理命令的服务 UID 所有、仅本人可读的普通文件；通过已安装的 `servicectl admin` 执行时，它会降到中央服务 UID，文件及父目录也须允许该 UID 读取。此步骤不创建 Linux 账号。
+
+```json
+{"user":"researcher_a","environments":["worker-python"],"quota":{"cpu":1,"memory_mib":512,"npu":0,"max_running":1}}
+```
+
+```bash
+/opt/ascend-lab-controller/current/servicectl admin \
+  --prefix /opt/ascend-lab-controller -- \
+  accessctl user-stage --spec /var/lib/ascend-lab-controller/new-owner.json
+/opt/ascend-lab-controller/current/servicectl admin \
+  --prefix /opt/ascend-lab-controller -- accessctl user-status researcher_a
+```
+
+同一身份、目录、环境及额度重复登记返回相同 `stage_id`，不同定义拒绝。数据库一次提交禁用身份和不可用密码标记；不生成密码、令牌或 `client.json`。当前只允许受管 `worker-python` 环境；中央额度是申报及授权上限，不代表已经分配了节点 UID、存储或 NPU。
+
+管理侧可为待预配身份登记项目角色和 Node 用户映射，用户仍不能认证。普通 `user-enable`、`token-renew`、额度修改或环境追加不能跳过预配阶段；未知或不完整的预配元数据也拒绝登录。当前还没有完成多层回执校验后的激活命令，不要手工删标记或改数据库启用。历史 `user-add` 继续保留原有测试账号行为，不是统一开户流程。
+
+离线恢复到新状态目录会重新计算待预配身份的定义摘要，账号仍保持禁用；旧预配计划须重新核对，不能沿用旧路径。存在待预配元数据时，代码切换拒绝降级到不认识该状态的旧身份实现。普通旧账号及其禁用/启用行为保持兼容。
 
 ## 当前可用的存储步骤
 
@@ -34,7 +56,7 @@
 
 ## 整体开户仍需完成
 
-1. 中央建立不可登录的待预配身份，固定 owner ID、项目授权和个人额度；账号保持禁用。
+1. 已有中央不可登录的待预配身份、定义摘要及项目预登记；仍须与后续各层操作组合。
 2. 追加中央 owner 的存储 GID/硬配额，并协调各 Node 的 UID/GID及工作/缓存槽位；不修改已有用户分配。
 3. 在中央登记与 Node 私有配置间进行有修订、有回执、可恢复的绑定；保留已有缓存和环境资格边界。实际两机接入不要求中央持有个人 SSH 或模型密钥。
 4. 校验各层就绪后再启用身份和交付个人客户端凭据；中断不能留下已启用但无可用资源的账号。

@@ -104,6 +104,20 @@ class IdentityTests(unittest.TestCase):
         self.assertEqual(self.call('alice','/api/me')[0],401)
         self.assertEqual(self.call('alice','/api/me',token=token)[0],401)
 
+    def test_staged_owner_http_rejects_basic_and_even_a_preexisting_token_record(self):
+        path=self.runtime/'staged';path.mkdir()
+        self.access.stage_user('staged',path);self.passwords['staged']='stage-http-test-only'
+        token='stage-http-injected-record-only'
+        import hashlib,time
+        with self.access.connect() as db:
+            db.execute('INSERT INTO tokens(digest,user,scopes,expires_at) VALUES(?,?,?,?)',
+                (hashlib.sha256(token.encode()).hexdigest(),'staged',json.dumps(['jobs:read','jobs:submit']),time.time()+60))
+        for path,body in [('/api/me',None),('/api/jobs',self.spec())]:
+            self.assertEqual(self.call('staged',path,body)[0],401)
+            self.assertEqual(self.call('staged',path,body,token=token)[0],401)
+        with self.access.connect() as db:db.execute('UPDATE users SET disabled=0 WHERE id=?',('staged',))
+        self.assertEqual(self.call('staged','/api/me',token=token)[0],401)
+
     def test_parallel_requests_never_share_mutable_owner_context(self):
         tokens={user:self.access.issue_token(user,{'jobs:read','jobs:submit'}) for user in ['alice','bob']}
         def submit(index):

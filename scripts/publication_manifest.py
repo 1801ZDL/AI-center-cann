@@ -79,7 +79,7 @@ def main():
                         and hashlib.sha256((ROOT/n).read_bytes()).hexdigest()!=old['source_files'].get(n)]
         public.update(schema='ai-center-cann-public-validation/v1',
             source='Curated historical v0.36 local evidence; raw private reports are not published',
-            public_source_changes_since_acceptance='Documentation/publication tooling, mixed-workload fixtures, legacy cooperative Unix-socket portability, Worker heartbeat/completion ordering, legacy command artifact fixes and native UID-slot append administration/compatible historical manifest validation; protected six-file runtime hashes unchanged. Historical Root54 is not a new acceptance of these edits; later mixed, legacy CLI and native-append acceptance retain separate scopes.',
+            public_source_changes_since_acceptance='Documentation/publication tooling, mixed-workload fixtures, legacy cooperative Unix-socket portability, Worker heartbeat/completion ordering, legacy command artifact fixes, native UID-slot append administration/compatible historical manifest validation and staged owner authentication/lifecycle guards; protected six-file runtime hashes unchanged. Historical Root54 is not a new acceptance of these edits; later mixed, legacy CLI, native-append and identity-stage checks retain separate scopes.',
             production_source_changes_since_acceptance=source_changes,
             reproduced_by_public_ci=False,raw_evidence_in_repository=False,
             physical_hosts_tested=1,real_host_accounts_created=False,

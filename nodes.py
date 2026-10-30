@@ -58,7 +58,7 @@ class NodeRegistry:
         validate_policy(policy)
         if not re.fullmatch(r'[0-9a-f]{64}',profile.get('physical_id','')):raise JobError('Node physical identity must be pinned')
         if profile['physical_id']==self.jobs.backend.physical_id and not set(cpus)<=set(self.jobs.policy['cpu_ids']):raise JobError('Local worker CPUs exceed the controller resource pool')
-        if not profile.get('users') or any(not self.jobs.access.user(user) or not isinstance(mapping,dict) or any(isinstance(mapping.get(k),bool) or not isinstance(mapping.get(k),int) or mapping[k]<1000 for k in ['uid','gid']) for user,mapping in profile['users'].items()):raise JobError('Invalid non-root execution identity map')
+        if not profile.get('users') or any(not self.jobs.access.enrollment_allowed(user) or not isinstance(mapping,dict) or any(isinstance(mapping.get(k),bool) or not isinstance(mapping.get(k),int) or mapping[k]<1000 for k in ['uid','gid']) for user,mapping in profile['users'].items()):raise JobError('Invalid non-root execution identity map')
         if profile['physical_id']==self.jobs.backend.physical_id and any(mapping['uid']==self.controller_uid() for mapping in profile['users'].values()):
             raise JobError('Local user tasks cannot execute as the controller service UID')
         if set(profile.get('templates',[]))-set(SCRIPTS) or not profile.get('templates'):raise JobError('Unknown node template')

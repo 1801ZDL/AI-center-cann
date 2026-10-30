@@ -165,7 +165,10 @@ def relocate(state,old_state,new_state,role,old_payload=None,new_payload=None):
         if path.exists():
             with sqlite3.connect(path) as db:
                 for user,encoded in db.execute('SELECT id,profile FROM users').fetchall():
-                    profile=json.loads(encoded);profile['workspace']=move(profile['workspace'])
+                    import owner_identity
+                    profile=json.loads(encoded)
+                    try:profile=owner_identity.relocate(user,profile,move(profile['workspace']))
+                    except ValueError as error:raise DeployError(str(error)) from None
                     db.execute('UPDATE users SET profile=? WHERE id=?',(json.dumps(profile),user))
         path=state/'jobs.sqlite3'
         if path.exists():
@@ -300,6 +303,12 @@ def restore(prefix,archive_path,new_state,max_bytes=10*1024**3,payload_config=No
 
 def require_features(state,role,manifest):
     config=read_json(Path(state)/'config.json') or {}
+    if role=='controller' and 'owner_identity.py' not in manifest.get('files',{}):
+        identities=Path(state)/'identities.sqlite3'
+        if identities.exists():
+            with sqlite3.connect('file:'+str(identities)+'?mode=ro',uri=True) as db:
+                if any('provisioning' in json.loads(row[0]) for row in db.execute('SELECT profile FROM users')):
+                    raise DeployError('Staged owner state requires provisioning-aware identity code; refusing downgrade')
     if role=='controller' and 'dependencies.py' not in manifest.get('files',{}):
         path=Path(state)/'jobs.sqlite3'
         if path.exists():

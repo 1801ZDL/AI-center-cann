@@ -50,6 +50,16 @@ class NodeTests(unittest.TestCase):
 
     def auth(self,grant):return {k:grant[k] for k in ['job_id','attempt_id','lease_token']}
 
+    def test_staged_owner_can_be_prebound_without_becoming_authenticated(self):
+        path=self.runtime/'staged';path.mkdir()
+        self.jobs.access.stage_user('staged',path)
+        node,key=self.nodes.enroll({**self.profile,'users':{'staged':{'uid':23819,'gid':23819}}})
+        self.assertEqual(self.nodes.authenticate('Bearer '+key),node)
+        self.assertIsNone(self.jobs.access.authenticate('Bearer '+key))
+        self.assertIsNone(self.jobs.access.user('staged'))
+        self.jobs.access.disable_user('bob')
+        with self.assertRaises(JobError):self.nodes.enroll({**self.profile,'users':{'bob':{'uid':23820,'gid':23820}}})
+
     def test_node_and_user_credentials_are_distinct_and_transport_requires_tls(self):
         token=self.jobs.access.issue_token('alice',{'jobs:read'})
         self.assertIsNone(self.nodes.authenticate('Bearer '+token))
