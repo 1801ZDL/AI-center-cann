@@ -31,6 +31,9 @@ def main():
     command=sub.add_parser('node-environment');command.add_argument('node_id')
     command.add_argument('--from-job',required=True);command.add_argument('--expected-revision',type=int,required=True)
     command=sub.add_parser('owner-approve');command.add_argument('node_id');command.add_argument('--plan',required=True)
+    command=sub.add_parser('owner-expand-plan');command.add_argument('node_id');command.add_argument('--plan',required=True)
+    command.add_argument('--output',required=True);command.add_argument('--reauthorize',action='store_true')
+    command=sub.add_parser('owner-expand-apply');command.add_argument('--plan',required=True)
     command=sub.add_parser('owner-status');command.add_argument('node_id')
     command=sub.add_parser('node-probe');command.add_argument('node_id');command.add_argument('--user')
     command.add_argument('--memory-mib',type=int,help='Explicit probe memory reservation for large finite tmpfs slots; ordinary quotas still apply')
@@ -67,6 +70,23 @@ def main():
         command=sub.add_parser(action);command.add_argument('--config',required=True)
     args=parser.parse_args()
     if args.action=='identity':print(physical_identity());return
+    if args.action in {'owner-expand-plan','owner-expand-apply'}:
+        from deployment import regular_json
+        from owner_node_grant import Expansion
+        runtime=Path(args.controller_state).resolve();jobs=JobStore(runtime,read_json(runtime/'config.json'))
+        path=Path(args.plan)
+        if path.lstat().st_uid!=os.geteuid():parser.error('Expansion input must belong to this service identity')
+        value=regular_json(path,max_bytes=8*1024**2,private=True);expansion=Expansion(jobs.nodes.handoff)
+        if args.action=='owner-expand-plan':
+            value=expansion.plan(args.node_id,value,args.reauthorize);output=Path(args.output)
+            fd=os.open(output,os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,0o600)
+            with os.fdopen(fd,'w') as file:json.dump(value,file,ensure_ascii=False);file.write('\n');file.flush();os.fsync(file.fileno())
+            parent=os.open(output.parent,os.O_RDONLY|os.O_DIRECTORY)
+            try:os.fsync(parent)
+            finally:os.close(parent)
+            result={'grant_id':value['id'],'node_id':args.node_id,'output':str(output),'applied':False}
+        else:result=expansion.apply(value)
+        print(json.dumps(result,ensure_ascii=False,indent=2));return
     if args.action in {'owner-approve','owner-status'}:
         runtime=Path(args.controller_state).resolve();jobs=JobStore(runtime,read_json(runtime/'config.json'))
         if args.action=='owner-status':result=jobs.nodes.handoff.status(args.node_id)

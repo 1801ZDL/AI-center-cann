@@ -102,7 +102,7 @@ def helper(folder):
 
 class OwnedDisk:
     def __init__(self, base, prefix, image, cpus, docker, folder_name='disk-workspace',image_mib=32,inodes=512,quota_type=None,helper_seconds=720):
-        assert folder_name in {'disk-workspace','archive-pressure','central-payload','central-restore','quota-workspace','spool-workspace','cache-workspace'}
+        assert folder_name in {'disk-workspace','archive-pressure','central-payload','central-restore','quota-workspace','spool-workspace','cache-workspace','expand-work','expand-cache','expand-spool'}
         assert quota_type in {None,'user','group'}
         assert type(image_mib) is int and 32<=image_mib<=65536 and type(inodes) is int and 512<=inodes<=1000000
         assert type(helper_seconds) is int and 60<=helper_seconds<=10800

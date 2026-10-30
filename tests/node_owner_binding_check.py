@@ -209,7 +209,7 @@ a._checkpoint=crash;a.apply("/opt/owner-node",json.load(open("/state/bind-plan.j
     print(json.dumps(report),flush=True)
 
 
-def parent(central_handoff=False,activate_owner=False,unit_refresh=False,activation_abort=False,unit_manager=False,unit_start=False,owner_finish=False):
+def parent(central_handoff=False,activate_owner=False,unit_refresh=False,activation_abort=False,unit_manager=False,unit_start=False,owner_finish=False,owner_expand=False):
     root=Path(__file__).resolve().parents[1];sys.path.insert(0,str(root));sys.path.insert(0,str(root/'tests'))
     from deployment import bundle,unpack_release,CORE
     from docker_runtime import discover,command,binary
@@ -234,9 +234,11 @@ def parent(central_handoff=False,activate_owner=False,unit_refresh=False,activat
         (payload/'unit_start_fixture.py').write_bytes((root/'tests/unit_start_root_fixture.py').read_bytes());(payload/'unit_start_fixture.py').chmod(0o444)
     if owner_finish:
         (payload/'owner_finish_fixture.py').write_bytes((root/'tests/owner_finish_root_fixture.py').read_bytes());(payload/'owner_finish_fixture.py').chmod(0o444)
+    if owner_expand:
+        (payload/'owner_expand_fixture.py').write_bytes((root/'tests/owner_expand_root_fixture.py').read_bytes());(payload/'owner_expand_fixture.py').chmod(0o444)
     (payload/'input.mlir').write_text('module { func.func @add() -> i32 { %a = arith.constant 19 : i32\n %b = arith.constant 23 : i32\n %r = arith.addi %a, %b : i32\n return %r : i32 } }\n');(payload/'input.mlir').chmod(0o444)
     binding,_=discover();cpus=job['allocation']['cpu_ids']
-    context={'job_id':job['id'],'attempt_id':job['attempt_id'],'runtime':binding,'central_handoff':central_handoff,'activate_owner':activate_owner,'unit_refresh':unit_refresh,'activation_abort':activation_abort,'unit_manager':unit_manager,'unit_start':unit_start,'owner_finish':owner_finish}
+    context={'job_id':job['id'],'attempt_id':job['attempt_id'],'runtime':binding,'central_handoff':central_handoff,'activate_owner':activate_owner,'unit_refresh':unit_refresh,'activation_abort':activation_abort,'unit_manager':unit_manager,'unit_start':unit_start,'owner_finish':owner_finish,'owner_expand':owner_expand}
     if activate_owner:context['node_state']=str(state/'node')
     def docker(args,check=True,timeout=45):
         argv,env=command(binding,['docker',*map(str,args)]);r=subprocess.run(argv,env=env,capture_output=True,text=True,timeout=timeout)
@@ -246,9 +248,10 @@ def parent(central_handoff=False,activate_owner=False,unit_refresh=False,activat
     try:
         choices=[('quota-workspace','/work-quota',128,'user'),('cache-workspace','/cache-quota',128,'user')]
         if central_handoff:choices += [('central-payload','/central-quota',256,'group'),('spool-workspace','/spool-quota',1024 if activate_owner else 128,None)]
+        if owner_expand:choices += [('expand-work','/expand-work',128,'user'),('expand-cache','/expand-cache',128,'user'),('expand-spool','/expand-spool',1024,None)]
         for folder,destination,size,quota_type in choices:
             disk=OwnedDisk(base,prefix+'-'+folder,IMAGE,cpus,docker,folder_name=folder,image_mib=size,
-                inodes=262144 if activate_owner and folder=='spool-workspace' else 4096,quota_type=quota_type);disks.append(disk)
+                inodes=262144 if activate_owner and folder in {'spool-workspace','expand-spool'} else 4096,quota_type=quota_type);disks.append(disk)
             device=disk.create();volume=prefix+'-'+folder
             options='nosuid,nodev'+(',grpquota' if quota_type=='group' else ',usrquota' if quota_type=='user' else '')
             docker(['volume','create','--label','io.ascend-lab.nodeowner='+prefix,'--driver','local','--opt','type=ext4',
@@ -256,7 +259,8 @@ def parent(central_handoff=False,activate_owner=False,unit_refresh=False,activat
             if activate_owner:
                 mountpoint=json.loads(docker(['volume','inspect',volume]).stdout)[0]['Mountpoint']
                 volumes[-1]=(volume,mountpoint)
-                context[{'quota-workspace':'work_path','cache-workspace':'cache_path','central-payload':'central_path','spool-workspace':'spool_path'}[folder]]=mountpoint
+                context[{'quota-workspace':'work_path','cache-workspace':'cache_path','central-payload':'central_path','spool-workspace':'spool_path',
+                    'expand-work':'expand_work_path','expand-cache':'expand_cache_path','expand-spool':'expand_spool_path'}[folder]]=mountpoint
         atomic_json(payload/'context.json',context)
         socket=binding['endpoint'].removeprefix('unix://')
         args=['create','--name',name,'--label','io.ascend-lab.nodeowner='+prefix,'--network','none','--ipc','none','--read-only',
@@ -295,14 +299,15 @@ def parent(central_handoff=False,activate_owner=False,unit_refresh=False,activat
 
 if __name__=='__main__':
     parser=argparse.ArgumentParser();parser.add_argument('--actor',action='store_true');parser.add_argument('--controller',action='store_true')
-    parser.add_argument('--with-regression',action='store_true');parser.add_argument('--central-handoff',action='store_true');parser.add_argument('--activate-owner',action='store_true');parser.add_argument('--unit-refresh',action='store_true');parser.add_argument('--activation-abort',action='store_true');parser.add_argument('--unit-manager',action='store_true');parser.add_argument('--unit-start',action='store_true');parser.add_argument('--owner-finish',action='store_true');args=parser.parse_args()
+    parser.add_argument('--with-regression',action='store_true');parser.add_argument('--central-handoff',action='store_true');parser.add_argument('--activate-owner',action='store_true');parser.add_argument('--unit-refresh',action='store_true');parser.add_argument('--activation-abort',action='store_true');parser.add_argument('--unit-manager',action='store_true');parser.add_argument('--unit-start',action='store_true');parser.add_argument('--owner-finish',action='store_true');parser.add_argument('--owner-expand',action='store_true');args=parser.parse_args()
     if args.actor:actor()
     elif args.controller:controller()
     else:
         root=Path(__file__).resolve().parents[1]
+        if args.owner_expand:args.owner_finish=True
         if args.with_regression:
             subprocess.run(['/usr/bin/python3','-m','unittest','discover','-s','tests','-p','test_node_owner_admin.py','-v'],cwd=root,check=True)
         parent(args.central_handoff or args.activate_owner or args.unit_refresh or args.activation_abort or args.unit_manager or args.unit_start or args.owner_finish,
                args.activate_owner or args.unit_refresh or args.activation_abort or args.unit_manager or args.unit_start or args.owner_finish,args.unit_refresh or args.activation_abort or args.unit_manager or args.unit_start or args.owner_finish,
-               args.activation_abort or args.unit_manager or args.unit_start or args.owner_finish,args.unit_manager or args.unit_start or args.owner_finish,args.unit_start or args.owner_finish,args.owner_finish)
+               args.activation_abort or args.unit_manager or args.unit_start or args.owner_finish,args.unit_manager or args.unit_start or args.owner_finish,args.unit_start or args.owner_finish,args.owner_finish,args.owner_expand)
         if args.with_regression:subprocess.run(['bash','scripts/check.sh','/usr/bin/python3'],cwd=root,check=True)

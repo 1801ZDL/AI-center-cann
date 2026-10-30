@@ -61,6 +61,9 @@ def private_values():
     files.update(r.glob('jobs/*/tmp/payload-owner-append/control/controller/config.json'))
     for pattern in ['jobs/*/tmp/node-owner-binding/control/node/config.json','jobs/*/tmp/node-owner-binding/control/enroll.json']:
         files.update(r.glob(pattern))
+    for pattern in ['jobs/*/tmp/node-owner-binding/control/expansion-node/config.json',
+                    'jobs/*/tmp/node-owner-binding/control/expansion-enroll.json']:
+        files.update(r.glob(pattern))
     for pattern in ['jobs/*/tmp/node-owner-binding/control/controller/config.json','jobs/*/tmp/node-owner-binding/control/controller/personas/*/client.json',
                     'owner-activations/*.pending.json','jobs/*/tmp/node-owner-binding/control/controller/owner-activations/*.pending.json']:
         files.update(r.glob(pattern))
@@ -85,7 +88,7 @@ def main():
                         and hashlib.sha256((ROOT/n).read_bytes()).hexdigest()!=old['source_files'].get(n)]
         public.update(schema='ai-center-cann-public-validation/v1',
             source='Curated historical v0.36 local evidence; raw private reports are not published',
-            public_source_changes_since_acceptance='Documentation/publication tooling, mixed-workload fixtures, legacy cooperative Unix-socket portability, Worker heartbeat/completion ordering, legacy command artifact fixes, native UID-slot append administration/compatible historical manifest validation, staged owner authentication/lifecycle guards, central owner-group append, Node/cache binding, durable commit/ready ACK, final owner activation, explicit activation abort, offline unit CAS, typed manager readback/reload journal, one-send startup/ready/heartbeat admission gating, and Root final activation plus non-overwriting local UID credential handoff with controller restart/retry recovery; protected six-file runtime hashes unchanged. Historical Root54 is not a new acceptance of these edits; later checks retain frozen scopes. Manager mutations used a fixed adapter with actual installed processes, not actual PID1. Earlier resource onboarding and remote-home automation remain incomplete.',
+            public_source_changes_since_acceptance='Documentation/publication tooling, mixed-workload fixtures, legacy cooperative Unix-socket portability, Worker heartbeat/completion ordering, legacy command artifact fixes, native UID-slot append administration/compatible historical manifest validation, staged owner authentication/lifecycle guards, central owner-group append, Node/cache binding, durable commit/ready ACK, final owner activation, explicit activation abort, offline unit CAS, typed manager readback/reload journal, one-send startup/ready/heartbeat admission gating, Root final activation plus non-overwriting local UID credential handoff with controller restart/retry recovery, and active-owner second-Node grants with monotonic authority revisions, explicit pending reauthorization and prospective slot reservations; protected six-file runtime hashes unchanged. Historical Root54 is not a new acceptance of these edits; later checks retain frozen scopes. Manager mutations used a fixed adapter with actual installed processes, not actual PID1. Earlier resource onboarding and remote-home automation remain incomplete.',
             production_source_changes_since_acceptance=source_changes,
             reproduced_by_public_ci=False,raw_evidence_in_repository=False,
             physical_hosts_tested=1,real_host_accounts_created=False,

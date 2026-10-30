@@ -101,7 +101,7 @@ class NodeRegistry:
             self.jobs.resources.validate_node(profile,db)
             held={j.get('node_id') for j in self.jobs.all(db) if j['state'] in ACTIVE}|self.handoff.held_nodes(db)
             for old_id,raw,disabled in db.execute('SELECT id,profile,disabled FROM worker_nodes'):
-                old=json.loads(raw)
+                old=self.handoff.reserved_profile(old_id,json.loads(raw),db)
                 if old['physical_id']!=profile['physical_id'] or disabled and old_id not in held:continue
                 from persistent_cache import aliases
                 try:aliases(profile,old)
@@ -119,7 +119,7 @@ class NodeRegistry:
                 combined=list(profile['workspace']['slots'])
                 held={j.get('node_id') for j in self.jobs.all(db) if j['state'] in ACTIVE}|self.handoff.held_nodes(db)
                 for old_id,raw,disabled in db.execute('SELECT id,profile,disabled FROM worker_nodes'):
-                    old=json.loads(raw)
+                    old=self.handoff.reserved_profile(old_id,json.loads(raw),db)
                     if old['physical_id']!=profile['physical_id'] or disabled and old_id not in held:continue
                     combined.extend(old.get('workspace',{}).get('slots',[]))
                     for a in profile['workspace']['slots']:
@@ -306,7 +306,7 @@ class NodeRegistry:
         from attempt_inventory import CAPABILITY as INVENTORY
         if self.jobs.policy.get('require_attempt_inventory') and INVENTORY not in body.get('capabilities',[]):
             raise JobError('Node requires attempt-inventory-v1 before confirming availability',409)
-        with self.jobs.transaction() as db:
+        with self.handoff.transaction() as (db,identities):
             if INVENTORY in body.get('capabilities',[]):
                 try:report['attempt_inventory']=self.jobs.inventory.review(node_id,profile['physical_id'],body.get('attempt_inventory'),db)
                 except ValueError as error:raise JobError(str(error),409) from None
@@ -314,7 +314,7 @@ class NodeRegistry:
             updated=db.execute('UPDATE worker_nodes SET last_seen=?,report=? WHERE id=? AND profile=? AND disabled=0',
                 (time.time(),json.dumps(report),node_id,json.dumps(profile)))
             if updated.rowcount!=1:raise JobError('Node configuration changed while validating heartbeat; retry with current configuration',409)
-            self.handoff.observe(node_id,profile,report,db)
+            self.handoff.observe(node_id,profile,report,db,identities)
         return {'node_id':node_id,'accepted':True}
 
     def _grant(self,job):

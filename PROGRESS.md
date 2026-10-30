@@ -1,5 +1,17 @@
 # 实施进度
 
+## 已激活用户扩展第二个Node
+
+新增owner_node_grant.py及服务UID本地`workerctl owner-expand-plan/apply`。经典owner-approve继续只接受禁用且无凭据的stage；扩容独立绑定已提交激活、单调权限版本、当前身份/凭据/成员/配置/中央存储指纹及完整不可变Node计划。权限触发器也覆盖直接SQL和改后恢复，不依赖字节恢复后仍相同的profile摘要。批准、ACK、首次健康心跳持有身份写保留锁直到资源数据库提交；批准后的槽位立即进入Node间冲突/容量预留。首次健康心跳前始终暂停新claim。
+
+权限改变时不继续原grant；对同一Node计划明确`--reauthorize`仅替换未完成授权、使旧grant superseded，保留原资源投影和ACK，不重新绑定本地资源或发凭据。完成后重放仅返回历史结果，不反向恢复被禁用身份；包含授权记录的数据库拒绝降级到缺少协议的包。原个人客户端无需重装或更改profile，owner逻辑身份与每台Node的执行UID分离。
+
+**590项/111.201秒/无跳过及JS语法通过，71个非文档生产源码与最终Root包一致。** 新12项覆盖enabled/disabled、凭据更新撤销、配额/成员/环境及直接SQL失效、同一计划重授权、首次健康心跳、槽位冲突、事务锁及降级。最终同机隔离Root：实际服务UID23820、个人UID23802，第二Node映射任务UID23812；一个既有token、不新增，原Node登记投影、旧缓存inode/SHA及个人偏好保持不变。通过10个本地绑定和9个ACK SIGKILL、两次权限改后恢复拒绝再显式授权；实际安装CLI及个人客户端完成第二Node排队BishengIR 19+23=42、幂等同任务/单attempt/产物读取。七个自有盘全部释放；旧激活/交付/中央重启及启动适配链仍按原范围通过。
+
+本地私有evidence/owner-expansion-validation.json保留完整报告及六次失败定位：两次unit fixture字段/Node接口或能力标记问题，Root新增盘名白名单、两次预期详细错误但实际传输仅HTTP409、以及重复测试已持久ACK intent的中断点顺序。修正fixture后通过；不把这些失败改写成通过。公开摘要为reports/public-source-check.json.owner_expansion。
+
+尚未完成整体目标：完整资源开户协调、一般UID/路径/容量变更协议、远程个人交付、真实宿主账号/实际PID1/第二物理机、NPU资格/精度/性能/仿真及msagent领域案例仍待。当前只验证同一物理机自有隔离Root环境，未改变共享驱动、旧容器或其他人的目录；PUBLIC-001夜间PR归因继续延期。
+
 ## 最后激活与个人UID交付的一次请求
 
 新增owner_delivery.py、owner_finish.py及Root本地`owner-delivery-plan/apply/abort`、`owner-finish --spec ... [--plan|--abort]`。固定Root私有请求明确operation_id、原stage/Node计划和目标UID/GID/parent/name/同盘Root spool；中断保留原operation_id，新尝试显式换ID，避免将旧中止记录重放当成重新激活。**身份、中央配额、Node工作/缓存槽与ACK/健康心跳仍须先完成，owner-finish不是完整资源开户自动化。** 不创建宿主账号、不远程登录、不读取个人模型/skill/MCP配置。

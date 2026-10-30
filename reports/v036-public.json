@@ -34,11 +34,12 @@
   ],
   "schema": "ai-center-cann-public-validation/v1",
   "source": "Curated historical v0.36 local evidence; raw private reports are not published",
-  "public_source_changes_since_acceptance": "Documentation/publication tooling, mixed-workload fixtures, legacy cooperative Unix-socket portability, Worker heartbeat/completion ordering, legacy command artifact fixes, native UID-slot append administration/compatible historical manifest validation, staged owner authentication/lifecycle guards, central owner-group append, Node/cache binding, durable commit/ready ACK, final owner activation, explicit activation abort, offline unit CAS, typed manager readback/reload journal, one-send startup/ready/heartbeat admission gating, and Root final activation plus non-overwriting local UID credential handoff with controller restart/retry recovery; protected six-file runtime hashes unchanged. Historical Root54 is not a new acceptance of these edits; later checks retain frozen scopes. Manager mutations used a fixed adapter with actual installed processes, not actual PID1. Earlier resource onboarding and remote-home automation remain incomplete.",
+  "public_source_changes_since_acceptance": "Documentation/publication tooling, mixed-workload fixtures, legacy cooperative Unix-socket portability, Worker heartbeat/completion ordering, legacy command artifact fixes, native UID-slot append administration/compatible historical manifest validation, staged owner authentication/lifecycle guards, central owner-group append, Node/cache binding, durable commit/ready ACK, final owner activation, explicit activation abort, offline unit CAS, typed manager readback/reload journal, one-send startup/ready/heartbeat admission gating, Root final activation plus non-overwriting local UID credential handoff with controller restart/retry recovery, and active-owner second-Node grants with monotonic authority revisions, explicit pending reauthorization and prospective slot reservations; protected six-file runtime hashes unchanged. Historical Root54 is not a new acceptance of these edits; later checks retain frozen scopes. Manager mutations used a fixed adapter with actual installed processes, not actual PID1. Earlier resource onboarding and remote-home automation remain incomplete.",
   "production_source_changes_since_acceptance": [
     "auth.py",
     "owner_identity.py",
     "owner_handoff.py",
+    "owner_node_grant.py",
     "node_owner_ack.py",
     "owner_activation.py",
     "owner_activation_abort.py",

@@ -317,6 +317,12 @@ def restore(prefix,archive_path,new_state,max_bytes=10*1024**3,payload_config=No
 
 def require_features(state,role,manifest):
     config=read_json(Path(state)/'config.json') or {}
+    if role=='controller' and 'owner_node_grant.py' not in manifest.get('files',{}):
+        path=Path(state)/'jobs.sqlite3'
+        if path.exists():
+            with sqlite3.connect(path.as_uri()+'?mode=ro',uri=True) as db:
+                if db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='owner_node_expansions'").fetchone() and db.execute('SELECT 1 FROM owner_node_expansions LIMIT 1').fetchone():
+                    raise DeployError('Owner expansion authorizations require compatible admission support; refusing downgrade')
     if role=='controller' and 'owner_activation_abort.py' not in manifest.get('files',{}):
         if any((Path(state)/'owner-activation-aborts').glob('*.json')):
             raise DeployError('Owner activation abort recovery records require compatible abort support; refusing downgrade')

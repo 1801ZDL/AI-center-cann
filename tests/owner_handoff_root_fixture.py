@@ -434,6 +434,10 @@ with sqlite3.connect(s/'identities.sqlite3') as d:n=d.execute("SELECT COUNT(*) F
 assert n==1
 print(json.dumps({'peer_read_denied':True,'tokens':n}))
 ''');checked.update(peer)
+        expansion={}
+        if self.context.get('owner_expand'):
+            from owner_expand_fixture import run
+            expansion=run(self,config)
         # Completion and profile replay must never reverse a later admin disable.
         self.command('accessctl','user-disable','new_owner',json_output=False)
         replay=self.command('accessctl','user-activate','--spec',str(path));assert replay['reused']
@@ -448,4 +452,5 @@ print(json.dumps({'peer_read_denied':True,'tokens':n}))
             'accounts_enabled':1,'account_disabled_after_acceptance':True,'full_owner_onboarding_ready':False,
             'identity_still_staged_and_token_count_zero':False,'credential_free_stage_verified_before_activation':True,
             **({'activation_abort':self.abort_proof} if self.context.get('activation_abort') else {}),
+            **({'owner_expansion':expansion} if expansion else {}),
             **({'owner_finish':self.finish_proof} if self.context.get('owner_finish') else {})}

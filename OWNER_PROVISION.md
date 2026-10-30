@@ -215,3 +215,31 @@ Node本地绑定：真实安装、fixture stage摘要、独立的两个128MiB ex
 完成后可按同一既有stage/资源合同重新执行user-activate，产生新激活ID和凭据。旧意图即使被重新放回也不能启用，旧中止计划的完成重放保留后来新建的凭据。中止不会删除用户、回收中央GID、Node UID槽/缓存或修改资源/环境合同；资源合同改变后的重授权与完整一键协调仍待实现。只清理中央服务私有目录，不接管个人主目录或外部副本。
 
 当前同机安装演练使用实际服务UID23820：真实激活在client落盘后SIGKILL，模拟意图过期，显式中止再经历journal/client/trust/before_commit/committed/receipt/intent_removed/published八次连续SIGKILL并恢复。中止后仍禁用、token0、已中止ID1；重新激活产生不同ID，旧Basic密码及Bearer均401，旧中止重放保留新配置；随后个人UID23802完成真实单次排队BishengIR编译和归档清理。原有用户配置未改，实际systemd管理器和NPU未参与本次验收。
+
+## 已激活用户接入另一个 Node
+
+新增独立的 `owner-expand-plan/apply`，不放宽 `owner-approve` 的禁用且无凭据条件。已有激活标记和提交记录的用户，须在中央服务身份下为新 Node 明确批准。原始 stage ID 在 Node 计划中只引用用户来源；新的 grant ID、当前权限指纹和完整 Node 计划摘要共同构成此次授权。没有重新发放或复制凭据，也不修改原 Node 的 UID、环境和缓存。
+
+先按前面的 Node 本地流程安装新节点、追加原生工作/缓存 UID 槽，并生成它自己的 `node-owner-plan`。将该私有计划按已有受保护交付渠道交给中央服务 UID；不向中央授予 Root SSH 或个人 HOME 读取权限。中央运行：
+
+```bash
+/opt/ascend-lab-controller/current/servicectl admin \
+  --prefix /opt/ascend-lab-controller -- \
+  workerctl owner-expand-plan worker-替换为新节点ID \
+  --plan /var/lib/ascend-lab-controller/new-node-bind.json \
+  --output /var/lib/ascend-lab-controller/new-node-grant.json
+/opt/ascend-lab-controller/current/servicectl admin \
+  --prefix /opt/ascend-lab-controller -- \
+  workerctl owner-expand-apply \
+  --plan /var/lib/ascend-lab-controller/new-node-grant.json
+```
+
+命令要求同服务 UID 的活跃中央声明 `owner-node-expansion-v1`。计划输出必须是新文件；批准时再次核对用户、原生中央存储额度、目标登记投影和其他节点的槽位预留。获批但尚未提交的工作/缓存槽也计入占用。Node 管理员随后应用同一原始 Node 计划，并按原来的 `node-owner-ack` 完成 authenticated commit/ready；首次健康心跳前不接新任务。Node 无法通过用户凭据调用此 ACK API。
+
+首次健康心跳前，用户禁用、凭据更新或撤销、配额、环境、项目成员关系及中央存储绑定变化，会使原 grant 失效。身份数据库触发器持久记录单调权限版本；改动后恢复相同字段也不能复用旧授权。批准、ACK和首次健康心跳在持有身份写保留锁时提交任务数据库，避免在最后检查与提交之间漏过撤权。未知执行和不空闲的目标节点仍拒绝扩容。
+
+明确审阅新的权限状态后，可用**同一原始 Node 计划**再次运行 `owner-expand-plan`，增加 `--reauthorize`，输出到另一个新文件后 apply。此操作只替换尚未完成的授权，旧 grant 标记 superseded；保留原审批/ACK标识和已提交的节点资源投影，不再次应用本地绑定、不改槽位或重新发放 token。已经完成首次健康心跳的 grant 不能这样重新授权修改资源。资源容量、路径或 UID 需要改变时，仍须另行设计相应资源变更协议。
+
+交接完成后的 apply/ACK 重放仅返回历史结果，不作为当前权限或健康证明，也不恢复后来被禁用的账号。实际任务继续检查当前用户权限。数据库中存在扩容授权记录后，拒绝降级到缺少该协议的发布包。此增量不等于完整一键开户、远程管理员操作自动化、真实两台物理机或 NPU 验收。
+
+2026-10-31验收：590项检查及JS语法通过，包含新增12项扩容检查。同机隔离Root使用实际服务UID23820、原个人UID23802及第二Node任务UID23812，原凭据仅一个、不新增；通过安装后的CLI计划/批准、10个绑定与9个ACK连续SIGKILL、两次改后恢复权限导致拒绝并明确重授权、真实个人客户端排队BishengIR `19+23=42`、单attempt及产物读取。原Node登记投影、已有缓存文件inode/SHA及个人配置保持不变，七个自有盘均释放。完整记录保存在本地私有证据，公开范围见reports/public-source-check.json.owner_expansion。此验收未创建真实宿主账号，未使用第二物理机、NPU或实际systemd PID1。

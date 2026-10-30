@@ -67,9 +67,21 @@ class AccessControl:
                     scopes TEXT NOT NULL, revoked INTEGER NOT NULL DEFAULT 0, expires_at REAL NOT NULL);
                   CREATE TABLE IF NOT EXISTS audit (id INTEGER PRIMARY KEY, at TEXT NOT NULL,
                     actor TEXT NOT NULL, action TEXT NOT NULL, target TEXT NOT NULL, outcome TEXT NOT NULL);
+                  CREATE TABLE IF NOT EXISTS owner_security_revisions (
+                    owner TEXT PRIMARY KEY, revision INTEGER NOT NULL);
                 ''')
                 if 'expires_at' not in {r[1] for r in db.execute('PRAGMA table_info(tokens)')}:
                     db.execute('ALTER TABLE tokens ADD COLUMN expires_at REAL NOT NULL DEFAULT 0')
+                # Persist revocation history even when a profile is changed and
+                # restored to identical bytes. Triggers also cover activation's
+                # direct SQL and offline administrative mutations.
+                for table,column in [('users','id'),('tokens','user'),('members','user')]:
+                    for operation in ['INSERT','UPDATE','DELETE']:
+                        refs=['OLD','NEW'] if operation=='UPDATE' else ['OLD' if operation=='DELETE' else 'NEW']
+                        body=' '.join('INSERT INTO owner_security_revisions(owner,revision) VALUES('
+                            +ref+'.'+column+',1) ON CONFLICT(owner) DO UPDATE SET revision=revision+1;' for ref in refs)
+                        db.execute('CREATE TRIGGER IF NOT EXISTS owner_revision_'+table+'_'+operation.lower()
+                            +' AFTER '+operation+' ON '+table+' BEGIN '+body+' END')
             self.path.chmod(0o600)
 
     def connect(self):
