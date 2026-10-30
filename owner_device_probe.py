@@ -83,6 +83,8 @@ def _current(jobs,spec,db,identities):
         raise JobError('The staged probe requires the unchanged ready original Node owner handoff',409)
     if PROBE not in np['templates'] or spec['device_id'] not in np.get('npu',{}).get('device_ids',[]):
         raise JobError('Explicitly enroll the fixed probe and physical device before staged qualification',409)
+    from resources import require_managed_capacity
+    require_managed_capacity(np,jobs.resources.get(np['physical_id'],db),spec['memory_mib'])
     storage=jobs.nodes.handoff._storage(spec['owner'],profile)
     if storage!=handoff['storage']:raise JobError('The original staged owner storage contract changed',409)
     access=decision(node,spec['owner'],spec['device_id'])

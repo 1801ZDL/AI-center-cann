@@ -370,6 +370,7 @@ class JobStore:
                 existing_job=json.loads(existing[0])
                 if _staged_probe is not None:validate(self,_staged_probe,db,identities,existing_job)
                 return public(existing_job), True
+            self.nodes.probe_submission(spec,principal,db)
             if spec.get('input'):
                 self.lifecycle.available('input',spec['input']['id'],db)
             self.dependencies.available(spec,db)

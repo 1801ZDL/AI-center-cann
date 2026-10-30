@@ -1,5 +1,24 @@
 # 实施进度
 
+## 固定探针与开户前的静态容量准入（2026-10-31）
+
+resources.require_managed_capacity共用一CPU/零SHM的静态可运行检查：Node与物理域CPU须有交集，负载内存+128MiB托管开销须同时不超过两侧预算；不扣减当前占用，不把draining当静态不可能。512MiB Node上384+128恰好可用，385+128在新授权/任务前拒绝。用户最大额度可大于单个Node，按实际探针内存判断。
+
+owner_provision._nodes使用同一只读事务快照查目标profile和domain；每Node至少容纳256+128MiB CPU任务，显式device_probes按选定memory_mib验证，在主journal/身份/原生资源分配前拒不可能配置。管理员预激活_current在授权前及之后原授权验证时复核。JobStore.submit在原幂等返回之后、任务/归档预留/目录创建之前，于提交事务内调用Nodes.probe_submission：设备及环境固定探针须目标已登记启用、当前owner已映射、模板已授权，设备也须在合同内，并再次检查静态CPU/内存。
+
+满载但足够容量仍正常排队；原活任务/未知租约不释放。旧幂等请求观察原job；配置在授权与入队间缩小时不写job或归档预留，保留原authorization/job=None意图，恢复合法容量可沿同operation继续。开户预检只是当前配置快照，不承诺后续配置、健康、超时、磁盘、环境一定满足。普通未绑定工作流的可运行节点集合预检仍待评估。
+
+**最终757项/125.228秒/无跳过及JS语法通过；77非文档生产源码与最终Root/full/focused冻结一致。** focused job-57d111334f59为18/2.151秒。新18项覆盖Node/物理域边界、共同CPU不足、满载排队、普通设备/环境probe同规则、未登记/未映射/未授权模板/越界卡、CPU和NPU开户前拒绝、静态drain与实际准入分离、旧幂等/原staged job不替换、配置竞争下原授权保留、65536MiB+128上界及非法参数。合成设备观测不是设备打开或kernel。
+
+最终Root job-3f881608a2f5：在自有隔离服务中通过真实管理员API将domain内存降到256MiB，已安装Root开户CLI明确因256+128不能放下而在主journal/身份前拒绝；原policy恢复后原49个SIGKILL、drain/abort、UID23801运行期间激活交付UID23802与实际个人IR排队/单attempt、第二用户单CLI/peer拒读/Node2 UID23812 IR等均通过。host独立核对capacity-original-domain.json、domain事件含256MiB及最终policy相同（修订递增保留审计），并核两IR时间顺序/单attempt和最终token/禁用状态。七文件盘loop/helper/角色/卷释放，backing files留private；/opt和/personal角色tmpfs不留host，未把host记录核查说成当前nativequota读取。
+
+最终全量job-0c2873c72a86。基线repro job-8d5cd54ed6d5正确显示385+128被旧512MiB Node接收而永久排队。focused job-33550bd5188c的18项只有fixture异常类型错误：未知owner接口是AccessError，fixture误写JobError；改查identity DB确认不存在后最终18通过。既有environment probe目标测试改为真实已登记的另一Node，保留“不能被本Node领取”原含义；未登记目标现在按新规则提前拒绝。完整证据本地evidence/probe-capacity-validation.json，精选reports/public-source-check.json.probe_capacity；失败保留，未放宽预算。
+
+Main空闲0nonterminal/有效hold时重载，configSHA/CPU254,255/2048MiB/SHM1024MiB/1槽及19Node profile SHA不变；旧Node未升级、fresh inventory无豁免。0NPU kernel/模型调用，protected6仍原v036SHA，未动共享驱动/宿主账号或既有zdl。
+
+下一优先：普通工作流的可运行节点集合预检与面向用户的可解释准入，再完善领域harness/msagent诊断能力的实际接入。实际PID1/宿主真实用户/两物理机、NPU访问资格继承/ACL/数值/性能/仿真、远程交付/fencing、一般资源合同与控制盘硬边界仍待。PUBLIC-001延期，整体目标未完成。下方为历史阶段。
+
+
 ## 追加无关用户后的资格兼容审计（2026-10-31）
 
 新增qualification_compatibility.py，中央stage批准与active-owner扩Node授权均在jobs→identities写保留内冻结原资格、成功固定probe来源、旧完整profile/新profile SHA、当前个人权限单调修订。只证明单个新用户及各一个原生work/cache槽的精确追加；旧UID/GID/槽及所有非追加字段必须相同。全局policy_revision继续递增并进入原受保护context，六个运行文件/设备协议无需改版；不是删除版本校验。

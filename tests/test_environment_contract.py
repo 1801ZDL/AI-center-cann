@@ -126,7 +126,10 @@ class AdmissionTests(unittest.TestCase):
                        {'environment_setup':'/opt/new.sh'},{'python_executable':'/opt/python'}]:
             with self.subTest(change=change),self.assertRaises(JobError):self.beat(environment_sha256=fingerprint(contract()),**change) if 'environment_sha256' not in change else self.beat(**change)
     def test_probe_targets_only_one_node_and_requires_capability(self):
-        job,_=self.jobs.submit({'template':PROBE,'environment':'worker-python','parameters':{'node_id':'worker-'+'f'*12}},self.alice)
+        p=self.jobs.nodes.node(self.node)['profile']
+        peer,_=self.jobs.nodes.enroll({'name':'other_probe_target','physical_id':p['physical_id'],'image':p['image'],
+            'users':{'alice':{'uid':23003,'gid':23003}},'templates':[PROBE],'policy':p['policy']})
+        job,_=self.jobs.submit({'template':PROBE,'environment':'worker-python','parameters':{'node_id':peer}},self.alice)
         self.assertIsNone(self.jobs.nodes.claim(self.node).get('grant'));self.assertFalse(self.jobs.attempts(job['id']))
     def test_certification_revision_and_active_attempt_guards(self):
         job,_=self.jobs.submit({'template':PROBE,'environment':'worker-python','parameters':{'node_id':self.node}},self.alice)

@@ -26,8 +26,37 @@ def run(session,node_prefix,config,cold,actor,grant,first):
         'nodes':[{'node_id':session.node_id,'uid':23802,'gid':23802,
             'workspace':{'root':str(Path(config['workspace']['slots'][0]['path']).parent),'bytes':16*1024**2,'inodes':128},
             'cache':{'root':str(Path(config['persistent_cache']['slots'][0]['path']).parent),'bytes':16*1024**2,'inodes':128}}]}
-    atomic_json(source,spec)
     cli=['/usr/bin/python3','-I','-B',session.prefix+'/current/servicectl','owner-provision','--prefix',session.prefix,'--spec',str(source)]
+    # A real administrator domain change makes even the minimum managed CPU
+    # task impossible. The installed Root CLI must reject before any journal,
+    # identity or native resource allocation, then the original budget returns.
+    domain_before=session.service_code('''import json,sys
+from pathlib import Path
+from jobs import JobStore
+from lab_client import read_json,atomic_json
+s=Path(sys.argv[1]);j=JobStore(s,read_json(s/'config.json'));d=j.resources.get(j.backend.physical_id)
+atomic_json(s/'capacity-original-domain.json',d)
+j.resources.configure(d['physical_id'],{**d['policy'],'memory_mib':256,'shm_mib':0},d['revision'])
+print(json.dumps({'physical_id':d['physical_id'],'original_policy':d['policy']}))
+''')
+    assert domain_before['physical_id']==config['physical_id']
+    try:
+        atomic_json(source,spec);capacity_refused=subprocess.run(cli,capture_output=True,text=True,timeout=30)
+        assert capacity_refused.returncode and 'physical domain memory budget' in capacity_refused.stderr
+        assert not (Path(session.prefix)/master.JOURNAL).exists()
+        with sqlite3.connect(session.state/'identities.sqlite3') as db:assert not db.execute("SELECT 1 FROM users WHERE id='new_owner'").fetchone()
+    finally:
+        restored=session.service_code('''import json,sys
+from pathlib import Path
+from jobs import JobStore
+from lab_client import read_json
+s=Path(sys.argv[1]);j=JobStore(s,read_json(s/'config.json'));old=read_json(s/'capacity-original-domain.json');current=j.resources.get(old['physical_id'])
+j.resources.configure(old['physical_id'],old['policy'],current['revision'])
+assert j.resources.get(old['physical_id'])['policy']==old['policy']
+print(json.dumps({'original_domain_policy_restored':True}))
+''')
+    assert restored['original_domain_policy_restored']
+    atomic_json(source,spec)
     local=['--local-node',session.node_id+'='+node_prefix]
     faults=[]
 
@@ -229,6 +258,8 @@ else:raise AssertionError('First owner read second owner profile')
     return {'passed':True,'fault_chain':faults,'fault_count':len(faults),'maintenance_drain':drain_proof,'busy_identity_admission':busy_admission,'initial_abort_before_identity_has_no_user_row':True,
         'duplicate_gid_and_mapped_uid_refused_before_stage_or_journal':True,
         'automatic_probe_on_cpu_only_node_refused_before_stage':True,
+        'minimum_cpu_capacity_refused_before_journal_and_identity':True,
+        'capacity_probe_original_domain_policy_restored':True,
         'installed_wait_expiry_preserves_pending_and_single_call_cpu_completion':True,
         'changed_completed_request_refused':True,'central_staged_gid_lifecycle_node_and_delivery_coordinated':True,
         'single_live_controller_pid_preserved_after_start':True,'maintenance_submit_refused':True,**old_checked,

@@ -338,6 +338,16 @@ class NodeRegistry:
 
     def controller_uid(self):return os.geteuid()
 
+    def probe_submission(self,job,principal,db):
+        if job.get('template') not in {'environment_probe','npu_access_probe'}:return
+        node=self.node(job['parameters']['node_id'],db);profile=node['profile']
+        if principal.id not in profile['users']:raise JobError('Selected fixed-probe Node does not map this owner',403)
+        if job['template'] not in profile['templates']:raise JobError('Selected Node must explicitly authorize this fixed probe',403)
+        if job['template']=='npu_access_probe' and job['parameters']['device_id'] not in profile.get('npu',{}).get('device_ids',[]):
+            raise JobError('Selected device is outside this Node fixed-probe contract',403)
+        from resources import require_managed_capacity
+        require_managed_capacity(profile,self.jobs.resources.get(profile['physical_id'],db),job['resources']['memory_mib'])
+
     def placement(self,job,node,domain,active,db=None,identities=None):
         profile=node['profile'];node_id=node['id']
         reason=self.jobs.dispatch_permission(job,active,db,identities) or self.jobs.dependencies.reason(job)

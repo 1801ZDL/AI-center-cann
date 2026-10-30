@@ -1,15 +1,15 @@
 {
   "schema": "ai-center-cann-source-check/v1",
-  "recorded_at": "2026-10-30T21:31:55.710546+00:00",
+  "recorded_at": "2026-10-30T21:48:42.362919+00:00",
   "passed": true,
-  "python_unit_tests": 739,
+  "python_unit_tests": 757,
   "unit_skipped": 0,
-  "unit_seconds": 119.284,
-  "unit_log_sha256": "39d5e690a23204017172ee00d14275cf5f76237183bacbe0f4e2f67e56962813",
+  "unit_seconds": 125.228,
+  "unit_log_sha256": "74739f104105781569350023872474ea5e8b3daa23c40db2c8d840a7e85a965a",
   "python": "Python 3.12.3",
   "javascript_syntax_passed": true,
   "command": "bash scripts/check.sh /usr/bin/python3",
-  "scope": "Final full bounded local739 checks with24 qualification compatibility protocols;77 non-document production sources match final same-host Root package. Device compatibility positives are synthetic trusted observations; actual Root is CPU/IR plus empty audit CLI, not hardware qualification carry.",
+  "scope": "Final757 bounded local checks include18 static probe admission checks;77 non-document production sources match final Root package. Actual same-host Root CPU minimum-capacity refusal plus previous recovery/IR flows accepted; real NPU computation, actual PID1 and two physical hosts remain unaccepted.",
   "production_source_sha256": {
     "auth.py": "ec1f1ead3824d5e7bdeed7bfdd8a4464a3c2e0cd0e7ffa3eac8f0832c54fc047",
     "owner_identity.py": "5a48cf78584b2f717ac45594a73da569589cde6d9441037a0aedffe423f1515b",
@@ -17,9 +17,9 @@
     "qualification_compatibility.py": "0a68729c7de707cc63b5e1b66c879cba7cf196878eb959e1aff2f65e7388897b",
     "owner_node_grant.py": "f04ca3ef5a886d9dc13ce09524673a97109591de197c0d95bd8c60b62d25d018",
     "node_owner_provision.py": "3d863b8852e2d34901622323d2810a4233887a9e877e97eb6d00b7c8d08a6b19",
-    "owner_provision.py": "8e04bc76123977a43d35e40e504cf62b2697565194fa392cc36cfe93a76e9d38",
+    "owner_provision.py": "29c9a60423c5f2373e2202a541f4cad26cab4cc72053e77f29cfc4865b754092",
     "owner_maintenance_drain.py": "17b84d6d43ce09e3f94d639e62be0d91d53a02d79f06bb5678fe945c2eed52a9",
-    "owner_device_probe.py": "bdd514b1b3d226a7c8eb2d93d3703689397495fb50ea7b5ce93a05496d588fec",
+    "owner_device_probe.py": "8fa7a6523db8a54e13837d0002ca0a36db28b3453e6baf3d63465f4fb123b4b0",
     "owner_probe_adoption.py": "36118d5761f3c1f7e3e132c657b7ae928ed6a53e74394a8a0a81ebf835d81e0b",
     "node_owner_ack.py": "18a3457115a0380080772dcea802502037b11dfc2900be72891690d822a4404f",
     "owner_activation.py": "69a46be30a6ee14bf64ade4b3ad953b9e5b664a9dfc39459805b818edec3f1af",
@@ -42,11 +42,11 @@
     "npu_admission.py": "c6d39a24b5f4acde33041864e07642f9c1d72d70bb17ce6ef862d7dbda698f1e",
     "npu_device.py": "97cc78f229163dae267a7ed351fce92b3fc0bbeb781d70d758cedef3d30ea47e",
     "inputs.py": "ce565e9c7f4dbf603d8eb8274877238eeaa1074954d109e55ab2b267c69dc5d4",
-    "jobs.py": "a69b7605d61cf5a5f79043c7dd9c72e1421cd03771b4b816a62ec273d5636688",
+    "jobs.py": "1b468a308a411451100c00b2ba027be27f07b39fe2debc83e4315d2143637ee2",
     "lab_client.py": "4fc2f9a95d7e0bdee0f628b8237e4a3935d19bfcde7bfba85ce95854c0429527",
     "client_archive.py": "eec04a9574e8a87d90dc54c556d4bfe6462dfb92f0332bdc6996ad64e7121c97",
     "archive_api.py": "3e9f6539e3760cb4d68b2f85a8f01b751441e3d79b70675aac1f45e90a527e57",
-    "nodes.py": "5b7ed25833f7f15f9762b4f0f655c445b3864b87b5813df5e92be63b03aaeba0",
+    "nodes.py": "22c133f01e782d4dd75d4bf9c60d05b53618dea3414e6f9b90e3d514dac1f4f2",
     "server.py": "3cd4e283e91bb6d152ef17f43f9d90cc076afc9e807f4be400fdeb14192b0134",
     "templates.py": "6ada33ac5851c5ef28a3e7b5f34206962c87c469c6054f10e8d33c68a623d3ba",
     "worker.py": "15857213c15299cd3685895a09b3c17faa756eb62b01b22cbbf25a2564ba7536",
@@ -54,7 +54,7 @@
     "workflow_spec.py": "3c1403328db9e4a3ab228056559250127fd3ff985fe009f1f4646045257dfb6a",
     "workflow_results.py": "4af089654e6867b3609e7719ec392c7792977ccb79d8d09f1af3ac58fff22377",
     "state_lock.py": "bbad124c6c10376d51e94e49a3a440722bdc8b7999e3396bb6488b973963467a",
-    "resources.py": "21ac4f5ebd09d1c7fcfc92d3b15ff2c4e0942138d0eab76fd238cfdf49a1f3dc",
+    "resources.py": "c480d97bfac202e36350f15ef9474a08a8e483ffbfb5c78113a7c62676f6e12e",
     "queue_policy.py": "c59b12a3c123c335dc410a99e38733806c6b2f163920b01e727ceb72ae6f32df",
     "docker_runtime.py": "3f57cb1a347ecf036279899b259a94a4de64cd00666f2c698c67cde8ebbe751c",
     "listener.py": "3bf6371e47ae761e87d19570f39f989d2622b2b62b6c64bdfc01cb06ea44a99f",
@@ -5221,6 +5221,633 @@
       "Preflight explicit staged probe memory against Node and physical-domain runnable envelope before stage, including128MiB overhead; do not confuse temporary occupancy with impossibility.",
       "Actual device-access qualification carry plus ACL/numerics/performance/simulation need hardware acceptance.",
       "Actual PID1, real host accounts, two physical hosts, fencing/remote delivery, generalized resource changes and control-disk hard bounds remain unaccepted."
+    ]
+  },
+  "prior_qualification_compatibility_full_check": {
+    "python_unit_tests": 739,
+    "unit_seconds": 119.284,
+    "unit_log_sha256": "39d5e690a23204017172ee00d14275cf5f76237183bacbe0f4e2f67e56962813",
+    "production_source_sha256": {
+      "auth.py": "ec1f1ead3824d5e7bdeed7bfdd8a4464a3c2e0cd0e7ffa3eac8f0832c54fc047",
+      "owner_identity.py": "5a48cf78584b2f717ac45594a73da569589cde6d9441037a0aedffe423f1515b",
+      "owner_handoff.py": "e6f8691104c02dc7ab2dc2ae0fb63017c95f033c03ecb56e71bd3e88a8909183",
+      "qualification_compatibility.py": "0a68729c7de707cc63b5e1b66c879cba7cf196878eb959e1aff2f65e7388897b",
+      "owner_node_grant.py": "f04ca3ef5a886d9dc13ce09524673a97109591de197c0d95bd8c60b62d25d018",
+      "node_owner_provision.py": "3d863b8852e2d34901622323d2810a4233887a9e877e97eb6d00b7c8d08a6b19",
+      "owner_provision.py": "8e04bc76123977a43d35e40e504cf62b2697565194fa392cc36cfe93a76e9d38",
+      "owner_maintenance_drain.py": "17b84d6d43ce09e3f94d639e62be0d91d53a02d79f06bb5678fe945c2eed52a9",
+      "owner_device_probe.py": "bdd514b1b3d226a7c8eb2d93d3703689397495fb50ea7b5ce93a05496d588fec",
+      "owner_probe_adoption.py": "36118d5761f3c1f7e3e132c657b7ae928ed6a53e74394a8a0a81ebf835d81e0b",
+      "node_owner_ack.py": "18a3457115a0380080772dcea802502037b11dfc2900be72891690d822a4404f",
+      "owner_activation.py": "69a46be30a6ee14bf64ade4b3ad953b9e5b664a9dfc39459805b818edec3f1af",
+      "owner_activation_abort.py": "7a180ab782dfd6e7b0279649c6e6fc453fbc642875ace140681deab5c2e3a4dd",
+      "owner_delivery.py": "43f5c1d2a7386574830321c8d419e5ce37691fe8024fa7f4ec68745c647fcdf7",
+      "owner_finish.py": "ead0d57b4c8e33a6a79bb505d9b67fdcabedba544148c117fdf5dd39cf30bf04",
+      "unit_refresh.py": "d88422e74cdd6d01be12954e570ecaa7e9bc9a54893ef163bbf86ef8a6f285bf",
+      "unit_manager.py": "190effd3310d96c170d90cd92fec3559f80e0929a758f48e4b0a4a7e12637170",
+      "unit_start.py": "f850d1c17859e5f56e73d8fda681ac13748a9dfea0a4237467fccd483986cb96",
+      "backends.py": "ad71569a0d69590e4d4eaafb43c65b62ceefa7a2cdf8bbf79754e4c7005d929e",
+      "collector.py": "d2ebaa14f4dbca07c368a5c483cf7ccb608d8bbc7fbb2ea3996c72f30e183071",
+      "container_engine.py": "12887405ee02072feebff5fae506adf3bb31b883e2b96070c6cc525ea5146008",
+      "container_entry.py": "19b20fd495cd88c68a22dc897afa6c470ec3562b20c5fccaebe6bc6742215a9a",
+      "artifact_export.py": "7206a6895fab6315160cd553a768cca4e3454e733bca185c91cfbca6a4f6cf4b",
+      "environment_probe.py": "0b0e21c1e05b8be5d436718283255e6c88bf447304cc3aa6dd62e37811fbd007",
+      "environment_contract.py": "45789813c6922b41724f695158deda79ccfdfb865ef3d58251e9b1472206a4c8",
+      "device_qualification.py": "227381a9a9a7a28396dedf1a62f630cdbb41c1c2fcb0196610ff66dbd37f7809",
+      "attempt_inventory.py": "f968f45e14853c2a810bbc33a921b1c8e40b7e553065233c7eb74e05134f0a2c",
+      "executor.py": "42cdad27b62cf936263ee8cc41d11ea75260120a4e90a7b4213df5ad82fb677b",
+      "npu_admission.py": "c6d39a24b5f4acde33041864e07642f9c1d72d70bb17ce6ef862d7dbda698f1e",
+      "npu_device.py": "97cc78f229163dae267a7ed351fce92b3fc0bbeb781d70d758cedef3d30ea47e",
+      "inputs.py": "ce565e9c7f4dbf603d8eb8274877238eeaa1074954d109e55ab2b267c69dc5d4",
+      "jobs.py": "a69b7605d61cf5a5f79043c7dd9c72e1421cd03771b4b816a62ec273d5636688",
+      "lab_client.py": "4fc2f9a95d7e0bdee0f628b8237e4a3935d19bfcde7bfba85ce95854c0429527",
+      "client_archive.py": "eec04a9574e8a87d90dc54c556d4bfe6462dfb92f0332bdc6996ad64e7121c97",
+      "archive_api.py": "3e9f6539e3760cb4d68b2f85a8f01b751441e3d79b70675aac1f45e90a527e57",
+      "nodes.py": "5b7ed25833f7f15f9762b4f0f655c445b3864b87b5813df5e92be63b03aaeba0",
+      "server.py": "3cd4e283e91bb6d152ef17f43f9d90cc076afc9e807f4be400fdeb14192b0134",
+      "templates.py": "6ada33ac5851c5ef28a3e7b5f34206962c87c469c6054f10e8d33c68a623d3ba",
+      "worker.py": "15857213c15299cd3685895a09b3c17faa756eb62b01b22cbbf25a2564ba7536",
+      "workflow_runner.py": "239bbcb5eca6414d85f7172808a710896d9743660289039626e54672088078f7",
+      "workflow_spec.py": "3c1403328db9e4a3ab228056559250127fd3ff985fe009f1f4646045257dfb6a",
+      "workflow_results.py": "4af089654e6867b3609e7719ec392c7792977ccb79d8d09f1af3ac58fff22377",
+      "state_lock.py": "bbad124c6c10376d51e94e49a3a440722bdc8b7999e3396bb6488b973963467a",
+      "resources.py": "21ac4f5ebd09d1c7fcfc92d3b15ff2c4e0942138d0eab76fd238cfdf49a1f3dc",
+      "queue_policy.py": "c59b12a3c123c335dc410a99e38733806c6b2f163920b01e727ceb72ae6f32df",
+      "docker_runtime.py": "3f57cb1a347ecf036279899b259a94a4de64cd00666f2c698c67cde8ebbe751c",
+      "listener.py": "3bf6371e47ae761e87d19570f39f989d2622b2b62b6c64bdfc01cb06ea44a99f",
+      "preflight.py": "c4437bc8954c66f15749c3c26f24e62679c2092ab63aebdacea317956c5864a6",
+      "workspace_slots.py": "1dfd1dafaf787ef955c78aef686198686d5799306a65ec0d24453aef3e73260c",
+      "filesystem_quota.py": "f298cd3dacacfa9d344ee1e040feb30b5cf51adb009802abde2db69ddb662d53",
+      "quota_workspace.py": "f836673c97ed36d3f0a3c8589860b004fd22058f0fedb305f9afcf0571cbb287",
+      "workspace_quota_admin.py": "7dea3194c837d9ba34ec48d679a9044e8919bf00fc253af0050d5c3d652b31dd",
+      "node_owner_admin.py": "4ecec3e030131b47b74ced9c6aa36e0a7f2fa3091be24838f42f7a4871f5b324",
+      "group_quota.py": "3137ba8af5c5803fab0a2e4f547063ee883fc5fae3aa3349767585f4a61429d4",
+      "payload_groups.py": "6377b078e9f1032a2e33862ba2995c3b94992a731a68a42044a57c6ac77e54d8",
+      "payload_quota_admin.py": "b93541ebd312cc8e195cb5e6065dfe40d969a5166df6b7270b4dea9b3146cbf0",
+      "payload_owner_admin.py": "f34f7dc3d761a425d8ea42d343f4c14f34c9b9304593803c4bcc7cfe52134b07",
+      "io_policy.py": "4e265b10e40fcfece83edc5a2d3ec9db08d22bce60b9825feea821570eaeafec",
+      "storage_io.py": "99152ca78d5f1cd32b682121cb86f6c6786c54c1aee81664cd6a45073cfedd37",
+      "payload_storage.py": "4091fd672211d19a51918064ec2eb3bea5c089d07f426379c361a827611512f0",
+      "storage_budget.py": "212df634fbb6e5b978ec874b967e04a83356723e5e502cb60101592899186dd1",
+      "storage_files.py": "c2dfe4aec3a4dec6bf8802655eb9e72a414e307d5eb6f4725da99f0484642ebf",
+      "storage_lifecycle.py": "cc5778edf04bf1118ac940f6954cc488ae7ceedbee373568af87c6add3cde098",
+      "node_storage.py": "185bdeb757c0644cf6319460d74ea15061cf6329b4707354696f8e156a16370c",
+      "deployment.py": "1a96d1bd66fb21a7b982a598128aaa6795406d1331462f4f5705cf7981e2512f",
+      "maintenance.py": "34ef088ed1122ba0f0c8491acd96d0336c8863c4d6a5e5437d4911714a6e0a24",
+      "servicectl": "9a5e9fb910b3edbcf0c3eee6be9a42c57809f975ffe7e92a049d9933ba221e1a",
+      "accessctl": "c0d0a86c7a027036e202aff0795eae0001beec676c393d13e73a763d685ccdc9",
+      "workerctl": "e7edf6c4104c825e90243c333d49126484521e46149c2c3bfb5046b5b1a19195",
+      "spool_storage.py": "c8a579146e0b24077ebf504050dd5344505f8023f6e33be1c1cb6e9ff312fea4",
+      "spool_transfer.py": "885bc83a4b4cbc7d4a81c2ab1efd1df1c84b986166911f0e642bc3b214f2dd7b",
+      "persistent_cache.py": "d70d394a48ae2068fe25a0a075d0882b1361ff6dda6b2d7ca3717d7fac35bd0b",
+      "dependencies.py": "222c432de7e6c2b14f85e677a68247d1b3d8269a89090845963f2249fd586cc3",
+      "labctl": "499152912cb90803f8ed3bb1eaf21c76dfd9406d3c2b8acbabb08170ef541af3",
+      "install-client": "e9ea6b75847c8157ddd016add9760ac3d0fa391dac4815fdb1015e0fd35062a3",
+      "mcp_bridge.py": "cac3f84a2e1cf6668352c7e41bb495e1be74c83bba6d80fe2ab7eb73e97a0be1",
+      "diagnostic_case.py": "cca7edb7c45e2942748fbd3e333968dabfb5e7a4857a064d4b96aca6e913dedc"
+    }
+  },
+  "probe_capacity": {
+    "passed": true,
+    "unit_job": "job-0c2873c72a86",
+    "unit_tests": 757,
+    "unit_seconds": 125.228,
+    "focused_job": "job-57d111334f59",
+    "focused_tests": 18,
+    "focused_seconds": 2.151,
+    "tests_in_final_full_run": [
+      "test_admission_race_creates_no_job_and_retains_only_the_original_authorization",
+      "test_busy_but_capable_target_still_authorizes_one_queued_probe",
+      "test_cpu_onboarding_minimum_also_includes_managed_overhead",
+      "test_environment_probe_uses_the_same_static_managed_envelope",
+      "test_exact_node_boundary_includes_managed_overhead",
+      "test_fixed_probe_needs_a_cpu_in_the_current_node_domain_intersection",
+      "test_impossible_staged_memory_is_rejected_before_authorization_or_job",
+      "test_onboarding_checks_physical_domain_and_cpu_capacity_from_one_snapshot",
+      "test_onboarding_checks_selected_memory_before_any_stage_or_journal",
+      "test_ordinary_device_probe_rejects_impossible_memory_without_reserving_archive",
+      "test_ordinary_idempotent_replay_observes_original_job_after_capacity_shrink",
+      "test_ordinary_probe_cannot_wait_forever_for_an_unknown_node",
+      "test_ordinary_probe_requires_an_explicit_target_owner_mapping",
+      "test_physical_domain_limit_is_checked_even_when_node_envelope_is_larger",
+      "test_preflight_does_not_reject_a_static_envelope_just_because_it_is_draining",
+      "test_pure_static_check_has_exact_boundary_and_rejects_invalid_memory",
+      "test_staged_historical_operation_keeps_its_original_job_after_capacity_shrink",
+      "test_target_template_and_device_must_already_be_registered"
+    ],
+    "root_parent_job": "job-3f881608a2f5",
+    "root_release": "d506a0a5ebe65562097f9d5ea233ec27ddd74845a4f7ded48d7b166ec4fec142",
+    "production_source_files": 77,
+    "root_result": {
+      "passed": true,
+      "fault_chain": [
+        {
+          "component": "master",
+          "boundary": "journal",
+          "sigkill_observed": true
+        },
+        {
+          "component": "master",
+          "boundary": "held",
+          "sigkill_observed": true
+        },
+        {
+          "component": "master",
+          "boundary": "stopped",
+          "sigkill_observed": true
+        },
+        {
+          "component": "master",
+          "boundary": "journal",
+          "sigkill_observed": true
+        },
+        {
+          "component": "master",
+          "boundary": "held",
+          "sigkill_observed": true
+        },
+        {
+          "component": "master",
+          "boundary": "drained",
+          "sigkill_observed": true
+        },
+        {
+          "component": "master",
+          "boundary": "maintenance",
+          "sigkill_observed": true
+        },
+        {
+          "component": "master",
+          "boundary": "local_drained",
+          "sigkill_observed": true
+        },
+        {
+          "component": "master",
+          "boundary": "stopped",
+          "sigkill_observed": true
+        },
+        {
+          "component": "master",
+          "boundary": "stage_intent",
+          "sigkill_observed": true
+        },
+        {
+          "component": "master",
+          "boundary": "staged",
+          "sigkill_observed": true
+        },
+        {
+          "component": "master",
+          "boundary": "storage_plan",
+          "sigkill_observed": true
+        },
+        {
+          "component": "storage",
+          "boundary": "journal",
+          "sigkill_observed": true
+        },
+        {
+          "component": "storage",
+          "boundary": "quota",
+          "sigkill_observed": true
+        },
+        {
+          "component": "storage",
+          "boundary": "config",
+          "sigkill_observed": true
+        },
+        {
+          "component": "storage",
+          "boundary": "metadata",
+          "sigkill_observed": true
+        },
+        {
+          "component": "storage",
+          "boundary": "binding",
+          "sigkill_observed": true
+        },
+        {
+          "component": "storage",
+          "boundary": "receipt",
+          "sigkill_observed": true
+        },
+        {
+          "component": "storage",
+          "boundary": "published",
+          "sigkill_observed": true
+        },
+        {
+          "component": "master",
+          "boundary": "storage_applied",
+          "sigkill_observed": true
+        },
+        {
+          "component": "master",
+          "boundary": "storage_saved",
+          "sigkill_observed": true
+        },
+        {
+          "component": "master",
+          "boundary": "service_allowed",
+          "sigkill_observed": true
+        },
+        {
+          "component": "master",
+          "boundary": "service_response",
+          "sigkill_observed": true
+        },
+        {
+          "component": "master",
+          "boundary": "service_ready",
+          "sigkill_observed": true
+        },
+        {
+          "component": "master",
+          "boundary": "packets",
+          "sigkill_observed": true
+        },
+        {
+          "component": "master",
+          "boundary": "proposal",
+          "sigkill_observed": true
+        },
+        {
+          "component": "master",
+          "boundary": "approval",
+          "sigkill_observed": true
+        },
+        {
+          "component": "master",
+          "boundary": "approved",
+          "sigkill_observed": true
+        },
+        {
+          "component": "master",
+          "boundary": "local_node",
+          "sigkill_observed": true
+        },
+        {
+          "component": "master",
+          "boundary": "finish_intent",
+          "sigkill_observed": true
+        },
+        {
+          "component": "finish",
+          "boundary": "journal",
+          "sigkill_observed": true
+        },
+        {
+          "component": "finish",
+          "boundary": "activation",
+          "sigkill_observed": true
+        },
+        {
+          "component": "master",
+          "boundary": "service_recovered",
+          "sigkill_observed": true
+        },
+        {
+          "component": "finish",
+          "boundary": "planned",
+          "sigkill_observed": true
+        },
+        {
+          "component": "delivery",
+          "boundary": "journal",
+          "sigkill_observed": true
+        },
+        {
+          "component": "delivery",
+          "boundary": "directory",
+          "sigkill_observed": true
+        },
+        {
+          "component": "delivery",
+          "boundary": "files",
+          "sigkill_observed": true
+        },
+        {
+          "component": "delivery",
+          "boundary": "renamed",
+          "sigkill_observed": true
+        },
+        {
+          "component": "delivery",
+          "boundary": "handoff",
+          "sigkill_observed": true
+        },
+        {
+          "component": "delivery",
+          "boundary": "ownership",
+          "sigkill_observed": true
+        },
+        {
+          "component": "delivery",
+          "boundary": "receipt",
+          "sigkill_observed": true
+        },
+        {
+          "component": "delivery",
+          "boundary": "published",
+          "sigkill_observed": true
+        },
+        {
+          "component": "finish",
+          "boundary": "delivered",
+          "sigkill_observed": true
+        },
+        {
+          "component": "finish",
+          "boundary": "receipt",
+          "sigkill_observed": true
+        },
+        {
+          "component": "finish",
+          "boundary": "published",
+          "sigkill_observed": true
+        },
+        {
+          "component": "master",
+          "boundary": "finished",
+          "sigkill_observed": true
+        },
+        {
+          "component": "master",
+          "boundary": "receipt",
+          "sigkill_observed": true
+        },
+        {
+          "component": "master",
+          "boundary": "gate_removed",
+          "sigkill_observed": true
+        },
+        {
+          "component": "master",
+          "boundary": "published",
+          "sigkill_observed": true
+        }
+      ],
+      "fault_count": 49,
+      "maintenance_drain": {
+        "busy_abort_job": "job-134ce0d1fc7c",
+        "busy_abort_preserved_running_job_single_attempt": true,
+        "abort_after_local_and_controller_stop_restored_processes": true,
+        "completed_drain_job": "job-625f9cb13d00",
+        "existing_real_ir_drained_single_attempt": true,
+        "original_local_node_stopped_only_after_job_cleanup": true,
+        "draining_submit_rejected": true
+      },
+      "busy_identity_admission": {
+        "old_owner_job": {
+          "job_id": "job-c572b2f4be3f",
+          "state": "succeeded",
+          "attempt_id": "attempt-2d797295741942cc95c140f239eccb60",
+          "attempts": 1,
+          "allocation": {
+            "cpu_ids": [
+              254
+            ],
+            "memory_mib": 256,
+            "execution_overhead_mib": 128,
+            "shm_mib": 0,
+            "npu_ids": [],
+            "workspace": {
+              "slot_id": "slot-9b79ed9e1abf",
+              "storage_id": "1796b5730e1a45a1acf572736afa8bd6",
+              "bytes": 16777216,
+              "inodes": 128,
+              "durable": true,
+              "provider": "uid-quota-v1"
+            }
+          },
+          "started_at": "2026-10-30T21:44:14.391119+00:00",
+          "finished_at": "2026-10-30T21:44:46.417183+00:00"
+        },
+        "new_owner_job": {
+          "job_id": "job-52b820277bf3",
+          "state": "succeeded",
+          "attempt_id": "attempt-7c77c590273540a49d0efbba9c4dc79b",
+          "attempts": 1,
+          "allocation": {
+            "cpu_ids": [
+              254
+            ],
+            "memory_mib": 256,
+            "execution_overhead_mib": 128,
+            "shm_mib": 0,
+            "npu_ids": [],
+            "workspace": {
+              "slot_id": "slot-aa3b79688ee4",
+              "storage_id": "669bc99eaa6642a4bd182049a8f66f16",
+              "bytes": 16777216,
+              "inodes": 128,
+              "durable": true,
+              "provider": "uid-quota-v1"
+            }
+          },
+          "started_at": "2026-10-30T21:44:47.165523+00:00",
+          "finished_at": "2026-10-30T21:44:48.647852+00:00"
+        },
+        "personal_uid": 23802,
+        "task_uids": [
+          23801,
+          23802
+        ],
+        "activated_and_delivered_while_old_owner_running": true,
+        "new_personal_ir_queued_while_node_full": true,
+        "old_allocation_and_attempt_preserved": true,
+        "single_slot_reused_after_terminal_cleanup": true,
+        "both_actual_ir_tasks_succeeded_once": true,
+        "npu_kernel_launches": 0
+      },
+      "initial_abort_before_identity_has_no_user_row": true,
+      "duplicate_gid_and_mapped_uid_refused_before_stage_or_journal": true,
+      "automatic_probe_on_cpu_only_node_refused_before_stage": true,
+      "minimum_cpu_capacity_refused_before_journal_and_identity": true,
+      "capacity_probe_original_domain_policy_restored": true,
+      "installed_wait_expiry_preserves_pending_and_single_call_cpu_completion": true,
+      "changed_completed_request_refused": true,
+      "central_staged_gid_lifecycle_node_and_delivery_coordinated": true,
+      "single_live_controller_pid_preserved_after_start": true,
+      "maintenance_submit_refused": true,
+      "old_owner_real_ir_succeeded_while_waiting": true,
+      "controller_restart_while_waiting_nodes_and_credential_delivery": true,
+      "wrong_node_and_controller_packets_refused_before_native_effects": true,
+      "source_stage_disabled_until_final_activation": true,
+      "installed_staged_device_probe_cli_rejects_cpu_quota_without_credentials": true,
+      "ordinary_device_probe_rejects_disabled_owner_without_admin_fallback": true,
+      "installed_qualification_compatibility_audit_cpu_empty_history": true,
+      "installed_node_packet_cli_prepared_original_proposal": true,
+      "second_fresh_owner_single_installed_cli_call_delivered": true,
+      "second_owner_personal_auth_verified": true,
+      "peer_private_profile_denied": true,
+      "old_mapping_environment_and_warm_cache_inode_sha_preserved": true,
+      "manual_credential_copy_used": false,
+      "personal_delivered_profile_actual_second_node_ir": {
+        "passed": true,
+        "existing_credential_count": 1,
+        "new_credentials_issued": 0,
+        "old_node_profile_and_cache_preserved": true,
+        "personal_profile_unchanged": true,
+        "classic_stage_approval_refused_active_owner": true,
+        "native_uid_work_cache_appended": true,
+        "authority_changed_then_restored_refused_before_ack": true,
+        "authority_changed_before_first_heartbeat_refused": true,
+        "explicit_same_plan_reauthorizations": 2,
+        "node_binding_fault_chain": [
+          {
+            "boundary": "journal",
+            "sigkill_observed": true,
+            "same_plan_used": true
+          },
+          {
+            "boundary": "cache_control",
+            "sigkill_observed": true,
+            "same_plan_used": true
+          },
+          {
+            "boundary": "cache_marker",
+            "sigkill_observed": true,
+            "same_plan_used": true
+          },
+          {
+            "boundary": "new_control",
+            "sigkill_observed": true,
+            "same_plan_used": true
+          },
+          {
+            "boundary": "new_marker",
+            "sigkill_observed": true,
+            "same_plan_used": true
+          },
+          {
+            "boundary": "config",
+            "sigkill_observed": true,
+            "same_plan_used": true
+          },
+          {
+            "boundary": "metadata",
+            "sigkill_observed": true,
+            "same_plan_used": true
+          },
+          {
+            "boundary": "receipt",
+            "sigkill_observed": true,
+            "same_plan_used": true
+          },
+          {
+            "boundary": "handoff",
+            "sigkill_observed": true,
+            "same_plan_used": true
+          },
+          {
+            "boundary": "published",
+            "sigkill_observed": true,
+            "same_plan_used": true
+          }
+        ],
+        "ack_fault_chain": [
+          {
+            "boundary": "intent",
+            "sigkill_observed": true,
+            "same_ack_replayed": true
+          },
+          {
+            "boundary": "commit_response",
+            "sigkill_observed": true,
+            "same_ack_replayed": true
+          },
+          {
+            "boundary": "committed",
+            "sigkill_observed": true,
+            "same_ack_replayed": true
+          },
+          {
+            "boundary": "config_ready",
+            "sigkill_observed": true,
+            "same_ack_replayed": true
+          },
+          {
+            "boundary": "ready_response",
+            "sigkill_observed": true,
+            "same_ack_replayed": true
+          },
+          {
+            "boundary": "ready_saved",
+            "sigkill_observed": true,
+            "same_ack_replayed": true
+          },
+          {
+            "boundary": "receipt",
+            "sigkill_observed": true,
+            "same_ack_replayed": true
+          },
+          {
+            "boundary": "awaiting_removed",
+            "sigkill_observed": true,
+            "same_ack_replayed": true
+          },
+          {
+            "boundary": "published",
+            "sigkill_observed": true,
+            "same_ack_replayed": true
+          }
+        ],
+        "actual_cpu_ir": {
+          "job_id": "job-8a1b96ddb464",
+          "state": "succeeded",
+          "attempts": 1,
+          "ir_sha256": "90891b1316f1310b85eb0300ffd001f2d80ffd5cdefb695cda0544f457dba737",
+          "personal_profile_sha256": "c7c32cd27fd6d64d7c7b0f810dd91cf76a074372382b4ed1bd3474f37da9d931",
+          "task_uid": 23812
+        },
+        "personal_uid": 23802,
+        "node2_task_uid": 23812,
+        "systemd_pid1_tested": false,
+        "scope": "Two installed Nodes inside one owned Root role on one physical host; no NPU, real host accounts, remote HOME or second physical server."
+      },
+      "later_disabled_historical_replay_does_not_revive": true,
+      "service_mode": "process",
+      "systemd_pid1_tested": false,
+      "physical_hosts_tested": 1,
+      "remote_root_transport": false,
+      "scope": "Owned same-host Root controller coordinator plus installed local Node participant; real non-root service, native GID/UID quotas, authenticated ACK/heartbeat and automatic final personal delivery. Separate-host packet transport and actual PID1 remain untested."
+    },
+    "independent_host_original_domain_policy_restored": true,
+    "actual_root_domain_minimum_mib": 256,
+    "protected_runtime_unchanged": true,
+    "main_config_budgets_and19_node_profiles_preserved": true,
+    "existing_nodes_upgraded": false,
+    "inventory_waiver": false,
+    "npu_kernel_launches": 0,
+    "model_invocations": 0,
+    "actual_pid1_accepted": false,
+    "physical_hosts_tested": 1,
+    "raw_evidence_public": false,
+    "cleanup_confirmed": true,
+    "backing_files_retained": true,
+    "coverage_limits": [
+      "Static declared CPU/memory feasibility for the current target, including128MiB overhead; not a guarantee of future configuration, health, timeout, storage or runtime success.",
+      "Staged NPU probe tests use synthetic trusted observations; actual Root validates CPU budget rejection before journal/identity and existing actual CPU IR/recovery flows.",
+      "One physical host and owned isolated numeric task UIDs; no host accounts, actual PID1, two physical hosts or NPU compute.",
+      "Root /opt histories and /personal were role tmpfs. Host independently inspected persisted central metadata, not current native quotas."
+    ],
+    "failures_retained": [
+      {
+        "job_id": "job-8d5cd54ed6d5",
+        "reason": "Expected baseline reproduction:385MiB payload plus128MiB overhead was accepted for a512MiB target and could only queue forever.",
+        "stderr_sha256": "4420c0e406ec93f680c0979643ddb4feee13449d11e07937eb9cbb0c7d43ce59"
+      },
+      {
+        "job_id": "job-33550bd5188c",
+        "reason": "18-check fixture expected JobError when the registration API correctly used AccessError for an absent owner; final fixture verifies absence directly in the identity DB.",
+        "stderr_sha256": "f9405b92c53603d7a8c78fd1efa92b6770fcc35897016d9ca681d952dc2d513e"
+      }
+    ],
+    "remaining": [
+      "Assess static eligible-node-set admission for ordinary untargeted workflows without rejecting temporary occupancy or heterogeneous-node scheduling.",
+      "Actual PID1, real host accounts, two physical hosts, NPU permission/ACL/numerics/performance/simulation, remote delivery/fencing, generalized resource changes and control-disk hard bounds remain unaccepted.",
+      "Domain harness/msagent capability integration and actual agent-driven diagnostic acceptance remain incomplete."
     ]
   }
 }

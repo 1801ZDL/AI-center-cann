@@ -281,16 +281,17 @@ def node_participate(prefix,value,action='prepare'):
 
 def _nodes(state,spec):
     with sqlite3.connect('file:'+str(state/'jobs.sqlite3')+'?mode=ro',uri=True) as db:
+        db.execute('BEGIN')
         result={}
         for item in spec['nodes']:
             row=db.execute('SELECT profile,disabled FROM worker_nodes WHERE id=?',(item['node_id'],)).fetchone()
             if not row or row[1]:raise DeployError('Every requested Node must already be registered and enabled')
             profile=json.loads(row[0])
+            selected=next((p for p in spec.get('device_probes',[]) if p['node_id']==item['node_id']),None)
             if spec['quota'].get('npu',0):
                 if (len(profile.get('npu',{}).get('device_ids',[]))<spec['quota']['npu']
                     or 'npu_access_probe' not in profile['templates']):
                     raise DeployError('NPU onboarding requires explicitly enrolled devices and the fixed access probe on each selected Node')
-                selected=next((p for p in spec.get('device_probes',[]) if p['node_id']==item['node_id']),None)
                 if selected and not set(selected['device_ids'])<=set(profile['npu']['device_ids']):
                     raise DeployError('Automatic probe selection contains a device outside the registered Node contract')
             if spec['owner'] in profile['users'] or any(x['uid']==item['uid'] for x in profile['users'].values()):
@@ -299,6 +300,11 @@ def _nodes(state,spec):
                 slots=profile.get(key,{}).get('slots',[])
                 if not any(s.get('filesystem')=='ext4-userquota' and str(Path(s['path']).parent)==item[role]['root'] for s in slots):
                     raise DeployError('Requested native root is not registered for that Node resource role')
+            domain=db.execute('SELECT policy FROM resource_domains WHERE physical_id=?',(profile['physical_id'],)).fetchone()
+            if not domain:raise DeployError('Every requested Node needs a registered physical resource domain')
+            from resources import require_managed_capacity
+            try:require_managed_capacity(profile,{'policy':json.loads(domain[0])},selected['memory_mib'] if selected else 256)
+            except ValueError as error:raise DeployError(str(error)) from None
             result[item['node_id']]={'physical_id':profile['physical_id'],'before_profile_sha256':sha(profile)}
         return result
 

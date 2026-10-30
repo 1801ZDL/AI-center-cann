@@ -17,6 +17,23 @@ def memory_cost(job,managed=None):
     return job['resources']['memory_mib']+(MANAGED_OVERHEAD_MIB if managed else 0)
 
 
+def require_managed_capacity(profile,domain,memory_mib=256):
+    """Static one-CPU/zero-SHM envelope; existing reservations are irrelevant.
+
+    A busy but capable target must queue normally. This checks current declared
+    ceilings, not heartbeat freshness, device health or immediate headroom.
+    """
+    if type(memory_mib) is not int or not 256<=memory_mib<=65536:
+        raise JobError('Fixed managed probe memory must be 256..65536 MiB',400)
+    policy=validate_policy(profile['policy']);pool=validate_policy(domain['policy'])
+    required=memory_cost({'resources':{'memory_mib':memory_mib}},True)
+    if not set(policy['cpu_ids'])&set(pool['cpu_ids']):
+        raise JobError('Selected Node and physical domain have no shared CPU capacity for a fixed probe',409)
+    for name,limit in [('Node',policy['memory_mib']),('physical domain',pool['memory_mib'])]:
+        if required>limit:
+            raise JobError(f'Selected {name} memory budget {limit} MiB cannot fit {memory_mib} MiB payload + {MANAGED_OVERHEAD_MIB} MiB managed overhead = {required} MiB',409)
+
+
 def validate_policy(policy):
     if not isinstance(policy,dict) or set(policy)!=set(KEYS):raise JobError('Resource policy requires CPU, memory, SHM and slot budgets')
     cpus=policy['cpu_ids']
