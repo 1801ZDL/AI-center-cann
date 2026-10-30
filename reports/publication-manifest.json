@@ -1,6 +1,6 @@
 {
   "schema": "ai-center-cann-publication/v1",
-  "recorded_at": "2026-10-30T09:43:26.026082+00:00",
+  "recorded_at": "2026-10-30T10:09:54.489600+00:00",
   "files": {
     ".gitignore": {
       "sha256": "a6287d1d645bcba2ddfec87d1055724b00577eea69200b919302f4d46cf3680d",
@@ -63,8 +63,8 @@
       "mode": "100644"
     },
     "PROGRESS.md": {
-      "sha256": "c1004486cd4847574fe8917b7e6878c7bf00f4100c5642c8a7eb8cf2c9b4805d",
-      "bytes": 7291,
+      "sha256": "7db948aa4821c2af1efd2d7337120777ff4624596fcaf59426328ce262d4dd52",
+      "bytes": 7821,
       "mode": "100644"
     },
     "README.md": {
@@ -393,8 +393,8 @@
       "mode": "100644"
     },
     "reports/mixed-compiler-stage.json": {
-      "sha256": "1f609adbf71e4f4b92c164cd6b6167dcc57c493102f64d071a831512d1eba4a3",
-      "bytes": 3068,
+      "sha256": "b29ddbd82443edbdfc5092fcd99a3b3a84549c0fb8475b6f5fa8c87401c0dc59",
+      "bytes": 3448,
       "mode": "100644"
     },
     "reports/public-source-check.json": {
@@ -655,6 +655,11 @@
     "tests/large_mixed_compile_check.py": {
       "sha256": "e4be1f4913ee6800610afc57c4454370aa0998088137bd5cea672e43aceeb230",
       "bytes": 34630,
+      "mode": "100644"
+    },
+    "tests/large_mixed_offline_check.py": {
+      "sha256": "cb056bba8b136684f90d046d9856fc28df8d181a5a5db50f6aafe6ff8a08562d",
+      "bytes": 13065,
       "mode": "100644"
     },
     "tests/live_aging_check.py": {
@@ -1263,8 +1268,8 @@
       "mode": "100644"
     }
   },
-  "files_count": 252,
-  "total_bytes": 2466928,
+  "files_count": 253,
+  "total_bytes": 2480903,
   "known_private_values_checked": 1248,
   "private_fixture_files_considered": 962,
   "model_keys_read": false,

@@ -88,5 +88,14 @@
     "main_budget_currently_temporary": true,
     "scope": "Timestamped live original attempt; no full wheel, warm build or cleanup acceptance yet"
   },
-  "npu_query_counter_instrumented": false
+  "npu_query_counter_instrumented": false,
+  "offline_verifier_preparation": {
+    "script": "tests/large_mixed_offline_check.py",
+    "live_parent_refused_before_image_open": true,
+    "fd_metadata_and_bounded_copy_component_check": true,
+    "component_source_was_earlier_failed_fixture": true,
+    "component_work_slots_empty": 20,
+    "component_spool_empty": true,
+    "current_full_case_offline_accepted": false
+  }
 }
