@@ -70,7 +70,7 @@ class Bridge:
                     'environments': summary['environments'],
                     'session_policy': policy,
                     'session_jobs': (read_json(self.state_path) or {}).get('jobs', [])}
-        if name == 'submit_job':
+        if name in {'submit_job','preview_job'}:
             workflow=self.session.get('workflow_request')
             allowed = {'template','environment','request_key','name'}|({'seconds'} if not workflow else set())
             if set(args)-allowed or args.get('template') != (workflow['template'] if workflow else 'cpu_demo'):
@@ -84,9 +84,6 @@ class Bridge:
             key = args.get('request_key')
             if not isinstance(key, str) or not 1 <= len(key) <= 40 or any(c not in 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_' for c in key):
                 raise BridgeError('Provide a short stable request_key; reuse it after connection failures')
-            state = read_json(self.state_path)
-            prior = self.directory/'submitted-request.json'
-            previous = read_json(prior)
             body = {'name': args.get('name') or 'Agent CPU 示例 · '+self.session['run_id'][-6:],
                     'environment': environment, 'kind':'command', 'cwd': str(ROOT),
                     'argv':['python','-u','examples/cpu_task.py','--seconds',str(seconds)],
@@ -99,6 +96,11 @@ class Bridge:
             elif self.session.get('execution_mode') == 'templates':
                 body = {k:v for k,v in body.items() if k in {'name','environment','idempotency_key','origin'}}
                 body.update(template='cpu_demo',parameters={'seconds':seconds})
+            if name=='preview_job':
+                return self.api('/api/jobs/preview',body)
+            state = read_json(self.state_path)
+            prior = self.directory/'submitted-request.json'
+            previous = read_json(prior)
             if previous and body != previous:
                 raise BridgeError('One task is allowed in this session; inspect the submitted task instead')
             atomic_json(prior, body)
@@ -201,6 +203,11 @@ def tools(session=None):
         result=next(tool for tool in registered if tool['name']=='get_result')
         result['annotations']['readOnlyHint']=False
         result['description']+=' Download and verify the terminal archive into the personal directory fixed at session creation; existing different files are never overwritten.'
+    import copy
+    preview=copy.deepcopy(next(item for item in registered if item['name']=='submit_job'))
+    preview.update(name='preview_job',description='Read current placement reasons for the same fixed session task. Does not submit, reserve, archive or guarantee a start. Use the same arguments when submitting.')
+    preview['annotations'].update(readOnlyHint=True,idempotentHint=True)
+    registered.append(preview)
     return registered
 
 

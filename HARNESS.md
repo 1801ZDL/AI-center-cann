@@ -1,5 +1,8 @@
 # Harness 与领域能力接入
 
+2026-10-31：调度 MCP 增加 `preview_job`，在原固定会话范围内读取同一任务的当前可见节点和阻碍，不创建提交意图/任务/资源预留。预览与提交共享请求构造，不能借预览传任意命令、路径、输入或资源。它是 `readOnlyHint` 工具，但 harness 的其他 shell/MCP 权限仍需单独限制。当前验证为实际HTTP/CLI/MCP适配器调用与协议检查，未新增模型诊断或NPU计算验收。参见CLIENT.md与API.md。
+
+
 2026-10-30 v0.22 开发中：独立个人客户端新增 `diagnostic_case.py --profile ... --job-id ...`，提供只读、单任务绑定的 `get_diagnostic_case` MCP；完整参数与边界见 CLIENT.md。真实已失败的 Triton 最终链接任务通过 CLI/stdio 取得材料、分块哈希检查、跨用户拒绝及提交/任务覆盖拒绝。一次隔离 OpenCode/用户指定 DeepSeek 261017 配置的所有工具均禁用，仅整理已定位的 `-lz` 日志；主助手核对草稿与真实错误及新镜像预检一致。这只证明已知故障摘要流程，不证明自动发现复杂根因、修复编译器或获得 NPU/性能优化能力，msagent/msprof 仍未安装验收。
 
 个人 OpenCode 可按任务绑定一个诊断入口，例如（路径和任务 ID 需替换；不复制其他人的 profile）：

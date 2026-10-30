@@ -336,6 +336,69 @@ class JobStore:
                 'cwd': str(cwd), 'argv': argv, 'resources': {'cpu': cpu, 'memory_mib': memory, 'shm_mib': shm, 'npu': npu},
                 'timeout_seconds': timeout, 'idempotency_key': key, 'output': output}
 
+    def preview(self, request, principal=None, snapshot=None):
+        """Read placement evidence without creating a job, attempt or reservation.
+
+        This is an estimate across current controller state and Node observations,
+        not a start permit or a substitute for transactional submit/claim checks.
+        """
+        from resources import memory_cost
+        from queue_policy import protected,WAIT_REASON
+        from nodes import REQUIRED_CAPABILITIES,MULTI_SLOT,PINNED_RUNTIME,ENVIRONMENT
+        principal=principal or self.access.local
+        principal.require('jobs:submit')
+        job={**self.normalize(request,principal),'owner':principal.id}
+        wanted=job['resources'];candidates=[]
+        with self.connect() as db:
+            db.execute('PRAGMA query_only=ON')
+            db.execute('BEGIN')
+            self.nodes.probe_submission(job,principal,db)
+            rows=self.all(db);active=[item for item in rows if item['state'] in ACTIVE]
+            input_reason=None
+            if job.get('input') and self.lifecycle.record('input',job['input']['id'])['state']!='available':
+                input_reason='输入当前不可用，需恢复封存输入后再执行'
+            if job['_environment']['type']=='worker':
+                for node_id,raw,seen,report,disabled in db.execute('SELECT id,profile,last_seen,report,disabled FROM worker_nodes ORDER BY id'):
+                    profile=json.loads(raw)
+                    # Unmapped nodes and their configuration are not user-visible.
+                    if principal.id not in profile['users']:continue
+                    target=job.get('parameters',{}).get('node_id') if job.get('template') in {'environment_probe','npu_access_probe'} else None
+                    if target and target!=node_id:continue
+                    node={'id':node_id,'profile':profile,'last_seen':seen,'report':json.loads(report)}
+                    domain=self.resources.get(profile['physical_id'],db);pool=domain['policy'];policy=profile['policy']
+                    capacity=[]
+                    if wanted['cpu']>len(set(policy['cpu_ids'])&set(pool['cpu_ids'])):capacity.append('CPU 数量超过节点与物理域共同上限')
+                    if memory_cost(job,True)>min(policy['memory_mib'],pool['memory_mib']):capacity.append('内存加托管开销超过节点或物理域上限')
+                    if wanted['shm_mib']>min(policy['shm_mib'],pool['shm_mib']):capacity.append('共享内存超过节点或物理域上限')
+                    reason=input_reason;code='input_unavailable' if reason else None
+                    if disabled:reason,code='节点已停用','node_disabled'
+                    elif job.get('template') not in profile['templates']:reason,code='节点未登记此任务模板','template_unavailable'
+                    elif capacity:reason,code='；'.join(capacity),'capacity_exceeded'
+                    elif not 0<=time.time()-seen<=30:reason,code='等待新鲜节点心跳','heartbeat_unavailable'
+                    elif not REQUIRED_CAPABILITIES<=set(node['report'].get('capabilities',[])):reason,code='节点执行协议需要升级','capability_unavailable'
+                    elif policy['max_running']>1 and MULTI_SLOT not in node['report'].get('capabilities',[]):reason,code='节点尚未确认并发执行能力','capability_unavailable'
+                    elif self.nodes.handoff.pending(node_id,db):reason,code='等待节点身份交接完成','handoff_pending'
+                    elif self.policy.get('require_pinned_docker') and PINNED_RUNTIME not in node['report'].get('capabilities',[]):reason,code='节点尚未确认固定 Docker 运行时','capability_unavailable'
+                    elif self.policy.get('require_environment_contract') and (ENVIRONMENT not in node['report'].get('capabilities',[]) or not profile.get('image')):reason,code='等待节点确认不可变镜像和环境准入能力','environment_unavailable'
+                    if not reason:
+                        reason=self.nodes.placement(job,node,domain,active,db)['reason']
+                        if not reason and protected(self,rows,profile['physical_id'],db):reason=WAIT_REASON
+                        code='placement_wait' if reason else 'eligible_snapshot'
+                    candidates.append({'node_id':node_id,'status':'blocked' if reason else 'eligible_snapshot',
+                        'reason_code':code,'reason':reason,'capacity_fits':not capacity,
+                        'capacity_blockers':capacity,'heartbeat_age_seconds':max(0,round(time.time()-seen,1))})
+            else:
+                domain=self.resources.get(self.backend.physical_id,db)
+                reason=input_reason or Scheduler(self,None,None).placement(job,active,snapshot,domain)['reason']
+                if not reason and protected(self,rows,domain['physical_id'],db):reason=WAIT_REASON
+                candidates.append({'node_id':self.backend.node_id,'status':'blocked' if reason else 'eligible_snapshot',
+                    'reason_code':'placement_wait' if reason else 'eligible_snapshot','reason':reason})
+        eligible=sum(item['status']=='eligible_snapshot' for item in candidates)
+        return {'version':1,'scope':'placement','observed_at':now(),'status':'eligible_snapshot' if eligible else 'blocked' if candidates else 'no_visible_node',
+            'resources':wanted,'candidate_count':len(candidates),'eligible_count':eligible,'candidates':candidates[:128],
+            'truncated':len(candidates)>128,'reservation_created':False,'start_guaranteed':False,
+            'note':'只读预览，不入队或占用资源。容量检查仅含 CPU/内存/SHM 上限；其余原因由当前准入检查返回。提交、存储额度、排队顺序及启动时仍会重新校验；等待可以持续到新节点或新环境接入。'}
+
     @contextmanager
     def submission_transaction(self, staged=False):
         if staged:

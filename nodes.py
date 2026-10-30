@@ -353,7 +353,7 @@ class NodeRegistry:
         reason=self.jobs.dispatch_permission(job,active,db,identities) or self.jobs.dependencies.reason(job)
         identity_reason=('用户任务不能使用同机中央服务UID，需管理员重新映射'
             if profile['physical_id']==self.jobs.backend.physical_id and profile['users'][job['owner']]['uid']==self.controller_uid() else None)
-        inventory_reason=self.jobs.inventory.reason(profile['physical_id'])
+        inventory_reason=self.jobs.inventory.reason(profile['physical_id'],db)
         if job.get('template')=='npu_access_probe':
             from device_qualification import parameters
             target=parameters(job['parameters'])

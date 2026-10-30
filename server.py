@@ -319,6 +319,8 @@ def handler_class(store, config, jobs=None):
                     job, reused = jobs.submit(request, self.principal)
                     access.record(self.principal,'job.submit',job['id'],'reused' if reused else 'created')
                     return self.reply({'job': job, 'reused': reused}, status=200 if reused else 201)
+                if path == '/api/jobs/preview':
+                    return self.reply(jobs.preview(request,self.principal,store.latest()))
                 if path == '/api/jobs/validate':
                     self.principal.require('jobs:submit')
                     normalized=jobs.normalize(request,self.principal)

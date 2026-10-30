@@ -176,7 +176,10 @@ class AgentBoundaryTests(unittest.TestCase):
         replies=[json.loads(line) for line in output.getvalue().splitlines()]
         self.assertEqual([m['id'] for m in replies], [1,2,3])
         self.assertEqual(replies[0]['result']['protocolVersion'], '2025-06-18')
-        self.assertEqual(len(replies[1]['result']['tools']), 7)
+        registered=replies[1]['result']['tools']
+        self.assertEqual(len(registered), 8)
+        preview=next(item for item in registered if item['name']=='preview_job')
+        self.assertTrue(preview['annotations']['readOnlyHint'])
         self.assertTrue(replies[2]['result']['isError'])
         self.bridge.api.assert_not_called()
 

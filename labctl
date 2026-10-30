@@ -95,6 +95,7 @@ def main():
     command.add_argument('--npu', type=int, default=0)
     command.add_argument('--timeout', type=int, default=60)
     command.add_argument('--key')
+    command.add_argument('--preview', action='store_true', help='Read current placement reasons without submitting or reserving resources')
     command.add_argument('--output')
     command.add_argument('--artifact-file-mib',type=int,help='Legacy command single archived file limit; use together with --artifact-total-mib')
     command.add_argument('--artifact-total-mib',type=int,help='Legacy command output budget; managed workflows declare parameters.artifacts in JSON')
@@ -237,6 +238,11 @@ def main():
             body['idempotency_key'] = args.key
         if args.output:
             body['output'] = args.output
+        if args.preview:
+            if args.archive or args.archive_root or args.local_source:
+                p.error('Preview does not submit or archive; omit archive/local-source flags')
+            print(json.dumps(request(config,'/api/jobs/preview',body),ensure_ascii=False,indent=2))
+            return 0
         response=request(config, '/api/jobs', body)
         print(json.dumps(response, ensure_ascii=False, indent=2),flush=True)
         if args.profile:

@@ -1,5 +1,19 @@
 # 个人 CLI / Agent 接入
 
+## 提交前预览（2026-10-31）
+
+在原提交命令增加 `--preview`，读取当前可见节点及阻碍，不入队、不占用资源：
+
+```bash
+./labctl --profile /本人/private/client.json submit --preview --template cpu_demo
+./labctl --profile /本人/private/client.json submit --preview --workflow /本人/request.json
+```
+
+移除 `--preview` 后才正式提交。预览不保存个人归档提交上下文，不能与 `--archive`、`--archive-root`、`--local-source` 组合。预览退出0只表示读取成功，须查看结果 `status`；它不保证稍后立即运行，不检查正式归档预留是否成功。输入上传/封存及工作流请求仍由本人事先准备。
+
+调度 MCP 新增只读 `preview_job`，参数与本会话 `submit_job` 相同（含稳定 request_key），命令、环境、输入、资源及锁继续受固定会话约束。它不写 submitted-request、不消耗单任务名额、不修改会话已提交任务；预览后提交时沿用同一参数。当前网页尚未新增预览按钮；API/CLI/MCP 可先使用。旧服务缺接口时明确报错，不回退为真实提交。
+
+
 需要 Python 3.10+，仅使用标准库。客户端不需要中央服务的数据目录、Docker 权限或其他人的 Agent 配置。
 
 在源码目录执行一次安装；目标必须是新目录，不修改 shell、系统 Python 或已有安装：

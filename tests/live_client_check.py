@@ -60,7 +60,7 @@ try:
     checks.append('separate installation uses only personal profile and API; no controller state')
     p=bridge()
     assert rpc(p,'initialize',{'protocolVersion':'2025-06-18'})['serverInfo']['name']=='ascend-lab'
-    assert len(rpc(p,'tools/list')['tools'])==7
+    assert len(rpc(p,'tools/list')['tools'])==8
     queue=call(p,'queue_status');assert 'jobs' not in queue
     args={'template':'cpu_demo','environment':'worker-python','seconds':2,'request_key':'portable-smoke'}
     accepted=call(p,'submit_job',args);job_id=accepted['job']['id'];created.append(job_id)

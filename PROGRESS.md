@@ -1,5 +1,22 @@
 # 实施进度
 
+## 本人任务的只读可运行性预览（2026-10-31）
+
+新增POST /api/jobs/preview、labctl submit --preview、MCP preview_job。沿原normalize核对本人输入、环境、任务及资源授权，再用query_only账本读事务列本人已映射Node。静态容量仅检查Node/物理域共同CPU、负载内存+128MiB、SHM上限；当前心跳、停用、模板、并发能力、交接、Docker/环境能力门后，复用真正Node placement与现有排队保护。库存检查现在复用传入的账本连接。个人协作入口复用本地Scheduler placement及现有采样。
+
+输出eligible_snapshot/blocked/no_visible_node和每候选单个当前阻碍；不输出未映射节点、他人任务/UID/目录或候选分配。容量fits不是完整环境匹配证明，不把所有等待叫作临时忙碌。无启动保证或ETA，不创建job/attempt、归档或资源预留、保护意图，也不执行输入交接/设备探针。身份库、控制账本和Node采样不是全局原子快照；正式提交额度及启动时重新检查。普通未绑定任务可以等待未来Node/新环境，未因预览无候选而拒提交；固定目标探针保留原静态拒绝规则。旧validate接口不变，预览不代替旧幂等任务/job ID跟踪。
+
+MCP预览与提交共用同一请求构造、同一固定会话约束，模型不能改命令、输入、锁或资源；预览不写submitted-request或消耗单任务名额。CLI不记录个人归档上下文，拒与归档参数组合。网页按钮仍待。
+
+**最终778项/123.119秒/无跳过和JS语法通过；77非文档生产源码与最终Root/full/focused冻结一致。** 系统Python focused job-1fe5f13ae1fc为21/3.333秒，覆盖真实HTTP、CLI、会话MCP、授权/不可写连接、原账本/目录不变、共享物理域满载、原attempt保留、CPU交集与开销、过期/未来心跳、隐私/撤权、未来Node排队、环境认证/锁差异及固定探针拒绝。初步21/3.473秒同样通过。首轮完整job-3ce62af8e81b为778项1失败2跳过：旧MCP协议断言固定7工具，改验8及preview只读声明；默认Conda Python缺pidfd，最终用与安装器一致/usr/bin/python3，0skip。失败保留。历史live_client脚本的工具数同步为8，本轮没有重跑该旧完整脚本。
+
+Root job-e091e976bccb通过原49个SIGKILL恢复点/开户排空/并发身份交付/原CPU容量拒绝/第二Node等回归；host独立读取持久控制元数据，6个CPU IR任务均succeeded且各1attempt，原domain policy一致。七盘loop/helper/角色已清退，backing files私有保留；/opt和/personal仍角色tmpfs，不称host持有其历史或当前挂载quota。无NPU计算或新模型调用。
+
+Main在0nonterminal/有效hold时stop/start加载；原configSHA、预算、19Node profile和domain不变，旧Node未升级、库存无豁免、既有zdl不变。另在全新独立客户端目录实际运行CLI和stdio initialize/list/preview：8工具、主服务eligible_snapshot，前后job数不变、session jobs空且无submitted-request、安装目录无runtime。旧服务404时也不回退提交。最终全量job-a0c89dc367ab。完整本地evidence/placement-preview-validation.json，精选reports/public-source-check.json.placement_preview。
+
+下一步：网页入口及更全面的结构化阻碍说明、控制盘增长/保留与资源合同演进，然后领域harness真实诊断案例。真实管理员宿主用户、PID1、两物理机与断网fencing、NPU ACL/精度/性能/仿真仍待；预览和同机Root不能替代这些验收。PUBLIC-001延期，整体目标未完成。下方为历史阶段。
+
+
 ## 固定探针与开户前的静态容量准入（2026-10-31）
 
 resources.require_managed_capacity共用一CPU/零SHM的静态可运行检查：Node与物理域CPU须有交集，负载内存+128MiB托管开销须同时不超过两侧预算；不扣减当前占用，不把draining当静态不可能。512MiB Node上384+128恰好可用，385+128在新授权/任务前拒绝。用户最大额度可大于单个Node，按实际探针内存判断。

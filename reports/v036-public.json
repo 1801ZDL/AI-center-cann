@@ -73,7 +73,8 @@
     "servicectl",
     "accessctl",
     "workerctl",
-    "labctl"
+    "labctl",
+    "mcp_bridge.py"
   ],
   "reproduced_by_public_ci": false,
   "raw_evidence_in_repository": false,
