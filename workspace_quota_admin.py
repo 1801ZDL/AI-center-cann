@@ -122,6 +122,8 @@ def _context(prefix,root,recovery=False):
         raise DeployError('Activate matching native UID administration code before editing this Node')
     state=Path(meta['state_dir'])
     with state_lock(state,exclusive=True):
+        from node_owner_admin import guard
+        guard(state)
         from maintenance import assert_quiescent
         assert_quiescent(state,'node')
         control=os.open(state,os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW)

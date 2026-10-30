@@ -1,15 +1,15 @@
 {
   "schema": "ai-center-cann-source-check/v1",
-  "recorded_at": "2026-10-30T13:07:45.065662+00:00",
+  "recorded_at": "2026-10-30T13:45:33.117302+00:00",
   "passed": true,
-  "python_unit_tests": 478,
+  "python_unit_tests": 486,
   "unit_skipped": 0,
-  "unit_seconds": 78.009,
-  "unit_log_sha256": "57a7bab55752f8bf09b4921d5c9288c99a741e88711739c724bb1edad11be0bb",
+  "unit_seconds": 75.161,
+  "unit_log_sha256": "6076e8dcde5af6ef0ab11e6911f715dcb6caab2e4dca90b55cd8b05c92abcbca",
   "python": "Python 3.12.3",
   "javascript_syntax_passed": true,
   "command": "bash scripts/check.sh /usr/bin/python3",
-  "scope": "Current60 production code CPU/JS checks plus the separately scoped installed central owner-group append acceptance below. Native storage preparation remains incomplete owner onboarding. Earlier Node native append, Root54 and mixed compiler checks retain frozen releases; no real host account, NPU, systemd PID1 or physical multi-host acceptance.",
+  "scope": "Current61 production CPU/JS checks plus separate installed Node owner/cache-binding acceptance. Fixture stage ID only; Node startup remains blocked for central acknowledgement. Prior central GID, Node native append, Root54 and mixed compiler checks retain frozen releases. No user activation, physical multi-host, systemd PID1 or NPU acceptance.",
   "production_source_sha256": {
     "auth.py": "6a59a9be593c32bf3717dd8f825e490d4235c2f458d121578201ccf2d2a76031",
     "owner_identity.py": "323830cacdcb122347e6ccf50d5b91d14362ac5eea34245d8efebc21044218b0",
@@ -33,7 +33,7 @@
     "nodes.py": "dcb187c4b628099168f6278cb6ef386c14ae28e5c9da2aa2650b5693b6f0ff32",
     "server.py": "59578f849775e60df61496a56da34db8b697a425d98b9e9635e14e7d42a86fda",
     "templates.py": "6ada33ac5851c5ef28a3e7b5f34206962c87c469c6054f10e8d33c68a623d3ba",
-    "worker.py": "76f0e926dddd63c5ced0c5a6934c30069e8e6a6ff338300270b1c45b41a9e3ae",
+    "worker.py": "41437fa41655632c3617ca39c140182f9a085e46623e897dccc2d267087628d9",
     "workflow_runner.py": "239bbcb5eca6414d85f7172808a710896d9743660289039626e54672088078f7",
     "workflow_spec.py": "3c1403328db9e4a3ab228056559250127fd3ff985fe009f1f4646045257dfb6a",
     "workflow_results.py": "4af089654e6867b3609e7719ec392c7792977ccb79d8d09f1af3ac58fff22377",
@@ -46,7 +46,8 @@
     "workspace_slots.py": "1dfd1dafaf787ef955c78aef686198686d5799306a65ec0d24453aef3e73260c",
     "filesystem_quota.py": "f298cd3dacacfa9d344ee1e040feb30b5cf51adb009802abde2db69ddb662d53",
     "quota_workspace.py": "f836673c97ed36d3f0a3c8589860b004fd22058f0fedb305f9afcf0571cbb287",
-    "workspace_quota_admin.py": "6ed57fce784038d2b8a569872bbb1da7c627f4911f8abef584189820bc8455f0",
+    "workspace_quota_admin.py": "7dea3194c837d9ba34ec48d679a9044e8919bf00fc253af0050d5c3d652b31dd",
+    "node_owner_admin.py": "537945b03ae1bb4bcf8c3d19eea658886027a4a29fb49e38eabe9c6152d2850a",
     "group_quota.py": "3137ba8af5c5803fab0a2e4f547063ee883fc5fae3aa3349767585f4a61429d4",
     "payload_groups.py": "6377b078e9f1032a2e33862ba2995c3b94992a731a68a42044a57c6ac77e54d8",
     "payload_quota_admin.py": "b93541ebd312cc8e195cb5e6065dfe40d969a5166df6b7270b4dea9b3146cbf0",
@@ -58,9 +59,9 @@
     "storage_files.py": "c2dfe4aec3a4dec6bf8802655eb9e72a414e307d5eb6f4725da99f0484642ebf",
     "storage_lifecycle.py": "cc5778edf04bf1118ac940f6954cc488ae7ceedbee373568af87c6add3cde098",
     "node_storage.py": "185bdeb757c0644cf6319460d74ea15061cf6329b4707354696f8e156a16370c",
-    "deployment.py": "a6b8a6fb239c3069cb2509ab27a2eb65637c9bdc30482dd5cdff076f43a4ec46",
+    "deployment.py": "c2a2e966b47fbc07d5001b3ab99b2c7088ad64a94dc4ce4f347c7dac6b67c929",
     "maintenance.py": "9df559eedcbd966de6c80eda2793c617c90af81ff1fb23ccb98e800434ee5d66",
-    "servicectl": "cc207126712dbee99b38145412a507f21190907528453142b5fb6d76fe1ef9b5",
+    "servicectl": "c554f187d20f924b2232541cde9a929b38a94502f9aed881e3422feb70e11a13",
     "accessctl": "88c1e2173a82f279adc9a850da7c8d33022ae86e8933c3fa970dd5966b197201",
     "workerctl": "a889433c37e8f53c31391956515cdc1d1aa2667cd18c8a97dc9ab47d343d9800",
     "spool_storage.py": "c8a579146e0b24077ebf504050dd5344505f8023f6e33be1c1cb6e9ff312fea4",
@@ -511,13 +512,161 @@
     "model_invocations": 0,
     "cleanup_confirmed": true,
     "new_unit_tests": 9,
-    "root_source_hashes_match_current60": true,
     "host_accounts_created": false,
     "main_reloaded_this_stage": false,
     "first_fixture_failure": "Fixed unprivileged writer could not import Root-private test code; failed before identity/owner append. Switched to installed code; failure and cleanup preserved.",
     "own_roles_and_volumes_independently_absent": true,
     "unit_tests": 478,
     "unit_seconds": 78.009,
-    "root_fixture_source_sha256": "005457d8eb2711636d73016c8ad65234e82cf871fdc694003e548a9444d0680f"
+    "root_fixture_source_sha256": "005457d8eb2711636d73016c8ad65234e82cf871fdc694003e548a9444d0680f",
+    "root_source_hashes_matched_frozen60": true,
+    "rerun_with_current_node_owner_code": false
+  },
+  "prior_central_owner_storage_full_check": {
+    "recorded_at": "2026-10-30T13:07:45.065662+00:00",
+    "python_unit_tests": 478,
+    "unit_seconds": 78.009,
+    "unit_log_sha256": "57a7bab55752f8bf09b4921d5c9288c99a741e88711739c724bb1edad11be0bb"
+  },
+  "node_owner_binding": {
+    "passed": true,
+    "installed_node_cli_plan_apply": true,
+    "fixture_stage_identity_only": true,
+    "actual_central_contact": false,
+    "active_lease_rejected": true,
+    "shared_service_lock_rejected": true,
+    "read_only_plan": true,
+    "fault_chain": [
+      {
+        "boundary": "journal",
+        "sigkill_observed": true,
+        "same_plan_used": true,
+        "old_data_preserved": true
+      },
+      {
+        "boundary": "cache_control",
+        "sigkill_observed": true,
+        "same_plan_used": true,
+        "old_data_preserved": true
+      },
+      {
+        "boundary": "cache_marker",
+        "sigkill_observed": true,
+        "same_plan_used": true,
+        "old_data_preserved": true
+      },
+      {
+        "boundary": "new_control",
+        "sigkill_observed": true,
+        "same_plan_used": true,
+        "old_data_preserved": true
+      },
+      {
+        "boundary": "new_marker",
+        "sigkill_observed": true,
+        "same_plan_used": true,
+        "old_data_preserved": true
+      },
+      {
+        "boundary": "config",
+        "sigkill_observed": true,
+        "same_plan_used": true,
+        "old_data_preserved": true
+      },
+      {
+        "boundary": "metadata",
+        "sigkill_observed": true,
+        "same_plan_used": true,
+        "old_data_preserved": true
+      },
+      {
+        "boundary": "receipt",
+        "sigkill_observed": true,
+        "same_plan_used": true,
+        "old_data_preserved": true
+      },
+      {
+        "boundary": "handoff",
+        "sigkill_observed": true,
+        "same_plan_used": true,
+        "old_data_preserved": true
+      },
+      {
+        "boundary": "published",
+        "sigkill_observed": true,
+        "same_plan_used": true,
+        "old_data_preserved": true
+      }
+    ],
+    "fault_scope": "Ten successive SIGKILL boundaries in one unchanged plan, followed by installed CLI receipt replay",
+    "old_namespace_inode_uid_gid_and_ir_sha_preserved": true,
+    "old_cache_control_keys_preserved": true,
+    "cold_ir": {
+      "uid": 23801,
+      "compiled": true,
+      "calls": 1,
+      "sha256": "90891b1316f1310b85eb0300ffd001f2d80ffd5cdefb695cda0544f457dba737",
+      "inode": 15,
+      "cap_effective": "0000000000000000",
+      "no_new_privileges": "1"
+    },
+    "warm_ir": {
+      "uid": 23801,
+      "compiled": false,
+      "calls": 1,
+      "sha256": "90891b1316f1310b85eb0300ffd001f2d80ffd5cdefb695cda0544f457dba737",
+      "inode": 15,
+      "cap_effective": "0000000000000000",
+      "no_new_privileges": "1"
+    },
+    "new_owner_ir": {
+      "uid": 23802,
+      "compiled": true,
+      "calls": 1,
+      "sha256": "90891b1316f1310b85eb0300ffd001f2d80ffd5cdefb695cda0544f457dba737",
+      "inode": 20,
+      "cap_effective": "0000000000000000",
+      "no_new_privileges": "1"
+    },
+    "same_old_namespace_key": true,
+    "old_mapping_slots_environment_preserved": true,
+    "new_uid_work_and_cache_bound": true,
+    "worker_startup_blocked_before_central_ack": true,
+    "native_append_blocked_before_central_ack": true,
+    "rollback_blocked_before_central_ack": true,
+    "genuine_prior_code_rollback_reupgrade_before_binding": true,
+    "old_target_new_administration_rejected": true,
+    "rollback_baseline_commit": "9d025e05d25dc419824da0cfc1d8b87c92e09f8d",
+    "accounts_enabled": false,
+    "full_owner_onboarding_ready": false,
+    "scope": "Same-host installed Node, fixture stage ID, private native cache preservation and Root metadata migration only. Central approval/ACK, final identity activation and real multi-host remain unimplemented.",
+    "at": "2026-10-30T13:41:13.950389+00:00",
+    "server_release": "f309b9fc83c79b21201817e2956a6e635538c028f906f62cf22b4cd16f3ea9c2",
+    "npu_kernel_launches": 0,
+    "model_invocations": 0,
+    "cleanup_confirmed": true,
+    "independent_control_keysets_preserved": true,
+    "post_warm_old_generation_increment": 4,
+    "old_and_new_owner_keysets_disjoint": true,
+    "both_final_leases_released": true,
+    "handoff_plan_matches": true,
+    "own_roles_and_volumes_absent": true,
+    "new_unit_tests": 8,
+    "root_source_hashes_match_current61": true,
+    "first_fixture_failure": "Outer umask masked public test payload directory permissions; non-root IR actor failed before owner planning/migration. Fixed directory permissions and closed refused-start state lock explicitly; original failed evidence retained.",
+    "main_reloaded_this_stage": true,
+    "host_accounts_created": false,
+    "root_fixture_source_sha256": "ef1a817419831c6c5b6528fc9ebc3e1575248e2ae207c12676211275ec5447c2",
+    "stale_cache_control_plan_rejected_before_mutation": true,
+    "old_cache_metadata_exact_before_warm_reacquire": true,
+    "main_reloaded_after_acceptance_for_retention_capacity": true,
+    "retention_capacity_change": {
+      "old_archive_limit_mib": 2048,
+      "new_archive_limit_mib": 4096,
+      "all_logical_user_quota_rows_unchanged": true,
+      "cpu_memory_shm_slots_unchanged": true,
+      "history_or_raw_evidence_deleted": false,
+      "scope": "Own Demo legacy admin application archive capacity, after CPU/Root checks passed; no tested native limits changed"
+    }
   }
 }

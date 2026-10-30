@@ -55,6 +55,10 @@ class Worker:
             separate_control(config['workspace'],self.root)
         self.root.mkdir(parents=True,mode=0o700,exist_ok=True)
         self.state_lock=state_lock(self.root)
+        from node_owner_admin import guard
+        try:guard(self.root)
+        except BaseException:
+            self.state_lock.close();raise
         self.previous_cpu=None
         self.lock=(self.root/'worker.lock').open('a')
         fcntl.flock(self.lock,fcntl.LOCK_EX|fcntl.LOCK_NB)

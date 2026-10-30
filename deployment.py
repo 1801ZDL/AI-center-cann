@@ -29,7 +29,7 @@ ROOT=Path(__file__).resolve().parent
 CORE=['auth.py','owner_identity.py','backends.py','collector.py','container_engine.py','container_entry.py','artifact_export.py',
       'environment_probe.py','environment_contract.py','device_qualification.py','attempt_inventory.py','executor.py','npu_admission.py','npu_device.py','inputs.py','jobs.py','lab_client.py','client_archive.py','archive_api.py','nodes.py','server.py',
       'templates.py','worker.py','workflow_runner.py','workflow_spec.py','workflow_results.py',
-      'state_lock.py','resources.py','queue_policy.py','docker_runtime.py','listener.py','preflight.py','workspace_slots.py','filesystem_quota.py','quota_workspace.py','workspace_quota_admin.py','group_quota.py','payload_groups.py','payload_quota_admin.py','payload_owner_admin.py','io_policy.py','storage_io.py','payload_storage.py','storage_budget.py','storage_files.py','storage_lifecycle.py','node_storage.py','deployment.py','maintenance.py','servicectl','accessctl','workerctl',
+      'state_lock.py','resources.py','queue_policy.py','docker_runtime.py','listener.py','preflight.py','workspace_slots.py','filesystem_quota.py','quota_workspace.py','workspace_quota_admin.py','node_owner_admin.py','group_quota.py','payload_groups.py','payload_quota_admin.py','payload_owner_admin.py','io_policy.py','storage_io.py','payload_storage.py','storage_budget.py','storage_files.py','storage_lifecycle.py','node_storage.py','deployment.py','maintenance.py','servicectl','accessctl','workerctl',
       'spool_storage.py','spool_transfer.py','persistent_cache.py','dependencies.py','labctl','install-client','mcp_bridge.py','diagnostic_case.py','CLIENT.md','SERVER.md','API.md','WORKFLOWS.md','NPU.md','WORKSPACE.md','STORAGE.md','CACHE.md','DEPENDENCIES.md',
       'README.md','DEPLOYMENT.md','HARNESS.md','ENVIRONMENTS.md','RECOVERY.md','HTTPS.md','SPOOL.md','OWNER_PROVISION.md']
 SCHEMA=1
@@ -37,7 +37,7 @@ EXECUTABLES={'servicectl','accessctl','workerctl','labctl','install-client'}
 # Bundles always include these helpers, but earlier compatible service releases
 # do not need them to run existing workspaces. Do not make their absence alone
 # prevent verification/rollback of an otherwise intact historical installation.
-OPTIONAL_ADMIN_FILES={'workspace_quota_admin.py','OWNER_PROVISION.md','owner_identity.py','payload_owner_admin.py'}
+OPTIONAL_ADMIN_FILES={'workspace_quota_admin.py','OWNER_PROVISION.md','owner_identity.py','payload_owner_admin.py','node_owner_admin.py'}
 
 
 class DeployError(ValueError):pass
@@ -232,11 +232,14 @@ def verify(prefix,quota_recovery=False):
         # JobStore validates the physical mount before a service dispatches work.
     else:
         config=regular_json(Path(meta['state_dir'])/'config.json',private=True)
+        if not quota_recovery:
+            from node_owner_admin import guard
+            guard(meta['state_dir'])
         journal=Path(meta['state_dir'])/'workspace-owner-change.json'
         if not quota_recovery and (journal.exists() or journal.is_symlink()):
             raise DeployError('Resume the original pending UID slot append before starting or maintaining this Node')
         if config.get('spool_storage')!=meta.get('spool_storage'):raise DeployError('Node spool policy differs from its installed binding')
-        if config.get('persistent_cache')!=meta.get('persistent_cache'):raise DeployError('Node private cache policy differs from its installed binding')
+        if not quota_recovery and config.get('persistent_cache')!=meta.get('persistent_cache'):raise DeployError('Node private cache policy differs from its installed binding')
     return prefix,meta,release
 
 

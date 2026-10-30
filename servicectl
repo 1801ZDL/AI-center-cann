@@ -29,6 +29,10 @@ def main():
     p.add_argument('--prefix',required=True);p.add_argument('--root',required=True);p.add_argument('--limits',required=True);p.add_argument('--output',required=True)
     p=commands.add_parser('workspace-add-apply',help='Apply/resume the same native UID append plan; owner enrollment remains separate')
     p.add_argument('--prefix',required=True);p.add_argument('--plan',required=True)
+    p=commands.add_parser('node-owner-plan',help='Bind a staged owner to prepared Node work/cache slots, offline')
+    p.add_argument('--prefix',required=True);p.add_argument('--spec',required=True);p.add_argument('--output',required=True)
+    p=commands.add_parser('node-owner-apply',help='Resume the same Node owner/cache binding; central acknowledgement remains required')
+    p.add_argument('--prefix',required=True);p.add_argument('--plan',required=True)
     p=commands.add_parser('payload-quota-plan',help='Read-only offline plan to resize one existing central owner quota')
     p.add_argument('--prefix',required=True);p.add_argument('--owner',required=True)
     p.add_argument('--mib',type=int,required=True);p.add_argument('--inodes',type=int,required=True);p.add_argument('--output')
@@ -84,6 +88,19 @@ def main():
         if path.lstat().st_uid!=0:raise deploy.DeployError('UID append plans must be Root-owned private files')
         from workspace_quota_admin import apply
         result=apply(args.prefix,deploy.regular_json(path,private=True))
+    elif args.action=='node-owner-plan':
+        deploy.require_root();path=Path(args.spec)
+        if path.lstat().st_uid!=0:raise deploy.DeployError('Node owner requests must be Root-owned private files')
+        from node_owner_admin import plan,read
+        from payload_quota_admin import write
+        result=plan(args.prefix,read(path));target=deploy.secure_parent(args.output)
+        if target.exists() or target.is_symlink():raise deploy.DeployError('Choose a new private Node owner plan output')
+        write(target,result['plan']);result={'read_only':True,'plan_id':result['plan']['id'],'plan_file':str(target),'central_acknowledgement_still_required':True}
+    elif args.action=='node-owner-apply':
+        deploy.require_root();path=Path(args.plan)
+        if path.lstat().st_uid!=0:raise deploy.DeployError('Node owner plans must be Root-owned private files')
+        from node_owner_admin import apply,read
+        result=apply(args.prefix,read(path))
     elif args.action=='payload-owner-plan':
         from payload_owner_admin import plan
         from payload_quota_admin import write

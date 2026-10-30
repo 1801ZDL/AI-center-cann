@@ -59,6 +59,8 @@ def private_values():
     for pattern in ['jobs/*/tmp/native-uid-append/control/node/config.json','jobs/*/tmp/native-uid-append/control/enroll.json']:
         files.update(r.glob(pattern))
     files.update(r.glob('jobs/*/tmp/payload-owner-append/control/controller/config.json'))
+    for pattern in ['jobs/*/tmp/node-owner-binding/control/node/config.json','jobs/*/tmp/node-owner-binding/control/enroll.json']:
+        files.update(r.glob(pattern))
     for p in files:
         if p.is_file() and not p.is_symlink():collect(read_json(p))
     return values,len(files)
@@ -80,7 +82,7 @@ def main():
                         and hashlib.sha256((ROOT/n).read_bytes()).hexdigest()!=old['source_files'].get(n)]
         public.update(schema='ai-center-cann-public-validation/v1',
             source='Curated historical v0.36 local evidence; raw private reports are not published',
-            public_source_changes_since_acceptance='Documentation/publication tooling, mixed-workload fixtures, legacy cooperative Unix-socket portability, Worker heartbeat/completion ordering, legacy command artifact fixes, native UID-slot append administration/compatible historical manifest validation, staged owner authentication/lifecycle guards and central staged-owner storage-group append/recovery; protected six-file runtime hashes unchanged. Historical Root54 is not a new acceptance of these edits; later mixed, legacy CLI, native-append, identity-stage and central owner-group checks retain separate scopes.',
+            public_source_changes_since_acceptance='Documentation/publication tooling, mixed-workload fixtures, legacy cooperative Unix-socket portability, Worker heartbeat/completion ordering, legacy command artifact fixes, native UID-slot append administration/compatible historical manifest validation, staged owner authentication/lifecycle guards, central staged-owner storage-group append/recovery and Node owner/cache binding with pending-central-ACK startup guards; protected six-file runtime hashes unchanged. Historical Root54 is not a new acceptance of these edits; later mixed, legacy CLI, native-append, identity-stage, central owner-group and Node binding checks retain separate scopes.',
             production_source_changes_since_acceptance=source_changes,
             reproduced_by_public_ci=False,raw_evidence_in_repository=False,
             physical_hosts_tested=1,real_host_accounts_created=False,
