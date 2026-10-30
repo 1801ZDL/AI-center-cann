@@ -1,5 +1,17 @@
 # 实施进度
 
+## systemd 生效配置读取、加载计划与中断恢复
+
+新增 unit_manager.py 及本地 `unit-manager-check/plan/apply/abort` 管理命令。固定本地 system bus、清理继承的总线/进程环境、有界子进程输出与超时、Root PID1/总线身份绑定；严格核对属性及嵌套D-Bus类型、实际unit来源/别名/生成来源/附加配置、命令/身份/组/环境/可写路径与沙箱参数。不会导出原始环境属性。systemd启动入口还核对INVOCATION_ID、实际MainPID/UID/GID/存储组与cgroup；进程模式保持兼容。
+
+Root在停止并排空时计划，持久journal后执行管理器Reload及选定unit的LoadUnit，再确认停止状态和生效配置。调用不确定时沿原计划恢复，管理器身份变化拒绝静默续接；显式abort只清理操作记录，不回滚已经发生的重载，也不发送总线写操作。普通启动、备份和代码切换不能绕过pending；完成回执重放明确仅为历史记录。这里没有StartUnit/RestartUnit/enable调用，启动和心跳协调器仍需补齐。Reload具有管理器级的daemon-reload语义。
+
+最终 **554项/81.133秒/无跳过** 和JS语法通过，67个非文档生产源码与最终Root包一致。自有Root角色实际安装文件/journal，固定协议适配器连续六次SIGKILL恢复，身份变化拒绝、无写abort、新计划、来源拒绝、共享服务锁及pending门禁通过；后续已有Node本地绑定/持久ACK、激活/中止与重新激活、独立个人UID真实IR任务继续通过。四个自有loop/辅助容器/卷已清理，原盘和日志保留。最初553项和首Root通过范围早于最后的嵌套类型加固，未重标为最终结果。
+
+宿主仅执行只读system bus身份/版本和公开安全属性查询，实际systemd255接口可读；**未在宿主调用Reload/LoadUnit/StartUnit**。适配器正向结果不等于真实PID1加载/启动验收；无新NPU/model、宿主账户/驱动/其他容器修改，原zdl启动时间与资源配置不变。完整私有证据为evidence/unit-manager-validation.json，精选公开范围见reports/public-source-check.json.unit_manager。
+
+已补充当前资源下的推广优先级：保持个人API/MCP稳定，完善服务接管及一键开户、可执行资源合同、可复现实验与可替换领域Agent；先两名真实用户/单管理员测试机，再真实两机与约20人混合负载。公共夜间PR归因仍延期，完整目标保持未完成。
+
 最后更新：2026-10-31。项目处于候选验证阶段，**尚未达到团队 NPU 生产运行条件**。
 
 ## 未提交激活：显式中止、已中止ID与重新激活
@@ -115,7 +127,7 @@
 
 ## 当前代码检查
 
-当前完整回归 **541 项/87.928 秒/无跳过**、网页 JavaScript 语法通过；此前525项为unit离线更新、515项为最后激活、497项为中央/Node交接、486项为Node本地绑定、478项为中央存储组、469项为待预配身份、457项为原生槽追加、440项为独立原盘核验工具阶段。公开摘要 [reports/public-source-check.json](reports/public-source-check.json) 保存受测 66 个生产代码摘要。
+当前完整回归 **554 项/81.133 秒/无跳过**、网页 JavaScript 语法通过；此前541项为未提交激活中止、525项为unit离线更新、515项为最后激活、497项为中央/Node交接、486项为Node本地绑定、478项为中央存储组、469项为待预配身份、457项为原生槽追加、440项为独立原盘核验工具阶段。公开摘要 [reports/public-source-check.json](reports/public-source-check.json) 保存受测 67 个生产代码摘要。
 
 新增 5 个核验工具回归使用真实子进程，覆盖有效元数据、单次短写截断、持续写达到内核文件限额、stderr 洪泛和文件系统警告拒绝。小记录输出在子进程写入时就受 2MiB 上限约束，避免 capture_output 读完后才检查大小；不影响已冻结的生产代码或构建工作负载。
 

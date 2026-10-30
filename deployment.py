@@ -26,7 +26,7 @@ from lab_client import atomic_json,read_json
 from state_lock import state_lock
 
 ROOT=Path(__file__).resolve().parent
-CORE=['auth.py','owner_identity.py','owner_handoff.py','node_owner_ack.py','owner_activation.py','owner_activation_abort.py','unit_refresh.py','backends.py','collector.py','container_engine.py','container_entry.py','artifact_export.py',
+CORE=['auth.py','owner_identity.py','owner_handoff.py','node_owner_ack.py','owner_activation.py','owner_activation_abort.py','unit_refresh.py','unit_manager.py','backends.py','collector.py','container_engine.py','container_entry.py','artifact_export.py',
       'environment_probe.py','environment_contract.py','device_qualification.py','attempt_inventory.py','executor.py','npu_admission.py','npu_device.py','inputs.py','jobs.py','lab_client.py','client_archive.py','archive_api.py','nodes.py','server.py',
       'templates.py','worker.py','workflow_runner.py','workflow_spec.py','workflow_results.py',
       'state_lock.py','resources.py','queue_policy.py','docker_runtime.py','listener.py','preflight.py','workspace_slots.py','filesystem_quota.py','quota_workspace.py','workspace_quota_admin.py','node_owner_admin.py','group_quota.py','payload_groups.py','payload_quota_admin.py','payload_owner_admin.py','io_policy.py','storage_io.py','payload_storage.py','storage_budget.py','storage_files.py','storage_lifecycle.py','node_storage.py','deployment.py','maintenance.py','servicectl','accessctl','workerctl',
@@ -37,7 +37,7 @@ EXECUTABLES={'servicectl','accessctl','workerctl','labctl','install-client'}
 # Bundles always include these helpers, but earlier compatible service releases
 # do not need them to run existing workspaces. Do not make their absence alone
 # prevent verification/rollback of an otherwise intact historical installation.
-OPTIONAL_ADMIN_FILES={'workspace_quota_admin.py','OWNER_PROVISION.md','owner_identity.py','payload_owner_admin.py','node_owner_admin.py','owner_handoff.py','node_owner_ack.py','owner_activation.py','unit_refresh.py','owner_activation_abort.py'}
+OPTIONAL_ADMIN_FILES={'workspace_quota_admin.py','OWNER_PROVISION.md','owner_identity.py','payload_owner_admin.py','node_owner_admin.py','owner_handoff.py','node_owner_ack.py','owner_activation.py','unit_refresh.py','unit_manager.py','owner_activation_abort.py'}
 
 
 class DeployError(ValueError):pass
@@ -211,7 +211,7 @@ def load_installation(prefix):
     return prefix,meta,release
 
 
-def verify(prefix,quota_recovery=False,unit_recovery=False):
+def verify(prefix,quota_recovery=False,unit_recovery=False,manager_recovery=False):
     prefix,meta,release=load_installation(prefix);manifest=regular_json(release/'release.json')
     checked_manifest(manifest)
     if manifest.get('id')!=meta['release_id'] or manifest.get('state_schema')!=meta['state_schema']:raise DeployError('Installed release identity differs')
@@ -222,6 +222,8 @@ def verify(prefix,quota_recovery=False,unit_recovery=False):
         if path.is_symlink() or not stat.S_ISREG(info.st_mode) or info.st_uid!=0 or info.st_mode&0o022 or digest(path)!=record['sha256']:raise DeployError('Installed release checksum/permissions differ')
     if not unit_recovery and ((prefix/'unit-refresh-change.json').exists() or (prefix/'unit-refresh-change.json').is_symlink()):
         raise DeployError('Resume the original pending unit refresh before starting or maintaining this installation')
+    if not manager_recovery and ((prefix/'unit-manager-change.json').exists() or (prefix/'unit-manager-change.json').is_symlink()):
+        raise DeployError('Resume or explicitly abort the original pending manager reload before starting or maintaining this installation')
     if meta['role']=='controller':
         config=regular_json(Path(meta['state_dir'])/'config.json',private=True)
         if not quota_recovery:
@@ -469,6 +471,8 @@ def run_service(prefix):
     from jobs import identity
     prefix,meta,release=verify(prefix)
     if os.geteuid()!=meta['uid'] or os.getegid()!=meta['gid']:raise DeployError('Service must run as its configured UID/GID')
+    from unit_manager import service_entry
+    service_entry(prefix)
     if meta['role']=='controller' and os.access('/var/run/docker.sock',os.R_OK|os.W_OK):raise DeployError('Controller identity must not have access to the Docker socket')
     state=Path(meta['state_dir']);lock=state_lock(state,inheritable=True)
     fd=os.open(state/'.service-run.lock',os.O_RDWR|os.O_CREAT|os.O_NOFOLLOW,0o600)

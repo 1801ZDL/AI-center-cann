@@ -1,6 +1,6 @@
 {
   "schema": "ai-center-cann-publication/v1",
-  "recorded_at": "2026-10-30T16:31:00.157501+00:00",
+  "recorded_at": "2026-10-30T16:53:52.018689+00:00",
   "files": {
     ".gitignore": {
       "sha256": "a6287d1d645bcba2ddfec87d1055724b00577eea69200b919302f4d46cf3680d",
@@ -13,8 +13,8 @@
       "mode": "100644"
     },
     "BACKLOG.md": {
-      "sha256": "6c79d4e4245bb7a7d11692503c09623989e609acce75d473fad2d47fd1d8df02",
-      "bytes": 2211,
+      "sha256": "5c2309c13e8519c607e5c13cfe5e9f5d11e4a871c1eea47996973317ea0903ce",
+      "bytes": 2303,
       "mode": "100644"
     },
     "CACHE.md": {
@@ -38,8 +38,8 @@
       "mode": "100644"
     },
     "DEPLOYMENT.md": {
-      "sha256": "f66c0a845c4a7804697aca5b2a4ca726f8ea345de651cf519cce131087922e4e",
-      "bytes": 44552,
+      "sha256": "3c9bb607d46f949358729b94563b061c7604f3e59bb3f2b78e206510a3599de5",
+      "bytes": 47887,
       "mode": "100644"
     },
     "ENVIRONMENTS.md": {
@@ -68,13 +68,13 @@
       "mode": "100644"
     },
     "PROGRESS.md": {
-      "sha256": "0e8b69aaa02a6cbab947f5e9ee04f9238da1ec9c083282f503bb34c62f0e7794",
-      "bytes": 26837,
+      "sha256": "25994dac10688a727fe1bc09ef289f3b8deced9be9516644e5334073329158dd",
+      "bytes": 29363,
       "mode": "100644"
     },
     "README.md": {
-      "sha256": "2255d9b012cc8e18b5e8c8106832de6002ff58e6098c1a42be6eb863f42987f8",
-      "bytes": 6613,
+      "sha256": "ba65b4e8a04f2555800b8e5d6e75d2dad479cf690c89dd7043d77c15cf58529a",
+      "bytes": 6618,
       "mode": "100644"
     },
     "RECOVERY.md": {
@@ -83,8 +83,8 @@
       "mode": "100644"
     },
     "SERVER.md": {
-      "sha256": "06ff7f5e56259e606b474b905752b0a3f4e523c36a79ae558204119bca498114",
-      "bytes": 25139,
+      "sha256": "f15325fca30664f8861cacb84106e4c9314d0860103c54758bf58b80ffa95fd8",
+      "bytes": 27889,
       "mode": "100644"
     },
     "SPOOL.md": {
@@ -178,8 +178,8 @@
       "mode": "100644"
     },
     "deployment.py": {
-      "sha256": "a18c7a7e8442209f0c729355a9ab7b0d8166f03ccb0ed7f81d89899fc7e84909",
-      "bytes": 35197,
+      "sha256": "0f5e128551264d74185bfff386cd8e364137d745fd5636cf87cbe4b4e9913199",
+      "bytes": 35598,
       "mode": "100644"
     },
     "device_qualification.py": {
@@ -438,13 +438,13 @@
       "mode": "100644"
     },
     "reports/public-source-check.json": {
-      "sha256": "eb68222530db7b7ea04da8ef2523356f2454d99238cc8c9361f7ff2e7ca307b0",
-      "bytes": 75231,
+      "sha256": "7c4a3a966b1959a72d5ffdb7ada8874c8e88dd5ec9c137f75cae486b195d05a9",
+      "bytes": 76130,
       "mode": "100644"
     },
     "reports/v036-public.json": {
-      "sha256": "6e091cd1491b7c59b622987d54d4809a20cc0114bcdfc6c9b7fbf48f674b2e02",
-      "bytes": 5475,
+      "sha256": "b823a1e5a2d021cadf0fadd13e8458d1814f4e843c1339da6407747e361afaad",
+      "bytes": 5587,
       "mode": "100644"
     },
     "requirements-qa.txt": {
@@ -463,8 +463,8 @@
       "mode": "100755"
     },
     "scripts/publication_manifest.py": {
-      "sha256": "7c17a41922147b637667ff77c043398812a27fb156ef9258463a973dc46b4677",
-      "bytes": 9090,
+      "sha256": "9c0b0ac5913e0baf7ce8bbbc37aa4a3d0c93385cdeb11f8121a4a629cb1801fd",
+      "bytes": 9179,
       "mode": "100644"
     },
     "server.py": {
@@ -473,8 +473,8 @@
       "mode": "100644"
     },
     "servicectl": {
-      "sha256": "d607302151ac440642c73768fbb99b37df8265ecf4ac3b3fa31c9d12d993ad7f",
-      "bytes": 18934,
+      "sha256": "cbf086d06fd151d64842826b1c8347d496fec77be242314401df981214083cbf",
+      "bytes": 20700,
       "mode": "100755"
     },
     "spool_storage.py": {
@@ -898,8 +898,8 @@
       "mode": "100644"
     },
     "tests/node_owner_binding_check.py": {
-      "sha256": "4063aaf853ead91b5e1f05f3af8389dc7bb178e64a96a3be3c7a54652fbe2791",
-      "bytes": 23996,
+      "sha256": "4834896437ab58686e148d53866fca19b8f0e6588bd350328ed2376cdaf8ba28",
+      "bytes": 24403,
       "mode": "100644"
     },
     "tests/node_spool_pressure.py": {
@@ -923,8 +923,8 @@
       "mode": "100644"
     },
     "tests/owner_handoff_root_fixture.py": {
-      "sha256": "b76e2d495d3b808b2bbbdb19269b77b592f30e39caec17955ae881a830fa327d",
-      "bytes": 31222,
+      "sha256": "c85071e96915a36349f2e84964e34ad7408a5898262b12e38e04c190538f934b",
+      "bytes": 31465,
       "mode": "100644"
     },
     "tests/package_release_check.py": {
@@ -1287,6 +1287,11 @@
       "bytes": 17573,
       "mode": "100644"
     },
+    "tests/test_unit_manager.py": {
+      "sha256": "b82c501ad9405296bc7b466019a1d477f5cee8d481fb227910473c9a8fa08700",
+      "bytes": 10151,
+      "mode": "100644"
+    },
     "tests/test_unit_refresh.py": {
       "sha256": "aca0715be672b4a6662cf07b6e7a8ec800803691ba4f972ffe1e34e51eee3f39",
       "bytes": 7970,
@@ -1317,6 +1322,11 @@
       "bytes": 20839,
       "mode": "100644"
     },
+    "tests/unit_manager_root_fixture.py": {
+      "sha256": "5589e8dc6c6619077dcd5dfd8652731a85431040d1c7511a433bc07b8ec94332",
+      "bytes": 7855,
+      "mode": "100644"
+    },
     "tests/user_quota_check.py": {
       "sha256": "f2edebca5dd80dd46ab55f2aceede9b388d799341eb3484d91b2da2b5b9584fb",
       "bytes": 11934,
@@ -1330,6 +1340,11 @@
     "tests/workloads/mixed_small_build.py": {
       "sha256": "d8488735d7edff40736b982a1fcc4bd536e77e398351fa96e427e83d34e92fbd",
       "bytes": 3315,
+      "mode": "100644"
+    },
+    "unit_manager.py": {
+      "sha256": "a8725f68c9cd58055f221adee8d1f7d1dc70954287f4265dc3f438ab5c3a98ef",
+      "bytes": 24588,
       "mode": "100644"
     },
     "unit_refresh.py": {
@@ -1393,10 +1408,10 @@
       "mode": "100644"
     }
   },
-  "files_count": 278,
-  "total_bytes": 2939108,
-  "known_private_values_checked": 1400,
-  "private_fixture_files_considered": 1056,
+  "files_count": 281,
+  "total_bytes": 2994327,
+  "known_private_values_checked": 1418,
+  "private_fixture_files_considered": 1066,
   "model_keys_read": false,
   "raw_runtime_or_evidence_included": false,
   "passed": true

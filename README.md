@@ -2,7 +2,7 @@
 
 面向 Triton-Ascend / AscendNPU-IR 开发服务器的 AI 任务调度与实验管理原型。程序化中央服务负责资源分配和可靠执行，个人 Agent 通过 MCP/API 提交任务、读取日志和分析结果。
 
-**当前为 v0.36 基线加后续修复，尚非生产就绪。** 当前541项检查通过；已有中央/Node交接、私有凭据激活和systemd unit离线更新，新增未提交激活意图的显式中止与恢复。八个中止断点可沿原计划恢复，旧ID不能复活；重新激活后独立个人UID完成真实排队IR编译，旧凭据被拒绝。实际systemd加载/重启、完整一键协调、资源变更重授权、真实宿主多用户、NPU精度/性能/仿真及两物理机仍待验收，见 [OWNER_PROVISION.md](OWNER_PROVISION.md) 与 [DEPLOYMENT.md](DEPLOYMENT.md)。此前完整Triton冷暖构建、20逻辑用户混合和历史Root54均保留原范围，最新进度见 [PROGRESS.md](PROGRESS.md)。
+**当前为 v0.36 基线加后续修复，尚非生产就绪。** 当前554项检查通过；已有中央/Node交接、私有凭据激活与中止恢复、systemd unit离线更新。本轮新增管理器类型化读取、停止状态下的Reload/LoadUnit恢复计划和启动身份检查；自有Root容器六个中断点通过，真实宿主仅做只读查询。实际PID1加载/启动、完整一键协调、资源变更重授权、真实宿主多用户、NPU精度/性能/仿真及两物理机仍待验收。推广方向见 [DEPLOYMENT.md](DEPLOYMENT.md)，管理命令见 [SERVER.md](SERVER.md)。此前完整Triton冷暖构建、20逻辑用户混合和历史Root54均保留原范围，最新进度见 [PROGRESS.md](PROGRESS.md)。
 
 ```mermaid
 flowchart LR

@@ -1,5 +1,29 @@
 # 中央服务与节点安装
 
+## systemd 管理器读取与停止状态下的加载计划
+
+`unit-refresh-*` 仅更新磁盘文件。新增 `unit-manager-*` 从固定本地 system bus 读取类型化属性，核对 Root PID1/总线身份、实际 FragmentPath/别名/附加配置、ExecStart、UID/GID/补充组、环境、可写路径及生成的沙箱参数。未知属性类型或配置漂移会拒绝继续；输出只给验证状态和摘要，不导出原始环境属性。实现依据 [systemd 255 D-Bus 接口](https://www.freedesktop.org/software/systemd/man/255/org.freedesktop.systemd1.html)。
+
+默认支持管理员安装到 `/etc/systemd/system` 的标准 unit。先排空、停止服务，完成磁盘 unit 刷新，再由 Root 执行：
+
+```bash
+/opt/ascend-lab/current/servicectl unit-manager-plan --prefix /opt/ascend-lab --output /root/manager-plan.json
+/opt/ascend-lab/current/servicectl unit-manager-apply --prefix /opt/ascend-lab --plan /root/manager-plan.json
+/opt/ascend-lab/current/servicectl unit-manager-check --prefix /opt/ascend-lab
+```
+
+apply 持久保存原计划后调用管理器 `Reload` 和选定 unit 的 `LoadUnit`，再确认 unit 仍停止且加载属性完全一致。Reload 是管理器级的 daemon-reload，会重新读取其他 unit 的配置；它不等于进程 restart。当前代码不调用 StartUnit/RestartUnit/enable，也不发送停止信号，始终返回 `service_start_still_required=true`。此组命令不能替代后续启动/心跳协调器。
+
+`prefix/unit-manager-change.json` 保留未完成操作，阻断普通启动、备份和代码切换，其他配额/unit 恢复标志不能绕过。调用超时或中断后保留原计划，重复 apply 只恢复 Reload/LoadUnit；管理器身份改变则拒绝自动续接。明确放弃尚未完成的加载操作可用：
+
+```bash
+/opt/ascend-lab/current/servicectl unit-manager-abort --prefix /opt/ascend-lab --plan /root/manager-plan.json
+```
+
+abort 要求原安装/文件合同未变、服务停止且无待处理 job，不执行总线写操作；不会回滚已经发生的 daemon-reload。然后可生成新的计划。完成记录位于 Root 私有 `prefix/unit-manager-history`，应随安装管理资料备份。回执重放标明 `historical_receipt_only=true`，不能用作当前就绪证明；应重新执行 check，启动后再执行 `check --running`。
+
+由 systemd 启动时，servicectl run 发现 INVOCATION_ID 会额外核对真实 MainPID、调用 ID、进程 UID/GID/存储组和 cgroup，再启动业务代码。既有进程模式仍可使用。当前在宿主机仅验证了只读 PID1/版本/属性接口；自有 Root 容器以固定协议适配器验证安装文件和中断恢复，未完成真实 PID1 正向加载、启动或断电验收。
+
 v0.36候选的`workerctl enroll --max-timeout-seconds N`设置节点私有配置的执行上限（默认300秒），心跳以`node-deadline-limit-v1`确认并在节点汇总公开。中央的`scheduler.max_timeout_seconds`默认仍3600秒，管理员可停机后显式配置为1至86400秒；工作流参数同样有86400秒硬上界。中央上限和节点实际上限须同时满足。新任务超过节点上报值时保持排队、0attempt/0计算预留；超过3600秒的任务也不会交给未确认此能力的旧节点。能力或上限变化不丢弃已有执行尝试，节点仍按原冻结许可处理。长任务安装者应同时为服务、工作盘和缓存准备足够的生命周期与容量；本功能不代表大型编译、硬件或多机已验收。
 
 v0.35候选新增Root离线`payload-quota-plan`/`payload-quota-apply`，统一调整已登记owner的中央存储字节/inode限额，保留中断日志和修订回执。正常生命周期会阻断未完成调整；同计划可恢复。操作及明确范围见[STORAGE.md](STORAGE.md)，实际新包验收以evidence/validation-v035.json为准。

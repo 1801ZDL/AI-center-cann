@@ -37,6 +37,10 @@ class CentralSession:
             self.root_command('unit-install','--prefix',self.prefix,'--unit-dir',str(self.unit_dir))
         value=plan(self.prefix,'new_owner',23832,64*1024**2,512)['plan'];apply(self.prefix,value)
         if context.get('unit_refresh'):self.unit_proof=self.refresh_unit()
+        self.manager_proof={}
+        if context.get('unit_manager'):
+            from unit_manager_fixture import run
+            self.manager_proof=run(self)
         node_profile={k:copy.deepcopy(v) for k,v in config.items() if k not in {'node_id','node_key','controller','docker_runtime','state_dir'}}
         node_profile['name']='handoff_node';path=self.state/'node-profile.json';atomic_json(path,node_profile);os.chown(path,23820,23820)
         created=self.service_code('''import json,sys
@@ -228,7 +232,8 @@ print(json.dumps({"profile_sha256":sha(projection(j.nodes.node(r["node_id"])["pr
             'healthy_real_worker_heartbeat_observed':True,'identity_still_staged_and_token_count_zero':True,
             'central_nonroot_uid':23820,'accounts_enabled':False,'full_owner_onboarding_ready':False,
             'scope':'Same-host installed non-root controller plus Root Node, real stage/GID approval and authenticated HTTP commit/ready ACK. Environment enrolled by trusted fixture administrator; not a new protected environment-probe acceptance.',**activation,
-            **({'unit_refresh':self.unit_proof} if self.unit_proof else {})}
+            **({'unit_refresh':self.unit_proof} if self.unit_proof else {}),
+            **({'unit_manager':self.manager_proof} if self.manager_proof else {})}
 
     def abort_uncommitted(self,spec_path):
         from lab_client import read_json
