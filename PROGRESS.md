@@ -1,5 +1,22 @@
 # 实施进度
 
+## 忙队列维护排空与原进程恢复（2026-10-31）
+
+新增owner_maintenance_drain.py及owner-maintenance-drain-v1。进程模式开户held先发布draining门：拒新提交，既有排队任务仍可claim/start，心跳/结果/归档/清理继续；事务内再次检查提交门，防止维护转换时越过准入。未知任务及inventory hold继续保留资源。缺失/维护门使已预留启动返回wait，同一attempt和分配不变。Node清理、ACK/GC、缓存租约和中央全部静默后记drained，再关闭执行准入、停止明确选择的本地进程Node及中央，最后重查中央，才进入stage。
+
+首次冻结本地prefix/state/release/配置SHA及原运行状态；同Node/物理域/中央authority和辅助程序须匹配，拒用process模式操纵受管服务。最初未运行的服务不为了排空隐式启动。held中止不碰原Node；drained中止恢复原先运行的中央/Node。晚到工作退回排空时，先恢复进程再提交held；恢复中断或部分失败继续保留drained，确保再次中止仍记得恢复Node。systemd仍要求管理员先排空、初始inactive；实际PID1/受管忙排空未验收。恢复不扩大原停止范围，不删除原任务/目录/未知租约。
+
+**最终696项/125.211秒/无跳过及JS语法通过；76个非文档生产源码与最终Root和全量冻结完全一致。** 新20项检查包含两个owner既有排队工作、拒新提交、事务竞争、缺失/维护门等待、未知资源保留、启动门优先、原进程快照/中止恢复、恢复崩溃与部分失败的持久顺序。后三项是受控单元异常，未宣称额外真机故障注入。
+
+最终Root job-6c411e7fc099：49个SIGKILL恢复点通过；旧owner的两个真实IR任务在忙队列中止及完成排空路径各单attempt成功，停止后中止恢复原中央/Node。原第二新用户单次安装CLI开户、个人UID23802/23803认证与peer拒读、Svc23820、等待Node期间旧UID23801 IR、第二Node UID23812单attempt IR仍通过。独立host读取两任务/三个ready+onlineSeen交接/最终禁用及token计数/两个Node映射；Root /opt历史仅角色tmpfs内验证，不能当host留存历史或当前挂载quota。七文件盘loop/helper/角色/卷释放，后备文件留私有。
+
+最终全量job-0dc9473b3bcc。初步focused job-f77217f8ff61为17/2.041秒；早期全量job-54973c7822d6为693/127.175秒、Root job-0fff89c656dc为49点，均在最后恢复顺序修复前，保留原范围。最终696另含3项恢复顺序检查且Root重新验收。完整证据本地evidence/owner-drain-validation.json，公开摘要reports/public-source-check.json.owner_maintenance_drain。
+
+Main在无排队/活动/未知任务及有效库存保留时重载，已加载新capability，原configSHA/CPU254,255/2048MiB/SHM1024MiB/1槽和19个Node profile SHA不变；旧Node未升级，fresh inventory无豁免。库存表保留一条held=0历史记录，不是有效hold。0 NPU kernel/模型调用；protected六文件SHA与原基线一致，未改共享设备/驱动/账号/既有zdl。
+
+下一优先：最终激活的全Node空闲条件与其他用户已知工作解耦；无关owner追加后的既有资格兼容证明；固定探针内存提前验证Node/物理域边界。真实设备/ACL/数值/性能/仿真、真实PID1/两OS用户/两物理机、远程交付/fencing、一般资源合同/控制盘硬边界、组织身份及msagent仍待。PUBLIC-001继续延期，整体目标未完成。下方为各阶段历史验收。
+
+
 
 ## 显式候选卡开户编排、观察与已成功任务采用（2026-10-31）
 

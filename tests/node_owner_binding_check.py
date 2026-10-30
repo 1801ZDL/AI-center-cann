@@ -254,6 +254,7 @@ def parent(central_handoff=False,activate_owner=False,unit_refresh=False,activat
         (payload/'node_provision_fixture.py').write_bytes((root/'tests/node_provision_root_fixture.py').read_bytes());(payload/'node_provision_fixture.py').chmod(0o444)
     if owner_provision:
         (payload/'owner_provision_fixture.py').write_bytes((root/'tests/owner_provision_root_fixture.py').read_bytes());(payload/'owner_provision_fixture.py').chmod(0o444)
+        (payload/'owner_drain_fixture.py').write_bytes((root/'tests/owner_drain_root_fixture.py').read_bytes());(payload/'owner_drain_fixture.py').chmod(0o444)
     (payload/'input.mlir').write_text('module { func.func @add() -> i32 { %a = arith.constant 19 : i32\n %b = arith.constant 23 : i32\n %r = arith.addi %a, %b : i32\n return %r : i32 } }\n');(payload/'input.mlir').chmod(0o444)
     binding,_=discover();cpus=job['allocation']['cpu_ids']
     context={'job_id':job['id'],'attempt_id':job['attempt_id'],'runtime':binding,'central_handoff':central_handoff,'activate_owner':activate_owner,'unit_refresh':unit_refresh,'activation_abort':activation_abort,'unit_manager':unit_manager,'unit_start':unit_start,'owner_finish':owner_finish,'owner_expand':owner_expand,'node_provision':node_provision,'owner_provision':owner_provision}

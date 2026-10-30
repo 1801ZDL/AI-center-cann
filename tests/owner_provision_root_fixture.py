@@ -67,8 +67,21 @@ m.provision('/opt/handoff-controller',spec,local_nodes={spec['nodes'][0]['node_i
     with sqlite3.connect(session.state/'identities.sqlite3') as db:assert not db.execute("SELECT 1 FROM users WHERE id='abandoned_owner'").fetchone()
     atomic_json(source,{**abandoned,'quota':{'cpu':2,'input_storage_mib':4,'archive_storage_mib':32}})
     rejected=subprocess.run(cli,capture_output=True,text=True,timeout=30);assert rejected.returncode
+    from owner_drain_fixture import prepare,busy_abort,submit,wait_job,idle_node,no_new_submission
+    prepare(session,node_prefix,config)
+    drain_proof=busy_abort(session,node_prefix,config,spec,source,cli,local,kill)
+    task=submit(session,'old-owner-completed-drain')
     atomic_json(source,spec)
-    for boundary in ['journal','held','stopped','stage_intent','staged','storage_plan']:kill(boundary)
+    kill('journal',local_nodes=True);kill('held')
+    assert read_json(Path(session.prefix)/master.GATE)['phase']=='draining';no_new_submission(session)
+    busy=json.loads(subprocess.run(cli,capture_output=True,text=True,check=True,timeout=30).stdout)
+    assert busy['state']=='held' and busy['stage_id'] is None
+    wait_job(session,task['job_id']);idle_node(config)
+    for boundary in ['drained','maintenance','local_drained','stopped','stage_intent','staged','storage_plan']:kill(boundary)
+    assert not deploy.process_status(node_prefix)['running']
+    drain_proof.update(completed_drain_job=task['job_id'],existing_real_ir_drained_single_attempt=True,
+        original_local_node_stopped_only_after_job_cleanup=True,draining_submit_rejected=True)
+
     for boundary in ['journal','quota','config','metadata','binding','receipt','published']:kill(boundary,'storage')
     for boundary in ['storage_applied','storage_saved','service_allowed','service_response']:kill(boundary)
     pid=read_json(session.state/'service-process.json')['pid']
@@ -207,7 +220,7 @@ else:raise AssertionError('First owner read second owner profile')
     replay=json.loads(subprocess.run(cli,capture_output=True,text=True,check=True,timeout=30).stdout)
     assert replay['historical_receipt_only'] and session.command('accessctl','user-status','new_owner')['disabled']
     deploy.stop(session.prefix)
-    return {'passed':True,'fault_chain':faults,'fault_count':len(faults),'initial_abort_before_identity_has_no_user_row':True,
+    return {'passed':True,'fault_chain':faults,'fault_count':len(faults),'maintenance_drain':drain_proof,'initial_abort_before_identity_has_no_user_row':True,
         'duplicate_gid_and_mapped_uid_refused_before_stage_or_journal':True,
         'automatic_probe_on_cpu_only_node_refused_before_stage':True,
         'installed_wait_expiry_preserves_pending_and_single_call_cpu_completion':True,

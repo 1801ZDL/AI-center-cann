@@ -58,7 +58,9 @@ def _gate(prefix):
     return value
 
 
-def admission_reason(state):
+OWNER_HOLD='中央开户维护暂停新提交；原任务、日志及资源预留继续保留'
+
+def admission_reason(state,*,submit=False):
     prefix=os.environ.get(PREFIX_ENV)
     if prefix is None:return None
     try:
@@ -66,7 +68,7 @@ def admission_reason(state):
         if str(Path(state))!=meta['state_dir']:return HOLD
         if any(p.exists() or p.is_symlink() for p in [prefix/JOURNAL,prefix/GATE]):return HOLD
         from owner_provision import admission
-        if admission(prefix,state):return '中央开户维护暂停新任务；已有任务及日志继续保留'
+        if admission(prefix,state,submit=submit):return OWNER_HOLD
     except (OSError,ValueError):return HOLD
     return None
 

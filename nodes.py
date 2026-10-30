@@ -558,7 +558,12 @@ class NodeRegistry:
                 job['reason']=inventory_reason;job['_worker_seen']=time.time();self.jobs.write(db,job)
                 return {'start_permitted':False,'already_authorized':False,'wait':True,'reason':inventory_reason}
             reason=self.jobs.dispatch_permission(job,[j for j in self.jobs.all(db) if j['state'] in ACTIVE and j['id']!=job['id']],db,identities)
-            if reason:return {'start_permitted':False,'already_authorized':False,'reason':reason}
+            if reason:
+                from unit_start import HOLD,OWNER_HOLD
+                if reason in {HOLD,OWNER_HOLD}:
+                    job['reason']=reason;job['_worker_seen']=time.time();self.jobs.write(db,job)
+                    return {'start_permitted':False,'already_authorized':False,'wait':True,'reason':reason}
+                return {'start_permitted':False,'already_authorized':False,'reason':reason}
             job['_start_authorized']=True;job['_worker_seen']=time.time();self.jobs.write(db,job)
             return {'start_permitted':True,'already_authorized':False}
 

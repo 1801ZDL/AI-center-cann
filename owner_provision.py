@@ -124,17 +124,17 @@ def _gate(prefix,state):
         raise DeployError('Unsafe central provisioning admission gate')
     value=deploy.regular_json(path,max_bytes=65536)
     if (set(value)!={'format','id','prefix','state_dir','phase','service_allowed'} or value['format']!=FORMAT
-        or value['prefix']!=str(prefix) or value['state_dir']!=str(state) or value['phase'] not in {'maintenance','open'}
+        or value['prefix']!=str(prefix) or value['state_dir']!=str(state) or value['phase'] not in {'maintenance','open','draining'}
         or not isinstance(value['id'],str) or not re.fullmatch('[0-9a-f]{64}',value['id']) or type(value['service_allowed']) is not bool
-        or value['phase']=='open' and value['service_allowed'] is not True):raise DeployError('Invalid central provisioning admission binding')
+        or value['phase'] in {'open','draining'} and value['service_allowed'] is not True):raise DeployError('Invalid central provisioning admission binding')
     return value
 
 
-def admission(prefix,state):
+def admission(prefix,state,*,submit=False):
     pending=Path(prefix)/JOURNAL;value=_gate(prefix,state)
     if value is None:return bool(pending.exists() or pending.is_symlink())
     if not pending.exists() or pending.is_symlink():return True
-    return value['phase']!='open'
+    return value['phase']!='open' and not (value['phase']=='draining' and not submit)
 
 
 def service_guard(prefix,meta,stopping=False):
@@ -214,11 +214,8 @@ if action=='stage':
  private_tree(base,[v['owner'],'workspace'])
  result=j.access.stage_user(v['owner'],base/v['owner']/'workspace',['worker-python'],v['quota'])
 elif action=='quiescent':
- with j.transaction() as db:
-  if any(x['state'] in ACTIVE or x['state']=='queued' for x in j.all(db)) or j.inventory.holds(db=db):raise JobError('Existing jobs/inventories must finish or be reconciled before onboarding maintenance',409)
-  from maintenance import assert_quiescent
-  assert_quiescent(s,'controller')
- result={'quiescent':True}
+ from owner_maintenance_drain import readiness
+ result=readiness(j)
 elif action=='approve':result=j.nodes.handoff.approve(v['node_id'],v['proposal'],v['expected_before_sha256'])
 elif action=='probe':
  from owner_device_probe import advance
@@ -367,7 +364,7 @@ def _children(prefix,record,directory,meta,config):
         wanted=record['request']['storage']
         if (plan['owner']!=record['request']['owner'] or plan['stage_id']!=record['stage_id']
             or plan['after']['owner_groups'][plan['owner']]!=wanted):raise DeployError('Original storage plan differs from the participant request')
-    if record['phase'] in {'held','staging','staged'}:
+    if record['phase'] in {'held','drained','staging','staged'}:
         if sha(meta.get('payload_storage'))!=record['before_payload_sha256'] or config['scheduler'].get('payload_storage')!=meta.get('payload_storage'):
             raise DeployError('Central storage changed before this operation')
     elif record['phase']=='storage':
@@ -594,18 +591,22 @@ def _result(record,directory,packets=None,state=None,reason=None):
 def _record_check(record,identifier,spec,context):
     fields={'format','id','request','binding','directories','nodes','phase','stage_id','storage_plan_id','lifecycle',
         'proposals','before_payload_sha256','service_was_running'}
-    if (set(record)!=fields or record['format']!=FORMAT or record['id']!=identifier or record['request']!=spec or record['binding']!=context
-        or record['phase'] not in {'held','staging','staged','storage','lifecycle','nodes','finishing'}
+    if (set(record)-{'drain'}!=fields or record['format']!=FORMAT or record['id']!=identifier or record['request']!=spec or record['binding']!=context
+        or record['phase'] not in {'held','drained','staging','staged','storage','lifecycle','nodes','finishing'}
         or type(record['service_was_running']) is not bool or not isinstance(record['nodes'],dict)
         or set(record['nodes'])!={x['node_id'] for x in spec['nodes']} or not isinstance(record['proposals'],dict)
         or set(record['proposals'])-set(record['nodes']) or not isinstance(record['lifecycle'],dict)
         or set(record['lifecycle'])-{'unit','manager'}):raise DeployError('Central provisioning installation or phase changed')
+    if 'drain' in record:
+        from owner_maintenance_drain import check
+        check(record['drain'],record)
+    elif record['phase']=='drained':raise DeployError('A drained phase requires its original participant snapshot')
     for value in [record['before_payload_sha256'],*record['proposals'].values(),*record['lifecycle'].values()]:
         if not isinstance(value,str) or not re.fullmatch('[0-9a-f]{64}',value):raise DeployError('Invalid durable provisioning digest')
     for item in record['nodes'].values():
         if (not isinstance(item,dict) or set(item)!={'physical_id','before_profile_sha256'}
             or any(not isinstance(x,str) or not re.fullmatch('[0-9a-f]{64}',x) for x in item.values())):raise DeployError('Invalid requested Node snapshot')
-    for key,needed in [('stage_id',record['phase'] not in {'held','staging'}),('storage_plan_id',record['phase'] in {'storage','lifecycle','nodes','finishing'})]:
+    for key,needed in [('stage_id',record['phase'] not in {'held','drained','staging'}),('storage_plan_id',record['phase'] in {'storage','lifecycle','nodes','finishing'})]:
         if needed:
             if not isinstance(record[key],str) or not re.fullmatch('[0-9a-f]{64}',record[key]):raise DeployError('Missing original provisioning stage/resource plan')
         elif record[key] is not None:raise DeployError('Unexpected provisioning stage/resource plan')
@@ -675,37 +676,81 @@ def provision(prefix,value,proposals=(),local_nodes=None,abort=False,bus=None,pr
             nodes=_nodes(state,spec);_budget(history,creating=True)
             from jobs import read_json,identity_alive
             running=deploy.process_status(prefix)['running'];ready=read_json(state/'server-ready.json') or {}
-            if running and (not identity_alive(ready) or CAPABILITY not in ready.get('capabilities',[])):
-                raise DeployError('Reload the existing controller with owner provisioning admission support before maintenance')
+            from owner_maintenance_drain import CAPABILITY as DRAIN,capture,status as drain_status
+            if running and (not identity_alive(ready) or not {CAPABILITY,DRAIN}<=set(ready.get('capabilities',[]))):
+                raise DeployError('Reload the existing controller with owner maintenance drain support before maintenance')
+            if spec['service']['mode']=='systemd':
+                import unit_manager
+                bus=bus or __import__('unit_start').Bus();unit_manager.inactive(bus.unit('ascend-lab-controller.service'))
+                if running:raise DeployError('Managed onboarding requires an initially stopped controller')
+                if not drain_status(_service(prefix,meta,identifier,'quiescent',{}))['quiescent']:
+                    raise DeployError('Drain the original managed controller before stopping it; no onboarding gate was installed')
+            drain=capture(prefix,meta,config,spec,local_nodes,nodes,running)
+            if spec['service']['mode']=='systemd':
+                from owner_maintenance_drain import local_quiescent
+                if not local_quiescent({'nodes':nodes,'drain':drain})['ready']:
+                    raise DeployError('Finish local Node cleanup while the managed controller is available before stopping it')
             if not directory.exists():directory.mkdir(mode=0o700);files.sync(history)
             record={'format':FORMAT,'id':identifier,'request':spec,'binding':context,'directories':dirs,'nodes':nodes,
                 'phase':'held','stage_id':None,'storage_plan_id':None,'lifecycle':{},'proposals':{},
-                'before_payload_sha256':sha(meta.get('payload_storage')),'service_was_running':running}
+                'before_payload_sha256':sha(meta.get('payload_storage')),'service_was_running':running,'drain':drain}
             _write(journal,record);_checkpoint('journal')
         _record_check(record,identifier,spec,context)
         _children(prefix,record,directory,meta,config)
         if abort:
-            if record['phase']!='held':raise DeployError('This onboarding has durable identity/resources; retain it and reconcile the original operation')
-            if record['service_was_running'] and spec['service']['mode']=='process':
-                _publish_gate(prefix,record,'maintenance',True)
+            if record['phase'] not in {'held','drained'}:raise DeployError('This onboarding has durable identity/resources; retain it and reconcile the original operation')
+            _publish_gate(prefix,record,'maintenance',True)
+            if 'drain' in record:
+                from owner_maintenance_drain import restore
+                if not restore(prefix,record):return _result(record,directory,reason='Waiting for original drain participants to resume before abort')
+            elif record['service_was_running'] and spec['service']['mode']=='process':
                 if not deploy.start(prefix)['ready']:return _result(record,directory,reason='Waiting for original controller restoration before abort')
             result=_result(record,directory,state='aborted');_write(receipt,{'id':identifier,'request':spec,'result':result})
             (prefix/GATE).unlink(missing_ok=True);files.sync(prefix);journal.unlink();files.sync(prefix)
             return result
-        if record['phase'] in {'held','staging','staged','storage','lifecycle'}:
-            _publish_gate(prefix,record,'maintenance',record['phase']=='lifecycle');_checkpoint('held')
-        else:_publish_gate(prefix,record,'open',True)
+        from owner_maintenance_drain import capture,mapping,resume_running,local_quiescent,stop_local,reopen,status as drain_status
+        if 'drain' not in record and record['phase']=='held':
+            record['drain']=capture(prefix,meta,config,spec,local_nodes,record['nodes'],deploy.process_status(prefix)['running'])
+            _write(journal,record)
+        if 'drain' in record:
+            mapping(record,local_nodes)
+            if record['phase']=='held' and set(local_nodes)-set(record['drain']['nodes']):
+                raise DeployError('Select local drain participants in the initial request or provide an already-stopped Node in the later Node phase')
+        save=lambda:_write(journal,record)
         if record['phase']=='held':
-            _service(prefix,meta,identifier,'quiescent',{})
-            if spec['service']['mode']=='process':
-                saved=deploy.regular_json(state/'service-process.json',private=True) if (state/'service-process.json').exists() else {}
-                if saved.get('manager_invocation_id'):raise DeployError('Use the systemd lifecycle for this managed service')
-                deploy.stop(prefix)
+            _publish_gate(prefix,record,'draining',True);_checkpoint('draining');_checkpoint('held')
+            current=resume_running(prefix,record,save)
+            drained=drain_status(_service(prefix,meta,identifier,'quiescent',{}))
+            if not drained['quiescent']:
+                reason=drained['reason']
+                if not current['running']:reason='Start the original controller to drain/reconcile its retained work; '+(reason or '')
+                return _result(record,directory,reason=reason)
+            local=local_quiescent(record)
+            if not local['ready']:return _result(record,directory,reason=local['reason'])
+            snapshot=directory/('drain-'+sha(record['drain'])+'.json')
+            if snapshot.exists():
+                if _read(snapshot)!=record['drain']:raise DeployError('Original drain participant snapshot changed')
+            else:_write(snapshot,record['drain'])
+            record['phase']='drained';save();_checkpoint('drained')
+        if record['phase'] in {'drained','staging','staged','storage','lifecycle'}:
+            _publish_gate(prefix,record,'maintenance',record['phase']=='lifecycle');_checkpoint('maintenance')
+        elif record['phase']!='held':_publish_gate(prefix,record,'open',True)
+        if record['phase']=='drained':
+            local=stop_local(record,save,_checkpoint)
+            if not local['ready']:
+                reopen(prefix,record,save,lambda phase,allowed:_publish_gate(prefix,record,phase,allowed))
+                return _result(record,directory,reason=local['reason'])
+            if spec['service']['mode']=='process':deploy.stop(prefix)
             else:
                 import unit_manager
                 bus=bus or __import__('unit_start').Bus();unit_manager.inactive(bus.unit('ascend-lab-controller.service'))
-                if deploy.process_status(prefix)['running']:raise DeployError('Systemd onboarding requires an initially stopped managed service')
-            _checkpoint('stopped');record['phase']='staging';_write(journal,record);_checkpoint('stage_intent')
+                if deploy.process_status(prefix)['running']:raise DeployError('Managed onboarding requires an initially stopped controller')
+            _checkpoint('stopped')
+            final=drain_status(_service(prefix,meta,identifier,'quiescent',{}))
+            if not final['quiescent']:
+                reopen(prefix,record,save,lambda phase,allowed:_publish_gate(prefix,record,phase,allowed))
+                return _result(record,directory,reason=final['reason'])
+            record['phase']='staging';save();_checkpoint('stage_intent')
         if record['phase']=='staging':
             stage=_service(prefix,meta,identifier,'stage',{'owner':spec['owner'],'quota':spec['quota']})
             record.update(stage_id=stage['stage_id'],phase='staged');_write(journal,record);_checkpoint('staged')

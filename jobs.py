@@ -345,7 +345,7 @@ class JobStore:
 
     def submit(self, request, principal=None, *, _staged_probe=None):
         from unit_start import admission_reason
-        reason=admission_reason(self.runtime)
+        reason=admission_reason(self.runtime,submit=True)
         if reason:raise JobError(reason,503)
         principal = principal or self.access.local
         principal.require('jobs:submit')
@@ -358,7 +358,7 @@ class JobStore:
         if _staged_probe is not None:spec['_staged_device_probe']=_staged_probe
         fingerprint = hashlib.sha256(json.dumps({k: v for k, v in spec.items() if k != 'idempotency_key'}, sort_keys=True).encode()).hexdigest()
         with self.submission_transaction(_staged_probe is not None) as (db,identities):
-            reason=admission_reason(self.runtime)
+            reason=admission_reason(self.runtime,submit=True)
             if reason:raise JobError(reason,503)
             if _staged_probe is not None:
                 from owner_device_probe import validate
