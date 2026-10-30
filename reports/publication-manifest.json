@@ -1,6 +1,6 @@
 {
   "schema": "ai-center-cann-publication/v1",
-  "recorded_at": "2026-10-30T20:53:52.721164+00:00",
+  "recorded_at": "2026-10-30T21:10:40.308573+00:00",
   "files": {
     ".gitignore": {
       "sha256": "a6287d1d645bcba2ddfec87d1055724b00577eea69200b919302f4d46cf3680d",
@@ -13,8 +13,8 @@
       "mode": "100644"
     },
     "BACKLOG.md": {
-      "sha256": "e67506228607741d84e87e42e27d20d9fadc50c44ee39f251f04293ef160fe4f",
-      "bytes": 3190,
+      "sha256": "57ce8c5cce433ca07656204e80f7cae8a09a33fc86811654c0deb9a5f943f83b",
+      "bytes": 3393,
       "mode": "100644"
     },
     "CACHE.md": {
@@ -38,8 +38,8 @@
       "mode": "100644"
     },
     "DEPLOYMENT.md": {
-      "sha256": "4e9a13e63e7ed84858043c8a499016cc43c536b249b1811fdb917fc1b7124e12",
-      "bytes": 50667,
+      "sha256": "07819156eabd8f7b63cb5476cb04ec0ac43a4e938ad2bc813f1f3e967938a8c2",
+      "bytes": 51242,
       "mode": "100644"
     },
     "ENVIRONMENTS.md": {
@@ -63,18 +63,18 @@
       "mode": "100644"
     },
     "OWNER_PROVISION.md": {
-      "sha256": "3d2e24bdcd7aed70ead2b0a36eff2c3b1dc1ee8bd47fdb91db5d179b6a2d4fdc",
-      "bytes": 48569,
+      "sha256": "1f045117d869cfb40e5158bc920a42f192114c514e0b53562c8289c456cb0b3a",
+      "bytes": 50598,
       "mode": "100644"
     },
     "PROGRESS.md": {
-      "sha256": "295756b6dc529269067aa18119e5f1cae3840b3192e4d65853782951aa572bc7",
-      "bytes": 55085,
+      "sha256": "3ebe156b9a6c296ac54e4e6a70db56e258a101e1d6431de027106c2d0a68597b",
+      "bytes": 59603,
       "mode": "100644"
     },
     "README.md": {
-      "sha256": "afb5ff66ffb5fbccef4d0fa0f3b19b6c8bc8be7c09b06601364c3fe4507bcdfb",
-      "bytes": 6855,
+      "sha256": "eb5f75e6c85d5cf5d1191d9889edae4d83c5395ff1419bdc3dd262135c9f9d47",
+      "bytes": 7002,
       "mode": "100644"
     },
     "RECOVERY.md": {
@@ -133,8 +133,8 @@
       "mode": "100644"
     },
     "attempt_inventory.py": {
-      "sha256": "51bb1fa8f75cacd07ffe28e4c790fbc37db6c7907be94af80b2cb5ec631ade1c",
-      "bytes": 6762,
+      "sha256": "f968f45e14853c2a810bbc33a921b1c8e40b7e553065233c7eb74e05134f0a2c",
+      "bytes": 6891,
       "mode": "100644"
     },
     "auth.py": {
@@ -378,8 +378,8 @@
       "mode": "100644"
     },
     "owner_activation.py": {
-      "sha256": "79de425e61ff33074960dfd9a11a1370bf28c755e5a774da1e2499d323bb54e0",
-      "bytes": 18715,
+      "sha256": "69a46be30a6ee14bf64ade4b3ad953b9e5b664a9dfc39459805b818edec3f1af",
+      "bytes": 20817,
       "mode": "100644"
     },
     "owner_activation_abort.py": {
@@ -393,8 +393,8 @@
       "mode": "100644"
     },
     "owner_device_probe.py": {
-      "sha256": "2b70ace2cb42b55f13cf9de9cc145fdc685aa378a43f8039cffc8ab901e16c93",
-      "bytes": 13779,
+      "sha256": "bdd514b1b3d226a7c8eb2d93d3703689397495fb50ea7b5ce93a05496d588fec",
+      "bytes": 13801,
       "mode": "100644"
     },
     "owner_finish.py": {
@@ -478,13 +478,13 @@
       "mode": "100644"
     },
     "reports/public-source-check.json": {
-      "sha256": "78a3071a6d1ddf8bc99356b368f35bc85430c9cc2d81bfcb14e5aaeb1f2ee0c8",
-      "bytes": 187243,
+      "sha256": "3d8c036b670e9942d0d38a91eed2a07ad09c72ec824439a27b71bfc2dc2757be",
+      "bytes": 214223,
       "mode": "100644"
     },
     "reports/v036-public.json": {
-      "sha256": "7c069a09426e60ecd6183722186d2ff37e5c1ce9d4766b8f2eb5693dda9eb9b6",
-      "bytes": 7541,
+      "sha256": "b9293ceefdb6b138018226b6229e3602a34bf53b66fdf13a876cc12b5aaa64f6",
+      "bytes": 8069,
       "mode": "100644"
     },
     "requirements-qa.txt": {
@@ -503,8 +503,8 @@
       "mode": "100755"
     },
     "scripts/publication_manifest.py": {
-      "sha256": "ef83ecea4a9e419a16c2f7ff07f30351a6199a5807f3fd0a749985881961d985",
-      "bytes": 11073,
+      "sha256": "da2bab3638c6cfc623baf86301e5b00cad89a85510c58f1c762a5fd8365f923e",
+      "bytes": 11573,
       "mode": "100644"
     },
     "server.py": {
@@ -938,8 +938,8 @@
       "mode": "100644"
     },
     "tests/node_owner_binding_check.py": {
-      "sha256": "7db9605dba50599326dae21609c710321682ab9c0dbbb3aa544ad0f7f95c8d30",
-      "bytes": 27847,
+      "sha256": "ceafc72ab94c64703b9aa7de46d6e150b30ec9a5d7e0d0bbf079e5c4fde58715",
+      "bytes": 28037,
       "mode": "100644"
     },
     "tests/node_provision_root_fixture.py": {
@@ -967,9 +967,14 @@
       "bytes": 6462,
       "mode": "100644"
     },
+    "tests/owner_busy_activation_root_fixture.py": {
+      "sha256": "0fab896331bc5ed92c09173e1663365a9f85583bef5db3b8c4de8135416463db",
+      "bytes": 4608,
+      "mode": "100644"
+    },
     "tests/owner_drain_root_fixture.py": {
-      "sha256": "0c6c33dfb067ce6b0751e79574894036566718759a9282bb47e5f1865b22b56f",
-      "bytes": 6653,
+      "sha256": "bf0fe5810b412220602712d557df3bea378db3eecf447b6ce4fd55e03acec1b6",
+      "bytes": 6860,
       "mode": "100644"
     },
     "tests/owner_expand_root_fixture.py": {
@@ -988,8 +993,8 @@
       "mode": "100644"
     },
     "tests/owner_provision_root_fixture.py": {
-      "sha256": "423435906e9b57250938c207ed68aa57f74d7e22065e8ad566fb1850e6768d46",
-      "bytes": 18530,
+      "sha256": "8575e4c0012ef57e7ca43cba604b008ad62a50fdab79a6e84c20124f369ae9e6",
+      "bytes": 18780,
       "mode": "100644"
     },
     "tests/package_release_check.py": {
@@ -1272,6 +1277,11 @@
       "bytes": 10276,
       "mode": "100644"
     },
+    "tests/test_owner_activation_busy.py": {
+      "sha256": "51e557edd471513febf823ae64d7cb0c34b23012d74f009b83afba54124bb433",
+      "bytes": 17265,
+      "mode": "100644"
+    },
     "tests/test_owner_delivery.py": {
       "sha256": "87d41731f15d6206fb1bfb2f86ecfb7eacfaf6e7aeaf766752af1fd3f97d8958",
       "bytes": 8678,
@@ -1523,10 +1533,10 @@
       "mode": "100644"
     }
   },
-  "files_count": 304,
-  "total_bytes": 3556658,
-  "known_private_values_checked": 1682,
-  "private_fixture_files_considered": 1231,
+  "files_count": 306,
+  "total_bytes": 3616911,
+  "known_private_values_checked": 1701,
+  "private_fixture_files_considered": 1243,
   "model_keys_read": false,
   "raw_runtime_or_evidence_included": false,
   "passed": true

@@ -1,5 +1,24 @@
 # 实施进度
 
+## 已知任务并行期间的身份激活与个人排队（2026-10-31）
+
+最后激活不再复用结构交接的全Node空闲门。其他用户的已知reserved/running/cancelling任务可继续，原attempt、分配和资源账本不变；满载只让新用户任务排队。结构变更/绑定/ACK仍要求静默；同域未知执行（即使相关Node已禁用）、有效库存hold/过期轮次、待完成交接、draining、环境/存储或目标用户槽位异常仍阻断。其他物理域的其他用户未知任务不自动隔离本域。本用户自身排队/活动预激活任务会阻止最后改变身份，避免遗留授权失效任务。
+
+固定预激活探针授权显式使用identity_change=False：只核当前可安全排队的合同，不改变身份，可与已知工作并存或为另一候选卡显式新建操作，仍禁用用户、无凭据、经原资源/归档账本。原完整候选计划仍串行、同操作仍同job，未自动增加探针或放弃原租约。NPU正向仅合成可信协议。
+
+新增活中央库存轮次核对：本地Svc管理命令无进程内controller_instance时，读受保护server-ready，核活PID/启动身份、同服务UID、能力和32位轮次，再把预期轮次交给Inventory.reason。所有启用同域Node须已确认当前轮次，命令对象的已有冲突轮次、缺失/旧报告、检查期间轮次切换均拒绝；不改JobStore轮次、不伪造Node已对账、不豁免fresh inventory。
+
+**最终715项/127.602秒/无跳过及JS语法通过；76个非文档生产源码与最终Root及全量冻结一致。** 新19项涵盖真实账本的旧任务保留/新IR排队授予、reserved/cancelling、目标与其他用户槽位、同域未知/禁用peer、独立域未知、结构交接仍静默、pending/drain/hold、全域库存轮次及管理轮次切换、预激活probe排队/自己的queued和reserved阻激活、显式另一候选排队与已有NPU资格并行激活。单位检查中的设备观测是合成，不是NPU硬件计算。
+
+最终Root job-772c811b1692，原49个SIGKILL恢复点仍通过。旧用户UID23801的实际IR在运行时，新用户完成激活及UID23802个人交付；该个人沿交付profile认证、封存输入并提交实际IR，在满载原Node queued/0attempt，随后复用同CPU且各单attempt成功。独立host DB核：old job-938f4c7c6c38运行21:05:52.811955→21:06:25.039528 UTC，激活21:05:53.424601 UTC；new job-715c628a4f87在旧任务结束前提交、21:06:25.783685启动，两份锁定环境IR结果passed。个人/任务UID由角色内实际脚本验证，host核对持久任务/激活/身份/Node记录，不宣称host留存/opt Root历史或当前挂载quota。原排空、第二新用户单CLI、peer拒读、Node2 UID23812 IR及历史禁用重放仍过。七文件盘loop/helper/角色/卷释放，后备文件留私有。
+
+最终全量job-50b6c1bf6358；测试源摘要在其仍queued时冻结，最终19项全通过。失败保留：repro job-b5e4b424f0f6是旧fixture占位spool不能签发真实grant；修正完整合同后job-814650bb29e4正确复现旧全Node空闲误阻。focused job-29a0fc5b44f6三个fixture问题为peer缺name、cpu_demo默认128MiB产物超过stage预算，以及重复claim被误当新分配；改合法登记、有限IR合同和exclude_attempts后job-6090efdb1cc2为12/2.295秒，增peer后job-a08ad32ddd01为14/2.384秒。Root job-2637e9c3eb6a揭示新库存检查未绑定本地Svc轮次，误等到finish_intent前；补活轮次后最终Root通过。19项job-cfc7b73bb043只有一个断言错误：缺cap时先由已有cap门拒绝，fixture却强求后置库存错误；按适用门断言后最终全量通过。未放松生产准入。完整证据本地evidence/owner-busy-admission-validation.json，精选reports/public-source-check.json.busy_owner_activation。
+
+Main在0排队/活动/未知/有效库存hold时重载，configSHA/CPU254,255/2048MiB/SHM1024MiB/1槽及19个Node profile SHA不变；旧Node未升级、库存轮次无豁免。protected六文件仍原v036哈希。0 NPU kernel/模型调用，既有zdl启动时间和资源设置不变。
+
+下一优先：无关用户追加后的既有设备资格兼容证明；探针内存在stage前校验Node/物理域运行边界。实际PID1/宿主多用户/两物理机、NPU访问ACL数值性能仿真、远程交付/fencing、一般资源合同/控制盘硬边界、组织身份/msagent仍待。PUBLIC-001继续延期，整体目标未完成。下方为各阶段历史。
+
+
 ## 忙队列维护排空与原进程恢复（2026-10-31）
 
 新增owner_maintenance_drain.py及owner-maintenance-drain-v1。进程模式开户held先发布draining门：拒新提交，既有排队任务仍可claim/start，心跳/结果/归档/清理继续；事务内再次检查提交门，防止维护转换时越过准入。未知任务及inventory hold继续保留资源。缺失/维护门使已预留启动返回wait，同一attempt和分配不变。Node清理、ACK/GC、缓存租约和中央全部静默后记drained，再关闭执行准入、停止明确选择的本地进程Node及中央，最后重查中央，才进入stage。

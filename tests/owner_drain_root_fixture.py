@@ -22,7 +22,7 @@ from pathlib import Path
 from lab_client import Client,read_json,atomic_json
 s=Path(sys.argv[1]);source=s/'old-owner-drain-input';source.mkdir(mode=0o700)
 (source/'input.mlir').write_text('module { func.func @add() -> i32 { %a = arith.constant 19 : i32\\n %b = arith.constant 23 : i32\\n %r = arith.addi %a, %b : i32\\n return %r : i32 } }\\n')
-(source/'run.py').write_text("import os,json,subprocess,shutil,time\\nfrom pathlib import Path\\nassert os.getuid()==23801\\ntime.sleep(5)\\nr=Path(os.environ['LAB_JOB_DIR']);out=r/'ir/canonical.mlir'\\nsubprocess.run([shutil.which('bishengir-opt'),'--canonicalize','--cse','input.mlir','-o',str(out)],check=True)\\nassert 'arith.constant 42' in out.read_text()\\nPath(os.environ['LAB_RESULT_FILE']).write_text(json.dumps({'schema':'ascend-lab-result/v1','kind':'ir','passed':True,'artifacts':['ir/canonical.mlir'],'uid':os.getuid()}))\\n")
+(source/'run.py').write_text("import os,json,subprocess,shutil,time,sys\\nfrom pathlib import Path\\nassert os.getuid()==23801\\ntime.sleep(int(sys.argv[1]) if len(sys.argv)>1 else 5)\\nr=Path(os.environ['LAB_JOB_DIR']);out=r/'ir/canonical.mlir'\\nsubprocess.run([shutil.which('bishengir-opt'),'--canonicalize','--cse','input.mlir','-o',str(out)],check=True)\\nassert 'arith.constant 42' in out.read_text()\\nPath(os.environ['LAB_RESULT_FILE']).write_text(json.dumps({'schema':'ascend-lab-result/v1','kind':'ir','passed':True,'artifacts':['ir/canonical.mlir'],'uid':os.getuid()}))\\n")
 c=Client.from_profile(s/'personas/old_owner/client.json');bundle=c.upload_input(source)
 atomic_json(s/'old-owner-drain-bundle.json',bundle)
 print(json.dumps({'input_id':bundle['id']}))
@@ -30,15 +30,17 @@ print(json.dumps({'input_id':bundle['id']}))
     return value
 
 
-def submit(session,key):
+def submit(session,key,delay=None):
+    argv=['python','run.py']+([str(delay)] if delay is not None else [])
+    timeout=max(30,delay+15) if delay is not None else 30
     return session.service_code('''import json,sys
 from pathlib import Path
 from lab_client import Client,read_json
 from environment_contract import lock_for
 s=Path(sys.argv[1]);c=Client.from_profile(s/'personas/old_owner/client.json');config=read_json(s/'node-profile.json');bundle=read_json(s/'old-owner-drain-bundle.json')
 r={'environment':'worker-python','template':'ir_v1','idempotency_key':''' +repr(key)+''',
-'parameters':{'input_id':bundle['id'],'argv':['python','run.py'],'resources':{'cpu':1,'memory_mib':256,'shm_mib':0,'npu':0},
-'lock':lock_for(config['environment_manifest']),'timeout_seconds':30,'artifacts':{'file_mib':1,'total_mib':2},'workspace':{'min_mib':1,'min_inodes':16,'durable':True}}}
+'parameters':{'input_id':bundle['id'],'argv':''' +repr(argv)+''','resources':{'cpu':1,'memory_mib':256,'shm_mib':0,'npu':0},
+'lock':lock_for(config['environment_manifest']),'timeout_seconds':''' +repr(timeout)+''','artifacts':{'file_mib':1,'total_mib':2},'workspace':{'min_mib':1,'min_inodes':16,'durable':True}}}
 v=c.request('/api/jobs',r);print(json.dumps({'job_id':v['job']['id'],'state':v['job']['state']}))
 ''')
 

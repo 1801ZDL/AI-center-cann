@@ -78,9 +78,9 @@ class Inventory:
           (' AND physical_id=?' if physical_id else ''),(physical_id,) if physical_id else ())
         return [{'node_id':x[0],'physical_id':x[1],'revision':x[2],'unmatched':json.loads(x[3]),'at':x[4]} for x in rows]
 
-    def reason(self,physical_id,db=None):
+    def reason(self,physical_id,db=None,*,controller_instance=None):
         if db is None:
-            with self.jobs.connect() as connection:return self.reason(physical_id,connection)
+            with self.jobs.connect() as connection:return self.reason(physical_id,connection,controller_instance=controller_instance)
         if self.holds(physical_id,db):return HOLD_REASON
         if self.jobs.policy.get('require_attempt_inventory'):
             for raw,seen,report in db.execute('SELECT profile,last_seen,report FROM worker_nodes WHERE disabled=0'):
@@ -88,7 +88,7 @@ class Inventory:
                 if profile['physical_id']!=physical_id:continue
                 report=json.loads(report);inventory=report.get('attempt_inventory',{})
                 if (time.time()-seen>30 or inventory.get('reconciled') is not True
-                    or inventory.get('controller_instance')!=getattr(self.jobs,'controller_instance',None)):
+                    or inventory.get('controller_instance')!=(controller_instance if controller_instance is not None else getattr(self.jobs,'controller_instance',None))):
                     return WAIT_REASON
         return None
 

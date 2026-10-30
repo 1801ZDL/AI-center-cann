@@ -150,7 +150,7 @@ def authorize(jobs,value):
             # Full native storage/Node health/group readiness, excluding the
             # access evidence this fixed probe is about to acquire.
             Activation(jobs).readiness({'owner':spec['owner'],'stage_id':spec['stage_id'],
-                'required_nodes':[{'node_id':spec['node_id'],'plan_id':spec['plan_id']}]},db,profile,device_access=False)
+                'required_nodes':[{'node_id':spec['node_id'],'plan_id':spec['plan_id']}]},db,profile,device_access=False,identity_change=False)
             record={'format':FORMAT,'id':identifier,'request':spec,**current,'created_at':now(),'job_id':None};save(db,record)
     _checkpoint('authorized')
     user=None

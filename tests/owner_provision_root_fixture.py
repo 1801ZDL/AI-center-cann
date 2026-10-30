@@ -165,7 +165,10 @@ print(json.dumps({'old_owner_real_ir_succeeded_while_waiting':True}))
     assert session.command('accessctl','user-status','new_owner')['disabled']
     with sqlite3.connect(session.state/'identities.sqlite3') as identities:
         assert identities.execute("SELECT count(*) FROM tokens WHERE user='new_owner'").fetchone()[0]==0
-    for boundary in ['journal','activation']:kill(boundary,'finish')
+    kill('journal','finish')
+    from owner_busy_activation_fixture import start as start_busy,still_running,complete as complete_busy
+    busy=start_busy(session)
+    kill('activation','finish');still_running(session,busy)
     deploy.stop(session.prefix)
     # Only credential delivery is pending: the same central operation must
     # restore its process without reissuing the committed user credential.
@@ -178,6 +181,7 @@ print(json.dumps({'old_owner_real_ir_succeeded_while_waiting':True}))
     done=json.loads(subprocess.run([*cli,*local],capture_output=True,text=True,check=True,timeout=45).stdout)
     assert done['state']=='delivered' and done['historical_receipt_only'] and not (Path(session.prefix)/master.JOURNAL).exists()
     assert not (Path(session.prefix)/master.GATE).exists() and done['credentials_in_output'] is False
+    busy_admission=complete_busy(session,busy,config)
     current=read_json(Path(config['state_dir'])/'config.json');deploy.stop(node_prefix)
     new=Pool(Path(config['state_dir']),current);lease=Lease(new,grant(current,'old_owner',95));lease.prepare();warm=actor(lease);lease.release(termination_confirmed=True)
     assert not warm['compiled'] and warm['inode']==cold['inode'] and warm['sha256']==cold['sha256'] and lease.key==first.key
@@ -220,7 +224,7 @@ else:raise AssertionError('First owner read second owner profile')
     replay=json.loads(subprocess.run(cli,capture_output=True,text=True,check=True,timeout=30).stdout)
     assert replay['historical_receipt_only'] and session.command('accessctl','user-status','new_owner')['disabled']
     deploy.stop(session.prefix)
-    return {'passed':True,'fault_chain':faults,'fault_count':len(faults),'maintenance_drain':drain_proof,'initial_abort_before_identity_has_no_user_row':True,
+    return {'passed':True,'fault_chain':faults,'fault_count':len(faults),'maintenance_drain':drain_proof,'busy_identity_admission':busy_admission,'initial_abort_before_identity_has_no_user_row':True,
         'duplicate_gid_and_mapped_uid_refused_before_stage_or_journal':True,
         'automatic_probe_on_cpu_only_node_refused_before_stage':True,
         'installed_wait_expiry_preserves_pending_and_single_call_cpu_completion':True,

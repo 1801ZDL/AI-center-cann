@@ -80,7 +80,18 @@ class Activation:
         if not identity_alive(ready):raise JobError('Controller changed while validating activation',409)
         return groups
 
-    def readiness(self,spec,db,profile,*,device_access=True):
+    def inventory_epoch(self):
+        if not self.jobs.policy.get('require_attempt_inventory'):return None
+        ready=read_json(self.runtime/'server-ready.json') or {}
+        current=getattr(self.jobs,'controller_instance',None)
+        if (not identity_alive(ready) or ready.get('uid')!=os.geteuid()
+            or CAPABILITY not in ready.get('capabilities',[])
+            or not isinstance(ready.get('controller_instance'),str) or not re.fullmatch('[0-9a-f]{32}',ready['controller_instance'])
+            or current is not None and current!=ready['controller_instance']):
+            raise JobError('A live matching inventory controller epoch is required for activation readiness',409)
+        return ready
+
+    def readiness(self,spec,db,profile,*,device_access=True,identity_change=True):
         """Current, authenticated observations, never just historical online_seen."""
         from environment_contract import verify_config,fingerprint
         from nodes import REQUIRED_CAPABILITIES
@@ -95,6 +106,11 @@ class Activation:
         from io_policy import MIB,META
         if quota['memory_mib']<256 or quota['archive_storage_mib']*MIB<2*MIB+META:
             raise JobError('Staged quotas cannot fit the minimum managed task and archive metadata reservation',409)
+        from jobs import ACTIVE
+        rows=self.jobs.all(db);active=[job for job in rows if job['state'] in ACTIVE]
+        if identity_change and any(job['owner']==spec['owner'] and job['state'] in ACTIVE|{'queued'} for job in rows):
+            raise JobError('Finish the staged owner executions before changing identity activation',409)
+        epoch=self.inventory_epoch()
         result=[]
         for target in spec['required_nodes']:
             record=self.jobs.nodes.handoff.get(target['plan_id'],db);node=self.jobs.nodes.node(target['node_id'],db)
@@ -105,7 +121,15 @@ class Activation:
             if not 0<=time.time()-node['last_seen']<=30:raise JobError('A required Node heartbeat is stale',409)
             if report.get('disk_free_bytes',0)<512*1024**2 or report.get('memory_available_bytes',0)<(384+512)*1024**2:
                 raise JobError('A required Node lacks the minimum current memory/disk headroom for managed task admission',409)
-            self.jobs.nodes.handoff._idle(node['id'],p,db)
+            # Final login admission does not change this acknowledged Node
+            # contract or grant resources. Other owners retain their leases;
+            # their ordinary work must not require a whole-Node idle window.
+            if self.jobs.nodes.handoff.pending(node['id'],db):
+                raise JobError('Finish the pending Node owner handoff before activation',409)
+            if any(job['state']=='needs_attention' for job in self.jobs.resources.active(p['physical_id'],active)):
+                raise JobError('Reconcile unknown physical-domain executions before activation',409)
+            if self.jobs.inventory.reason(p['physical_id'],db,controller_instance=epoch['controller_instance'] if epoch else None):
+                raise JobError('A required physical-domain inventory is not current and reconciled',409)
             domain=self.jobs.resources.get(p['physical_id'],db)
             if domain['draining']:raise JobError('A required resource domain is draining',409)
             if not (REQUIRED_CAPABILITIES|CAPABILITIES)<=caps:raise JobError('A required Node lacks managed workflow capabilities',409)
@@ -150,6 +174,8 @@ class Activation:
                     raise JobError('NPU activation requires current per-owner device access qualification on each required Node',409)
             result.append({'node_id':node['id'],'plan_id':target['plan_id'],'ready_ack_id':record['ready_ack']['ack_id'],
                 'profile_sha256':sha(p),'environment_sha256':fingerprint(p['environment_manifest'])})
+        if epoch and (read_json(self.runtime/'server-ready.json')!=epoch or not identity_alive(epoch)):
+            raise JobError('The inventory controller epoch changed during activation readiness',409)
         return {'storage':storage,'nodes':result}
 
     def activate(self,value):
