@@ -57,6 +57,8 @@ CORE.extend(['experiment_budget.py','EXPERIMENT_BUDGET.md'])
 OPTIONAL_ADMIN_FILES.update({'experiment_budget.py','EXPERIMENT_BUDGET.md'})
 CORE.extend(['accuracy_data.py','accuracy_diagnostic.py','ACCURACY.md'])
 OPTIONAL_ADMIN_FILES.update({'accuracy_data.py','accuracy_diagnostic.py','ACCURACY.md'})
+CORE.append('dependency_conditions.py')
+OPTIONAL_ADMIN_FILES.add('dependency_conditions.py')
 
 
 class DeployError(ValueError):pass

@@ -1,15 +1,15 @@
 {
   "schema": "ai-center-cann-source-check/v1",
-  "recorded_at": "2026-10-31T05:15:38.218626+00:00",
+  "recorded_at": "2026-10-31T05:49:37.736618+00:00",
   "passed": true,
-  "python_unit_tests": 933,
+  "python_unit_tests": 946,
   "unit_skipped": 0,
-  "unit_seconds": 183.313,
-  "unit_log_sha256": "25b5f9050207bf5cb7e7aebc49977271c97bbfad6e924be651deaa93c88837e8",
+  "unit_seconds": 183.404,
+  "unit_log_sha256": "21c9c436e3d46928e88164431c28f9381285409a650490b09f5e46a8f3b5ba68",
   "python": "Python3.12.3",
   "javascript_syntax_passed": true,
   "command": "bash scripts/check.sh /usr/bin/python3",
-  "scope": "Standard-library CPU comparisons of historical actual NPU bytes: 11/5376 encoding differences against the old PRE reference, 0/5376 against a separately identified observed Vector reference while original actual bytes stay identical, and a mixed FP32/FP64 historical dot comparison with zero error. Installed UID23003 tasks share a 3-job/180 declared CPU-second budget; independent personal UID23642 uses actual portable CLI and read-only stdio MCP. Complete tensors and sealed hashes are independently recomputed; original failure, result rows/CSV and single attempts survive restore, which freezes spending credentials. No new NPU launches, formal ISA judgment, operator repair, PID1 or two-host acceptance.",
+  "scope": "Explicit terminal artifact handoff from an actual historical precision CPU replay failure and a controlled15-second CPU timeout. Default success-only child stays unexecuted/cancelled; terminal diagnostics retain producer IDs, attempts, cleanup facts and confirmed artifact hashes. A synthetic6MiB transport file gives a stopped partial-copy checkpoint; controller restart resumes the original sealed input. Five budgeted jobs/255 declared CPU-seconds produce four attempts, survive restore, revoke old spending credentials and reject a genuine incompatible old controller. Main archive admission ceiling intentionally raised4-to8GiB after its409 limit, with no data deletion or CPU/NPU/profile changes. No new NPU, model, real host accounts, PID1 or two-host acceptance.",
   "production_source_sha256": {
     "auth.py": "6bd9b70566fc8dd9b43d3965df5e1fce4c1385e3192239a83052cc0e04778d5f",
     "owner_identity.py": "5a48cf78584b2f717ac45594a73da569589cde6d9441037a0aedffe423f1515b",
@@ -42,12 +42,12 @@
     "npu_admission.py": "c6d39a24b5f4acde33041864e07642f9c1d72d70bb17ce6ef862d7dbda698f1e",
     "npu_device.py": "97cc78f229163dae267a7ed351fce92b3fc0bbeb781d70d758cedef3d30ea47e",
     "inputs.py": "e7d16e523275fd3a263374a03e765bd3d915b37f83197ce1269e8dc3ff708dc4",
-    "jobs.py": "7eccc10c83e34990399f22360356e20d8e5ddfddcb02747ccbc8b7cb0eab3008",
+    "jobs.py": "bf12ceb7f6fcab4b898e1f5cebb455a2159c72d0e9dc719ad85271bba1e9ed08",
     "lab_client.py": "e7da7886406571ceea4439b3a159a063c7ae6d30dd3d372ad5a503aaceb8d4e4",
     "client_archive.py": "eec04a9574e8a87d90dc54c556d4bfe6462dfb92f0332bdc6996ad64e7121c97",
     "archive_api.py": "3e9f6539e3760cb4d68b2f85a8f01b751441e3d79b70675aac1f45e90a527e57",
-    "nodes.py": "f4f81c9ade3dd1d574a71cb99e7eca224b33b887ac8474e67c0a3f714fb13a1d",
-    "server.py": "1d76a12f28a1e2d1217068394bab8fb11e408fa75c3b581b2b48fea88cf5759a",
+    "nodes.py": "482315095c06df6a276bf5f3a671ad9d7d31da1ea1367be8448340a991f7369e",
+    "server.py": "1f72b4da76f207b267964b1aa7d18b3cc5bc6cd2ec48cf053010a7b19f05c24c",
     "templates.py": "72e1a263b07624eb8854ed0ada9cbd4cf9754072719ba0663b8b557b5a203ba8",
     "worker.py": "9ccfd770b867d6b9bc48c5c598e13f9988c8ba03de4ece11652c36d301cbcfcb",
     "workflow_runner.py": "239bbcb5eca6414d85f7172808a710896d9743660289039626e54672088078f7",
@@ -75,20 +75,20 @@
     "storage_files.py": "c2dfe4aec3a4dec6bf8802655eb9e72a414e307d5eb6f4725da99f0484642ebf",
     "storage_lifecycle.py": "cc5778edf04bf1118ac940f6954cc488ae7ceedbee373568af87c6add3cde098",
     "node_storage.py": "185bdeb757c0644cf6319460d74ea15061cf6329b4707354696f8e156a16370c",
-    "deployment.py": "0e8600f33af00fe8b1eabb014fee286894edfacabe125e5cf749af3cf945da33",
-    "maintenance.py": "2620d879f911ceab230d3ca71c562762a34badf57c71c6902fe2055dacf672de",
+    "deployment.py": "41b9d131f505bc53c52897be97f8a3e1909d769b88cc12e22d2ae3ecca69b866",
+    "maintenance.py": "695ec1f34c339b100a2f1efd55b5fcc11011b56afe5a5bb24de2865595c14a45",
     "servicectl": "68b5035d535174946cc8361f2d086d02cdb452bc5ad25bcade74f853551c8663",
     "accessctl": "c0d0a86c7a027036e202aff0795eae0001beec676c393d13e73a763d685ccdc9",
     "workerctl": "e7edf6c4104c825e90243c333d49126484521e46149c2c3bfb5046b5b1a19195",
     "spool_storage.py": "c8a579146e0b24077ebf504050dd5344505f8023f6e33be1c1cb6e9ff312fea4",
     "spool_transfer.py": "885bc83a4b4cbc7d4a81c2ab1efd1df1c84b986166911f0e642bc3b214f2dd7b",
     "persistent_cache.py": "d70d394a48ae2068fe25a0a075d0882b1361ff6dda6b2d7ca3717d7fac35bd0b",
-    "dependencies.py": "222c432de7e6c2b14f85e677a68247d1b3d8269a89090845963f2249fd586cc3",
+    "dependencies.py": "c2a3f8c985ea3898c9b650576768044ba0ff427a586f3c75796e9366ab9cca1a",
     "control_storage.py": "207f4a39a0d1c0c232bf7d36b2ef9a3b455eaa95e3c9979d0bf242b88c2dd29a",
     "control_filesystem.py": "f7fa2c7c0de2d33d87f41ced989aab9a5c84ebc212144521fbb637cf41dae35c",
     "control_process.py": "50d0c78f34087c6fee0a1994d1da223d6b6ef513acc64be409fcb5e088c3b425",
     "labctl": "2dba6f9b28a49e5ace0b9f77622ce4f9702cc2169f81965e4544e91accc09a29",
-    "install-client": "2c76e51fd378f4b659331522820011573bff4052ef5b8d713b3d3489977333cd",
+    "install-client": "ccdaa2be2e60e36e3587b9144e54da6990643755de45f6298915c85dbd9012bf",
     "mcp_bridge.py": "f28c4d7a3ab388b950fea6140d0c10bdf077600d5a1bdaf4d990dcaab7a58559",
     "diagnostic_case.py": "cca7edb7c45e2942748fbd3e333968dabfb5e7a4857a064d4b96aca6e913dedc",
     "compiler_diagnostic.py": "c05d9812edaf1dba333110d036320df386c54088716ead68f16c9e0b77d61760",
@@ -99,7 +99,8 @@
     "audit_retention.py": "a6e5c3a600c3e8b266538e0555168a56a803dd04ec71ae842ef90ab85e58c233",
     "experiment_budget.py": "0a498adbe5b651e80c5b37e389d749474b84f731478d432fe97474cefe059a5c",
     "accuracy_data.py": "033c0bc7ae319567db630eef098f263f353e31217f5dd7fa53c07d079c27665e",
-    "accuracy_diagnostic.py": "8b943f6f02ce7cb3efb44a541a4f3898ec21b68f52bdfd078919e62f3e5641cf"
+    "accuracy_diagnostic.py": "8b943f6f02ce7cb3efb44a541a4f3898ec21b68f52bdfd078919e62f3e5641cf",
+    "dependency_conditions.py": "4cf3a6e490daf78bfcf34eecd3f321cd327253bf78a70febd56c1361aaa34661"
   },
   "cpu": 2,
   "memory_mib": 2048,
@@ -7621,6 +7622,115 @@
         "old_spending_credential_revoked": true,
         "new_replays": 0
       }
+    }
+  },
+  "terminal_handoff": {
+    "passed": true,
+    "scope": "Explicit terminal artifact handoff from an actual historical precision CPU replay failure and a controlled15-second CPU timeout. Default success-only child stays unexecuted/cancelled; terminal diagnostics retain producer IDs, attempts, cleanup facts and confirmed artifact hashes. A synthetic6MiB transport file gives a stopped partial-copy checkpoint; controller restart resumes the original sealed input. Five budgeted jobs/255 declared CPU-seconds produce four attempts, survive restore, revoke old spending credentials and reject a genuine incompatible old controller. Main archive admission ceiling intentionally raised4-to8GiB after its409 limit, with no data deletion or CPU/NPU/profile changes. No new NPU, model, real host accounts, PID1 or two-host acceptance.",
+    "job_ids": {
+      "focused-r1": "job-7483a86667cb",
+      "full-r1": "job-8838db5282be",
+      "installed-r1": "job-11cc578c6430"
+    },
+    "root_checks": 31,
+    "original_and_restored_database_integrity": true,
+    "original_historical_tensors_independently_rechecked": true,
+    "web_assets_changed": false,
+    "new_browser_acceptance": false,
+    "owner49_reexecuted": false,
+    "npu_kernel_launches": 0,
+    "model_invocations": 0,
+    "host_accounts_modified": false,
+    "global_services_or_driver_modified": false,
+    "production_ready": false,
+    "overall_goal_complete": false,
+    "behavior": {
+      "passed": true,
+      "tasks": [
+        {
+          "label": "precision-parent",
+          "job_id": "job-25ea1fdf9bd2",
+          "input_id": "input-92e1d7a87168fc5852266e1d",
+          "state": "failed",
+          "attempts": 1,
+          "attempt_id": "attempt-5e1f696889da4dadab2a1a58a254b59b"
+        },
+        {
+          "label": "success-only",
+          "job_id": "job-c6fc464f2758",
+          "input_id": "input-6ff681ffdd76cf915d38b16c",
+          "state": "cancelled",
+          "attempts": 0,
+          "attempt_id": null
+        },
+        {
+          "label": "precision-diagnostic",
+          "job_id": "job-5ec51cedab21",
+          "input_id": "input-6ff681ffdd76cf915d38b16c",
+          "state": "failed",
+          "attempts": 1,
+          "attempt_id": "attempt-24c15a7c225049ba8ecf49d707c8d256"
+        },
+        {
+          "label": "controlled-timeout",
+          "job_id": "job-1924b38093af",
+          "input_id": "input-d1f698d42aee39d517c59d98",
+          "state": "timed_out",
+          "attempts": 1,
+          "attempt_id": "attempt-24381faee4d644598bb2809fb2188791"
+        },
+        {
+          "label": "timeout-diagnostic",
+          "job_id": "job-bb16137258e6",
+          "input_id": "input-f1f66051534574e6d9bfa377",
+          "state": "succeeded",
+          "attempts": 1,
+          "attempt_id": "attempt-1dbbbe39dc524473ae5e65f677e0a0b2"
+        }
+      ],
+      "budget_id": "experiment-e00006b6c2414fdc8df1bf52",
+      "charged": {
+        "jobs": 5,
+        "cpu_seconds": 255,
+        "npu_seconds": 0
+      },
+      "precision_parent": "job-25ea1fdf9bd2",
+      "precision_diagnostic": "job-5ec51cedab21",
+      "ordinary_cancelled": "job-c6fc464f2758",
+      "timeout_parent": "job-1924b38093af",
+      "timeout_diagnostic": "job-bb16137258e6",
+      "partial_input_id": "input-ee63b9868f368d72d1640854",
+      "partial_copied_bytes": 1048576,
+      "partial_total_bytes": 6336048,
+      "controller_restart_resumed_original_handoff": true,
+      "failed_source_archive_pinned": true,
+      "same_historical_actual_bytes": true,
+      "original_precision_mismatches": 11,
+      "synthetic_transport_bytes": 6291456,
+      "synthetic_transport_sha256": "c0a544644b909ff57ea59fa40962670bde0b38b7d46f3832c7c8fbfb98cf81b4",
+      "controlled_cpu_wait_entered_and_timed_out": true,
+      "foreign_owner_import_denied": true,
+      "npu_kernel_launches": 0,
+      "model_invocations": 0,
+      "scope": "Installed UID-separated CPU tests with historical precision bytes and an explicitly synthetic 6MiB transfer fixture plus a controlled15-second CPU wait. Actual failed/timed-out artifact handoff, not new NPU accuracy, NPU deadlock, PID1 or physical multi-host acceptance.",
+      "after_restore": {
+        "passed": true,
+        "original_attempts_and_failures_preserved": true,
+        "old_spending_token_revoked": true,
+        "genuine_old_controller_downgrade_refused": true,
+        "new_comparisons_or_waits": 0
+      }
+    },
+    "archive_budget_change": {
+      "applied": true,
+      "old_mib": 4096,
+      "new_mib": 8192,
+      "existing_personal_profile_quotas_unchanged": true,
+      "all_other_config_values_preserved": true,
+      "profiles_inheriting_changed_ceiling": 27,
+      "active_logical_profiles_inheriting_changed_ceiling": 2,
+      "other_user_explicit_effective_limits_unchanged": true,
+      "quota_scope_note": "Stored profiles unchanged. Two active historical logical Demo personas and disabled test personas without explicit archive limits inherit the global4-to8GiB ceiling; explicit limits remain unchanged. No OS user or CPU/NPU policy changed."
     }
   }
 }

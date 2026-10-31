@@ -79,6 +79,7 @@
     "servicectl",
     "accessctl",
     "workerctl",
+    "dependencies.py",
     "control_storage.py",
     "control_filesystem.py",
     "control_process.py",
@@ -93,7 +94,8 @@
     "audit_retention.py",
     "experiment_budget.py",
     "accuracy_data.py",
-    "accuracy_diagnostic.py"
+    "accuracy_diagnostic.py",
+    "dependency_conditions.py"
   ],
   "reproduced_by_public_ci": false,
   "raw_evidence_in_repository": false,

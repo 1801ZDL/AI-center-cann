@@ -1,5 +1,21 @@
 # 实施进度
 
+## 失败产物交接、冻结来源与中断续传（2026-10-31）
+
+**最终946项/183.404秒/无跳过与JS语法通过；同机隔离Root安装31项通过。** full `job-8838db5282be`，安装 `job-11cc578c6430`，focused `job-7483a86667cb`=31项/7.179秒。90个非文档CORE与final-frozen-r1及实际安装包一致，protected6仍v0.36、APP4和既有r4工具镜像未变，无重建；网页资产未改，未重新执行浏览器或开户49检查。本轮0模型调用、0新NPU启动。
+
+新dependency_conditions.py让artifact_inputs逐项显式声明when=terminal，默认success及其失败传播不变；同一parent混用条件拒绝，显式success规范化后仍复用原幂等请求。只接受明确终态、已认证受控Node及确切attempt；要求结束/执行清退、实际使用的工作/缓存/NPU释放确认和匹配的中央归档回执。无attempt的排队取消不伪造来源。运行、未知或确认不全时继续等待，无提前计算预留。整个manifest摘要核实后冻结terminal_sources及每项来源；发布、领取和首次启动许可重核事实，变化保留原输入/attempt等待。旧代码缺能力时拒绝激活/恢复，备份仍要求全部排空。/api/me和就绪记录声明能力；客户端附DEPENDENCIES.md，未改lab_client.py的APP4边界。
+
+实际安装中个人批准同一5任务/255声明CPU秒/0NPU预算，经独立固定stdio MCP提交五任务、实际四次执行。历史HiF8 PRE数据父任务failed，独立terminal诊断保留相同原始字节并重算出11/5376差异，仍为failed；默认success后继cancelled/0attempt。另一个明确的15秒CPU等待程序写入标记后timed_out，后继成功读取同一标记。任务UID23003、无设备/网络、原生UID工作盘配额；跨owner导入拒绝，上游失败归档在交接中受回收保护。6 MiB文件是明确合成的传输fixture，不是新增数值数据；CPU等待不是NPU死锁复现。
+
+控制器在实际交接已复制1,048,576/6,336,048字节时停止，停止态DB记录后继queued、无attempt/allocation。重启沿同一input ID和原来源摘要继续，而不重新执行父任务。Controller/Node备份恢复保留五job的状态、四attempt及五条计费，旧执行token401、预算冻结，检查没有再次运行这些比较或等待任务；真实旧21bde7f包降级被拒，当前发布保持有效。主助手独立核原NPZ载荷/原文件SHA、归档报告与标记、完整合成文件、原/显式导出恢复DB integrity、attempt/计费和来源确认。恢复态文件是在当时RoleFS中读取，宿主保留的是明确导出的恢复DB。
+
+本轮Main遇到HTTP409个人归档准入上限：802个留存任务的有效归档账本约4,285,906,429字节，含每任务元数据固定预算；所有任务已终态，并非在途预留未释放或磁盘写满。保留全部数据，备份原私有配置、确认空闲后，只把本Demo的archive_budget_mib从4096调到8192并重载。配置SHA由历史5caf...变为当前`43febea5bc7f2e572d65906feeed710bb46025e26a5ff80c78826c6887fa754f`。52个显式个人配额及全部存储的profile未改；27个未显式配置的逻辑身份继承新全局上限，其中2个是启用的历史Demo身份，其余为禁用fixture。没有修改宿主用户或CPU/NPU策略。此调整解决当前有界容量需求，不替代留存/增长规划；旧报告中的历史配置摘要仍保留。
+
+Main的19 Node profiles、物理域、CPU254255/2048MiB/SHM1024MiB/1槽及zdl不变，零非终态/有效hold。2个自有loop关联已释放，5类fixture容器/卷namespace确认empty、backings私有保留，无宿主账号/全局unit/驱动变更。证据evidence/terminal-handoff-validation.json、runtime/terminal-handoff-20261031及runtime/main-current-invariants.json；公开精选reports/public-source-check.json.terminal_handoff。文档在实际包冻结后完善；非文档CORE/测试/网页及harness有明确最终冻结范围。
+
+接下来继续真实设备失败产物、完整lowering/编译崩溃、仿真和预算内候选验证，以及一般DB/归档增长、显式跨预算源委托。当前同预算交接不代表恢复后的新预算自动可读旧源。真实宿主用户/PID1、两物理机断网fencing、非root NPU访问/数值/性能/仿真与长期规模仍待，接入顺序见DEPLOYMENT.md。PUBLIC-001继续延期，production_ready=false，整体目标仍未完成。
+
 ## 历史精度差异、参考契约与独立张量重算（2026-10-31）
 
 **最终933项/183.313秒/无跳过与JS语法通过；同机隔离Root安装30项通过。** full `job-16d8061d7670`，安装 `job-bf46b25ca57b`，异常回执强化前focused `job-4fe2f02246e6`=17/6.558秒。89个非文档CORE与最终实际包/final-frozen-r3一致，protected6仍v0.36，APP4和既有r4镜像未变。本轮使用原基础镜像执行标准库CPU比较，没有重建工具镜像、重跑开户49/浏览器、调用模型或启动新NPU kernel。网页资产逐字节不变。

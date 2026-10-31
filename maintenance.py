@@ -452,6 +452,13 @@ def require_features(state,role,manifest):
             with sqlite3.connect('file:'+str(path)+'?mode=ro',uri=True) as db:
                 if any(json.loads(row[0]).get('depends_on') for row in db.execute('SELECT data FROM jobs')):
                     raise DeployError('Dependency jobs require matching stage admission support; refusing downgrade')
+    if role=='controller' and 'dependency_conditions.py' not in manifest.get('files',{}):
+        path=Path(state)/'jobs.sqlite3'
+        if path.exists():
+            from dependency_conditions import uses_terminal
+            with sqlite3.connect(path.as_uri()+'?mode=ro',uri=True) as db:
+                if any(uses_terminal(json.loads(row[0])) for row in db.execute('SELECT data FROM jobs')):
+                    raise DeployError('Terminal artifact conditions require matching handoff admission support; refusing downgrade')
     if role=='node' and config.get('persistent_cache') and 'persistent_cache.py' not in manifest.get('files',{}):
         raise DeployError('Persistent cache leases require matching cache lifecycle support; refusing downgrade')
     if role=='controller' and 'persistent_cache.py' not in manifest.get('files',{}):

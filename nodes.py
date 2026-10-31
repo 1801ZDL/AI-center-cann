@@ -350,7 +350,7 @@ class NodeRegistry:
 
     def placement(self,job,node,domain,active,db=None,identities=None):
         profile=node['profile'];node_id=node['id']
-        reason=self.jobs.dispatch_permission(job,active,db,identities) or self.jobs.dependencies.reason(job)
+        reason=self.jobs.dispatch_permission(job,active,db,identities) or self.jobs.dependencies.reason(job,db)
         identity_reason=('用户任务不能使用同机中央服务UID，需管理员重新映射'
             if profile['physical_id']==self.jobs.backend.physical_id and profile['users'][job['owner']]['uid']==self.controller_uid() else None)
         inventory_reason=self.jobs.inventory.reason(profile['physical_id'],db)
@@ -571,6 +571,10 @@ class NodeRegistry:
             if inventory_reason:
                 job['reason']=inventory_reason;job['_worker_seen']=time.time();self.jobs.write(db,job)
                 return {'start_permitted':False,'already_authorized':False,'wait':True,'reason':inventory_reason}
+            dependency_reason=self.jobs.dependencies.reason(job,db)
+            if dependency_reason:
+                job['reason']=dependency_reason;job['_worker_seen']=time.time();self.jobs.write(db,job)
+                return {'start_permitted':False,'already_authorized':False,'wait':True,'reason':dependency_reason}
             reason=self.jobs.dispatch_permission(job,[j for j in self.jobs.all(db) if j['state'] in ACTIVE and j['id']!=job['id']],db,identities)
             if reason:
                 from unit_start import HOLD,OWNER_HOLD

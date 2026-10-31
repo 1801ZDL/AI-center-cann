@@ -161,6 +161,9 @@ def handler_class(store, config, jobs=None):
                 return self.reply((ROOT / 'web' / name).read_bytes(), mime)
             if path == '/api/me':
                 value=access.public_profile(self.principal)
+                if jobs is not None:
+                    from dependency_conditions import CAPABILITY as TERMINAL_HANDOFF
+                    value['dependency_capabilities']=[TERMINAL_HANDOFF]
                 if jobs is not None:value.update(io_limits=jobs.policy['io_limits'],transfer_chunk_bytes=256*1024,
                                                storage=jobs.storage.summary(self.principal))
                 return self.reply(value)
@@ -475,8 +478,9 @@ def main():
     from owner_activation_abort import CAPABILITY as OWNER_ABORT
     from unit_start import START_ENV,CAPABILITY as STARTUP
     from control_storage import CAPABILITY as CONTROL_STORAGE
+    from dependency_conditions import CAPABILITY as TERMINAL_HANDOFF
     atomic_json(runtime/'server-ready.json',{**identity(os.getpid()),'controller_instance':jobs.controller_instance,
-        'service_start_id':os.environ.get(START_ENV),'capabilities':[OWNER_HANDOFF,OWNER_ACTIVATION,OWNER_ABORT,OWNER_EXPANSION,OWNER_PROVISION,OWNER_DRAIN,STAGED_DEVICE_PROBE,PROBE_ORCHESTRATION,STARTUP,CONTROL_STORAGE]})
+        'service_start_id':os.environ.get(START_ENV),'capabilities':[OWNER_HANDOFF,OWNER_ACTIVATION,OWNER_ABORT,OWNER_EXPANSION,OWNER_PROVISION,OWNER_DRAIN,STAGED_DEVICE_PROBE,PROBE_ORCHESTRATION,STARTUP,CONTROL_STORAGE,TERMINAL_HANDOFF]})
     logging.info('Started controller listener using %s on port %s',listener_info['scheme'],config['port'])
 
     def stop(signum, frame):

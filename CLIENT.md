@@ -1,5 +1,7 @@
 # 个人 CLI / Agent 接入
 
+个人客户端现附DEPENDENCIES.md并声明terminal-artifact-handoff-client-v1。固定工作流JSON的artifact_inputs可显式携带when=terminal，中央须声明terminal-artifact-handoff-v1；CLI/MCP仍按批准的同一请求执行，不能由模型临时换parent或导入路径。成功条件仍为默认；预算绑定的源任务读取范围不扩大，恢复后跨预算交接需要个人另行批准。
+
 新客户端声明`experiment-budget-client-v1`，可由个人账号批准累计任务数及CPU/NPU申报秒数，再签发单预算Agent profile。多个固定MCP会话共用中央计费，重连不重复扣费；原个人密码不交给Agent。命令和当前边界见[EXPERIMENT_BUDGET.md](EXPERIMENT_BUDGET.md)。
 
 个人MCP `queue_status.audit_retention`及网页显示中央认证审计积压；blocks_new_work=true时保留原任务并等待管理员归档。旧中央缺字段为null，旧配置可显示rolling_rows；客户端无需Root权限，也不提供裁剪能力。详情见[AUDIT.md](AUDIT.md)。

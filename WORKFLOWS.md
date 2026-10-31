@@ -124,6 +124,8 @@ parameters可显式增加`"cache":{"mode":"persistent","min_free_mib":1,"min_fre
 
 ## 阶段依赖与封存产物（v0.32）
 
+诊断失败或超时任务时，artifact_inputs可逐项显式声明`"when":"terminal"`，其余条件仍默认success。中央确认原attempt已终止、清退及归档完整后，交接冻结的来源事实和文件摘要；等待阶段不预留计算资源。固定MCP保留批准的JSON，不能临时覆盖来源；诊断任务仍使用自己的预算/环境，设备任务仍须NPU资格。独立客户端附DEPENDENCIES.md，详细条件及恢复/权限边界见该文档。
+
 工作流JSON顶层可增加`"depends_on":["job-0123456789ab"]`及`"artifact_inputs":[{"job_id":"job-0123456789ab","name":"results/package.whl","target":"deps/package.whl"}]`。父任务必须已存在、同owner且为托管版本化工作流；可先后提交形成链、分叉和汇合，不能给旧任务加边。基础parameters.input_id必须预先封存；中央合成新输入，记录生产者job/attempt与SHA并完成封存后才开始分配下游资源。CPU构建阶段npu0，设备阶段等待自己的NPU能力/资格，绝不提前借用生产者的卡。
 
 上游失败会把未启动的后继记为cancelled，结果表明确“未执行”，不伪造一次精度失败。交接不足空间时保留进度；完整性错误停止交接，原绑定不变。`labctl --profile /本人/client.json retry-inputs job-ID`只对本人未启动任务按原摘要继续。当前离线备份仍要求排空所有等待和活跃任务；进程重启恢复交接不等于已支持进行中状态的离线快照。详细存储、回收保护和限制见服务端DEPENDENCIES.md。

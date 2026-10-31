@@ -491,7 +491,10 @@ class JobStore:
             if job.get('template') in WORKFLOWS or job.get('template') in {'environment_probe','npu_access_probe'}:job['runtime_files']=runtime_manifest()
             if job.get('depends_on'):
                 job['_dependency_base_input']=job['parameters']['input_id']
-                job['dependency_state']={'status':'waiting','reason':'等待上游成功及阶段输入封存；尚未预留计算资源'}
+                from dependency_conditions import uses_terminal
+                waiting=('等待上游确认结束、资源清退及阶段输入封存；尚未预留计算资源' if uses_terminal(job)
+                    else '等待上游成功及阶段输入封存；尚未预留计算资源')
+                job['dependency_state']={'status':'waiting','reason':waiting}
                 job['reason']=job['dependency_state']['reason']
             if _staged_probe is not None:
                 from owner_device_probe import bind_job
