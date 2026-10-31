@@ -550,6 +550,7 @@ class JobStore:
         return {'enabled': True, 'backend': 'sqlite-single-node',
                 'policy':policy,'identity':self.access.public_profile(principal),'storage':self.storage.summary(principal),
                 'control_storage':self.control_storage(),
+                'audit_retention':self.access.audit_status(),
                 'default_cwd': str(ROOT) if principal.legacy else principal.workspace,
                 'environments': [{'id': k, 'label': v['label'], 'type': v['type']} for k, v in environments.items()],
                 'counts': {s: sum(j['state'] == s for j in readable) for s in ['queued', 'reserved', 'running', 'cancelling', 'needs_attention', *sorted(TERMINAL)]},
@@ -598,6 +599,8 @@ class JobStore:
         if principal.mode=='templates' and not job.get('template'):return '账号已限制为模板执行；不会启动旧的任意命令'
         from control_storage import HOLD as CONTROL_HOLD
         if self.control_storage()['blocks_new_work']:return CONTROL_HOLD
+        from audit_retention import HOLD as AUDIT_HOLD
+        if self.access.audit_status()['blocks_new_work']:return AUDIT_HOLD
         user_active=[j for j in active if j['owner']==job['owner']]
         if 'max_running' in principal.quota and len(user_active)>=principal.quota['max_running']:return '等待当前用户的运行名额'
         if any(sum(j['resources'].get(k,0) for j in user_active)+job['resources'].get(k,0)>v

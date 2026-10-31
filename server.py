@@ -22,6 +22,7 @@ from collector import Collector, ROOT, cancel_commands, experiments, now
 from jobs import ARTIFACT_NAMES, JobError, JobStore, Scheduler, public, read_json
 from auth import AccessControl, AccessError
 from control_storage import Pressure
+from audit_retention import Pressure as AuditPressure
 
 RUNTIME = ROOT / 'runtime'
 STOP = threading.Event()
@@ -186,6 +187,8 @@ def handler_class(store, config, jobs=None):
                         return self.reply(jobs.summary(self.principal))
                     if path == '/api/control-storage':
                         return self.reply(jobs.control_storage())
+                    if path == '/api/audit-retention':
+                        return self.reply(access.audit_status())
                     if path in {'/api/results','/api/results.csv'}:
                         query=parse_qs(parsed.query);kind=query.get('kind',[None])[0]
                         if path.endswith('.csv'):
@@ -307,7 +310,7 @@ def handler_class(store, config, jobs=None):
                     return self.reply(value)
                 if path=='/api/inputs':
                     bundle,reused=jobs.inputs.create(self.principal,request)
-                    if not (reused and jobs.control_storage()['blocks_new_work']):
+                    if not (reused and (jobs.control_storage()['blocks_new_work'] or access.audit_status()['blocks_new_work'])):
                         access.record(self.principal,'input.create',bundle['id'],'reused' if reused else 'created')
                     return self.reply({'input':bundle,'reused':reused},status=200 if reused else 201)
                 if path.startswith('/api/inputs/'):
@@ -324,7 +327,7 @@ def handler_class(store, config, jobs=None):
                         return self.reply({'input':bundle})
                 if path == '/api/jobs':
                     job, reused = jobs.submit(request, self.principal)
-                    if not (reused and jobs.control_storage()['blocks_new_work']):
+                    if not (reused and (jobs.control_storage()['blocks_new_work'] or access.audit_status()['blocks_new_work'])):
                         access.record(self.principal,'job.submit',job['id'],'reused' if reused else 'created')
                     return self.reply({'job': job, 'reused': reused}, status=200 if reused else 201)
                 if path == '/api/jobs/preview':
@@ -344,7 +347,7 @@ def handler_class(store, config, jobs=None):
                     result=jobs.dependencies.retry(parts[2],self.principal)
                     access.record(self.principal,'job.retry-inputs',parts[2]);return self.reply(result)
                 raise JobError('不存在此作业操作。', 404)
-            except Pressure as exc:
+            except (Pressure,AuditPressure) as exc:
                 # Denial itself must not amplify audit growth or need a second
                 # write on a filesystem whose capacity is already insufficient.
                 return self.reply(exc.response(),status=exc.status)

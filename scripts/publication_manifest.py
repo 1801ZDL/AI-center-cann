@@ -60,6 +60,7 @@ def private_values():
         files.update(r.glob(pattern))
     files.update(r.glob('jobs/*/tmp/payload-owner-append/control/controller/config.json'))
     files.update(r.glob('jobs/*/tmp/installation/control-headroom-client.json'))
+    files.update(r.glob('jobs/*/tmp/installation/audit-client.json'))
     for pattern in ['jobs/*/tmp/node-owner-binding/control/node/config.json','jobs/*/tmp/node-owner-binding/control/enroll.json']:
         files.update(r.glob(pattern))
     for pattern in ['jobs/*/tmp/node-owner-binding/control/expansion-node/config.json',

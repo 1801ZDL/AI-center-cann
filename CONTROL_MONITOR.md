@@ -38,6 +38,6 @@
 
 ## 当前审计保留边界
 
-认证审计原来就按全表（跨用户合计）滚动保留最近10,000条，新增记录后删除更旧行；这不是先导出再回收，也不代表长期审计归档已经实现。新检查明确输出该策略和archive_before_drop=false，不改变现有行为。身份撤销、开户、资源域和执行尝试等管理状态还分布在其他专用表/回执中，不随通用审计列表一起清理。
+配置没有audit_retention时，认证审计继续按全表（跨用户合计）滚动保留最近10,000条；报告rolling_rows和archive_before_drop=false。新管理员中央默认archive_required，报告门槛及automatic_drop=false；明确归档维护见[AUDIT.md](AUDIT.md)。已有Demo不自动迁移，已经滚动丢弃的行无法恢复。
 
-长期保留需另做有界导出、完整性校验、权限控制和明确确认后的裁剪。当前命令没有提供删除、VACUUM或定时清理能力。
+本命令只读取策略，不连接数据库计数；admission_scope明确表示这里只检查文件系统余量。Prometheus中的admission_blocks_new_work也仅代表文件系统准入，不能据此判断没有审计积压。审计积压另由已认证的GET /api/audit-retention、jobs摘要、个人MCP queue_status及网页提供。监控命令本身不提供删除、VACUUM、上传或定时任务。身份、资源域和执行尝试等专用表/回执不随通用审计归档裁剪。

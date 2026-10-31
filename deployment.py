@@ -51,6 +51,8 @@ CORE.append('control_monitor.py')
 OPTIONAL_ADMIN_FILES.add('control_monitor.py')
 CORE.append('CONTROL_MONITOR.md')
 OPTIONAL_ADMIN_FILES.add('CONTROL_MONITOR.md')
+CORE.extend(['audit_retention.py','AUDIT.md'])
+OPTIONAL_ADMIN_FILES.update({'audit_retention.py','AUDIT.md'})
 
 
 class DeployError(ValueError):pass
@@ -433,6 +435,7 @@ def install(archive,prefix,state,role,uid=None,gid=None,create_user=None,node_co
             from control_storage import DEFAULT as CONTROL_DEFAULT
             cpus=sorted(os.sched_getaffinity(0))[-2:]
             config={'username':'lab_admin','password':secrets.token_urlsafe(32),'host':bind_address,'port':port,'container':'unused',
+                    'audit_retention':{'mode':'archive_required','maximum_unarchived_rows':10000},
                     'monitor_local':False,'interval':15,'identity_workspace_root':str(state/'users'),
                     'scheduler':{'local_enabled':False,'workspace_root':str(state/'users'),'cpu_ids':cpus,
                                  'memory_mib':4096,'shm_mib':1024,'max_running':1,'npu_enabled':False,

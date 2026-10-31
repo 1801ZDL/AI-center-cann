@@ -69,6 +69,7 @@ class Bridge:
             return {'policy': summary['policy'], 'reserved': summary['reserved'],
                     'environments': summary['environments'],
                     'control_storage':summary.get('control_storage'),
+                    'audit_retention':summary.get('audit_retention'),
                     'session_policy': policy,
                     'session_jobs': (read_json(self.state_path) or {}).get('jobs', [])}
         if name in {'submit_job','preview_job'}:

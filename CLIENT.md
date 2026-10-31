@@ -1,5 +1,7 @@
 # 个人 CLI / Agent 接入
 
+个人MCP `queue_status.audit_retention`及网页显示中央认证审计积压；blocks_new_work=true时保留原任务并等待管理员归档。旧中央缺字段为null，旧配置可显示rolling_rows；客户端无需Root权限，也不提供裁剪能力。详情见[AUDIT.md](AUDIT.md)。
+
 ## 控制盘余量
 
 新版个人MCP的`queue_status`包含中央的`control_storage`状态，不暴露其他用户任务。`blocks_new_work=true`时暂停追加实验，查询原任务并等待容量恢复；503不表示旧任务没有提交，不得换幂等键重跑。旧中央未声明时该字段可能为null。已有任务回执、日志、取消和结果恢复继续使用原接口。配置及保护范围见[STORAGE.md](STORAGE.md)；个人客户端不需要安装控制盘管理模块或获得Root权限。

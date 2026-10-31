@@ -114,8 +114,19 @@ def main():
     p.add_argument('--warning-free-mib',type=int,default=128);p.add_argument('--critical-free-mib',type=int,default=64)
     p.add_argument('--warning-free-inodes',type=int,default=512);p.add_argument('--critical-free-inodes',type=int,default=256)
     p.add_argument('--component-warning-mib',type=int,default=32)
+    p=commands.add_parser('audit-export',help='Export a bounded stopped-controller audit prefix; no deletion')
+    p.add_argument('--prefix',required=True);p.add_argument('--output',required=True)
+    p.add_argument('--max-rows',type=int,default=10000);p.add_argument('--max-bytes',type=int,default=16*1024**2)
+    p=commands.add_parser('audit-prune',help='Prune only a verified committed export with exact SHA confirmation')
+    p.add_argument('--prefix',required=True);p.add_argument('--archive',required=True);p.add_argument('--confirm-sha256',required=True)
     args=parser.parse_args()
     if args.action=='bundle':result=deploy.bundle(args.output)
+    elif args.action=='audit-export':
+        from audit_retention import export
+        result=export(args.prefix,args.output,args.max_rows,args.max_bytes)
+    elif args.action=='audit-prune':
+        from audit_retention import prune
+        result=prune(args.prefix,args.archive,args.confirm_sha256)
     elif args.action=='control-monitor':
         from control_monitor import inspect,prometheus
         result=inspect(args.prefix,warning_free_mib=args.warning_free_mib,critical_free_mib=args.critical_free_mib,

@@ -291,6 +291,9 @@ function renderManagedJobs(summary) {
   const control=summary.control_storage;
   const controlLabel=!control?'未声明':!control.enabled?'未启用':control.blocks_new_work?'暂停新工作':'余量正常';
   $('job-budget').innerHTML+=`<span id="control-storage-status">控制盘准入 <strong>${controlLabel}</strong>${control?.enabled?' · '+bytes(control.free_bytes)+' / 最低 '+bytes(control.minimum_free_bytes)+' · inode '+num(control.free_inodes,0)+' / 最低 '+num(control.minimum_free_inodes,0):''}</span>`;
+  const audit=summary.audit_retention;
+  const auditLabel=!audit?'未提供':audit.status==='unavailable'?'状态不可用，暂停新工作':audit.blocks_new_work?'等待归档，暂停新工作':audit.kind==='archive_required'?'记录保留正常':'滚动保留最近记录';
+  $('job-budget').innerHTML+=`<span id="audit-retention-status">审计 <strong>${auditLabel}</strong>${audit?.retained_rows!=null?' · '+num(audit.retained_rows,0)+' / 归档门槛 '+num(audit.maximum_unarchived_rows,0):''}</span>`;
   $('job-policy').textContent=`个人预算：${summary.policy.cpu_ids.length} CPU / ${summary.policy.memory_mib} MiB，最多同时运行 ${summary.policy.max_running} 个作业。等待超过 ${summary.policy.aging_seconds??300} 秒的任务启用老化优先，仍需通过权限和环境检查。`;
   $('job-cpu').max=summary.policy.cpu_ids.length;
   $('job-memory').max=summary.policy.memory_mib;

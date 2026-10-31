@@ -334,6 +334,8 @@ def restore(prefix,archive_path,new_state,max_bytes=10*1024**3,payload_config=No
                 if path.is_dir():path.chmod(0o700)
             stage.chmod(0o700);os.chown(stage,meta['uid'],meta['gid'])
             if meta['role']=='controller':
+                from audit_retention import rebind_restored
+                rebind_restored(stage/'identities.sqlite3',restored_config)
                 from storage_lifecycle import rebind_restored
                 rebind_restored(stage,payload_base=policy['path'] if policy else None)
                 from device_qualification import invalidate_restored
@@ -360,6 +362,11 @@ def restore(prefix,archive_path,new_state,max_bytes=10*1024**3,payload_config=No
 
 
 def require_control_storage(config,role,manifest):
+    if role=='controller' and config.get('audit_retention') is not None:
+        from audit_retention import policy
+        policy(config['audit_retention'])
+        if 'audit_retention.py' not in manifest.get('files',{}):
+            raise DeployError('Audit archive policy requires matching support; refusing downgrade')
     if role=='controller' and config.get('scheduler',{}).get('control_filesystem') is not None:
         from control_filesystem import validate
         validate(config['scheduler']['control_filesystem'])

@@ -1,5 +1,7 @@
 # 作业 API v0.7
 
+新增 `GET /api/audit-retention`（`jobs:read`），jobs摘要及MCP queue_status的`audit_retention`返回相同只读策略/积压。旧配置为rolling_rows；新管理员中央为archive_required，含retained_rows、maximum_unarchived_rows、status=ready|backlog|unavailable及blocks_new_work。积压/不可确认时新任务或输入返回503：`error=audit_retention_backlog,retryable=true,original_operation_required=true`；原任务ID、许可和结果恢复保留，不更换幂等键重跑。新claim无grant、未消费start等待，原grant恢复继续。接口不提供导出或裁剪权限，Root停机维护见[AUDIT.md](AUDIT.md)。control-monitor不查询该积压。
+
 ## 控制存储准入状态
 
 `GET /api/control-storage`要求`jobs:read`，返回只读的`enabled,status,blocks_new_work,reason_code,free_bytes,free_inodes,minimum_free_bytes,minimum_free_inodes`和范围说明，不公开路径/设备身份。`GET /api/jobs`的`control_storage`字段返回同一类快照。状态为disabled/ready/pressure/unavailable；门槛是准入保护，非硬配额或预留保证。

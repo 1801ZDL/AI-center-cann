@@ -1,5 +1,22 @@
 # 实施进度
 
+## 审计先保留、有界归档与确认裁剪（2026-10-31）
+
+**最终886项/146.234秒/无跳过及JS语法通过；86个非文档CORE与同机隔离安装34、开户49冻结一致。** 全量 `job-acd14c77c18e`，安装 `job-abdd47fcde58`，开户 `job-27a0e58d0f6e`，独立归档/恢复验证 `job-db9d0784ef2a`。protected6保持v0.36，APP4/r4镜像不变；本轮0模型/0 NPU，不移用以前设备或编译案例作为当前验收。
+
+新管理员中央默认archive_required；达到全表未裁剪记录门槛时暂停新增任务/输入、claim及未消费start，保留原任务、许可、监督和结果回传。新模式不自动删认证审计；缺省旧配置保持滚动10,000条，不自动迁移、不补回已丢记录。GET /api/audit-retention、jobs摘要、MCP queue_status和网页呈现同一积压。新作业幂等重试在积压期间复用原ID且不重复写审计；不声称所有API重试均无新增事件。软门槛不是物理容量上限，合法既有事件仍可能增长。
+
+Root停中央后，用匹配安装的servicectl audit-export导出最旧前缀，最多10,000行/16MiB行数据；Root私有归档离开状态树，原生模式另盘。文件fsync/不覆盖发布先于数据库回执，支持原文件恢复孤立导出。audit-prune必须给出完整SHA，核对文件/原前缀/数据库与恢复epoch/持久回执后才在同一事务裁剪、记回执及事件。序号不复用，重复确认不再次删除。SQLite操作使用服务UID，避免Root hot journal；快照恢复更换epoch并使旧回执失效，降级旧代码被拒。文档见AUDIT.md。
+
+实际安装34在原生控制盘下以128行门槛制造积压，新任务/输入503，follower零attempt；原真实CPU IR保持同attempt。仅停止中央导出，Node继续。导出发布后exit77、裁剪事务内exit78均从原文件恢复；崩溃时真实journal属主999。错误SHA拒绝、重复export/prune幂等。安装包真实网页显示积压和预览阻碍，零提交/页面错误/外部请求。实际4818529旧发布包激活拒绝；普通→原生→新盘快照恢复与stop等原检查仍通过。独立读取已释放的自有native4镜像明确导出identities DB，核integrity、epoch改变及旧回执invalidated；只读debugfs，无写挂载/物理设备操作。Role恢复态仍在私有盘镜像，Host仅明确导出的DB/归档，不声称完整恢复树挂载。
+
+开户49故障点与6个实际CPU IR各单attempt通过。所有最终检查同86源码；206测试源码和网页冻结。针对性11通过；初次1error是测试预期ValueError而O_NOFOLLOW实际返回ELOOP，修正测试。首次安装在旧包未挂载到Role的测试路径失败，显式复制到本次自有Role后重新完整验收；不把失败尝试改为成功。首次full886/145.794属于最后小范围健壮性修正之前，以最终146.234秒为准。
+
+本轮3个安装/开户范围共21个loop关联释放；自有installproof/nodeowner/nativeprobe/diskproof容器/卷namespace只读确认empty，backings保留。Main config SHA5caf...、19profiles/物理域/CPU254255/2048/SHM1024/1槽和zdl不变，零非终态/有效hold。私有证据evidence/audit-retention-validation.json；公开精选reports/public-source-check.json.audit_retention。
+
+control-monitor仍不连接SQLite，只报告静态策略和文件系统余量，不能代表审计积压准入；未新增告警发送器、自动上传/定时维护/VACUUM。一般数据库及归档增长、累计实验预算、真实大IR/精度/卡死/仿真与五类工作流网页仍待；真实宿主账号/PID1/第二物理机fencing及NPU数值性能仿真仍待目标机验收，PUBLIC-001继续延期，goal active/production_ready=false。
+
+
 ## 控制存储外部检查与审计滚动策略披露（2026-10-31）
 
 **最终875项/144.707秒/无跳过及JS语法通过；85个非文档CORE与安装Root31、开户Root49一致。** full `job-bfd53534788e`，安装 `job-02ba2ba3e5ce`，owner `job-de69a5cf5138`。protected6仍为v0.36；APP4/r4镜像未变，不重建镜像，不重新调用模型或NPU。旧browser41和前阶段Root30保持原源码范围。

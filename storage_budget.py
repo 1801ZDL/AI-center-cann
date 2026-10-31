@@ -34,6 +34,8 @@ class StorageBudget:
             return
         from control_storage import require
         require(self.jobs.runtime,self.jobs.policy.get('control_storage'),self.jobs.control_filesystem)
+        from audit_retention import require
+        require(self.jobs.access)
         cap=self.jobs.policy.get(kind+'_budget_mib')
         user_limit=principal.quota.get(kind+'_storage_mib',cap if cap is not None else 512 if kind=='input' else 2048)
         if cap is not None:user_limit=min(user_limit,cap)

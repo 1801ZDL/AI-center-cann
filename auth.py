@@ -50,6 +50,8 @@ class Principal:
 class AccessControl:
     def __init__(self, runtime, config):
         self.config = config
+        from audit_retention import policy
+        self.audit_policy=policy(config.get('audit_retention'))
         self.path = Path(runtime)/'identities.sqlite3' if runtime else None
         from control_filesystem import Filesystem
         self.control_filesystem=Filesystem(runtime,config) if runtime else None
@@ -87,6 +89,9 @@ class AccessControl:
                         db.execute('CREATE TRIGGER IF NOT EXISTS owner_revision_'+table+'_'+operation.lower()
                             +' AFTER '+operation+' ON '+table+' BEGIN '+body+' END')
             self.path.chmod(0o600)
+            if self.audit_policy:
+                from audit_retention import initialize
+                with self.connect() as db:initialize(db)
 
     def connect(self):
         if self.control_filesystem:self.control_filesystem.check()
@@ -269,9 +274,17 @@ class AccessControl:
     def record(self, principal, action, target, outcome='allowed'):
         if not self.path:return
         with self.connect() as db:
+            if self.audit_policy:
+                from audit_retention import append
+                append(db,principal.id,action,target[:100],outcome)
+                return
             db.execute('INSERT INTO audit(at,actor,action,target,outcome) VALUES(?,?,?,?,?)',
                        (dt.datetime.now(dt.timezone.utc).isoformat(),principal.id,action,target[:100],outcome))
             db.execute('DELETE FROM audit WHERE id NOT IN (SELECT id FROM audit ORDER BY id DESC LIMIT ?)',(AUDIT_ROWS,))
+
+    def audit_status(self):
+        from audit_retention import status
+        return status(self)
 
     def audit(self, principal):
         if not principal.admin:raise AccessError()

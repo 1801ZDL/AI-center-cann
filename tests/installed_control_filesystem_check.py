@@ -91,7 +91,7 @@ print(json.dumps({'uid':list(map(int,s['Uid'].split())),'effective':int(s['CapEf
     assert identity['uid']==[uid]*4 and identity['effective']==identity['permitted']==0 and identity['private_namespace'] and identity['temporary_files_bound']
     check('Restored controller is the configured unprivileged UID with zero effective/permitted capabilities; direct launch without protected descriptors is refused')
     healthy=monitored();assert healthy['status']=='ready' and healthy['check_success']
-    assert healthy['audit_retention']['maximum_rows']==10000 and healthy['audit_retention']['archive_before_drop'] is False
+    assert healthy['audit_retention']['maximum_unarchived_rows']==10000 and healthy['audit_retention']['archive_before_drop'] is True
     warned=monitored('--warning-free-mib','300',expected=1);assert warned['status']=='warning' and not warned['admission_blocks_new_work']
     critical=monitored('--warning-free-mib','400','--critical-free-mib','300',expected=2)
     assert critical['status']=='critical' and not critical['admission_blocks_new_work']
@@ -177,6 +177,10 @@ rows={j:source.execute('SELECT count(*) FROM execution_attempts WHERE job_id=?',
 assert set(rows.values())=={1},rows
 print(json.dumps(rows))
 '''
+    audit_proof=None
+    if ctx['options'].audit_retention:
+        from installed_audit_retention_check import run as audit_run
+        audit_proof=audit_run(ctx,native,prefix)
     exported=ctx['controller_state']/'native-control-proof.sqlite3'
     attempts=json.loads(docker(['exec',controller,'/usr/bin/python3','-I','-c',export,str(exported),identifier,follower]).stdout)
     backup=native('backup','--output','/root/backups/native-controller.tar.gz');assert backup['quiescent'] and backup['includes_dedicated_payload']
@@ -198,6 +202,11 @@ print(json.dumps(rows))
     status,value=api('/api/jobs',{**request,'idempotency_key':'native-control-after-native-snapshot'});assert status==201,value
     after_roundtrip=ctx['wait'](value['job']['id']);assert after_roundtrip['state']=='succeeded'
     assert not ctl(node,'node','stop')['running'] and not native('stop')['running']
+    if audit_proof:
+        refused=native('audit-prune','--archive',audit_proof['archive'],
+            '--confirm-sha256',audit_proof['sha256'],check=False)
+        assert refused.returncode!=0
+        audit_proof['restored_epoch_refused_old_archive']=True
     roundtrip_export=ctx['controller_state']/'native-roundtrip-proof.sqlite3'
     roundtrip_counts=json.loads(docker(['exec',controller,'/usr/bin/python3','-I','-c',export.replace('/srv/native1/state/jobs.sqlite3','/srv/native4/state/jobs.sqlite3'),str(roundtrip_export),identifier,follower,after_roundtrip['id']]).stdout)
     check('Native snapshot refuses an ordinary-directory restore, then rebinds fresh control/payload disks and runs another real IR attempt with original results intact')
@@ -205,7 +214,8 @@ print(json.dumps(rows))
         'external_monitor':{'passed':True,'actual_uid':uid,'ready':0,'warning':1,'critical':2,'unknown':3,
             'byte_inode_alerts':True,'admission_unchanged_by_alerts':True,'peer_uid_refused':True,
             'native_mount_loss_critical':True,'no_fallback_stat_or_config':True,'stopped_controller_supported':True,
-            'prometheus_exported':True,'audit_rolling_limit_disclosed':10000,'audit_archived':False},
+            'prometheus_exported':True,'audit_archive_required_disclosed':True,'audit_archive_maintenance':False},
+        **({'audit_retention':audit_proof} if audit_proof else {}),
         'configured_uid':uid,'actual_identity':identity,'separate_filesystems':True,
         'control_capacity_bytes':policies[1]['bytes'],'control_capacity_inodes':policies[1]['inodes'],
         'outside_mount_cover':True,'fallback_untouched':True,'new_submission_http':503,

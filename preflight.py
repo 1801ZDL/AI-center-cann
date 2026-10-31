@@ -156,6 +156,8 @@ def plan(role,prefix=None,state=None,archive=None,uid=None,gid=None,create_user=
             value=deploy.inspect_release(archive)
             if role=='controller' and 'control_storage.py' not in value['manifest']['files']:
                 raise deploy.DeployError('New controller installations require control storage admission support')
+            if role=='controller' and 'audit_retention.py' not in value['manifest']['files']:
+                raise deploy.DeployError('New controller installations require audit archive support')
             if control_config and not {'control_filesystem.py','control_process.py'}<=set(value['manifest']['files']):
                 raise deploy.DeployError('Finite control installation needs namespace and filesystem support')
             return {'id':value['manifest']['id'],'sha256':value['sha256'],'bytes':value['bytes'],

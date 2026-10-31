@@ -137,7 +137,9 @@ def inspect(prefix,*,warning_free_mib=128,critical_free_mib=64,warning_free_inod
         # The policy comes from the matching release's authentication code.
         import auth
         if hashlib.sha256((release/'auth.py').read_bytes()).digest()==hashlib.sha256(Path(auth.__file__).read_bytes()).digest():
-            result['audit_retention']={'kind':'rolling_rows','maximum_rows':auth.AUDIT_ROWS,'archive_before_drop':False}
+            from audit_retention import summary
+            result['audit_retention']=summary(config.get('audit_retention'))
+        result['admission_scope']='Filesystem headroom only; audit backlog is not queried by this read-only monitor'
         return result
     except (OSError,ValueError,KeyError,TypeError):return result
 

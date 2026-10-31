@@ -491,6 +491,8 @@ class NodeRegistry:
             if recovery:return {'grant':self._grant(recovery)}
             from control_storage import HOLD as CONTROL_HOLD
             if self.jobs.control_storage()['blocks_new_work']:return {'grant':None,'reason':CONTROL_HOLD}
+            from audit_retention import HOLD as AUDIT_HOLD
+            if self.jobs.access.audit_status()['blocks_new_work']:return {'grant':None,'reason':AUDIT_HOLD}
             if self.handoff.pending(node_id,db):return {'grant':None,'reason':'Node owner handoff awaits durable central readiness'}
             if self.jobs.policy.get('require_pinned_docker') and PINNED_RUNTIME not in node['report'].get('capabilities',[]):
                 raise JobError('Node must upgrade to pinned-docker-runtime-v1 before receiving new work',409)
@@ -573,7 +575,8 @@ class NodeRegistry:
             if reason:
                 from unit_start import HOLD,OWNER_HOLD
                 from control_storage import HOLD as CONTROL_HOLD
-                if reason in {HOLD,OWNER_HOLD,CONTROL_HOLD}:
+                from audit_retention import HOLD as AUDIT_HOLD
+                if reason in {HOLD,OWNER_HOLD,CONTROL_HOLD,AUDIT_HOLD}:
                     job['reason']=reason;job['_worker_seen']=time.time();self.jobs.write(db,job)
                     return {'start_permitted':False,'already_authorized':False,'wait':True,'reason':reason}
                 return {'start_permitted':False,'already_authorized':False,'reason':reason}
