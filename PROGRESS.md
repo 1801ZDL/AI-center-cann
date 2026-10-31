@@ -1,5 +1,30 @@
 # 实施进度
 
+## 实际MLIR版本接口诊断与受控候选闭环（2026-10-31）
+
+**最终831项/158.358秒/无跳过及JS语法通过，81个非文档CORE与最终full及实际安装包冻结一致。** 新增13项编译诊断/候选边界检查；最终focused job-1059188e6ce3为13项/22.004秒，全量job-7438a5d01dd8。实际安装job-7d809703c4a4为33项通过。本轮未重跑上一阶段80源码的开户Root49或浏览器；原owner逻辑未改，当前新增可选客户端/诊断代码由安装33与全量831覆盖，不能把历史49改称81源码新验收。六个受保护运行文件和原性能镜像APP4均未变，无需重建性能工具镜像。
+
+实际预探使用现有固定工具镜像、UID23900/只读rootfs/禁网/512MiB/无设备：Triton工具LLVM22.0.0git拒绝bufferization.to_memref、接受to_buffer；BishengIR2.0.0（44b7bd25ae7a，LLVM19.1.7）接受前者、拒绝后者。第一轮job-2bdb834aee36的Triton --canonicalize在参数解析阶段就失败，不能当作IR错误；保留该结果后，job-7e4d6e1772d8改为parse-only才取得配对矩阵。上游LLVM8f91b108df21bee8ee64e88ffa7bdee230389800有对应NFC重命名依据。本例是结合工程背景构造的最小IR，使用真实固定工具，不是原始大kernel或完整lowering修复。
+
+新examples/workflows/compiler_compatibility.py是普通ir_v1封存载荷：显式工具名/规范镜像路径/SHA，工具还必须匹配受保护请求锁；只parse/verify和输出IR，无任意pass/插件/shell参数。驱动按块哈希大工具文件，输入IR<=8192字节；失败前仍保存原IR、驱动/工具SHA、实际版本、调用及有界日志，并退出非零，不将“捕获错误”算作工作流成功。成功需真实IR产物并通过原结构化结果合同。
+
+新compiler_diagnostic.py与labctl compiler-case提供单任务只读CLI/MCP，复用原通用收集器但不改变它，固定读取编译报告、完整小IR和stderr。报告、归档、封存input.mlir及封存驱动SHA相互绑定；另核对当前客户端认识的驱动、请求工具锁和完整受保护环境回执。源码脱敏/缺失、未知或清理未确认、旧未知驱动、工具事实不匹配时，不进入已知字面候选检查。任务元数据也在交给harness前脱敏。MCP仍仅空参数get_diagnostic_case，不接受路径/任务覆盖、提交、命令或修复操作；job ACL在任何领域产物读取前检查。客户端新增compiler-case-v1及载荷脚本，无SDK或模型配置安装。
+
+当前安装演练复用上一阶段固定image f9a049...，探针额外认证两工具文件；两个任务UID/性能分析/独立个人客户端原范围继续通过。新增四个真实单attempt IR任务：旧工具+原IR succeeded；新工具+原IR failed（原失败保留）；单处候选重新封存后新工具succeeded；同候选在旧工具failed。Node实际UID23003、512MiB、无设备、禁网/只读rootfs、退出及工作区清理回执都与环境证据交叉核对；host独立读取原持久DB和四套源码/报告/运行环境/受保护回执，确认状态、次数及工具/输入摘要。个人UID23642运行已安装CLI及真实stdio只读MCP，其他owner不能读原失败任务。
+
+一次既有授权DeepSeek261017的OpenCode run（agent-15069052d3b8）仅整理主助手已取得的IR、实际错误、配对观测和预先批准的局部迁移依据；全工具deny、MCP空、工具0/错误0/退出0，进程已确认结束。模型草稿不能直接执行；review_minimal_rename只检查原失败已确认终止/清理、完整未脱敏源码SHA、已知封存驱动、受保护工具锁、目标和精确单处替换，以及NPU/数值/全流水均未证明。主助手事先建立迁移依据，之后核对草稿表述；候选使用新input ID、固定CPU预算和唯一键提交，原失败仍failed/1attempt。模型没有发现未知bug根因、改共享代码或操作设备，本轮不宣称一般自主诊断。model_invocations按OpenCode run计1，供应商HTTP请求数未单独测量。
+
+安装器doctor、升级/兼容回滚、归档、备份及恢复继续通过。恢复后原失败记录和证据可读，同一封存候选再单attempt成功，无第二次模型run。该恢复后state位于角色文件系统，正向由角色存活时的实际API/执行检查冻结进父报告；host不保留其新目录，不能宣称现在可独立读该目录。自有两盘helper/角色/卷已独立确认清退，backing文件私有保留，native quota目前未挂载。
+
+失败与修正保留：首focused job-cdda0037506e为27项/1error，fixture假定needs_attention仍可读终态归档，实际原接口正确409；改测试并保持门禁。增加封存/驱动/受保护工具绑定后job-b3d84504675a为29项/24.239秒通过；最后任务元数据脱敏另由最终13与831覆盖。性能独立live脚本的新增flat载荷源路径别名已修，本轮未单独重跑该旧脚本；实际安装已运行性能与编译两套个人CLI/MCP。
+
+Main仅在0非终态/有效hold时重载；原config SHA、CPU254/255、2048MiB/SHM1024MiB/1槽、19Node profile及domain保持不变，旧Node未升级、inventory未豁免、zdl运行起点/内存/SHM不变。无NPU kernel，无共享安装、用户项目或模型全局配置修改；没有永久新增分析Node，隔离角色已清理。完整私有evidence/compiler-diagnostic-validation.json与runtime/compiler-case-20261031，精选reports/public-source-check.json.compiler_diagnostic；原始日志、凭据、会话和盘不发布。
+
+下一优先转控制盘增长/审计留存与一般资源合同，继续真实大IR/端到端失败与有界reducer、跨阶段IR方言/bytecode和CLI能力合同，以及累计实验预算；不要只重复打包和小样例。五类workflow网页提交、真实精度/卡死/仿真流水闭环仍待。实际宿主用户/PID1、第二物理机/fencing、NPU ACL/数值/性能/仿真门槛保留，不无变化重试旧EBUSY。PUBLIC-001继续延期；overall_goal_complete=false、production_ready=false。
+
+下方为历史阶段。
+
+
 ## 固定工具镜像、受控Node配方与两UID分析（2026-10-31）
 
 **最终818项/132.308秒/无跳过及JS语法通过，80个非文档CORE生产源码与最终full、实际安装包及Root49冻结一致。** 六个受保护运行文件仍为v0.36哈希。新增10项配方/镜像上下文边界检查；先前focused39项/9.701秒通过，其后添加的CLI machine导出由最终full与已安装实际CLI覆盖。最终unit job-97b3725a7504，私有evidence/operator-node-validation.json，公开精选reports/public-source-check.json.operator_node。

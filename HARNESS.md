@@ -38,3 +38,5 @@ msagent 的 Operator 文档面向单算子性能分析和优化，并要求提�
 本轮未自动安装外部 Skills、msprof 或第三方插件，没有修改任何人的 harness 配置。新接入前仍需源码/依赖范围与真实产物适配验收；PUBLIC-001 公共夜间任务继续延期。
 
 固定镜像分析可使用operator_workflow.py生成现有build_v1请求，再由原调度MCP/CLI显式提交。个人harness继续只读operator-case；没有为此开放原上游SQL/采集工具、共享模型配置或Docker权限。配方和资格步骤见OPERATOR_ANALYSIS.md。
+
+编译诊断另有compiler_diagnostic.py单任务getter；保留原通用/性能接口。模型草稿不得直接成为命令，已知字面候选仍需完整未脱敏源码、封存驱动、受保护工具锁和原尝试清理确认，再由主助手封存新输入、显式排队。当前只验最小实际MLIR版本接口案例，见COMPILER_DIAGNOSTICS.md。

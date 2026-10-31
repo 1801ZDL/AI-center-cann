@@ -124,6 +124,8 @@ def main():
     command.add_argument('job_id')
     command=sub.add_parser('operator-case',help='Read the fixed archived offline operator analysis report; no experiment or model call')
     command.add_argument('job_id')
+    command=sub.add_parser('compiler-case',help='Read a bounded compiler report and its archived input IR; no repair or execution')
+    command.add_argument('job_id')
     command=sub.add_parser('archive-config', help='Set personal archive preference in the private client profile')
     choice=command.add_mutually_exclusive_group(required=True)
     choice.add_argument('--root');choice.add_argument('--sibling', action='store_true')
@@ -144,7 +146,7 @@ def main():
     if (ROOT/'client-only').exists() and not args.profile:
         p.error('This portable client requires a personal --profile and cannot manage the controller')
     if args.profile:
-        if args.action not in {'submit','jobs','job','logs','cancel','wait','me','nodes','input-add','input','environment-lock','archive','archive-config','diagnose','operator-case','storage','retry-inputs'}:
+        if args.action not in {'submit','jobs','job','logs','cancel','wait','me','nodes','input-add','input','environment-lock','archive','archive-config','diagnose','operator-case','compiler-case','storage','retry-inputs'}:
             p.error('Client profiles only support job operations')
         config = private_profile(args.profile)
     else:
@@ -322,6 +324,9 @@ def main():
         print(json.dumps(build_case(Client(config),args.job_id),ensure_ascii=False,indent=2))
     elif args.action == 'operator-case':
         from operator_profile import read_case
+        print(json.dumps(read_case(Client(config),args.job_id),ensure_ascii=False,indent=2))
+    elif args.action == 'compiler-case':
+        from compiler_diagnostic import read_case
         print(json.dumps(read_case(Client(config),args.job_id),ensure_ascii=False,indent=2))
     elif args.action == 'archive':
         from client_archive import download

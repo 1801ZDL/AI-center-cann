@@ -77,6 +77,7 @@
     "labctl",
     "install-client",
     "mcp_bridge.py",
+    "compiler_diagnostic.py",
     "operator_profile.py",
     "operator_node.py",
     "operator_workflow.py"

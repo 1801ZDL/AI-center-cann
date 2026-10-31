@@ -24,7 +24,8 @@ def main():
     assert not (installed/'server.py').exists() and not (installed/'runtime').exists()
     metadata=json.loads((installed/'manifest.json').read_text());assert 'operator-case-v1' in metadata['capabilities']
     assert metadata['sha256']['operator_profile.py']==digest
-    assert all(hashlib.sha256((ROOT/name).read_bytes()).hexdigest()==value for name,value in metadata['sha256'].items())
+    aliases={'compiler_compatibility.py':'examples/workflows/compiler_compatibility.py'}
+    assert all(hashlib.sha256((ROOT/aliases.get(name,name)).read_bytes()).hexdigest()==value for name,value in metadata['sha256'].items())
     client=Client.from_profile(args.profile);before=client.request('/api/jobs')['jobs']
     detail=client.request('/api/jobs/'+args.job_id);assert detail['job']['state']=='succeeded' and len(detail['attempts'])==1
     cli=subprocess.run([sys.executable,str(installed/'labctl'),'--profile',args.profile,'operator-case',args.job_id],text=True,capture_output=True,timeout=30)

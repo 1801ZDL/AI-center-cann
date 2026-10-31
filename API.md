@@ -228,3 +228,5 @@ v0.21 节点 heartbeat 的 node-spool-v1 能力附带 disk_free_inodes（非负�
 
 
 版本化POST /api/jobs可携带顶层depends_on（最多8个同owner已有工作流）和artifact_inputs（最多32个来源/目标映射），不支持客户端路径访问中央文件。GET job返回dependency_state和完成后的input_provenance；未就绪时无attempt/allocation。POST /api/jobs/JOB/retry-inputs只接受{}，本人未启动任务可继续原摘要交接，不接受来源或命令覆盖。详见DEPENDENCIES.md。
+
+compiler-case是对原任务/日志/artifact-chunk读取接口的固定路径组合，不新增执行端点。完整小IR与封存驱动、受保护工具锁绑定；未知归档仍按原终态门禁拒绝。读取仅需jobs:read，个人候选不能经该getter提交，详见COMPILER_DIAGNOSTICS.md。

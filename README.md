@@ -2,7 +2,7 @@
 
 面向 Triton-Ascend / AscendNPU-IR 开发服务器的 AI 任务调度与实验管理原型。程序化中央服务负责资源分配和可靠执行，个人 Agent 通过 MCP/API 提交任务、读取日志和分析结果。
 
-**当前为 v0.36 基线加后续修复，尚非生产就绪。** 已实现个人身份/项目授权、持久资源账本、受控 Node、五类工作流合同、版本锁、归档和个人客户端。可恢复开户、排空、原凭据扩第二 Node、已知工作并行期间激活及可运行性预览已有同机隔离验证；领域工具新增固定镜像的受控CPU诊断配方，已有真实历史profiling、两个任务UID及独立只读客户端的同机演练。最新通过范围、失败记录和源码冻结见 [PROGRESS.md](PROGRESS.md)。
+**当前为 v0.36 基线加后续修复，尚非生产就绪。** 已实现个人身份/项目授权、持久资源账本、受控 Node、五类工作流合同、版本锁、归档和个人客户端。可恢复开户、排空、原凭据扩第二 Node、已知工作并行期间激活及可运行性预览已有同机隔离验证；领域工具新增固定镜像的受控CPU诊断配方；已有历史profiling、两任务UID、只读客户端，以及实际MLIR版本接口失败→已知证据草稿→主助手批准的单处候选→新封存CPU验证的同机演练。最新通过范围、失败记录和源码冻结见 [PROGRESS.md](PROGRESS.md)。
 
 扩展继续保留同一任务 API/MCP 和实验格式。新服务器由管理员准备身份、受控设备、存储和服务，再登记 Node；个人 agent 无需共享模型密钥或更换 harness。当前旧容器仍属协作接入，不能拦截用户自行运行。真实宿主多用户、systemd PID1、两物理机断网/fencing、非 root NPU 精度/性能/仿真及一般资源合同变更仍待验收。操作见 [OWNER_PROVISION.md](OWNER_PROVISION.md)，推广门槛见 [DEPLOYMENT.md](DEPLOYMENT.md)。
 
@@ -106,3 +106,5 @@ bash scripts/check.sh /usr/bin/python3
 | NPU 资格与现有限制 | [NPU.md](NPU.md) |
 
 [公开验收摘要](reports/v036-public.json) 整理了历史检查范围；原始本机报告和测试盘不公开，见 [evidence/README.md](evidence/README.md)。本仓库不包含个人模型密钥、运行数据库、聊天记录、第三方工具二进制、CANN/LLVM 镜像或已有实验产物。
+
+编译诊断的完整小IR、封存驱动及受保护工具锁绑定，见 [COMPILER_DIAGNOSTICS.md](COMPILER_DIAGNOSTICS.md)。当前只验最小实际解析/验证案例，不代表一般bug自动修复、完整lowering或数值验收。

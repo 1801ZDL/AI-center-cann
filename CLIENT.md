@@ -126,3 +126,5 @@ MCP启动可加`--archive --archive-root /本人/归档`，或`--archive --local
 `0.32-client`允许工作流JSON携带depends_on和artifact_inputs；固定MCP会话会显示这些约束并拒绝临时覆盖。`retry-inputs job-ID`只请求服务端继续原冻结交接，不在个人机器读取或复制中央文件。
 
 固定离线报告的可选配方见OPERATOR_ANALYSIS.md：独立客户端包含operator_workflow.py及operator-recipe-v1能力，可由封存input ID和已确认环境锁生成请求，不自动提交。environment-lock现保留machine事实，便于架构准入。
+
+新增compiler-case读取固定编译报告和完整小IR；compiler_diagnostic.py可作为单任务只读MCP。客户端附带compiler_compatibility.py用于封存的CPU ir_v1复现，读取不会调用模型或执行候选。证据绑定与限制见COMPILER_DIAGNOSTICS.md。
