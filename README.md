@@ -10,6 +10,8 @@
 
 新增大IR诊断配方v2：最多8 MiB的完整封存IR经分块校验，个人agent仅接收有限脱敏预览与报错行上下文；完整源码继续通过本人归档下载，预览不能授权精确补丁。编译输出采用有限内存捕获、文件大小上限和超时，见[COMPILER_DIAGNOSTICS.md](COMPILER_DIAGNOSTICS.md)。实际通过范围以最新进度为准。
 
+新增精度差异只读证据：标准库CPU重放明确的实际/参考张量，独立CLI/MCP核完整封存SHA并重算，保留原失败、参考契约和有限差异样本。933项回归与同机Root30通过；历史NPU数据离线重放不代表新设备精度验收，见[ACCURACY.md](ACCURACY.md)。
+
 扩展继续保留同一任务 API/MCP 和实验格式。新服务器由管理员准备身份、受控设备、存储和服务，再登记 Node；个人 agent 无需共享模型密钥或更换 harness。当前旧容器仍属协作接入，不能拦截用户自行运行。真实宿主多用户、systemd PID1、两物理机断网/fencing、非 root NPU 精度/性能/仿真及一般资源合同变更仍待验收。操作见 [OWNER_PROVISION.md](OWNER_PROVISION.md)，推广门槛见 [DEPLOYMENT.md](DEPLOYMENT.md)。
 
 ```mermaid

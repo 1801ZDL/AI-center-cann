@@ -1,5 +1,23 @@
 # 实施进度
 
+## 历史精度差异、参考契约与独立张量重算（2026-10-31）
+
+**最终933项/183.313秒/无跳过与JS语法通过；同机隔离Root安装30项通过。** full `job-16d8061d7670`，安装 `job-bf46b25ca57b`，异常回执强化前focused `job-4fe2f02246e6`=17/6.558秒。89个非文档CORE与最终实际包/final-frozen-r3一致，protected6仍v0.36，APP4和既有r4镜像未变。本轮使用原基础镜像执行标准库CPU比较，没有重建工具镜像、重跑开户49/浏览器、调用模型或启动新NPU kernel。网页资产逐字节不变。
+
+新增accuracy_data.py/accuracy_diagnostic.py/ACCURACY.md，独立客户端声明accuracy-case-v1，提供accuracy-case CLI和单任务空参数get_diagnostic_case只读MCP。输入为固定名称、完整SHA及明确dtype/shape的actual/reference二进制文件，另可带同形状的数值输入上下文。最多8维/1,048,576元素/每文件8 MiB；标准库处理小端uint8/float32/float64，不引入NumPy/pickle或设备库。exact_encoding只统计编码差异，不把编码相差1解释为数值误差；numeric明确容差、NaN/Inf和正负零政策，有限算术溢出时重新以有理数判断，防止inf<=inf误判。指标无法有限表示时为null并带标记；最多16个差异样本。CSV对公式字符串转义。
+
+读取器先按原任务ACL授权，再校验完整归档、封存driver/config/全部张量SHA并重新计算；报告与重算结果不符则拒绝。MCP交付政策、形状、完整摘要及有限差异样本，不传完整张量，不修改参考/容差或提交实验。来源声明始终标注caller-supplied；CPU环境回执确认的是本次重放，不能认证历史设备来源、参考正确性、硬件故障或修复。比较有差异时CPU build_v1任务本身明确failed、报告仍归档，结果表和CSV保留失败；真实设备精度任务仍需原accuracy_v1及NPU预留/资格。
+
+本轮只读提取三组真实历史HiF8数据，没有运行原测试脚本：原FP32 Hybrid实际输出与PRE摘录参考为11/5376差异；保持实际输出字节不变，对单独记录的Vector观测参考为0/5376；原16×32×16 dot的256个FP32输出与FP64参考最大绝对误差0。原PRE失败保留，参考变化不是算子修复，观测Vector模型也不是正式ISA条款认证。主助手最终用标准库重新从原NPZ中提取数值载荷，核对所有原文件SHA、实际输出和参考，以及原/后续采集的相同输入和输出后缀；不加载原模块或pickle，不改动原项目。
+
+实际Root30中三个独立预算stdio MCP会话共享3任务/180声明CPU秒/0NPU，每个任务1attempt、Task UID23003、无设备/网络、原生UID工作盘配额；个人UID23642运行独立安装CLI/MCP，peer23004读不到其0700/0600 profile，其他应用owner读取任务/结果表被拒。MCP重连复用原任务且不重复计费。原失败、两个通过和各自参考ID都保留在结果表与CSV。Controller/Node恢复后仍是相同三job/attempt/摘要/计费，预算冻结、旧执行凭据401，历史只读诊断可用，恢复检查没有再次运行比较。主助手原归档重新重算并核原/显式导出恢复DB integrity、单attempt、三条计费；恢复态归档是在当时RoleFS上实际读取，宿主仅保留明确导出的恢复DB。
+
+首安装 `job-cbdd46560941` failed保留：fixture漏登记build_v1，唯一比较job-a338046e0191一直queued/0attempt/无allocation，90秒观察时限触发fixture失败。原Node登记列表、零attempt状态已从清理后的原DB复核；没有比较执行或精度结论。计划取消时其服务已自行结束，取消请求并未发出，原任务行保持queued且没有手工改状态。修复仅为测试Node显式登记build_v1；不放宽生产调度。CORE和已发现test_*.py源码与完整932检查逐字节相同，因此仅重跑集成安装、未无意义重复完整回归；该次入口源码及实际安装绑定final-frozen-r2。最终复核另增加受保护回执observed字段结构检查和异常stdio回归：损坏结构返回工具错误而不退出进程；随后重新完整933及实际Root30验收，以final-frozen-r3为最终范围。原932/177.403秒和Root30保留为强化前中间版本，不移作最终933验收。
+
+三次安装共6个自有loop关联released，5类fixture容器/卷namespace只读确认empty，backings私有保留。Main配置SHA5caf...、19 profiles/物理域/CPU254255/2048/SHM1024/1槽及zdl不变，零非终态/有效hold，无宿主账号/全局unit/驱动变更。证据evidence/accuracy-validation.json、runtime/accuracy-case-20261031，精选reports/public-source-check.json.accuracy。文档在冻结包后完善；当前非文档CORE/已发现单元源码及最终集成脚本有明确冻结范围。
+
+下一步继续实际精度任务的设备产物→离线分析交接、卡死/编译崩溃及仿真证据，不能把历史CPU重放代替新设备验收。真实宿主账号/PID1、两物理机断网fencing、非root NPU访问/数值/性能/仿真与长期规模仍待。PUBLIC-001继续延期，goal active/production_ready=false。
+
 ## 完整历史算子 IR、有限诊断与空日志一致性（2026-10-31）
 
 **最终915项/168.736秒/无跳过与JS语法通过；同机隔离Root安装33项通过。** full `job-fdcc48125511`，安装 `job-66d152f413e1`，87个非文档CORE及独立compiler_compatibility.py与final-frozen-r3、实际发布包一致。protected6仍v0.36、APP4/r4工具镜像未变，无重建；本轮没有重新运行开户49或浏览器，网页资产逐字节不变。0模型/0 NPU，不把先前模型、设备或全包构建证据转作本轮验收。

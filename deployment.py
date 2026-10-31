@@ -55,6 +55,8 @@ CORE.extend(['audit_retention.py','AUDIT.md'])
 OPTIONAL_ADMIN_FILES.update({'audit_retention.py','AUDIT.md'})
 CORE.extend(['experiment_budget.py','EXPERIMENT_BUDGET.md'])
 OPTIONAL_ADMIN_FILES.update({'experiment_budget.py','EXPERIMENT_BUDGET.md'})
+CORE.extend(['accuracy_data.py','accuracy_diagnostic.py','ACCURACY.md'])
+OPTIONAL_ADMIN_FILES.update({'accuracy_data.py','accuracy_diagnostic.py','ACCURACY.md'})
 
 
 class DeployError(ValueError):pass

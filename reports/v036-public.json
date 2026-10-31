@@ -91,7 +91,9 @@
     "operator_workflow.py",
     "control_monitor.py",
     "audit_retention.py",
-    "experiment_budget.py"
+    "experiment_budget.py",
+    "accuracy_data.py",
+    "accuracy_diagnostic.py"
   ],
   "reproduced_by_public_ci": false,
   "raw_evidence_in_repository": false,

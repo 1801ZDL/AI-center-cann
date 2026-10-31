@@ -1,15 +1,15 @@
 {
   "schema": "ai-center-cann-source-check/v1",
-  "recorded_at": "2026-10-31T04:48:57.872281+00:00",
+  "recorded_at": "2026-10-31T05:15:38.218626+00:00",
   "passed": true,
-  "python_unit_tests": 915,
+  "python_unit_tests": 933,
   "unit_skipped": 0,
-  "unit_seconds": 168.736,
-  "unit_log_sha256": "34a461d65f2d46e8696a871b9f976ae3a5d600668f08f5ac7a76952b885ecfc7",
+  "unit_seconds": 183.313,
+  "unit_log_sha256": "25b5f9050207bf5cb7e7aebc49977271c97bbfad6e924be651deaa93c88837e8",
   "python": "Python3.12.3",
   "javascript_syntax_passed": true,
   "command": "bash scripts/check.sh /usr/bin/python3",
-  "scope": "Full 1,935,540-byte historical MergeTopK HIVM input sealed unchanged and parsed by two pinned actual compiler consumers in installed UID23003 quota tasks. Two separate stdio MCP sessions share 2 jobs/120 declared CPU-seconds, reconnect to original attempts, and offer a bounded read-only case to independent personal UID23642. Complete archive SHA and seal checked; restore preserves attempts and charges and revokes prior spending token. Actual parse results are evidence, not full lowering, compiler repair, device or numerical acceptance.",
+  "scope": "Standard-library CPU comparisons of historical actual NPU bytes: 11/5376 encoding differences against the old PRE reference, 0/5376 against a separately identified observed Vector reference while original actual bytes stay identical, and a mixed FP32/FP64 historical dot comparison with zero error. Installed UID23003 tasks share a 3-job/180 declared CPU-second budget; independent personal UID23642 uses actual portable CLI and read-only stdio MCP. Complete tensors and sealed hashes are independently recomputed; original failure, result rows/CSV and single attempts survive restore, which freezes spending credentials. No new NPU launches, formal ISA judgment, operator repair, PID1 or two-host acceptance.",
   "production_source_sha256": {
     "auth.py": "6bd9b70566fc8dd9b43d3965df5e1fce4c1385e3192239a83052cc0e04778d5f",
     "owner_identity.py": "5a48cf78584b2f717ac45594a73da569589cde6d9441037a0aedffe423f1515b",
@@ -75,7 +75,7 @@
     "storage_files.py": "c2dfe4aec3a4dec6bf8802655eb9e72a414e307d5eb6f4725da99f0484642ebf",
     "storage_lifecycle.py": "cc5778edf04bf1118ac940f6954cc488ae7ceedbee373568af87c6add3cde098",
     "node_storage.py": "185bdeb757c0644cf6319460d74ea15061cf6329b4707354696f8e156a16370c",
-    "deployment.py": "fe4b990851f4dd6306cff7159d5c9a6c234f3c17f8889c3220ab67304de7ccf3",
+    "deployment.py": "0e8600f33af00fe8b1eabb014fee286894edfacabe125e5cf749af3cf945da33",
     "maintenance.py": "2620d879f911ceab230d3ca71c562762a34badf57c71c6902fe2055dacf672de",
     "servicectl": "68b5035d535174946cc8361f2d086d02cdb452bc5ad25bcade74f853551c8663",
     "accessctl": "c0d0a86c7a027036e202aff0795eae0001beec676c393d13e73a763d685ccdc9",
@@ -87,8 +87,8 @@
     "control_storage.py": "207f4a39a0d1c0c232bf7d36b2ef9a3b455eaa95e3c9979d0bf242b88c2dd29a",
     "control_filesystem.py": "f7fa2c7c0de2d33d87f41ced989aab9a5c84ebc212144521fbb637cf41dae35c",
     "control_process.py": "50d0c78f34087c6fee0a1994d1da223d6b6ef513acc64be409fcb5e088c3b425",
-    "labctl": "9c8033676d7927e7d43c2c5a4633daf540f19282ee08f22731033c1e3fc101ca",
-    "install-client": "d8fb82622783c406151c5a1f4eb4d6bddad5653e29ff96462e1d04d25eb7c052",
+    "labctl": "2dba6f9b28a49e5ace0b9f77622ce4f9702cc2169f81965e4544e91accc09a29",
+    "install-client": "2c76e51fd378f4b659331522820011573bff4052ef5b8d713b3d3489977333cd",
     "mcp_bridge.py": "f28c4d7a3ab388b950fea6140d0c10bdf077600d5a1bdaf4d990dcaab7a58559",
     "diagnostic_case.py": "cca7edb7c45e2942748fbd3e333968dabfb5e7a4857a064d4b96aca6e913dedc",
     "compiler_diagnostic.py": "c05d9812edaf1dba333110d036320df386c54088716ead68f16c9e0b77d61760",
@@ -97,7 +97,9 @@
     "operator_workflow.py": "c5603836192e9ac05018edcdcbffff7d348a4797d2f37aafbbe811b2a13fd829",
     "control_monitor.py": "d359289fe13410fd219f3972ac84f4c894f67754c4fc91767e573b5435ea6928",
     "audit_retention.py": "a6e5c3a600c3e8b266538e0555168a56a803dd04ec71ae842ef90ab85e58c233",
-    "experiment_budget.py": "0a498adbe5b651e80c5b37e389d749474b84f731478d432fe97474cefe059a5c"
+    "experiment_budget.py": "0a498adbe5b651e80c5b37e389d749474b84f731478d432fe97474cefe059a5c",
+    "accuracy_data.py": "033c0bc7ae319567db630eef098f263f353e31217f5dd7fa53c07d079c27665e",
+    "accuracy_diagnostic.py": "8b943f6f02ce7cb3efb44a541a4f3898ec21b68f52bdfd078919e62f3e5641cf"
   },
   "cpu": 2,
   "memory_mib": 2048,
@@ -7492,6 +7494,132 @@
         "charges_preserved": true,
         "old_spending_token_revoked": true,
         "new_compiler_tasks": 0
+      }
+    }
+  },
+  "accuracy": {
+    "passed": true,
+    "scope": "Standard-library CPU comparisons of historical actual NPU bytes: 11/5376 encoding differences against the old PRE reference, 0/5376 against a separately identified observed Vector reference while original actual bytes stay identical, and a mixed FP32/FP64 historical dot comparison with zero error. Installed UID23003 tasks share a 3-job/180 declared CPU-second budget; independent personal UID23642 uses actual portable CLI and read-only stdio MCP. Complete tensors and sealed hashes are independently recomputed; original failure, result rows/CSV and single attempts survive restore, which freezes spending credentials. No new NPU launches, formal ISA judgment, operator repair, PID1 or two-host acceptance.",
+    "job_ids": {
+      "focused-r1": "job-4fe2f02246e6",
+      "full-r1": "job-416a6de11340",
+      "full-r2": "job-16d8061d7670",
+      "installed-r3": "job-bf46b25ca57b"
+    },
+    "root_checks": 30,
+    "original_npz_bytes_independently_rechecked": true,
+    "original_and_restored_databases_integrity_checked": true,
+    "web_assets_changed": false,
+    "new_browser_acceptance": false,
+    "owner49_reexecuted": false,
+    "first_install_failure": {
+      "parent": "job-cbdd46560941",
+      "parent_state": "failed",
+      "reason": "Fixture observation deadline exceeded while Node had not enrolled build_v1",
+      "job_id": "job-a338046e0191",
+      "retained_job_state": "queued",
+      "attempts": 0,
+      "allocation": {},
+      "node_templates": [
+        [
+          "cpu_demo",
+          "environment_probe",
+          "ir_v1",
+          "isolation_probe"
+        ]
+      ],
+      "no_workload_started": true,
+      "cancel_requested_to_server": false,
+      "cancel_note": "Fixture had already stopped its services before planned cancellation; no cancellation was sent and retained job was not manually changed",
+      "fixture_configuration_only": true
+    },
+    "final_sources_match_frozen": true,
+    "intermediate_before_receipt_hardening": {
+      "unit_tests": 932,
+      "unit_seconds": 177.403,
+      "full_job": "job-416a6de11340",
+      "root_job": "job-bd8a6a7b7e64",
+      "root_checks": 30
+    },
+    "model_invocations": 0,
+    "npu_kernel_launches": 0,
+    "host_accounts_modified": false,
+    "global_services_or_driver_modified": false,
+    "production_ready": false,
+    "overall_goal_complete": false,
+    "behavior": {
+      "passed": true,
+      "tasks": [
+        {
+          "job_id": "job-e0c82662d4c4",
+          "dataset": "legacy-pre",
+          "input_id": "input-92e1d7a87168fc5852266e1d",
+          "attempt_id": "attempt-984cf4ba7f96480eb4ddc2415fc6e863",
+          "state": "failed",
+          "mismatches": 11,
+          "elements": 5376,
+          "actual_sha256": "075449fbe23785a01fea9fdc99c6f2b686bbd579918f99b87b7032cf7133aff2",
+          "reference_sha256": "b1eb253b2c4aeca60f1a7bb836d108e7c6f9014904ac7ca940d461a0ea8baa0d",
+          "reference_id": "legacy-pre-excerpt-reference",
+          "numeric_metrics": null
+        },
+        {
+          "job_id": "job-b1df720ec75a",
+          "dataset": "observed-vector",
+          "input_id": "input-de2fb2a8f1a1e435f77554ba",
+          "attempt_id": "attempt-facc932b1c5a432da8775c35c2cbbdb4",
+          "state": "succeeded",
+          "mismatches": 0,
+          "elements": 5376,
+          "actual_sha256": "075449fbe23785a01fea9fdc99c6f2b686bbd579918f99b87b7032cf7133aff2",
+          "reference_sha256": "075449fbe23785a01fea9fdc99c6f2b686bbd579918f99b87b7032cf7133aff2",
+          "reference_id": "vector-observed-reference",
+          "numeric_metrics": null
+        },
+        {
+          "job_id": "job-5492fa7ee717",
+          "dataset": "dot-numeric",
+          "input_id": "input-7a99a994662763e331bf1be3",
+          "attempt_id": "attempt-8bff4f2b8cb1403fbb460a362a046259",
+          "state": "succeeded",
+          "mismatches": 0,
+          "elements": 256,
+          "actual_sha256": "beecfdf90972b31a9cd7a2b7d06f637a828f05863a0628a0c0e3d7a30d0189ae",
+          "reference_sha256": "4fc1de1d1292f03546327931a6a3f7044614d09c205eb928ec3370ccb2031432",
+          "reference_id": "decoded-input-cpu-fp64",
+          "numeric_metrics": {
+            "finite_pairs": 256,
+            "max_abs_error": 0.0,
+            "max_relative_error": 0.0,
+            "absolute_error_overflow": false,
+            "relative_error_overflow": false,
+            "nonzero_actual_zero_reference": 0
+          }
+        }
+      ],
+      "budget_id": "experiment-c9115a05963649b290eaad17",
+      "charged": {
+        "jobs": 3,
+        "cpu_seconds": 180,
+        "npu_seconds": 0
+      },
+      "same_actual_bytes_different_reference_contracts": true,
+      "original_failure_preserved": true,
+      "result_rows_and_csv_preserve_failure": true,
+      "actual_personal_uid": 23642,
+      "actual_task_uid": 23003,
+      "personal_profile_peer_unreadable": true,
+      "independent_tensor_recomputation": true,
+      "actual_stdio_and_cli": true,
+      "npu_kernel_launches": 0,
+      "model_invocations": 0,
+      "scope": "Actual installed CPU replay of historical HiF8 capture bytes and supplied CPU reference bytes. No new NPU execution, independently certified capture origin, operator repair, formal ISA ruling, PID1 or two physical hosts.",
+      "after_restore": {
+        "passed": true,
+        "attempts_and_original_failure_preserved": true,
+        "charged_cpu_seconds": 180,
+        "old_spending_credential_revoked": true,
+        "new_replays": 0
       }
     }
   }

@@ -26,6 +26,9 @@ def main():
                             ('client_archive.py','client_archive.py'),
                             ('diagnostic_case.py','diagnostic_case.py'),
                             ('compiler_diagnostic.py','compiler_diagnostic.py'),
+                            ('accuracy_data.py','accuracy_data.py'),
+                            ('accuracy_diagnostic.py','accuracy_diagnostic.py'),
+                            ('ACCURACY.md','ACCURACY.md'),
                             ('examples/workflows/compiler_compatibility.py','compiler_compatibility.py'),
                             ('COMPILER_DIAGNOSTICS.md','COMPILER_DIAGNOSTICS.md'),
                             ('operator_profile.py','operator_profile.py'),
@@ -38,7 +41,7 @@ def main():
             path=staging/name;path.write_bytes(content)
             path.chmod(0o555 if name=='labctl' else 0o444)
             manifest[name]=hashlib.sha256(content).hexdigest()
-        (staging/'manifest.json').write_text(json.dumps({'version':'0.32-client','sha256':manifest,'capabilities':['operator-case-v1','operator-recipe-v1','compiler-case-v1','compiler-large-ir-v2','experiment-budget-client-v1']},indent=2)+'\n')
+        (staging/'manifest.json').write_text(json.dumps({'version':'0.32-client','sha256':manifest,'capabilities':['operator-case-v1','operator-recipe-v1','compiler-case-v1','compiler-large-ir-v2','experiment-budget-client-v1','accuracy-case-v1']},indent=2)+'\n')
         (staging/'manifest.json').chmod(0o444)
         # Prevent implicit local-admin mode in the distributed client.
         (staging/'client-only').write_text('Use a personal --profile; no server lifecycle operations.\n')

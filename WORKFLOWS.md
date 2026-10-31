@@ -144,3 +144,7 @@ parameters可显式增加`"cache":{"mode":"persistent","min_free_mib":1,"min_fre
 ## 大 IR 解析复现
 
 compiler_compatibility.py使用compiler-case.json schema=ascend-lab-compiler-input/v2时允许最多8 MiB输入与输出；仍仅调用固定版本工具进行parse/verify。普通ir_v1请求需要为完整输入、IR副本和输出申请足够的工作盘与产物额度，不因schema自动扩容。只读诊断提供完整SHA校验和有限预览，不能据此声称完整lowering、数值或设备通过。详见COMPILER_DIAGNOSTICS.md。
+
+## 历史精度数据离线重放
+
+`accuracy_data.py`使用明确的actual/reference二进制数据与政策，通过普通build_v1的固定只读输入运行。差异非零时任务failed，原数据、结构化比较和CSV仍保留；匹配仅证明对该参考的比较结果。独立accuracy-case CLI/MCP可核封存摘要并重算，见ACCURACY.md。执行Node须明确登记build_v1。新的设备精度任务继续使用accuracy_v1及NPU资源和资格；本配方不执行设备代码。
