@@ -23,6 +23,7 @@ def main():
         manifest={}
         for source,name in [('labctl','labctl'),('lab_client.py','lab_client.py'),
                             ('io_policy.py','io_policy.py'),
+                            ('placement.py','placement.py'),('npu_selfcheck.py','npu_selfcheck.py'),('NPU_SELFCHECK.md','NPU_SELFCHECK.md'),
                             ('client_archive.py','client_archive.py'),
                             ('diagnostic_case.py','diagnostic_case.py'),
                             ('compiler_diagnostic.py','compiler_diagnostic.py'),
@@ -44,7 +45,7 @@ def main():
             path=staging/name;path.write_bytes(content)
             path.chmod(0o555 if name=='labctl' else 0o444)
             manifest[name]=hashlib.sha256(content).hexdigest()
-        (staging/'manifest.json').write_text(json.dumps({'version':'0.32-client','sha256':manifest,'capabilities':['operator-case-v1','operator-recipe-v1','compiler-case-v1','compiler-large-ir-v2','experiment-budget-client-v1','accuracy-case-v1','terminal-artifact-handoff-client-v1','simulation-case-v1','owner-source-grants-client-v1']},indent=2)+'\n')
+        (staging/'manifest.json').write_text(json.dumps({'version':'0.33-client','sha256':manifest,'capabilities':['operator-case-v1','operator-recipe-v1','compiler-case-v1','compiler-large-ir-v2','experiment-budget-client-v1','accuracy-case-v1','terminal-artifact-handoff-client-v1','simulation-case-v1','owner-source-grants-client-v1','exact-node-device-placement-v1','npu-microcheck-client-v1']},indent=2)+'\n')
         (staging/'manifest.json').chmod(0o444)
         # Prevent implicit local-admin mode in the distributed client.
         (staging/'client-only').write_text('Use a personal --profile; no server lifecycle operations.\n')

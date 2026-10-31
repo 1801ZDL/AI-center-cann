@@ -232,7 +232,7 @@ class JobStore:
                 request = expand_template(request)
             except ValueError as error:
                 raise JobError(str(error), 400)
-        allowed = {'name', 'environment', 'kind', 'cwd', 'argv', 'command', 'cpu', 'memory_mib', 'shm_mib', 'npu', 'timeout_seconds', 'idempotency_key', 'output', 'origin','project','template','parameters','depends_on','artifact_inputs','experiment_id'}
+        allowed = {'name', 'environment', 'kind', 'cwd', 'argv', 'command', 'cpu', 'memory_mib', 'shm_mib', 'npu', 'timeout_seconds', 'idempotency_key', 'output', 'origin','project','template','parameters','depends_on','artifact_inputs','experiment_id','placement'}
         if set(request) - allowed:
             raise JobError('请求含有不支持的字段。身份由登录认证确定，不能由请求指定。')
         argv = request.get('argv')
@@ -341,7 +341,14 @@ class JobStore:
         dependencies=self.dependencies.validate(request,principal)
         from experiment_budget import select
         experiment=select(request,principal)
+        placement={}
+        if 'placement' in request:
+            if env['type']!='worker':raise JobError('Exact placement is only available for managed Node tasks')
+            from placement import validate
+            try:placement={'placement':validate(request['placement'],npu)}
+            except ValueError as error:raise JobError(str(error)) from None
         return {'name': name, 'environment': env_id, '_environment': env, 'kind': kind,**dependencies,**experiment,
+                **placement,
                 **({'input':input_manifest} if input_manifest is not None else {}),
                 **({'project':project} if 'project' in request or not principal.legacy else {}),
                 **({'template':request['template'],'parameters':request['parameters']} if 'template' in request else {}),

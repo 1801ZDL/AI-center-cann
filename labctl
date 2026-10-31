@@ -94,6 +94,8 @@ def main():
     command.add_argument('--memory-mib', type=int, default=256)
     command.add_argument('--shm-mib', type=int, default=0)
     command.add_argument('--npu', type=int, default=0)
+    command.add_argument('--node',help='Constrain a managed job to this Node')
+    command.add_argument('--device',type=int,help='Constrain a one-NPU job to this physical card; requires --node')
     command.add_argument('--timeout', type=int, default=60)
     command.add_argument('--key')
     command.add_argument('--preview', action='store_true', help='Read current placement reasons without submitting or reserving resources')
@@ -257,6 +259,10 @@ def main():
             from io_policy import artifacts
             try:body['parameters']={'artifacts':artifacts({'file_mib':args.artifact_file_mib,'total_mib':args.artifact_total_mib})}
             except ValueError as error:p.error(str(error))
+        if args.device is not None and not args.node:p.error('--device requires --node')
+        if args.node:
+            if body.get('placement'):p.error('Placement already specified in workflow JSON; do not override it')
+            body['placement']={'node_id':args.node,**({'device_ids':[args.device]} if args.device is not None else {})}
         if args.project:
             body['project'] = args.project
         if args.key:

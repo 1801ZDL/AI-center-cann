@@ -414,8 +414,15 @@ try:
     docker(['exec','--user',str(installed['uid'])+':'+str(installed['gid']),controller,
             '/opt/ascend-lab-controller/current/install-client','--prefix',client_target])
     published=secret_json(controller,Path(client_target)/'manifest.json')
-    assert published['version']=='0.32-client' and set(published['sha256'])=={'labctl','lab_client.py','io_policy.py','client_archive.py','diagnostic_case.py','accuracy_data.py','accuracy_diagnostic.py','ACCURACY.md','simulation_data.py','simulation_diagnostic.py','SIMULATION.md','compiler_diagnostic.py','compiler_compatibility.py','COMPILER_DIAGNOSTICS.md','operator_profile.py','operator_node.py','operator_workflow.py','OPERATOR_ANALYSIS.md','mcp_bridge.py','CLIENT.md','WORKFLOWS.md','WORKSPACE.md','DEPENDENCIES.md','STORAGE.md','EXPERIMENT_BUDGET.md','SOURCE_GRANTS.md'}
+    assert published['version']=='0.33-client' and set(published['sha256'])=={'labctl','lab_client.py','io_policy.py','placement.py','npu_selfcheck.py','NPU_SELFCHECK.md','client_archive.py','diagnostic_case.py','accuracy_data.py','accuracy_diagnostic.py','ACCURACY.md','simulation_data.py','simulation_diagnostic.py','SIMULATION.md','compiler_diagnostic.py','compiler_compatibility.py','COMPILER_DIAGNOSTICS.md','operator_profile.py','operator_node.py','operator_workflow.py','OPERATOR_ANALYSIS.md','mcp_bridge.py','CLIENT.md','WORKFLOWS.md','WORKSPACE.md','DEPENDENCIES.md','STORAGE.md','EXPERIMENT_BUDGET.md','SOURCE_GRANTS.md'}
     check('Installed public code supplies a standalone personal CLI/MCP installer without controller credentials or model configuration')
+    help_result=docker(['exec','--user',str(installed['uid'])+':'+str(installed['gid']),controller,
+        '/usr/bin/python3',client_target+'/npu_selfcheck.py','--help'])
+    assert 'submit' in help_result.stdout and 'inspect' in help_result.stdout
+    refused=docker(['exec','--user',str(installed['uid'])+':'+str(installed['gid']),controller,
+        '/usr/bin/python3',client_target+'/npu_selfcheck.py','--run'],check=False)
+    assert refused.returncode!=0 and 'managed non-root NPU task' in refused.stderr
+    check('Installed personal NPU microcheck CLI works without Torch; host execution is refused before importing device packages')
     ctl(controller,'controller','admin','--','accessctl','user-add','proof_user')
     ctl(controller,'controller','admin','--','accessctl','environment-grant','proof_user','worker-python')
     personal=secret_json(controller,controller_state/'personas/proof_user/client.json');token=personal['token']
@@ -564,9 +571,15 @@ try:
     input_id=upload_source()
     request={'template':'ir_v1','environment':'worker-python','parameters':{'input_id':input_id,'argv':['python','ir.py'],
              'lock':{'python':task_version,'image_sha256':task_image},'timeout_seconds':60},'idempotency_key':'installed-ir-before-backup'}
+    request['placement']={'node_id':configuration['node_id']}
+    wrong_target={**request,'placement':{'node_id':'worker-'+'f'*12}}
+    status,preview=api('/api/jobs/preview',wrong_target);assert status==200,preview
+    assert preview['candidates'] and all(row['status']=='blocked' for row in preview['candidates'])
     if options.native_toolchain:request['parameters']['artifacts']={'file_mib':8,'total_mib':16}
     status,response=api('/api/jobs',request);assert status==201,response
     first=wait(response['job']['id']);assert first['state']=='succeeded',first
+    assert first['node_id']==configuration['node_id'] and first['placement']==request['placement']
+    check('Exact Node constraint survives real installed CPU execution; another Node target remains blocked in preview')
     assert first['device_conditions']['status']=='not_applicable' and first['device_conditions']['daily_ut']=='not_linked'
     rows=api('/api/results')[1]['rows'];condition_row=next(row for row in rows if row['job_id']==first['id'])
     assert condition_row['device_conditions']==first['device_conditions'] and condition_row['passed']

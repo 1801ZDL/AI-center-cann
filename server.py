@@ -160,8 +160,10 @@ def handler_class(store, config, jobs=None):
                 name, mime = static[path]
                 return self.reply((ROOT / 'web' / name).read_bytes(), mime)
             if path == '/api/me':
+                from placement import CAPABILITY as PLACEMENT
                 value=access.public_profile(self.principal)
                 if jobs is not None:
+                    value['placement_capabilities']=[PLACEMENT]
                     from dependency_conditions import CAPABILITY as TERMINAL_HANDOFF
                     value['dependency_capabilities']=[TERMINAL_HANDOFF]
                     from source_grants import CAPABILITY as SOURCE_GRANTS

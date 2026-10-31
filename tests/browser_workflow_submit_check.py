@@ -72,7 +72,8 @@ def main():
                 expect(page.locator('#job-form-message')).to_be_visible();assert len(posts)==before and not jobs.all()
             assert not errors;checks.append('Invalid JSON/type/missing key rejected locally before POST, without uncaught page errors')
             for kind in ['accuracy','performance','simulation','build','ir']:
-                value=request(kind);draft(page,value);before=len(jobs.all());preview(page)
+                value=request(kind);value['placement']={'node_id':'worker-'+'f'*12,**({'device_ids':[1]} if kind in {'accuracy','performance','simulation'} else {})};draft(page,value);before=len(jobs.all());preview(page)
+                expect(page.locator('#workflow-draft-summary')).to_contain_text(value['placement']['node_id'])
                 expect(page.locator('#preview-title')).to_have_text('当前没有映射给本人的节点')
                 assert len(jobs.all())==before
                 assert posts[-1]=={'path':'/api/jobs/preview','body':value}

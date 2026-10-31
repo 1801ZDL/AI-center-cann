@@ -53,6 +53,8 @@ def valid_target(jobs,job,db,epoch=None):
         profile=json.loads(row[0])
         if (profile['physical_id']!=target['physical_id'] or profile.get('policy_revision',1)!=target['node_revision']
             or job['owner'] not in profile['users'] or job.get('template') not in profile['templates']):return None
+        from placement import reason
+        if reason(job,target['node_id']):return None
     return target
 
 

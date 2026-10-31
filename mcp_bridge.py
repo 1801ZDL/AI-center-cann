@@ -67,6 +67,7 @@ class Bridge:
                     'resources':request['parameters']['resources'],'timeout_seconds':request['parameters']['timeout_seconds'],
                     'max_jobs':1,'allowed_environment':self.session['environment'],'command_overrides':False}
                 policy['persistent_cache']=request['parameters'].get('cache')
+                if request.get('placement'):policy['placement']=request['placement']
                 policy['depends_on']=request.get('depends_on',[]);policy['artifact_inputs']=request.get('artifact_inputs',[])
             return {'policy': summary['policy'], 'reserved': summary['reserved'],
                     'experiment_budget':summary.get('experiment_budget'),

@@ -104,8 +104,11 @@ class ClientTests(unittest.TestCase):
         target=self.directory/'client'
         result=subprocess.run([str(ROOT/'install-client'),'--prefix',str(target)],capture_output=True,text=True)
         self.assertEqual(result.returncode,0,result.stderr)
+        metadata=json.loads((target/'manifest.json').read_text())
+        self.assertEqual(metadata['version'],'0.33-client')
+        self.assertIn('npu-microcheck-client-v1',metadata['capabilities'])
         self.assertEqual(set(p.name for p in target.iterdir()),
-                         {'labctl','lab_client.py','io_policy.py','client_archive.py','diagnostic_case.py','accuracy_data.py','accuracy_diagnostic.py','ACCURACY.md','simulation_data.py','simulation_diagnostic.py','SIMULATION.md','compiler_diagnostic.py','compiler_compatibility.py','COMPILER_DIAGNOSTICS.md','operator_profile.py','operator_node.py','operator_workflow.py','OPERATOR_ANALYSIS.md','mcp_bridge.py','CLIENT.md','WORKFLOWS.md','WORKSPACE.md','DEPENDENCIES.md','STORAGE.md','EXPERIMENT_BUDGET.md','SOURCE_GRANTS.md','manifest.json','client-only'})
+                         {'labctl','lab_client.py','io_policy.py','placement.py','npu_selfcheck.py','NPU_SELFCHECK.md','client_archive.py','diagnostic_case.py','accuracy_data.py','accuracy_diagnostic.py','ACCURACY.md','simulation_data.py','simulation_diagnostic.py','SIMULATION.md','compiler_diagnostic.py','compiler_compatibility.py','COMPILER_DIAGNOSTICS.md','operator_profile.py','operator_node.py','operator_workflow.py','OPERATOR_ANALYSIS.md','mcp_bridge.py','CLIENT.md','WORKFLOWS.md','WORKSPACE.md','DEPENDENCIES.md','STORAGE.md','EXPERIMENT_BUDGET.md','SOURCE_GRANTS.md','manifest.json','client-only'})
         profile=self.directory/'outside-profile.json'
         atomic_json(profile,{'controller':self.server(),'token':'test-token'})
         response=subprocess.run([str(target/'labctl'),'--profile',str(profile),'me'],capture_output=True,text=True)

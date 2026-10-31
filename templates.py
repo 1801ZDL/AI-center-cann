@@ -23,7 +23,7 @@ def expand_template(request):
                 'kind':'command','cpu':1,'memory_mib':parameters.get('memory_mib',256),'shm_mib':0,'npu':0,'timeout_seconds':120}
     if template in WORKFLOWS:
         if request.get('environment')!='worker-python':raise ValueError('Versioned workflows require the managed node environment')
-        allowed={'template','parameters','name','environment','project','idempotency_key','output','cwd','origin','depends_on','artifact_inputs','experiment_id'}
+        allowed={'template','parameters','name','environment','project','idempotency_key','output','cwd','origin','depends_on','artifact_inputs','experiment_id','placement'}
         if set(request)-allowed:raise ValueError('Workflow command/resources belong in validated parameters')
         parameters=validate(request.get('parameters'),WORKFLOWS[template])
         return {**{k:v for k,v in request.items() if k not in {'template','parameters'}},
@@ -33,7 +33,7 @@ def expand_template(request):
         raise ValueError('当前受限身份仅支持已注册 CPU 模板。')
     if template in {'isolation_probe','npu_probe'} and request.get('environment')!='worker-python':
         raise ValueError('隔离验证模板仅支持 worker-python 受控节点。')
-    allowed = {'template','parameters','name','environment','project','idempotency_key','output','cwd','origin','experiment_id'}
+    allowed = {'template','parameters','name','environment','project','idempotency_key','output','cwd','origin','experiment_id','placement'}
     if set(request)-allowed:
         raise ValueError('模板请求不接受命令或资源覆盖。')
     parameters = request.get('parameters', {})

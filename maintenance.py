@@ -397,6 +397,12 @@ def require_control_storage(config,role,manifest):
 def require_features(state,role,manifest,installation=None):
     config=read_json(Path(state)/'config.json') or {}
     require_control_storage(config,role,manifest)
+    if role=='controller' and 'placement.py' not in manifest.get('files',{}):
+        path=Path(state)/'jobs.sqlite3'
+        if path.exists():
+            with sqlite3.connect(path.as_uri()+'?mode=ro',uri=True) as db:
+                if any(json.loads(row[0]).get('placement') for row in db.execute('SELECT data FROM jobs')):
+                    raise DeployError('Exact placement jobs require matching Node/device constraints; refusing downgrade')
     if not {'node_quota_admin.py','node_quota_change.py'}<=set(manifest.get('files',{})):
         if role=='node' and (installation or {}).get('node_quota_revision',0)>0:
             raise DeployError('Installed Node quota change history requires matching code; refusing downgrade')

@@ -105,7 +105,9 @@
     "source_grants.py",
     "node_quota_admin.py",
     "node_quota_change.py",
-    "npu_conditions.py"
+    "npu_conditions.py",
+    "placement.py",
+    "npu_selfcheck.py"
   ],
   "reproduced_by_public_ci": false,
   "raw_evidence_in_repository": false,

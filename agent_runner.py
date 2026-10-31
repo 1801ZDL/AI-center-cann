@@ -17,7 +17,8 @@ import uuid
 from executor import artifact_index
 from jobs import ROOT, atomic_json, now, read_json
 from mcp_bridge import Bridge,BridgeError
-from lab_client import Client, ClientError, private_profile,bound_workflow
+from lab_client import Client, ClientError, private_profile
+from placement import bound_workflow
 
 REQUESTED_MODEL = 'deepseek-flash-v4-1017'
 ALIAS = 'volcengine/deepseek-v4.1-flash'

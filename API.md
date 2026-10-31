@@ -248,3 +248,7 @@ compiler-case是对原任务/日志/artifact-chunk读取接口的固定路径组
 ## 指定来源产物授权
 
 `/api/me.dependency_capabilities`声明`owner-source-grants-v1`。普通个人账号以`POST /api/source-grants/preview`读取有界、无写入的审批计划，再以`POST /api/source-grants`提交原计划；`GET /api/source-grants`及`GET /api/source-grants/ID`读取本人授权，`POST /api/source-grants/ID/revoke`接收空对象。预算凭据只看到目标为自身预算的授权元数据，不能创建/撤销，也不获得来源job读取权限。工作流`artifact_inputs[]`可添加`source_grant`，其来源、文件和目标预算须精确匹配。字段、限额和恢复语义见[SOURCE_GRANTS.md](SOURCE_GRANTS.md)。
+
+## 精确执行目标
+
+支持能力exact-node-device-placement-v1由GET /api/me的placement_capabilities声明。托管工作流和普通CPU/NPU模板可额外带`"placement":{"node_id":"worker-0123456789ab","device_ids":[1]}`；CPU只能带node_id，设备约束仅接受单卡物理编号及npu=1。约束参与幂等摘要，忙卡/不匹配不改用其他卡；现有权限、共享物理域账本、环境、工作盘和设备资格继续检查。未指定目标的旧请求不变，预览仍不保证实际启动。旧中央须明确拒绝此未知字段；有目标历史的安装禁止降到缺少placement支持的中央包。固定自检配方与边界见NPU_SELFCHECK.md。

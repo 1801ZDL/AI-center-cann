@@ -150,3 +150,7 @@ MCP启动可加`--archive --archive-root /本人/归档`，或`--archive --local
 客户端accuracy-case-v1新增`labctl --profile PRIVATE accuracy-case job-ID`及`accuracy_diagnostic.py mcp --profile PRIVATE --job-id job-ID`。只读绑定CPU离线比较任务，完整张量经校验与重算后只交付有限差异样本；参考/容差变化不会被标为算子修复。输入和实际验证范围见[ACCURACY.md](ACCURACY.md)。
 
 个人客户端新增`source-grant plan/approve/list/show/revoke`，使用普通个人profile批准指定历史产物交给一个实验预算。新manifest声明`owner-source-grants-client-v1`，仅增加CLI和说明，不安装服务端模块或模型。Agent继续使用目标预算profile与原固定MCP，不能签发授权。命令及私有计划文件要求见[SOURCE_GRANTS.md](SOURCE_GRANTS.md)。
+
+## 0.33 精确Node/卡与微自检
+
+便携包新增placement.py、npu_selfcheck.py、NPU_SELFCHECK.md，不包含Torch、模型配置、控制器或凭据；继续仅安装到新目录。labctl submit可加--node，单卡任务可加--device（必须同时指定Node）；工作流JSON内placement与CLI标记不能相互覆盖。固定微自检使用`python /YOUR_CLIENT/npu_selfcheck.py --profile /PRIVATE/robot.json submit --lock /PRIVATE/known-good-lock.json --node worker-0123456789ab --devices 0 1`，查询原任务后用inspect重算归档。详见NPU_SELFCHECK.md，当前不是自动每日服务或硬件/性能认证。

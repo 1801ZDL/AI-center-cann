@@ -364,6 +364,8 @@ class NodeRegistry:
     def placement(self,job,node,domain,active,db=None,identities=None):
         profile=node['profile'];node_id=node['id']
         reason=self.jobs.dispatch_permission(job,active,db,identities) or self.jobs.dependencies.reason(job,db)
+        from placement import reason as placement_reason
+        reason=placement_reason(job,node_id) or reason
         identity_reason=('用户任务不能使用同机中央服务UID，需管理员重新映射'
             if profile['physical_id']==self.jobs.backend.physical_id and profile['users'][job['owner']]['uid']==self.controller_uid() else None)
         inventory_reason=self.jobs.inventory.reason(profile['physical_id'],db)
@@ -462,6 +464,8 @@ class NodeRegistry:
                 held={device for item in group for device in item['allocation'].get('npu_ids',[])}
                 model=job.get('parameters',{}).get('lock',{}).get('npu_name')
                 npus=[item['id'] for item in npu.get('devices',[]) if item['id'] not in held and item['health']=='OK' and item['utilization_pct']==0 and item['process_count']==0 and (not model or item.get('name')==model)]
+                if job.get('placement',{}).get('device_ids'):
+                    npus=[value for value in npus if value in job['placement']['device_ids']]
                 if job.get('template')=='npu_access_probe':
                     from device_qualification import decision
                     target=job['parameters']['device_id'];npus=[value for value in npus if value==target]

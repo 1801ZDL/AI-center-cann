@@ -40,3 +40,5 @@ msagent 的 Operator 文档面向单算子性能分析和优化，并要求提�
 固定镜像分析可使用operator_workflow.py生成现有build_v1请求，再由原调度MCP/CLI显式提交。个人harness继续只读operator-case；没有为此开放原上游SQL/采集工具、共享模型配置或Docker权限。配方和资格步骤见OPERATOR_ANALYSIS.md。
 
 编译诊断另有compiler_diagnostic.py单任务getter；保留原通用/性能接口。模型草稿不得直接成为命令，已知字面候选仍需完整未脱敏源码、封存驱动、受保护工具锁和原尝试清理确认，再由主助手封存新输入、显式排队。当前只验最小实际MLIR版本接口案例，见COMPILER_DIAGNOSTICS.md。
+
+精确执行目标由placement.bound_workflow适配到个人agent_runner和既有固定MCP会话；中央能力须声明exact-node-device-placement-v1，冻结工作流的placement在会话内不能覆盖。旧的无目标入口保留原客户端路径，lab_client与领域工具固定镜像APP4未改；当前新增适配仅验真实HTTP/固定请求合同，没有新增模型harness运行。主动微自检CLI和有限参考/非认证范围见NPU_SELFCHECK.md。
