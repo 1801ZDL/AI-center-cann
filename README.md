@@ -64,6 +64,8 @@ ssh -N -L 18765:127.0.0.1:18765 YOUR_USER@YOUR_SERVER
 
 ## 管理员与多服务器接入
 
+从当前权限到真实多用户和第二台物理机的边界、存储规划及逐步验收见[SCALING.md](SCALING.md)。
+
 先阅读 [DEPLOYMENT.md](DEPLOYMENT.md) 的当前推广计划，再按 [SERVER.md](SERVER.md) 准备固定发布包、专用中央账号、节点凭据、设备及存储合同。
 
 ```bash

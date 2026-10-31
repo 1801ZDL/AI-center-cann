@@ -22,7 +22,7 @@ from jobs import atomic_json,now
 from deployment import bundle,unpack_release
 from backends import physical_identity
 
-arguments=argparse.ArgumentParser();arguments.add_argument('--large-wheel');arguments.add_argument('--https-network',action='store_true');arguments.add_argument('--disk-workspace',action='store_true');arguments.add_argument('--user-quota-workspace',action='store_true');arguments.add_argument('--storage-pressure',action='store_true');arguments.add_argument('--central-payload',action='store_true');arguments.add_argument('--central-owner-quotas',action='store_true');arguments.add_argument('--node-spool-pressure',action='store_true');arguments.add_argument('--persistent-cache',action='store_true');arguments.add_argument('--dependencies',action='store_true');arguments.add_argument('--input-durability',action='store_true');arguments.add_argument('--native-toolchain',action='store_true');arguments.add_argument('--payload-quota-resize',action='store_true');arguments.add_argument('--deadline-limit',action='store_true');arguments.add_argument('--operator-analysis');arguments.add_argument('--operator-image');arguments.add_argument('--compiler-case');options=arguments.parse_args()
+arguments=argparse.ArgumentParser();arguments.add_argument('--large-wheel');arguments.add_argument('--https-network',action='store_true');arguments.add_argument('--disk-workspace',action='store_true');arguments.add_argument('--user-quota-workspace',action='store_true');arguments.add_argument('--storage-pressure',action='store_true');arguments.add_argument('--control-storage-pressure',action='store_true');arguments.add_argument('--central-payload',action='store_true');arguments.add_argument('--central-owner-quotas',action='store_true');arguments.add_argument('--node-spool-pressure',action='store_true');arguments.add_argument('--persistent-cache',action='store_true');arguments.add_argument('--dependencies',action='store_true');arguments.add_argument('--input-durability',action='store_true');arguments.add_argument('--native-toolchain',action='store_true');arguments.add_argument('--payload-quota-resize',action='store_true');arguments.add_argument('--deadline-limit',action='store_true');arguments.add_argument('--operator-analysis');arguments.add_argument('--operator-image');arguments.add_argument('--compiler-case');options=arguments.parse_args()
 https=options.https_network
 user_quota=options.user_quota_workspace
 central_groups=options.central_owner_quotas
@@ -38,6 +38,7 @@ assert not options.operator_analysis or (user_quota and options.operator_image a
 assert not options.compiler_case or options.operator_analysis, 'Compiler case extends the qualified operator image fixture'
 disk=options.disk_workspace or user_quota
 assert not (disk and options.large_wheel), 'Keep disk hard-limit and large-wheel fixtures separate'
+assert not options.control_storage_pressure or (not options.storage_pressure and not options.central_payload and not options.large_wheel), 'Control capacity fault injection uses a separate bounded state filesystem'
 assert not (options.storage_pressure and options.large_wheel), 'Keep the full-disk fault injection bounded'
 assert not (options.central_payload and (options.storage_pressure or options.large_wheel)), 'Keep production storage and fault injection/large transfers separately verifiable'
 large_wheel=Path(options.large_wheel).absolute() if options.large_wheel else None
@@ -65,7 +66,7 @@ if options.operator_analysis:
     task_setup='/opt/ascend-lab-native-env.sh'
 with socket.socket() as probe:probe.bind(('127.0.0.1',0));port=probe.getsockname()[1]
 containers=[];volumes=[];networks=[];stopped_main=False;checks=[];token=None;tls_context=None;authority_text=None;renewal=None;https_mcp=None
-retention_proof={};mount_proof={};owned_disk=None;pressure_disk=None;pressure_volume=None;storage_pressure=None;spool_disk=None
+retention_proof={};mount_proof={};owned_disk=None;pressure_disk=None;pressure_volume=None;storage_pressure=None;control_storage_pressure=None;spool_disk=None
 central_disks=[];central_volumes=[];payload_args=[];payload_contracts=[];central_proof=None
 group_pressure={};quota_resize_proof=None;deadline_proof=None;operator_proof=None;compiler_proof=None
 node_spool_pressure=None;cache_disk=None;cache_volume=None;cache_policy=None;cache_proof=None;dependency_proof=None;input_durability=None;native_proof=None
@@ -176,10 +177,10 @@ try:
     if https:
         network=prefix+'-isolated'
         docker(['network','create','--internal','--label','io.ascend-lab.installproof='+prefix,network]);networks.append(network)
-    if options.storage_pressure:
+    if options.storage_pressure or options.control_storage_pressure:
         sys.path.insert(0,str(ROOT/'tests'))
         from disk_workspace_fixture import OwnedDisk
-        pressure_disk=OwnedDisk(base,prefix+'-pressure',image,cpus,docker,folder_name='archive-pressure')
+        pressure_disk=OwnedDisk(base,prefix+'-pressure',image,cpus,docker,folder_name='archive-pressure',image_mib=128 if options.control_storage_pressure else 32,inodes=8192 if options.control_storage_pressure else 512)
         pressure_device=pressure_disk.create();pressure_volume=prefix+'-pressure'
         docker(['volume','create','--label','io.ascend-lab.installproof='+prefix,'--driver','local',
                 '--opt','type=ext4','--opt','device='+pressure_device,'--opt','o=nosuid,nodev',pressure_volume])
@@ -246,7 +247,7 @@ try:
               '--mount','type=bind,src='+str(node_parent if role=='node' else state)+',dst='+str(node_parent if role=='node' else state),
               '--mount','type=bind,src=/etc/machine-id,dst=/etc/machine-id,readonly']
         if https and role=='controller':argv+=['--network-alias','controller.lab']
-        if options.storage_pressure and role=='controller':
+        if (options.storage_pressure or options.control_storage_pressure) and role=='controller':
             # Trusted test administrator only, for private-namespace fault injection.
             # The actual service runs as UID999 with no effective capabilities/socket.
             argv+=['--cap-add','SYS_ADMIN','--security-opt','apparmor=unconfined',
@@ -268,7 +269,7 @@ try:
             argv+=['--mount','type=volume,src='+spool_volume+',dst=/spool-proof-alias,volume-nocopy']
             for mounted,path in work_mounts:argv+=['--mount','type=volume,src='+mounted+',dst='+path+',volume-nocopy']
             if cache_volume:argv+=['--mount','type=volume,src='+cache_volume+',dst='+cache_path+',volume-nocopy','--mount','type=volume,src='+cache_volume+',dst=/cache-proof-alias,volume-nocopy']
-        lifetime=1500 if options.deadline_limit else 900 if large_wheel or options.compiler_case else 600 if options.native_toolchain or options.operator_analysis else 300
+        lifetime=1500 if options.deadline_limit else 900 if large_wheel or options.compiler_case else 600 if options.native_toolchain or options.operator_analysis or options.control_storage_pressure else 300
         argv+=['--entrypoint','/usr/bin/timeout',image,'--kill-after=5s',str(lifetime)+'s','/usr/bin/python3','-I','-c','import time;time.sleep('+str(lifetime-5)+')']
         docker(argv);containers.append(name)
         claim='import os,sys;os.chown(sys.argv[1],0,0);os.chmod(sys.argv[1],0o700)'
@@ -910,6 +911,10 @@ try:
         sys.path.insert(0,str(ROOT/'tests'))
         from central_storage_pressure import run
         storage_pressure=run(globals())
+    if options.control_storage_pressure:
+        sys.path.insert(0,str(ROOT/'tests'))
+        from control_storage_pressure import run
+        control_storage_pressure=run(globals())
     if large_wheel:
         # Small-state recovery was already verified. Do not claim these backups include the new large wheel.
         assert ctl(controller,'controller','start')['ready'];assert ctl(node,'node','start')['ready']
@@ -974,6 +979,7 @@ try:
             **({'disk_workspace':owned_disk.report,'persistent_workspace_job':persistent_job['id']} if disk else {}),
             **({'large_wheel':large_result} if large_result else {}),
             **({'storage_pressure':storage_pressure,'pressure_disk':pressure_disk.report} if storage_pressure else {}),
+            **({'control_storage_pressure':control_storage_pressure,'pressure_disk':pressure_disk.report} if control_storage_pressure else {}),
             **({'central_payload':central_proof,'central_disks':[item.report for item in central_disks]} if central_proof else {}),
             **({'central_owner_quotas':{'enforced':True,'controller_extra_capabilities':False,'fixture_seccomp_unconfined':True,
                 'host_groups_created':False,'preparation_plan_readonly':True,'pressure':group_pressure,

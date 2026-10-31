@@ -23,6 +23,13 @@ class ClientError(ValueError):
     pass
 
 
+class ClientHTTPError(ClientError):
+    """A received HTTP status, without retaining remote bodies or credentials."""
+    def __init__(self, status):
+        self.status = status
+        super().__init__('Controller HTTP ' + str(status))
+
+
 class ClientUnavailable(ClientError):
     """No trustworthy response; retry must retain the original operation identity."""
 
@@ -189,7 +196,7 @@ class Client:
         except urllib.error.HTTPError as error:
             error.close()
             # Do not echo remotely supplied text, credentials, URLs, or TLS diagnostics.
-            raise ClientError('Controller HTTP ' + str(error.code)) from None
+            raise ClientHTTPError(error.code) from None
         except ClientError:
             raise
         except (OSError, ValueError):

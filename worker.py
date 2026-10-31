@@ -19,7 +19,7 @@ import urllib.request
 from backends import physical_identity
 from container_engine import DockerAttempt
 from jobs import atomic_json,identity,now,read_json
-from lab_client import Client, ClientError, ClientUnavailable
+from lab_client import Client, ClientError, ClientHTTPError, ClientUnavailable
 from workflow_spec import CAPABILITIES
 from state_lock import state_lock
 from resources import MULTI_SLOT,validate_policy,memory_cost
@@ -48,6 +48,11 @@ class NodeClient:
         except ClientUnavailable:
             raise ControllerUnavailable('Controller node operation '+action+' unavailable; original attempt retained') from None
         except ClientError as error:
+            if isinstance(error, ClientHTTPError) and error.status == 507:
+                # A received capacity failure is not a task/container fault.
+                # Continue local supervision; replay only the saved grant and
+                # committed-offset transfer after capacity is restored.
+                raise ControllerUnavailable('Controller storage unavailable; original attempt retained') from None
             raise RuntimeError('Controller node operation '+action+': '+str(error)) from None
 
 

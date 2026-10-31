@@ -8,11 +8,32 @@ from unittest.mock import Mock,patch
 
 ROOT=Path(__file__).resolve().parents[1];sys.path.insert(0,str(ROOT));sys.path.insert(0,str(ROOT/'tests'))
 import test_nodes as builder
-from lab_client import Client,ClientError,ClientUnavailable
+from lab_client import Client,ClientError,ClientHTTPError,ClientUnavailable
 from worker import Worker,NodeClient,ControllerUnavailable
 
 
 class ClientTransportTests(unittest.TestCase):
+    def test_http_status_is_typed_without_reading_remote_body_or_retrying(self):
+        for status in [401,403,409,500,503,507]:
+            with self.subTest(status=status):
+                client=Client({'controller':'http://127.0.0.1:18765','token':'fixture-node-token'})
+                body=io.BytesIO(b'private remote body and credential')
+                body.read=Mock(side_effect=AssertionError('Never read HTTP error bodies'))
+                client.opener.open=Mock(side_effect=urllib.error.HTTPError('private url',status,'private reason',{},body))
+                with self.assertRaises(ClientHTTPError) as caught:client.request('/api/worker/update',{})
+                self.assertEqual(caught.exception.status,status)
+                self.assertEqual(str(caught.exception),'Controller HTTP '+str(status))
+                client.opener.open.assert_called_once();body.read.assert_not_called()
+
+    def test_only_capacity_status_preserves_worker_supervision(self):
+        client=NodeClient({'controller':'http://127.0.0.1:18765','node_key':'fixture-node-token'})
+        for status in [401,403,409,500,503,507]:
+            with self.subTest(status=status):
+                client.client.request=Mock(side_effect=ClientHTTPError(status))
+                with self.assertRaises(RuntimeError) as caught:client.call('update',{})
+                self.assertEqual(isinstance(caught.exception,ControllerUnavailable),status==507)
+                client.client.request.assert_called_once()
+
     def test_network_response_failure_is_typed_without_exposing_its_url(self):
         client=Client({'controller':'http://127.0.0.1:18765','token':'fixture-node-token'})
         client.opener.open=Mock(side_effect=urllib.error.URLError('private diagnostic text'))
