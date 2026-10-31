@@ -80,6 +80,8 @@ def directory(path):
 
 
 def read_marker(fd):
+    if '.ascend-lab-userquota-resizing.json' in os.listdir(fd):
+        raise ValueError('Native UID quota resize is pending; preserve its original administrative intent')
     source=os.open(MARKER,os.O_RDONLY|os.O_NOFOLLOW|os.O_NONBLOCK,dir_fd=fd)
     with os.fdopen(source,'rb') as stream:
         info=os.fstat(stream.fileno())

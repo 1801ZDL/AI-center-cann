@@ -86,10 +86,14 @@ class Handoff:
         return None
 
     def held_nodes(self,db):
-        return {value['node_id'] for row in db.execute('SELECT record FROM owner_node_handoffs')
+        result={value['node_id'] for row in db.execute('SELECT record FROM owner_node_handoffs')
                 for value in [json.loads(row[0])] if value['state']!='ready' or not value.get('node_online_seen')}
+        changes=getattr(self.nodes,'quota_changes',None)
+        return result|(changes.held_nodes(db) if changes else set())
 
     def mutable(self,node_id,db):
+        changes=getattr(self.nodes,'quota_changes',None)
+        if changes and changes.pending(node_id,db):raise JobError('Finish the pending Node quota change and healthy heartbeat before changing this Node',409)
         if self.pending(node_id,db):raise JobError('Finish the approved owner handoff before changing this Node configuration',409)
         from qualification_compatibility import pending
         if pending(db,node_id):raise JobError('Finish the qualification compatibility decision before changing this Node configuration',409)

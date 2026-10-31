@@ -124,6 +124,8 @@ def _context(prefix,root,recovery=False):
     with state_lock(state,exclusive=True):
         from node_owner_admin import guard
         guard(state)
+        from node_quota_admin import guard as quota_guard
+        quota_guard(state)
         from maintenance import assert_quiescent
         assert_quiescent(state,'node')
         control=os.open(state,os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW)

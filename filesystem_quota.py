@@ -10,6 +10,7 @@ import os
 import platform
 
 USRQUOTA=0
+Q_SYNC=0x800001
 Q_GETINFO=0x800005
 Q_GETQUOTA=0x800007
 Q_SETQUOTA=0x800008
@@ -42,7 +43,7 @@ class QuotaState(ctypes.Structure):
 
 def quota_call(fd,command,uid,record):
     if type(fd) is not int or fd<0 or type(uid) is not int or not 0<=uid<2**31:raise ValueError('Invalid quota descriptor or UID')
-    if command not in {Q_GETINFO,Q_GETQUOTA,Q_SETQUOTA,Q_XGETQSTATV,0x800003}:raise ValueError('Unsupported quota operation')
+    if command not in {Q_SYNC,Q_GETINFO,Q_GETQUOTA,Q_SETQUOTA,Q_XGETQSTATV,0x800003}:raise ValueError('Unsupported quota operation')
     libc=ctypes.CDLL(None,use_errno=True);value=(command<<8)|USRQUOTA
     if hasattr(libc,'quotactl_fd'):
         call=libc.quotactl_fd;call.argtypes=[ctypes.c_int,ctypes.c_uint,ctypes.c_uint,ctypes.c_void_p];call.restype=ctypes.c_int
@@ -98,3 +99,25 @@ def provision(fd,uid,byte_hard,inode_hard):
                     inode_hard=inode_hard,inode_soft=inode_hard,valid=QIF_BLIMITS|QIF_ILIMITS)
     quota_call(fd,Q_SETQUOTA,uid,quota)
     return require(fd,uid,byte_hard,inode_hard)
+
+
+def resize(fd,uid,before,after):
+    """Root CAS of limits only; usage and enforcement are never reset."""
+    if os.geteuid()!=0:raise PermissionError(errno.EPERM,'UID quota resize requires the trusted administrator')
+    for value in [before,after]:
+        if (not isinstance(value,dict) or set(value)!={'bytes','inodes'} or type(value['bytes']) is not int
+            or value['bytes']<=0 or value['bytes']%BLOCK or type(value['inodes']) is not int or value['inodes']<=0):
+            raise ValueError('Invalid UID quota resize limits')
+    current=read(fd,uid);pair=(current['byte_hard'],current['inode_hard'])
+    if pair not in {(before['bytes'],before['inodes']),(after['bytes'],after['inodes'])}:
+        raise ValueError('UID quota limits changed outside this operation')
+    if current['byte_soft'] not in {0,current['byte_hard']} or current['inode_soft'] not in {0,current['inode_hard']}:
+        raise ValueError('UID soft quota differs from the pinned contract')
+    if after['bytes']<current['bytes_used'] or after['inodes']<current['inodes_used']:
+        raise ValueError('UID quota resize cannot discard existing usage')
+    if pair!=(after['bytes'],after['inodes']):
+        value=DiskQuota(block_hard=after['bytes']//BLOCK,block_soft=after['bytes']//BLOCK,
+            inode_hard=after['inodes'],inode_soft=after['inodes'],valid=QIF_BLIMITS|QIF_ILIMITS)
+        quota_call(fd,Q_SETQUOTA,uid,value)
+    quota_call(fd,Q_SYNC,0,None)
+    return require(fd,uid,after['bytes'],after['inodes'])

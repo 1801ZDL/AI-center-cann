@@ -41,7 +41,7 @@ class NodeClient:
                             **({'ca_file':config['ca_file']} if config.get('ca_file') else {})})
 
     def call(self,action,body):
-        if action not in {'heartbeat','claim','start','update','blob','complete','input','owner-commit','owner-ready'}:
+        if action not in {'heartbeat','claim','start','update','blob','complete','input','owner-commit','owner-ready','quota-status','quota-ready'}:
             raise ValueError('Invalid worker operation')
         try:
             return self.client.request('/api/worker/'+action,body)
@@ -70,6 +70,8 @@ class Worker:
         try:
             from node_owner_provision import guard as participant_guard
             participant_guard(self.root);guard(self.root)
+            from node_quota_admin import guard as quota_guard
+            quota_guard(self.root)
         except BaseException:
             self.state_lock.close();raise
         self.previous_cpu=None
@@ -123,6 +125,8 @@ class Worker:
         from attempt_inventory import CAPABILITY as INVENTORY,local as attempt_inventory
         capabilities=['start-ticket-v1','cleanup-before-complete-v1',PINNED_RUNTIME,ENVIRONMENT,INVENTORY,MULTI_SLOT,*sorted(CAPABILITIES)]
         capabilities.append(PROBE_MEMORY_CAPABILITY)
+        from node_quota_admin import CAPABILITY as QUOTA_RESIZE
+        capabilities.append(QUOTA_RESIZE)
         from workflow_spec import DEADLINE_CAPABILITY,MAX_TIMEOUT_SECONDS
         maximum=self.config.get('max_timeout_seconds',300)
         if type(maximum) is not int or not 1<=maximum<=MAX_TIMEOUT_SECONDS:raise ValueError('Invalid node execution timeout limit')
@@ -434,6 +438,8 @@ class Worker:
                 try:
                     from node_owner_provision import guard as participant_guard
                     participant_guard(self.root)
+                    from node_quota_admin import guard as quota_guard
+                    quota_guard(self.root)
                     try:self.reap()
                     except Exception:
                         self.artifact_gc_ready=False

@@ -31,6 +31,8 @@ def main():
     command=sub.add_parser('node-environment');command.add_argument('node_id')
     command.add_argument('--from-job',required=True);command.add_argument('--expected-revision',type=int,required=True)
     command=sub.add_parser('owner-approve');command.add_argument('node_id');command.add_argument('--plan',required=True)
+    command=sub.add_parser('node-quota-approve');command.add_argument('node_id');command.add_argument('--plan',required=True)
+    command=sub.add_parser('node-quota-status');command.add_argument('node_id');command.add_argument('--plan-id',required=True)
     command=sub.add_parser('owner-expand-plan');command.add_argument('node_id');command.add_argument('--plan',required=True)
     command.add_argument('--output',required=True);command.add_argument('--reauthorize',action='store_true')
     command=sub.add_parser('owner-expand-apply');command.add_argument('--plan',required=True)
@@ -100,6 +102,24 @@ def main():
             finally:os.close(parent)
             result={'grant_id':value['id'],'node_id':args.node_id,'output':str(output),'applied':False}
         else:result=expansion.apply(value)
+        print(json.dumps(result,ensure_ascii=False,indent=2));return
+    if args.action in {'node-quota-approve','node-quota-status'}:
+        runtime=Path(args.controller_state).resolve();jobs=JobStore(runtime,read_json(runtime/'config.json'))
+        if args.action=='node-quota-status':
+            result=jobs.nodes.quota_changes.status(args.node_id,{'plan_id':args.plan_id})
+        else:
+            from deployment import regular_json
+            from node_quota_admin import MAX_RECORD
+            path=Path(args.plan)
+            if path.lstat().st_uid!=os.getuid():parser.error('Node quota approval plan must belong to this service identity')
+            value=regular_json(path,max_bytes=MAX_RECORD,private=True)
+            result=jobs.nodes.quota_changes.approve(args.node_id,value)
+            # A copy of the after projection is for later key rotation/export;
+            # it never makes the remote Node's native operation complete.
+            config_path=runtime/'workers'/args.node_id/'config.json';private=read_json(config_path)
+            from node_owner_admin import projection
+            if private and private.get('node_id')==args.node_id and projection(private) in [value['before'],value['after']]:
+                atomic_json(config_path,{**private,**value['after']})
         print(json.dumps(result,ensure_ascii=False,indent=2));return
     if args.action in {'owner-approve','owner-status'}:
         runtime=Path(args.controller_state).resolve();jobs=JobStore(runtime,read_json(runtime/'config.json'))

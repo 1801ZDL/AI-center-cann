@@ -62,3 +62,5 @@ Node停机备份要求全部attempt已确认清理、Spool为空、所有缓存�
 ## 仍需完成的验收
 
 完整安装候选必须验证固定受保护环境下的冷/热IR、两个实际UID、真实Docker /cache挂载、Node在任务执行中重启而不重复启动、满额时peer推进、失挂载门禁及原盘恢复、计划GC和同盘控制目录restore后的暖缓存。还需要真实Triton JIT/ccache/CMake工程、真实systemd与两物理机测试；当前不由提供器Root11推导这些已通过。阶段DAG、控制元数据增长硬边界、组织身份和完整NPU计算资格仍在整体目标内，PUBLIC-001继续延期。
+
+已有owner缓存额度的调整见[NODE_QUOTA.md](NODE_QUOTA.md)：同一namespace key和目录inode保留，更新配额合同及控制绑定，不复制或删除缓存。目标Node须停机清退，其他Node共享该原生盘时拒绝调整；尚无在线或换盘迁移。

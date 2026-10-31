@@ -1,5 +1,23 @@
 # 实施进度
 
+## 已有用户 Node 工作区与缓存配额维护（2026-10-31）
+
+**最终1020项/226.885秒/无跳过及JS语法通过，同机隔离Root安装32项通过。** full `job-18aef6c6f36c`、actual Root `job-110d745c8c6e`；96个非文档CORE及全部测试/辅助脚本与最终安装包逐项核对。网页4资产、protected6及固定工具镜像APP4未变，无新浏览器或镜像重建。早一轮1017项/209.209秒及Root `job-0c481212fc81`的32项仅代表加入旧快照保护之前的代码，不能替代最终验收。
+
+新增`node_quota_admin.py`、`node_quota_change.py`、`NODE_QUOTA.md`。Root在目标Node停止且尝试/暂存/缓存租约均清退后生成只读计划；中央服务身份通过`workerctl node-quota-approve`事务批准，提升policy revision并失效旧心跳。Node `servicectl node-quota-apply`用自己的凭据确认原批准，持久保存控制盘journal及原生盘intent，CAS调整一个既有owner的工作区或缓存字节/inode限额，更新来源marker/缓存绑定/配置及安装元数据，得到ready ACK后清理维护标记。只有匹配新投影、存储正常、库存已对账的新鲜心跳解除中央等待。审批与恢复幂等，不自动取消/释放未知任务。
+
+原生ext4 UID CAS仅修改硬/软限额并同步，不重置用量/归属/执行状态。来源marker几何、全盘额度及实际余量、本人留存数据和元数据余量均检查。所选盘全部槽须登记在本Node，别的Node登记同盘时拒绝；当前是停止态维护，不是在线、共享多Node盘联合调整或新盘迁移。计划最多1MiB，Node历史最多1024次完整收据，普通用户和个人Agent没有这些管理命令/凭据。Node pending时禁止启动和本地维护，中央pending拒绝别的配置变更/离线备份。仅node_key可在原计划上显式轮换，URL/CA/镜像/UID等其他非存储配置仍固定。
+
+实际安装使用标准库固定镜像、Controller999/Node0/Task23003及23004。工作与缓存分别16MiB/128inode→24MiB/256→16MiB/128，共4次变更；其他owner限额保持24MiB/192。缓存增长在journal、intent、quota、native marker、cache control/marker、config、metadata、receipt、ready、intent removed、published连续12边界SIGKILL；工作增长在config再SIGKILL，总13次，同计划恢复。中途撤销/轮换Node凭据，旧key401，新key继续原维护。已用缓存填至旧限额EDQUOT后增长，可额外写超过4MiB并再次达到EDQUOT；unsafe shrink拒绝，满额用户等待0attempt时同伴缓存任务继续，清理明确的自有filler后原等待任务继续。增长的工作区真实任务分别触及24MiB/256inode的EDQUOT。
+
+全部暖IR仍只调用一次原BishengIR编译，namespace key、目录inode、canonical.mlir的inode和119字节SHA保持原样；不是完整Triton JIT/ccache或新NPU能力验收。主助手在6个loop均释放后，以只读debugfs独立读取最终两份ext4 backing：核两UID的工作/缓存最终内核配额及原缓存IR字节，与实际任务归档和原样本一致。Controller原/恢复SQLite完整性、4条批准及回执SHA、原task/attempt也独立核对。
+
+新增恢复保护：Node备份保留维护修订号及连续收据链；当前安装仍保留状态时，旧Controller/Node快照遗漏或改变后来的批准/收据即拒绝，位于暂存/缓存绑定及安装元数据改写之前。实际演练先保存配额变更前的两份快照，后续恢复均被拒绝，原状态不变；最新静默备份正常恢复，原尝试、历史和暖缓存保留。安装元数据的Node修订号另防止状态丢失后激活旧代码。实际上一发布`765f902b0e17df4db36fae993ffb0b50249fe8f7`在两角色降级均被拒绝。此门槛不等同控制盘已丢失后的异机灾难恢复或多中央fencing。
+
+Main配置SHA43feb...、19个Node登记、物理域CPU254255/2048MiB/SHM1024/1槽及zdl不变，0非终态/hold，Main配额变更表为空。两轮Root共6个loop关联释放，项目5个fixture命名空间无容器/卷残留，backing仅私有保留。无宿主账号/全局服务/驱动修改，无模型调用、新NPU launch或每日定时器。私有证据`evidence/node-quota-validation.json`，公开摘要`reports/public-source-check.json.node_quota_resize`。
+
+新增用户需求**PUBLIC-002每日逐卡UT/数据可信度保护**已记录BACKLOG.md：冻结工具链精度和性能基线、健康/频率/占用、按卡证据与有效期、异常结果标记及显式复检。当前未实施或创建定时任务；PUBLIC-001 PR回归仍延期。后续继续实际设备失败→分析→批准候选→排队验证、领域崩溃/有界reducer及长期存储运维，真实host账号/PID1/两物理机/NPU验收仍缺，整体目标继续未完成。
+
 ## 跨轮实验的指定产物授权（2026-10-31）
 
 **最终998项/194.097秒/无跳过及JS语法通过，同机隔离Root安装30项通过。** full `job-6a8dd77c971f`、实际安装 `job-4e2817e6d74a`。94个非文档CORE与最终安装包逐项一致；发现的测试文件与全量回归一致，安装辅助脚本在首次失败后修正了一个响应对象读取，最终安装以r4辅助脚本验收。4个网页资产、6个受保护运行时文件及固定工具镜像的4个应用文件未变，本轮没有重跑浏览器或重建工具镜像。

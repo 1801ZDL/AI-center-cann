@@ -38,6 +38,8 @@ class NodeRegistry:
         self.qualifications=Qualifications(jobs)
         from owner_handoff import Handoff
         self.handoff=Handoff(self)
+        from node_quota_change import Changes
+        self.quota_changes=Changes(self)
 
     def enroll(self,profile):
         if not isinstance(profile,dict) or not re.fullmatch(r'[a-zA-Z][a-zA-Z0-9_-]{0,47}',profile.get('name','')):raise JobError('Invalid node name')
@@ -314,6 +316,10 @@ class NodeRegistry:
             updated=db.execute('UPDATE worker_nodes SET last_seen=?,report=? WHERE id=? AND profile=? AND disabled=0',
                 (time.time(),json.dumps(report),node_id,json.dumps(profile)))
             if updated.rowcount!=1:raise JobError('Node configuration changed while validating heartbeat; retry with current configuration',409)
+            from node_quota_admin import CAPABILITY as QUOTA_RESIZE
+            if QUOTA_RESIZE in body.get('capabilities',[]):report['capabilities'].append(QUOTA_RESIZE)
+            self.quota_changes.observe(node_id,profile,report,db)
+            db.execute('UPDATE worker_nodes SET report=? WHERE id=?',(json.dumps(report),node_id))
             self.handoff.observe(node_id,profile,report,db,identities)
         return {'node_id':node_id,'accepted':True}
 
@@ -494,6 +500,7 @@ class NodeRegistry:
             from audit_retention import HOLD as AUDIT_HOLD
             if self.jobs.access.audit_status()['blocks_new_work']:return {'grant':None,'reason':AUDIT_HOLD}
             if self.handoff.pending(node_id,db):return {'grant':None,'reason':'Node owner handoff awaits durable central readiness'}
+            if self.quota_changes.pending(node_id,db):return {'grant':None,'reason':'Node quota change awaits native apply and a fresh healthy heartbeat'}
             if self.jobs.policy.get('require_pinned_docker') and PINNED_RUNTIME not in node['report'].get('capabilities',[]):
                 raise JobError('Node must upgrade to pinned-docker-runtime-v1 before receiving new work',409)
             if self.jobs.policy.get('require_environment_contract') and (ENVIRONMENT not in node['report'].get('capabilities',[]) or not profile.get('image')):

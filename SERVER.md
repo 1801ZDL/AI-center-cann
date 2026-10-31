@@ -248,3 +248,5 @@ v0.21 新安装默认 require_node_spool=true；节点须上报 node-spool-v1、
 
 中央载荷可由所有者显式隔离/恢复，默认 7 天后独立永久删除；策略字段 `scheduler.storage_trash_grace_seconds`。`accessctl user-add`/`token-renew --storage-manage` 显式授权，管理员读取权限不允许删除其他所有者数据。没有自动回收定时器。pending 文件维护阻断离线备份/激活；已隔离数据支持新目录恢复后的身份重绑定。需要的磁盘硬配额、节点缓存预算与大规模数据库保留策略仍待实机部署。详见 STORAGE.md。
 
+
+已有owner的Node工作/缓存配额维护见[NODE_QUOTA.md](NODE_QUOTA.md)。Root停止目标Node后生成计划，中央服务身份批准，Node原计划应用并用新鲜健康心跳确认；资源变更不通过个人Agent执行。实际停止态原生配额、缓存保留与恢复验收范围见PROGRESS.md，尚非在线、多盘迁移或真实systemd/多机/NPU验收。

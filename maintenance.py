@@ -65,6 +65,9 @@ def assert_quiescent(state,role,check_spool=True):
                 if db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='qualification_compatibility'").fetchone():
                     if db.execute("SELECT 1 FROM qualification_compatibility WHERE state='pending' LIMIT 1").fetchone():
                         raise DeployError('Finish pending qualification compatibility decisions before offline maintenance')
+                if (db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='node_quota_changes'").fetchone()
+                    and db.execute("SELECT 1 FROM node_quota_changes WHERE state IN ('approved','ready') LIMIT 1").fetchone()):
+                    raise DeployError('Finish pending Node quota changes and healthy heartbeat before offline controller maintenance')
                 if db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='storage_lifecycle'").fetchone():
                     if db.execute("SELECT 1 FROM storage_lifecycle WHERE state IN ('moving_to_trash','restoring','purging') LIMIT 1").fetchone():
                         raise DeployError('Finish pending storage maintenance before offline backup or activation')
@@ -129,6 +132,11 @@ def snapshot(prefix,output,max_bytes=10*1024**3):
                 files[name]={'size':size,'sha256':digest(source),'mode':info.st_mode&0o777};sources[name]=source
             manifest={'format':'ascend-lab-snapshot/v2' if policy else 'ascend-lab-snapshot/v1','role':meta['role'],'release_id':meta['release_id'],
                       'state_schema':meta['state_schema'],'original_state':str(state),'files':files,'directories':directories,'bytes':total,'quiescent':True}
+            if meta['role']=='node':
+                from node_quota_change import node_history
+                revision=node_history(state)['revision']
+                if revision!=meta.get('node_quota_revision',0):raise DeployError('Node quota history differs from the installed revision')
+                manifest['node_quota_revision']=revision
             if policy:manifest['payload_storage']=policy
             if meta.get('control_filesystem'):manifest['control_filesystem']=meta['control_filesystem']
             if meta['role']=='node' and meta.get('spool_storage'):manifest['node_spool_storage']=meta['spool_storage']
@@ -299,6 +307,8 @@ def restore(prefix,archive_path,new_state,max_bytes=10*1024**3,payload_config=No
             for path in stage.glob('*.sqlite3'):
                 with sqlite3.connect(path) as db:
                     if db.execute('PRAGMA integrity_check').fetchone()[0]!='ok':raise DeployError('Restored database failed integrity check')
+            from node_quota_change import require_restore_history
+            quota_revision=require_restore_history(old,stage,meta['role'],meta,manifest)
             relocate(stage,manifest['original_state'],target,meta['role'],
                      original_payload['path'] if original_payload else manifest['original_state'],policy['path'] if policy else None)
             restored_config=read_json(stage/'config.json')
@@ -350,6 +360,7 @@ def restore(prefix,archive_path,new_state,max_bytes=10*1024**3,payload_config=No
                 initialize(native,target,prefix,meta['uid'],meta['gid'])
                 meta['control_filesystem']=native
             meta['previous_state_dir']=str(old);meta['state_dir']=str(target)
+            if quota_revision is not None:meta['node_quota_revision']=quota_revision
             if policy:meta['payload_storage']=policy
             atomic_json(prefix/'installation.json',meta);(prefix/'installation.json').chmod(0o444)
             unit=prefix/'units'/('ascend-lab-'+meta['role']+'.service');unit.chmod(0o644);unit.write_text(unit_text(prefix,meta));unit.chmod(0o444)
@@ -383,9 +394,14 @@ def require_control_storage(config,role,manifest):
             raise DeployError('Control storage admission requires matching support; refusing downgrade')
 
 
-def require_features(state,role,manifest):
+def require_features(state,role,manifest,installation=None):
     config=read_json(Path(state)/'config.json') or {}
     require_control_storage(config,role,manifest)
+    if not {'node_quota_admin.py','node_quota_change.py'}<=set(manifest.get('files',{})):
+        if role=='node' and (installation or {}).get('node_quota_revision',0)>0:
+            raise DeployError('Installed Node quota change history requires matching code; refusing downgrade')
+        from node_quota_change import require_compatible
+        require_compatible(state,role)
     if role=='controller' and 'experiment_budget.py' not in manifest.get('files',{}):
         from experiment_budget import require_compatible
         require_compatible(state)
@@ -505,7 +521,7 @@ def activate(prefix,archive_path=None,release_id=None):
         target=prefix/'releases'/release_id;manifest=read_json(target/'release.json')
         checked_manifest(manifest)
         if not manifest or manifest.get('state_schema')!=meta['state_schema']:raise DeployError('Release does not support this state schema')
-        require_features(state,meta['role'],manifest)
+        require_features(state,meta['role'],manifest,meta)
         # Validate the old/new release before allowing the service manager to execute it.
         for name,record in manifest['files'].items():
             path=target/name

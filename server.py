@@ -436,7 +436,8 @@ def handler_class(store, config, jobs=None):
                 action=urlsplit(self.path).path.removeprefix('/api/worker/')
                 methods={'heartbeat':jobs.nodes.heartbeat,'start':jobs.nodes.authorize_start,'update':jobs.nodes.update,
                          'blob':jobs.nodes.upload,'complete':jobs.nodes.complete,'input':jobs.nodes.input_chunk,
-                         'owner-commit':jobs.nodes.handoff.commit,'owner-ready':jobs.nodes.handoff.ready}
+                         'owner-commit':jobs.nodes.handoff.commit,'owner-ready':jobs.nodes.handoff.ready,
+                         'quota-status':jobs.nodes.quota_changes.status,'quota-ready':jobs.nodes.quota_changes.ready}
                 if action=='claim':result=jobs.nodes.claim(node_id,body)
                 elif action in methods:result=methods[action](node_id,body)
                 else:raise JobError('Unknown node operation',404)

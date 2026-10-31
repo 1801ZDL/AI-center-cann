@@ -104,6 +104,8 @@ def _context(prefix,recovery=False):
         or hashlib.sha256(helper.read_bytes()).digest()!=hashlib.sha256(Path(__file__).read_bytes()).digest()):
         raise DeployError('Upgrade this Node to matching owner-binding administration and recovery guards first')
     state=Path(meta['state_dir']);control(state)
+    from node_quota_admin import guard as quota_guard
+    quota_guard(state)
     return prefix,meta,state,read(state/'config.json')
 
 

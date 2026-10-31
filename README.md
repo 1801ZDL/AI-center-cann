@@ -1,5 +1,7 @@
 # AI-center-cann
 
+已有用户的Node工作区与缓存可经停止态计划、中央批准、内核配额CAS和新鲜心跳调整，保留原缓存；旧快照不能丢失已保留的配额历史。最终1020项回归及同机Root安装32项通过，见[NODE_QUOTA.md](NODE_QUOTA.md)与[PROGRESS.md](PROGRESS.md)。每日逐卡UT新需求已登记[PUBLIC-002](BACKLOG.md)，尚未创建定时器或运行主动自检。
+
 跨轮实验新增指定产物授权：本人明确批准旧任务的指定文件交给新预算，Agent仍不能读取旧任务/日志；支持撤销、传输中重启和恢复后重新审批。最终998项回归及同机隔离Root安装30项通过，历史精度11/5376差异保持原样。使用方法见[SOURCE_GRANTS.md](SOURCE_GRANTS.md)，证据范围见[PROGRESS.md](PROGRESS.md)。
 
 任务详情新增精度、编译、仿真和历史性能报告摘要，仿真可按核切换查看管线记录区间。网页核对报告与确认归档的对应关系，并区分原任务状态、原采集异常和未重算的源文件；完整核验仍用个人CLI/MCP。接口及限制见[REPORT_VIEW.md](REPORT_VIEW.md)。

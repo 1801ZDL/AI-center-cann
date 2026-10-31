@@ -67,6 +67,7 @@
     "resources.py",
     "queue_policy.py",
     "preflight.py",
+    "filesystem_quota.py",
     "quota_workspace.py",
     "workspace_quota_admin.py",
     "node_owner_admin.py",
@@ -99,7 +100,9 @@
     "simulation_data.py",
     "simulation_diagnostic.py",
     "report_view.py",
-    "source_grants.py"
+    "source_grants.py",
+    "node_quota_admin.py",
+    "node_quota_change.py"
   ],
   "reproduced_by_public_ci": false,
   "raw_evidence_in_repository": false,

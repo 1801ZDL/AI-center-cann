@@ -65,6 +65,8 @@ CORE.extend(['report_view.py','REPORT_VIEW.md'])
 OPTIONAL_ADMIN_FILES.update({'report_view.py','REPORT_VIEW.md'})
 CORE.extend(['source_grants.py','SOURCE_GRANTS.md'])
 OPTIONAL_ADMIN_FILES.update({'source_grants.py','SOURCE_GRANTS.md'})
+CORE.extend(['node_quota_admin.py','node_quota_change.py','NODE_QUOTA.md'])
+OPTIONAL_ADMIN_FILES.update({'node_quota_admin.py','node_quota_change.py','NODE_QUOTA.md'})
 
 
 class DeployError(ValueError):pass
@@ -285,6 +287,8 @@ def verify(prefix,quota_recovery=False,unit_recovery=False,manager_recovery=Fals
         from node_owner_provision import guard as participant_guard
         participant_guard(meta['state_dir'])
         if not quota_recovery:
+            from node_quota_admin import guard as quota_guard
+            quota_guard(meta['state_dir'])
             from node_owner_admin import guard
             guard(meta['state_dir'])
         journal=Path(meta['state_dir'])/'workspace-owner-change.json'
