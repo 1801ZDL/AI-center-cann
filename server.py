@@ -164,6 +164,8 @@ def handler_class(store, config, jobs=None):
                 if jobs is not None:
                     from dependency_conditions import CAPABILITY as TERMINAL_HANDOFF
                     value['dependency_capabilities']=[TERMINAL_HANDOFF]
+                    from report_view import CAPABILITY as REPORT_VIEW
+                    value['report_view_capabilities']=[REPORT_VIEW]
                 if jobs is not None:value.update(io_limits=jobs.policy['io_limits'],transfer_chunk_bytes=256*1024,
                                                storage=jobs.storage.summary(self.principal))
                 return self.reply(value)
@@ -234,6 +236,11 @@ def handler_class(store, config, jobs=None):
                             from archive_api import chunk
                             with jobs.lifecycle.reader('archive',job_id):value=chunk(directory, job, parse_qs(parsed.query))
                             return self.reply(value)
+                        if parts[3:] == ['diagnostic-report']:
+                            from report_view import read
+                            query=parse_qs(parsed.query,keep_blank_values=True)
+                            if set(query)!={'kind'} or len(query['kind'])!=1:raise JobError('Choose one diagnostic report kind',400)
+                            return self.reply(read(jobs,job,query['kind'][0],config))
                         if parts[3:] == ['artifact']:
                             name = parse_qs(parsed.query).get('name', [''])[0]
                             jobs.lifecycle.available('archive',job_id)
@@ -479,8 +486,9 @@ def main():
     from unit_start import START_ENV,CAPABILITY as STARTUP
     from control_storage import CAPABILITY as CONTROL_STORAGE
     from dependency_conditions import CAPABILITY as TERMINAL_HANDOFF
+    from report_view import CAPABILITY as REPORT_VIEW
     atomic_json(runtime/'server-ready.json',{**identity(os.getpid()),'controller_instance':jobs.controller_instance,
-        'service_start_id':os.environ.get(START_ENV),'capabilities':[OWNER_HANDOFF,OWNER_ACTIVATION,OWNER_ABORT,OWNER_EXPANSION,OWNER_PROVISION,OWNER_DRAIN,STAGED_DEVICE_PROBE,PROBE_ORCHESTRATION,STARTUP,CONTROL_STORAGE,TERMINAL_HANDOFF]})
+        'service_start_id':os.environ.get(START_ENV),'capabilities':[OWNER_HANDOFF,OWNER_ACTIVATION,OWNER_ABORT,OWNER_EXPANSION,OWNER_PROVISION,OWNER_DRAIN,STAGED_DEVICE_PROBE,PROBE_ORCHESTRATION,STARTUP,CONTROL_STORAGE,TERMINAL_HANDOFF,REPORT_VIEW]})
     logging.info('Started controller listener using %s on port %s',listener_info['scheme'],config['port'])
 
     def stop(signum, frame):

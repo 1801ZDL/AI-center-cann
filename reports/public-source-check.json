@@ -1,15 +1,15 @@
 {
   "schema": "ai-center-cann-source-check/v1",
-  "recorded_at": "2026-10-31T06:20:58.597632+00:00",
+  "recorded_at": "2026-10-31T06:48:53.301329+00:00",
   "passed": true,
-  "python_unit_tests": 962,
+  "python_unit_tests": 974,
   "unit_skipped": 0,
-  "unit_seconds": 210.76,
-  "unit_log_sha256": "8231f03e19a674082bd86bb19e8f171a91c62c597159c9308f614c92fad0f9ca",
+  "unit_seconds": 214.581,
+  "unit_log_sha256": "7fdf8a9efd45810b444af88f3ccf82ef7948c8d162e871ccac207455c2ffb29b",
   "python": "Python3.12.3",
   "javascript_syntax_passed": true,
   "command": "bash scripts/check.sh /usr/bin/python3",
-  "scope": "Full four-core historical simulator JSON/CSV analysis through two installed task UIDs and two private personal CLI/MCP UIDs. Instruction/PC pipe matching, interval unions, source hashes, abnormal signal11 collection state, validly sealed invalid CSV failure, single-attempt replay and restore with frozen budgets. No new simulator/NPU/model calls, actual host users, PID1 or two physical hosts.",
+  "scope": "Bounded authenticated archived report API and packaged UI for accuracy, compiler, simulator and historical profiling reports. GUI verifies report bytes against confirmed Node manifests; complete source recomputation remains in CLI/MCP and was separately checked in private acceptance. Actual installed CPU reports, original failures, read-only browsing and restore without report replay; no new NPU, model, real host account, PID1 or two-host acceptance.",
   "production_source_sha256": {
     "auth.py": "6bd9b70566fc8dd9b43d3965df5e1fce4c1385e3192239a83052cc0e04778d5f",
     "owner_identity.py": "5a48cf78584b2f717ac45594a73da569589cde6d9441037a0aedffe423f1515b",
@@ -47,7 +47,7 @@
     "client_archive.py": "eec04a9574e8a87d90dc54c556d4bfe6462dfb92f0332bdc6996ad64e7121c97",
     "archive_api.py": "3e9f6539e3760cb4d68b2f85a8f01b751441e3d79b70675aac1f45e90a527e57",
     "nodes.py": "482315095c06df6a276bf5f3a671ad9d7d31da1ea1367be8448340a991f7369e",
-    "server.py": "1f72b4da76f207b267964b1aa7d18b3cc5bc6cd2ec48cf053010a7b19f05c24c",
+    "server.py": "4228213ff97458cfae36144d59cff90be38a7f141da05ec0a065a1b8028d1f0c",
     "templates.py": "72e1a263b07624eb8854ed0ada9cbd4cf9754072719ba0663b8b557b5a203ba8",
     "worker.py": "9ccfd770b867d6b9bc48c5c598e13f9988c8ba03de4ece11652c36d301cbcfcb",
     "workflow_runner.py": "239bbcb5eca6414d85f7172808a710896d9743660289039626e54672088078f7",
@@ -75,7 +75,7 @@
     "storage_files.py": "c2dfe4aec3a4dec6bf8802655eb9e72a414e307d5eb6f4725da99f0484642ebf",
     "storage_lifecycle.py": "cc5778edf04bf1118ac940f6954cc488ae7ceedbee373568af87c6add3cde098",
     "node_storage.py": "185bdeb757c0644cf6319460d74ea15061cf6329b4707354696f8e156a16370c",
-    "deployment.py": "cc97377983109cb3c5244c2742e4ada0940b100937b7791ce8ff9df40a29fb02",
+    "deployment.py": "a3a721e0204de47a06300e4823665e17767b60ecf8bdf6dea8717b61eeccda34",
     "maintenance.py": "695ec1f34c339b100a2f1efd55b5fcc11011b56afe5a5bb24de2865595c14a45",
     "servicectl": "68b5035d535174946cc8361f2d086d02cdb452bc5ad25bcade74f853551c8663",
     "accessctl": "c0d0a86c7a027036e202aff0795eae0001beec676c393d13e73a763d685ccdc9",
@@ -102,7 +102,8 @@
     "accuracy_diagnostic.py": "8b943f6f02ce7cb3efb44a541a4f3898ec21b68f52bdfd078919e62f3e5641cf",
     "dependency_conditions.py": "4cf3a6e490daf78bfcf34eecd3f321cd327253bf78a70febd56c1361aaa34661",
     "simulation_data.py": "95b6467c1a66e681fe4e545c2960299dbf77eb0a41211aad085cd9a7b51eb677",
-    "simulation_diagnostic.py": "9a30ca90625a77f25db4477c9b14c74c64c6472b8326edbfe8fe59558d22f7d8"
+    "simulation_diagnostic.py": "9a30ca90625a77f25db4477c9b14c74c64c6472b8326edbfe8fe59558d22f7d8",
+    "report_view.py": "32e1e4b159ba22789bd56aea6ab1a6de8e679306a68972100dc1bb64df650618"
   },
   "cpu": 2,
   "memory_mib": 2048,
@@ -7913,5 +7914,93 @@
         ]
       }
     ]
+  },
+  "report_view": {
+    "passed": true,
+    "scope": "Bounded authenticated archived report API and packaged UI for accuracy, compiler, simulator and historical profiling reports. GUI verifies report bytes against confirmed Node manifests; complete source recomputation remains in CLI/MCP and was separately checked in private acceptance. Actual installed CPU reports, original failures, read-only browsing and restore without report replay; no new NPU, model, real host account, PID1 or two-host acceptance.",
+    "job_ids": {
+      "full-r1": "job-02afafc1751b",
+      "browser-r3": "job-8303a7f5bf28",
+      "installed-r1": "job-a69eeeac4817"
+    },
+    "unit_tests": 974,
+    "unit_seconds": 214.581,
+    "browser_checks": 10,
+    "root_checks": 33,
+    "original_and_restored_database_integrity": true,
+    "confirmed_manifest_and_report_bytes_independently_verified": true,
+    "source_recomputation_performed_by_primary_outside_http": true,
+    "source_recomputation_claimed_by_gui": false,
+    "model_invocations": 0,
+    "npu_kernel_launches": 0,
+    "new_owner49_acceptance": false,
+    "host_accounts_modified": false,
+    "global_services_or_driver_modified": false,
+    "production_ready": false,
+    "overall_goal_complete": false,
+    "first_browser_failure": {
+      "job_id": "job-7dd57af1e22e",
+      "state": "failed",
+      "reason": "Test wait_for_function used a string expression rejected by the existing script-src self CSP; changed to an explicit function, without CSP changes",
+      "npu_launches": 0
+    },
+    "cases": [
+      {
+        "kind": "accuracy",
+        "job_id": "job-f6520d8ad607",
+        "state": "failed",
+        "attempt_id": "attempt-14f44fa39cc0404abf1f3b26e41cddc9",
+        "report_sha256": "09204c8585ded13b001a2903399c769f262401b50cd9c0a135aaf4390047b304"
+      },
+      {
+        "kind": "simulation",
+        "job_id": "job-0c609d9ff964",
+        "state": "succeeded",
+        "attempt_id": "attempt-b8847673df8b4bf98fa586be44757f27",
+        "report_sha256": "83774ca01b7d14f0b2c8e965d63e1e5407b6b882fa679869ddb8a4698a39d50f"
+      },
+      {
+        "kind": "compiler",
+        "job_id": "job-e21efa3899be",
+        "state": "failed",
+        "attempt_id": "attempt-f78aeac31ebe4b978bff6172e4daf1b7",
+        "report_sha256": "acd993a1f72d4800fa075f35ac30a760a62625f51e72447d49867c9017210d32"
+      },
+      {
+        "kind": "operator",
+        "job_id": "job-8a6d7441dca8",
+        "state": "succeeded",
+        "attempt_id": "attempt-f1dd2b2e66434d8a995d0964e293217a",
+        "report_sha256": "4658d9678483a9d332fe1d6399dc3bf02f712616bd4fd96239b7f246c9cddf47"
+      }
+    ],
+    "browser_behavior": {
+      "passed": true,
+      "page_errors": [],
+      "outside_requests": [],
+      "posts": [],
+      "no_new_jobs_or_attempts": true,
+      "scope": "Actual packaged installed UI presents existing managed CPU report jobs. Reports hash-checked against Node confirmation; GUI does not recompute original source bytes or certify historical collection."
+    },
+    "after_restore": {
+      "passed": true,
+      "same_report_hashes_states_and_attempts": true,
+      "old_spending_token_revoked": true,
+      "source_replay_claimed": false,
+      "new_report_tasks": 0
+    },
+    "main_web": {
+      "passed": true,
+      "served_static_sha256": {
+        "web/index.html": "e474cfd8ae64ee85421d96c9031ae9a625cd72135711719be858625292e1645c",
+        "web/app.js": "d6bb9af55af94696d293ab82a70f79501b9b55264871e9bf0c1e17d4259415b2",
+        "web/style.css": "23edf5f2e0de12dab1a44ec31984d062bc06a5b6abf31c1e6f2207103a5a1673",
+        "web/favicon.svg": "ff01247506d17005ffe8778b774d7e88f06b5945a50fe29d28e13208b946c10a"
+      },
+      "advertised_capability": true,
+      "legacy_cooperative_source_denied409": true,
+      "new_jobs_or_attempts": 0,
+      "browser_reexecuted_on_main": false
+    }
   }
 }

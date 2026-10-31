@@ -61,6 +61,8 @@ CORE.append('dependency_conditions.py')
 OPTIONAL_ADMIN_FILES.add('dependency_conditions.py')
 CORE.extend(['simulation_data.py','simulation_diagnostic.py','SIMULATION.md'])
 OPTIONAL_ADMIN_FILES.update({'simulation_data.py','simulation_diagnostic.py','SIMULATION.md'})
+CORE.extend(['report_view.py','REPORT_VIEW.md'])
+OPTIONAL_ADMIN_FILES.update({'report_view.py','REPORT_VIEW.md'})
 
 
 class DeployError(ValueError):pass

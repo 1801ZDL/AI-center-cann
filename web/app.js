@@ -16,6 +16,88 @@ let pendingSubmission = null;
 let previewSequence = 0, previewTimer = null, submittingJob = false;
 let previewController = null;
 let resultOffset=0;
+let drawerVersion=0, jobDetailController=null, reportController=null;
+const reportKinds={accuracy:{name:'results/accuracy-analysis.json',title:'精度比较',limit:32768},compiler:{name:'results/compiler-case.json',title:'编译诊断',limit:16384},simulation:{name:'results/simulation-analysis.json',title:'仿真流水',limit:131072},operator:{name:'results/operator-analysis.json',title:'历史性能',limit:65536}};
+
+function reportElement(tag,text,className) {
+  const e=document.createElement(tag);if(text!==undefined)e.textContent=String(text??'—');if(className)e.className=className;return e;
+}
+function reportTable(parent,headings,rows) {
+  const wrap=reportElement('div',undefined,'report-table-wrap'),table=reportElement('table'),head=reportElement('thead'),tr=reportElement('tr');
+  headings.forEach(v=>tr.append(reportElement('th',v)));head.append(tr);table.append(head);
+  const body=reportElement('tbody');rows.forEach(row=>{const line=reportElement('tr');row.forEach(v=>line.append(reportElement('td',v)));body.append(line);});
+  table.append(body);wrap.append(table);parent.append(wrap);
+}
+function renderReport(parent,view) {
+  parent.replaceChildren();const s=view.summary,kind=view.report.kind;
+  parent.append(reportElement('p',view.verification.scope,'report-verification'));
+  if(kind==='accuracy') {
+    parent.append(reportElement('strong',s.passed_against_supplied_reference?'与给定参考一致':'与给定参考存在差异',s.passed_against_supplied_reference?'report-success':'report-warning'));
+    reportTable(parent,['项目','报告值'],[['参考',s.reference_id],['形状',s.shape.join(' × ')],['元素 / 差异',s.elements+' / '+s.mismatches],['比较政策',JSON.stringify(s.policy)],['最大绝对误差',s.numeric_metrics?.max_abs_error??'未提供或无法有限表示']]);
+    if(s.examples?.length)reportTable(parent,['位置','实际','参考','差异类型'],s.examples.slice(0,16).map(v=>[(v.coordinates||[v.index]).join(', '),v.actual,v.reference,v.reason]));
+  } else if(kind==='compiler') {
+    const outcome=s.timed_out?'编译子进程超时':s.exit_code<0?'编译子进程被信号 '+Math.abs(s.exit_code)+' 结束':s.exit_code===0?'解析 / 验证返回成功':'编译器返回错误 '+s.exit_code;
+    parent.append(reportElement('strong',outcome,s.exit_code===0&&!s.timed_out?'report-success':'report-warning'));
+    reportTable(parent,['项目','报告值'],[['工具',s.tool.name],['版本',s.tool.version],['输入 IR',s.source.bytes+' 字节'],['输入 SHA256',s.source.sha256],['工具 SHA256',s.tool.sha256]]);
+    parent.append(reportElement('p','解析结果不认证完整 lowering、数值等价或设备正确性。','report-note'));
+    if(s.stderr_archived)parent.append(reportElement('pre',s.stderr_excerpt||'归档错误日志为空','report-error'));
+    else parent.append(reportElement('p','错误日志未归档；保留报告中的字节数声明。','report-note'));
+  } else if(kind==='operator') {
+    parent.append(reportElement('strong','观测耗时比 '+num(s.observed_duration_ratio,4)+'× · 优化收益未认证','report-warning'));
+    reportTable(parent,['记录','次数','均值 µs','物理卡'],s.sources.map(v=>[v.id,v.samples,num(v.mean_us,4),v.physical_device]));
+    parent.append(reportElement('p',s.interpretation,'report-note'));
+    const list=reportElement('ul');s.blockers.slice(0,32).forEach(v=>list.append(reportElement('li',v)));parent.append(list);
+  } else if(kind==='simulation') {
+    parent.append(reportElement('strong',s.capture_state==='abnormal'?'原采集异常 · 完整性未认证':'原采集状态待核实 · 完整性未认证','report-warning'));
+    if(s.logged_child_signals.length)parent.append(reportElement('p','原日志记录子进程信号：'+s.logged_child_signals.join(', '),'report-note'));
+    parent.append(reportElement('p','按指令名和 PC 关联 CSV 管线。各管线记录区间可能重叠，不能相加为总利用率，也不表示可删除的关键路径成本。','report-note'));
+    const label=reportElement('label','选择记录核 ', 'report-core-label'),select=reportElement('select');select.id='report-core';
+    s.cores.forEach((core,i)=>{const option=reportElement('option',core.id);option.value=String(i);select.append(option);});label.append(select);parent.append(label);
+    const coreView=reportElement('div');coreView.id='report-core-content';parent.append(coreView);
+    function drawCore() {
+      coreView.replaceChildren();const core=s.cores[Number(select.value)];
+      if(!core||!valid(core.span_us)||core.span_us<=0)throw new Error('报告中的核跨度无效。');
+      coreView.append(reportElement('p',core.events+' 个指令事件 · 记录跨度 '+num(core.span_us,4)+' µs · '+(core.csv_trace_counts_match?'CSV 计数一致':'CSV 计数有差异'),'report-core-summary'));
+      const chart=reportElement('div',undefined,'report-coverage');chart.setAttribute('aria-label','各管线记录区间覆盖率');
+      Object.entries(core.pipes).slice(0,33).sort((a,b)=>b[1].union_us-a[1].union_us).forEach(([name,v])=>{
+        if(!valid(v.union_us)||v.union_us<0||v.union_us>core.span_us+1e-9)throw new Error('报告中的区间并集无效。');
+        const row=reportElement('div',undefined,'report-coverage-row'),bar=reportElement('progress');bar.max=100;bar.value=Math.min(100,v.union_us/core.span_us*100);bar.setAttribute('aria-label',name+' 区间覆盖率');
+        row.append(reportElement('span',name),bar,reportElement('span',num(v.union_us,4)+' µs · '+num(v.union_us/core.span_us*100,1)+'%'));chart.append(row);
+      });coreView.append(chart);
+      if(core.unmapped_events||core.count_discrepancies)coreView.append(reportElement('p','未映射事件 '+core.unmapped_events+'；计数差异 '+core.count_discrepancies,'report-warning'));
+      reportTable(coreView,['指令组','事件','区间并集 µs'],Object.entries(core.instruction_groups).slice(0,16).map(([name,v])=>[name,v.events,num(v.union_us,4)]));
+      if(core.source_locations?.length)reportTable(coreView,['关联源码位置（含内联）','区间并集 µs'],core.source_locations.slice(0,8).map(v=>[v.name,num(v.union_us,4)]));
+    }
+    select.addEventListener('change',()=>{try{drawCore();}catch(error){coreView.replaceChildren(reportElement('p',error.message,'report-warning'));}});drawCore();
+  }
+  const details=reportElement('details'),heading=reportElement('summary','查看归档校验信息');details.append(heading);
+  details.append(reportElement('p',view.report.name+' · '+view.report.bytes+' 字节'),reportElement('code',view.report.sha256));parent.append(details);
+}
+function mountReportView(detail,archiveReadable) {
+  if(!$('diagnostic-panel'))return;
+  const job=detail.job,generation=drawerVersion,buttons=$('report-buttons'),status=$('report-status'),content=$('report-content');let requestVersion=0;
+  const enabled=archiveReadable&&job.execution_backend==='managed-docker'&&['succeeded','failed','cancelled','timed_out'].includes(job.state)&&identity?.report_view_capabilities?.includes('archive-report-view-v1');
+  if(!archiveReadable)status.textContent='归档当前不可读；恢复后可查看报告。';
+  else if(!identity?.report_view_capabilities?.includes('archive-report-view-v1'))status.textContent='中央服务尚未提供报告摘要接口；可沿原入口下载产物。';
+  else if(!enabled)status.textContent='等待受控任务终态及完整归档确认；当前状态与资源保持不变。';
+  Object.entries(reportKinds).filter(([,v])=>detail.artifacts.some(a=>a.name===v.name)).forEach(([kind,definition])=>{
+    const button=reportElement('button',definition.title,'copy-button');button.dataset.reportKind=kind;button.disabled=!enabled;buttons.append(button);
+    button.addEventListener('click',async()=>{
+      reportController?.abort();const controller=new AbortController();reportController=controller;const version=++requestVersion;
+      const current=()=>generation===drawerVersion&&version===requestVersion&&!$('drawer').hidden;
+      content.replaceChildren();status.textContent='正在核对归档报告…';status.dataset.loading='true';
+      const timer=setTimeout(()=>controller.abort(),15000);
+      try {
+        const view=await api('/api/jobs/'+encodeURIComponent(job.id)+'/diagnostic-report?kind='+kind,undefined,controller.signal);
+        if(!current())return;
+        if(view.schema!=='ascend-lab-report-view/v1'||view.job?.id!==job.id||view.job?.attempt_id!==job.attempt_id||view.job?.state!==job.state||view.report?.kind!==kind||view.report?.name!==definition.name||!Number.isInteger(view.report?.bytes)||view.report.bytes>definition.limit||! /^[a-f0-9]{64}$/.test(view.report?.sha256)||view.verification?.report_bytes_verified!==true||view.verification?.archive_manifest_verified!==true||view.verification?.source_bytes_recomputed!==false)throw new Error('报告身份或校验范围不符，请刷新任务详情。');
+        renderReport(content,view);status.textContent='工作负载报告摘要 · 原任务状态：'+jobStatus(job)+' · 完整源文件未重算';
+      } catch(error) {
+        if(current()){content.replaceChildren();status.textContent=error.name==='AbortError'?'读取超时，可点击同一报告重试；原任务保持不变。':'报告暂不可用：'+error.message+' 可点击重试。';}
+      } finally {clearTimeout(timer);if(current())status.dataset.loading='false';if(reportController===controller)reportController=null;}
+    });
+  });
+}
 const views = {
   overview: ['运行总览','看清资源占用，让每一次实验有据可循。'],
   jobs: ['托管作业','通过统一队列执行任务，持续保留状态、日志和实验产物。'],
@@ -200,7 +282,14 @@ async function refresh(manual=false) {
   }
 }
 
+function invalidateDrawerRequests() {
+  drawerVersion++;
+  jobDetailController?.abort();jobDetailController=null;
+  reportController?.abort();reportController=null;
+  return drawerVersion;
+}
 function openDrawer(title, html) {
+  invalidateDrawerRequests();
   lastProcessFocus=document.activeElement;
   $('drawer-title').textContent=title;
   $('drawer-content').innerHTML=html;
@@ -209,6 +298,7 @@ function openDrawer(title, html) {
 }
 
 function closeDrawer() {
+  invalidateDrawerRequests();
   $('drawer').hidden=$('drawer-backdrop').hidden=true;
   lastProcessFocus?.focus();
 }
@@ -249,7 +339,7 @@ $('drawer-backdrop').addEventListener('click',closeDrawer);
 document.addEventListener('keydown',event=>{
   if(event.key==='Escape') closeDrawer();
   if(event.key==='Tab'&&!$('drawer').hidden){
-    const items=[...$('drawer').querySelectorAll('button,a,input,select,[tabindex="0"]')];
+    const items=[...$('drawer').querySelectorAll('button,a,input,select,summary,[tabindex="0"]')];
     const first=items[0],last=items.at(-1);
     if(event.shiftKey&&document.activeElement===first){last.focus();event.preventDefault();}
     else if(!event.shiftKey&&document.activeElement===last){first.focus();event.preventDefault();}
@@ -320,20 +410,25 @@ function renderManagedJobs(summary) {
 }
 
 async function showJob(jobId) {
+  const sequence=invalidateDrawerRequests();
+  const controller=new AbortController();jobDetailController=controller;
   try {
-    const detail=await api('/api/jobs/'+jobId);
+    const detail=await api('/api/jobs/'+jobId,undefined,controller.signal);
     const j=detail.job;
     const archiveState=j.archive_status?.state||'available';
     const archiveLabels={available:'可用',trash:'回收站',purged:'已清理',moving_to_trash:'正在移入回收站',restoring:'正在恢复',purging:'正在清理'};
     const archiveReadable=archiveState==='available';
-    const [stdout,stderr]=archiveReadable?await Promise.all([api('/api/jobs/'+jobId+'/log?stream=stdout'),api('/api/jobs/'+jobId+'/log?stream=stderr')]):[{text:'归档数据当前为“'+(archiveLabels[archiveState]||archiveState)+'”。任务状态与结果摘要仍保留。'},{text:''}];
+    const [stdout,stderr]=archiveReadable?await Promise.all([api('/api/jobs/'+jobId+'/log?stream=stdout',undefined,controller.signal),api('/api/jobs/'+jobId+'/log?stream=stderr',undefined,controller.signal)]):[{text:'归档数据当前为“'+(archiveLabels[archiveState]||archiveState)+'”。任务状态与结果摘要仍保留。'},{text:''}];
+    if(sequence!==drawerVersion)return;
     const storageAction=archiveState==='available'?'trash':archiveState==='trash'?'restore':['moving_to_trash','restoring','purging'].includes(archiveState)?'resume':null;
     const storageLabel={trash:'归档移入回收站',restore:'恢复归档',resume:'续接存储操作'};
     const storageButton=detail.permissions?.storage&&storageAction?'<button class="copy-button" id="storage-job">'+storageLabel[storageAction]+'</button>':'';
     const canCancel=detail.permissions?.cancel!==false && ['queued','reserved','running','cancelling'].includes(j.state);
     const remote=j.environment==='worker-python';
     const fields=[['状态',jobStatus(j)],['节点',j.node_id||'尚未分配'],['执行尝试',j.attempt_id||'尚未分配'],['所有者',j.owner],['项目',j.project||'个人历史作业'],['累计实验预算',j.experiment_id||'未绑定'],['预算计费',j.experiment_charge?JSON.stringify(j.experiment_charge):'未绑定'],['原因',j.reason],['执行环境',j.environment],...(j.origin?[['提交入口',j.origin.client],['Agent 模型',j.origin.model],['Agent 运行编号',j.origin.agent_run_id]]:[]),['工作目录',remote?'/work（容器内）':j.cwd],['申请资源',`${j.resources.cpu} CPU / ${j.resources.memory_mib} MiB（含 SHM ${j.resources.shm_mib||0} MiB）/ ${j.resources.npu} NPU`],['分配 CPU',(j.allocation.cpu_ids||[]).join(', ')||'尚未分配'],['工作区硬限额',j.allocation.workspace?`${j.allocation.workspace.slot_id} / ${gib(j.allocation.workspace.bytes)} GiB / ${j.allocation.workspace.inodes} inode / ${j.allocation.workspace.durable?'持久文件系统':'内存文件系统'}`:'未配置或尚未分配'],['私有持久缓存',j.allocation.cache?j.allocation.cache.slot_id+' / '+j.allocation.cache.key.slice(0,16):j.parameters?.cache?'等待匹配缓存租约':'未请求'],['上游任务',(j.depends_on||[]).join(', ')||'无'],['阶段输入',j.dependency_state?JSON.stringify(j.dependency_state):'直接封存输入'],['归档目录',j.archive_dir],['归档状态',archiveLabels[archiveState]||archiveState],['提交时间',date(j.created_at)+' '+clock(j.created_at)],['开始时间',clock(j.started_at)],['结束时间',clock(j.finished_at)]];
-    openDrawer(j.name,'<dl>'+fields.map(([key,value])=>'<dt>'+esc(key)+'</dt><dd>'+esc(value)+'</dd>').join('')+'</dl><div class="job-detail-actions"><button class="copy-button" id="refresh-job-log">刷新状态与日志</button>'+(canCancel?'<button class="copy-button cancel-job" id="cancel-job">取消此作业</button>':'')+storageButton+'</div><h3 class="detail-subheading">'+(remote?'模板参数':'命令参数')+'</h3><pre>'+esc(JSON.stringify(remote?{template:j.template,parameters:j.parameters}:j.argv))+'</pre><h3 class="detail-subheading">stdout'+(stdout.truncated?' · 末尾 64 KiB':'')+'</h3><pre class="job-log">'+esc(stdout.text||'尚无输出')+'</pre><h3 class="detail-subheading">stderr</h3><pre class="job-log">'+esc(stderr.text||'尚无错误输出')+'</pre><h3 class="detail-subheading">产物</h3><div class="artifact-list">'+(detail.artifacts.length?detail.artifacts.map(f=>archiveReadable?`<a href="/api/jobs/${encodeURIComponent(jobId)}/artifact?name=${encodeURIComponent(f.name)}" download>${esc(f.name)} <small>${bytes(f.bytes)}</small> ↗</a>`:`<span class="muted">${esc(f.name)} · ${esc(archiveLabels[archiveState]||archiveState)}</span>`).join(''):'<span class="muted">作业完成后生成产物索引。</span>')+'</div>'+(j.result?'<h3 class="detail-subheading">结果</h3><pre>'+esc(JSON.stringify(j.result,null,2))+'</pre>':'')+'<div class="detail-note">只取消当前调度器创建的托管作业。取消需等待执行器确认；状态无法确认时不会释放资源。'+(remote?'本任务在受控容器中执行 CPU、内存和共享内存限制。':'此环境的内存仍按申报预算，尚未使用 cgroup 硬限制。')+'</div>');
+    const reportPanel=Object.values(reportKinds).some(v=>detail.artifacts.some(a=>a.name===v.name))?'<section id="diagnostic-panel" class="report-panel" aria-label="诊断报告"><h3>诊断报告</h3><div id="report-buttons" class="report-buttons"></div><p id="report-status" role="status" aria-live="polite">选择报告后读取摘要；不启动分析任务。</p><div id="report-content"></div></section>':'';
+    openDrawer(j.name,reportPanel+'<dl>'+fields.map(([key,value])=>'<dt>'+esc(key)+'</dt><dd>'+esc(value)+'</dd>').join('')+'</dl><div class="job-detail-actions"><button class="copy-button" id="refresh-job-log">刷新状态与日志</button>'+(canCancel?'<button class="copy-button cancel-job" id="cancel-job">取消此作业</button>':'')+storageButton+'</div><h3 class="detail-subheading">'+(remote?'模板参数':'命令参数')+'</h3><pre>'+esc(JSON.stringify(remote?{template:j.template,parameters:j.parameters}:j.argv))+'</pre><h3 class="detail-subheading">stdout'+(stdout.truncated?' · 末尾 64 KiB':'')+'</h3><pre class="job-log">'+esc(stdout.text||'尚无输出')+'</pre><h3 class="detail-subheading">stderr</h3><pre class="job-log">'+esc(stderr.text||'尚无错误输出')+'</pre><h3 class="detail-subheading">产物</h3><div class="artifact-list">'+(detail.artifacts.length?detail.artifacts.map(f=>archiveReadable?`<a href="/api/jobs/${encodeURIComponent(jobId)}/artifact?name=${encodeURIComponent(f.name)}" download>${esc(f.name)} <small>${bytes(f.bytes)}</small> ↗</a>`:`<span class="muted">${esc(f.name)} · ${esc(archiveLabels[archiveState]||archiveState)}</span>`).join(''):'<span class="muted">作业完成后生成产物索引。</span>')+'</div>'+(j.result?'<h3 class="detail-subheading">结果</h3><pre>'+esc(JSON.stringify(j.result,null,2))+'</pre>':'')+'<div class="detail-note">只取消当前调度器创建的托管作业。取消需等待执行器确认；状态无法确认时不会释放资源。'+(remote?'本任务在受控容器中执行 CPU、内存和共享内存限制。':'此环境的内存仍按申报预算，尚未使用 cgroup 硬限制。')+'</div>');
+    mountReportView(detail,archiveReadable);
     $('refresh-job-log').addEventListener('click',()=>showJob(jobId));
     if($('storage-job')) $('storage-job').addEventListener('click',async()=>{
       $('storage-job').disabled=true;
@@ -349,7 +444,7 @@ async function showJob(jobId) {
       $('cancel-job').disabled=true;
       try{await api('/api/jobs/'+jobId+'/cancel',{});await refresh();await showJob(jobId);toast('取消请求已提交，等待执行器确认。');}catch(error){toast(error.message);}
     });
-  } catch(error) {toast(error.message);}
+  } catch(error) {if(error.name!=='AbortError'&&sequence===drawerVersion)toast(error.message);}
 }
 
 $('job-body').addEventListener('click',event=>{

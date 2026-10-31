@@ -1,5 +1,25 @@
 # 实施进度
 
+## 网页诊断报告与按核记录区间图（2026-10-31）
+
+**最终974项/214.581秒/无跳过与JS语法通过，打包浏览器10组、同机隔离Root安装33项通过。** full `job-02afafc1751b`、浏览器 `job-8303a7f5bf28`、实际安装 `job-a69eeeac4817`；93个非文档CORE、最终测试/harness和4个网页资产绑定final-frozen-r1。protected6仍v0.36、APP4及既有r4工具镜像未变，无镜像重建、模型调用或新NPU启动；未重跑开户49。初focused10项/8.084秒在最终新增生命周期/缺错误日志检查及结构细化前，最终12项新检查由完整974覆盖。
+
+新增report_view.py/REPORT_VIEW.md，只读GET /api/jobs/JOB/diagnostic-report?kind=accuracy|compiler|simulation|operator，沿原jobs:read、owner/project及预算范围。受控Node/确切attempt须有明确终态、执行及分配资源清退、匹配的中央归档回执；完整artifact-hashes.json须匹配确认摘要。只读取固定小报告和编译错误，核长度/SHA与清单一致，保留原任务状态。回收站/未知/清退不足/缺件/不一致不能得到可用报告，未知状态不读源、不重跑或释放任务。旧协作式执行不会因有同名JSON而被提升为确认报告。/api/me及就绪记录声明archive-report-view-v1，旧中央缺能力时保留产物下载并提示接口缺失。
+
+报告读取上限为精度32KiB、编译16KiB、仿真128KiB、性能64KiB；错误8KiB/呈现4096字符，清单2MiB/2000条，响应192KiB。JSON拒重复键/NaN/Inf/超长整数/过深或过多节点，检查有限计数和明显不一致的跨度/并集。最多两个并行读取，繁忙503供原查看操作重试。HTTP内不下载和重算完整tensor/IR/trace/CSV，不创建背景分析或预算计费。页面明确“工作负载报告；完整源未重算”，确认报告字节不等于独立数值、原采集完整性、根因或修复认证；个人CLI/MCP的完整来源核验仍独立提供。
+
+任务详情按已授权的产物索引显示按钮，点击才读取。精度展示给定参考、政策、差异数和有限样本，保留原failed；编译展示工具/输入摘要、返回码/超时和有界错误；历史性能展示观测比及限制条件，优化收益保持未知；仿真按核切换pipe的记录区间并集/跨度，保留原signal和异常状态。各pipe/指令组/内联位置可重叠，不能相加为总利用率或可删除关键路径时间。源码路径和所有报告字符串作文本，不打开或执行。关闭/切换抽屉、选择另一报告会取消旧读取并丢弃晚到响应；15秒观察时限后可重试查看，原任务不变。
+
+最终浏览器10组从实际发布包载入资产并通过真实HTTP/ACL检查四类合成确认归档；覆盖原失败与未重算声明、HTML注入文本化、核切换、迟到实响应不能覆盖另一任务、校验409/重试、15秒超时、390px/桌面、只读token及peer404。0 POST、0新job/attempt、0页面错误或外部请求。首次 `job-7dd57af1e22e` 在延迟响应测试中因字符串wait_for_function被现有CSP拒绝而failed，修测试为显式函数，未放宽CSP；第二次10组通过仍是细化前范围，最终以job-8303...及冻结Web为准。截图已实际查看，原始图像仅本地留存。
+
+实际Root33继续使用固定r4工具镜像及两任务UID/个人只读客户端回归，另通过3个预算stdio会话运行原PRE精度差异、完整历史HIVM解析和4核历史仿真分析：新预算3任务/240声明CPU秒/0NPU，各1attempt，状态依次failed/succeeded/failed。精度11/5376差异；仿真原signal11仍为abnormal，报告生成任务succeeded；1,935,540字节IR经固定LLVM22工具真实返回1、报expected '='。加上既有固定镜像性能报告，实际安装网页Basic个人身份读取四类报告、切核及移动图，响应摘要/报告SHA与原归档一致，0 POST/新执行。这里均为CPU重放/解析/历史分析，不是新设备采集或修复。
+
+Controller/Node恢复后四类原报告SHA、状态和单attempt保持，3条预算计费保留、预算冻结/旧执行token401，没有新增报告任务。主助手独立核原/明确导出的恢复DB integrity、任务/计费、原Node manifest确认与实际报告字节；另在HTTP之外完整重算历史张量与流水，核原IR摘要和封存性能CSV记录。网页自身没有声称做这些完整重算。恢复归档是在当时RoleFS中读取，宿主保存的是明确导出的restored-proof.sqlite3。
+
+Main空闲、零非终态/有效hold后仅重载本Demo服务；配置SHA43feb...、19 Node profiles/物理域/CPU254255/2048MiB/SHM1024MiB/1槽及zdl不变，旧Node没有升级。实际Main的4静态资产SHA匹配最终包，声明新能力，协作式旧任务请求确认报告被409拒绝，0新增job/attempt。2个自有loop关联released，5类fixture容器/卷namespace确认empty，backings私有保留，无宿主用户/全局unit/驱动变更。证据evidence/report-view-validation.json、runtime/report-view-20261031及runtime/main-current-invariants.json；公开精选reports/public-source-check.json.report_view。文档在实际包冻结后完善，非文档CORE/测试/网页及harness有明确范围。
+
+继续推进完整指令时间线与日志/IR联动、实际设备采集/失败→分析→批准候选→队列闭环、完整lowering/崩溃和有界reducer、一般DB/归档增长与跨预算源委托。当前图形是报告摘要中的记录覆盖率，不是完整指令时间线。真实宿主用户/PID1、两物理机fencing、非root NPU访问/数值/性能/仿真仍待，PUBLIC-001延期，production_ready=false，整体目标未完成。
+
 ## 历史仿真流水、PC管线关联与多用户报告（2026-10-31）
 
 **最终962项/210.760秒/无跳过与JS语法通过；同机隔离Root安装30项通过。** full `job-e3c34f82e47a`，最终安装 `job-440e19ca25b5`。92个非文档CORE及已发现test_*.py与完整回归相同，最终安装harness/工作盘探针绑定final-frozen-r3。protected6仍v0.36，APP4/既有r4工具镜像和4个网页资产未变，无镜像重建、模型调用或新NPU启动；没有重新运行开户49或浏览器。初focused15项/11.187秒在最终类型强化及新增脱敏检查之前，最终16项新增检查由完整962覆盖。

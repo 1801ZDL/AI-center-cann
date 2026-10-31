@@ -68,6 +68,8 @@ def private_values():
     files.update(r.glob('jobs/*/tmp/installation/terminal-budget-client.json'))
     files.update(r.glob('jobs/*/tmp/installation/simulation-budget-client-*.json'))
     files.update(r.glob('jobs/*/tmp/installation/simulation-personal-client-*.json'))
+    files.update(r.glob('jobs/*/tmp/installation/report-view-budget-client.json'))
+    files.update(r.glob('jobs/*/tmp/installation/report-view-browser-client.json'))
     files.update(r.glob('jobs/*/tmp/installation/controller-state/experiment-agent.json'))
     files.update(r.glob('jobs/*/tmp/installation/experiment-readonly-client.json'))
     files.update(r.glob('jobs/*/tmp/installation/controller-state/experiment-readonly.json'))

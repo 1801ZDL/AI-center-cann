@@ -22,7 +22,7 @@ from jobs import atomic_json,now
 from deployment import bundle,unpack_release
 from backends import physical_identity
 
-arguments=argparse.ArgumentParser();arguments.add_argument('--large-wheel');arguments.add_argument('--https-network',action='store_true');arguments.add_argument('--disk-workspace',action='store_true');arguments.add_argument('--user-quota-workspace',action='store_true');arguments.add_argument('--storage-pressure',action='store_true');arguments.add_argument('--control-storage-pressure',action='store_true');arguments.add_argument('--central-payload',action='store_true');arguments.add_argument('--central-owner-quotas',action='store_true');arguments.add_argument('--node-spool-pressure',action='store_true');arguments.add_argument('--persistent-cache',action='store_true');arguments.add_argument('--dependencies',action='store_true');arguments.add_argument('--input-durability',action='store_true');arguments.add_argument('--native-toolchain',action='store_true');arguments.add_argument('--payload-quota-resize',action='store_true');arguments.add_argument('--deadline-limit',action='store_true');arguments.add_argument('--operator-analysis');arguments.add_argument('--operator-image');arguments.add_argument('--compiler-case');arguments.add_argument('--large-compiler-case');arguments.add_argument('--accuracy-case');arguments.add_argument('--terminal-handoff');arguments.add_argument('--simulation-case');arguments.add_argument('--native-control',action='store_true');arguments.add_argument('--audit-retention',action='store_true');arguments.add_argument('--browser-workflow',action='store_true');arguments.add_argument('--experiment-budget',action='store_true');options=arguments.parse_args()
+arguments=argparse.ArgumentParser();arguments.add_argument('--large-wheel');arguments.add_argument('--https-network',action='store_true');arguments.add_argument('--disk-workspace',action='store_true');arguments.add_argument('--user-quota-workspace',action='store_true');arguments.add_argument('--storage-pressure',action='store_true');arguments.add_argument('--control-storage-pressure',action='store_true');arguments.add_argument('--central-payload',action='store_true');arguments.add_argument('--central-owner-quotas',action='store_true');arguments.add_argument('--node-spool-pressure',action='store_true');arguments.add_argument('--persistent-cache',action='store_true');arguments.add_argument('--dependencies',action='store_true');arguments.add_argument('--input-durability',action='store_true');arguments.add_argument('--native-toolchain',action='store_true');arguments.add_argument('--payload-quota-resize',action='store_true');arguments.add_argument('--deadline-limit',action='store_true');arguments.add_argument('--operator-analysis');arguments.add_argument('--operator-image');arguments.add_argument('--compiler-case');arguments.add_argument('--large-compiler-case');arguments.add_argument('--accuracy-case');arguments.add_argument('--terminal-handoff');arguments.add_argument('--simulation-case');arguments.add_argument('--report-view');arguments.add_argument('--native-control',action='store_true');arguments.add_argument('--audit-retention',action='store_true');arguments.add_argument('--browser-workflow',action='store_true');arguments.add_argument('--experiment-budget',action='store_true');options=arguments.parse_args()
 assert not options.native_control or not any([options.control_storage_pressure,options.central_payload,options.operator_analysis,options.https_network,options.large_wheel]), 'Native control uses its independent own disks and CPU fixture'
 assert not options.audit_retention or options.native_control, 'Audit crash/restore proof uses the isolated native control fixture'
 https=options.https_network
@@ -42,6 +42,7 @@ assert not options.large_compiler_case or (options.operator_analysis and not opt
 assert not options.accuracy_case or (user_quota and not any([options.operator_analysis,options.native_control,options.native_toolchain,options.compiler_case,options.large_compiler_case])), 'Accuracy replay uses its own stdlib CPU quota fixture'
 assert not options.terminal_handoff or (user_quota and not any([options.accuracy_case,options.operator_analysis,options.native_control,options.native_toolchain])), 'Terminal handoff uses an independent CPU quota fixture'
 assert not options.simulation_case or (user_quota and not any([options.accuracy_case,options.terminal_handoff,options.operator_analysis,options.native_control,options.native_toolchain])), 'Simulation analysis uses its own bounded CPU quota fixture'
+assert not options.report_view or (options.operator_analysis and user_quota and not any([options.compiler_case,options.large_compiler_case,options.native_control,options.native_toolchain])), 'Report view extends the qualified operator image with independent CPU report cases'
 disk=options.disk_workspace or user_quota
 assert not (disk and options.large_wheel), 'Keep disk hard-limit and large-wheel fixtures separate'
 assert not options.control_storage_pressure or (not options.storage_pressure and not options.central_payload and not options.large_wheel), 'Control capacity fault injection uses a separate bounded state filesystem'
@@ -76,7 +77,7 @@ containers=[];volumes=[];networks=[];stopped_main=False;checks=[];token=None;tls
 retention_proof={};mount_proof={};owned_disk=None;pressure_disk=None;pressure_volume=None;storage_pressure=None;control_storage_pressure=None;spool_disk=None
 central_disks=[];central_volumes=[];payload_args=[];payload_contracts=[];central_proof=None
 native_control_volumes=[];native_control_proof=None;browser_workflow_proof=None;experiment_budget_proof=None
-group_pressure={};quota_resize_proof=None;deadline_proof=None;operator_proof=None;compiler_proof=None;large_compiler_proof=None;accuracy_proof=None;terminal_handoff_proof=None;simulation_proof=None
+group_pressure={};quota_resize_proof=None;deadline_proof=None;operator_proof=None;compiler_proof=None;large_compiler_proof=None;accuracy_proof=None;terminal_handoff_proof=None;simulation_proof=None;report_view_proof=None
 node_spool_pressure=None;cache_disk=None;cache_volume=None;cache_policy=None;cache_proof=None;dependency_proof=None;input_durability=None;native_proof=None
 controller_url=('https://controller.lab:' if https else 'http://127.0.0.1:')+str(port)
 outer_url=('https' if https else 'http')+'://127.0.0.1:'+str(port)
@@ -196,7 +197,7 @@ try:
     if options.central_payload:
         sys.path.insert(0,str(ROOT/'tests'));from disk_workspace_fixture import OwnedDisk
         for label in ['central-payload','central-restore']:
-            fixture=OwnedDisk(base,prefix+'-'+label,image,cpus,docker,folder_name=label,image_mib=512,inodes=8192,quota_type='group' if central_groups else None,helper_seconds=1800 if options.deadline_limit else 1200 if options.compiler_case or options.accuracy_case or options.terminal_handoff or options.simulation_case else 720)
+            fixture=OwnedDisk(base,prefix+'-'+label,image,cpus,docker,folder_name=label,image_mib=512,inodes=8192,quota_type='group' if central_groups else None,helper_seconds=1800 if options.deadline_limit else 1200 if options.compiler_case or options.accuracy_case or options.terminal_handoff or options.simulation_case or options.report_view else 720)
             central_disks.append(fixture);device=fixture.create();mounted=prefix+'-'+label
             docker(['volume','create','--label','io.ascend-lab.installproof='+prefix,'--driver','local',
                     '--opt','type=ext4','--opt','device='+device,'--opt','o=nosuid,nodev'+(',grpquota' if central_groups else ''),mounted])
@@ -210,13 +211,13 @@ try:
             docker(['volume','create','--label','io.ascend-lab.installproof='+prefix,'--driver','local','--opt','type=ext4','--opt','device='+device,'--opt','o=nosuid,nodev',mounted])
             volumes.append(mounted);native_control_volumes.append(mounted)
     sys.path.insert(0,str(ROOT/'tests'));from disk_workspace_fixture import OwnedDisk
-    spool_disk=OwnedDisk(base,prefix+'-spool',image,cpus,docker,folder_name='spool-workspace',image_mib=4096 if large_wheel else 1024,inodes=262144,helper_seconds=1800 if options.deadline_limit else 1200 if options.compiler_case or options.accuracy_case or options.terminal_handoff or options.simulation_case else 720)
+    spool_disk=OwnedDisk(base,prefix+'-spool',image,cpus,docker,folder_name='spool-workspace',image_mib=4096 if large_wheel else 1024,inodes=262144,helper_seconds=1800 if options.deadline_limit else 1200 if options.compiler_case or options.accuracy_case or options.terminal_handoff or options.simulation_case or options.report_view else 720)
     device=spool_disk.create();spool_volume=prefix+'-spool'
     docker(['volume','create','--label','io.ascend-lab.installproof='+prefix,'--driver','local',
             '--opt','type=ext4','--opt','device='+device,'--opt','o=nosuid,nodev',spool_volume]);volumes.append(spool_volume)
     spool_path=json.loads(docker(['volume','inspect',spool_volume]).stdout)[0]['Mountpoint']
     if options.persistent_cache:
-        cache_disk=OwnedDisk(base,prefix+'-cache',image,cpus,docker,folder_name='cache-workspace',image_mib=128,inodes=8192 if options.native_toolchain else 4096,quota_type='user',helper_seconds=1800 if options.deadline_limit else 1200 if options.compiler_case or options.accuracy_case or options.terminal_handoff or options.simulation_case else 720)
+        cache_disk=OwnedDisk(base,prefix+'-cache',image,cpus,docker,folder_name='cache-workspace',image_mib=128,inodes=8192 if options.native_toolchain else 4096,quota_type='user',helper_seconds=1800 if options.deadline_limit else 1200 if options.compiler_case or options.accuracy_case or options.terminal_handoff or options.simulation_case or options.report_view else 720)
         device=cache_disk.create();cache_volume=prefix+'-cache'
         docker(['volume','create','--label','io.ascend-lab.installproof='+prefix,'--driver','local',
             '--opt','type=ext4','--opt','device='+device,'--opt','o=nosuid,nodev,usrquota',cache_volume]);volumes.append(cache_volume)
@@ -225,7 +226,7 @@ try:
     if disk:
         sys.path.insert(0,str(ROOT/'tests'))
         from disk_workspace_fixture import OwnedDisk
-        owned_disk=OwnedDisk(base,prefix,image,cpus,docker,image_mib=1024 if options.simulation_case else 128 if user_quota else 32,inodes=8192 if options.native_toolchain else 4096 if user_quota else 512,quota_type='user' if user_quota else None,helper_seconds=1800 if options.deadline_limit else 1200 if options.compiler_case or options.accuracy_case or options.terminal_handoff or options.simulation_case else 720)
+        owned_disk=OwnedDisk(base,prefix,image,cpus,docker,image_mib=1024 if options.simulation_case or options.report_view else 128 if user_quota else 32,inodes=8192 if options.native_toolchain else 4096 if user_quota else 512,quota_type='user' if user_quota else None,helper_seconds=1800 if options.deadline_limit else 1200 if options.compiler_case or options.accuracy_case or options.terminal_handoff or options.simulation_case or options.report_view else 720)
         loop_device=owned_disk.create()
         docker(['volume','create','--label','io.ascend-lab.installproof='+prefix,'--driver','local',
                 '--opt','type=ext4','--opt','device='+loop_device,'--opt','o=nosuid,nodev'+(',usrquota' if user_quota else ''),volume])
@@ -289,7 +290,7 @@ try:
             argv+=['--mount','type=volume,src='+spool_volume+',dst=/spool-proof-alias,volume-nocopy']
             for mounted,path in work_mounts:argv+=['--mount','type=volume,src='+mounted+',dst='+path+',volume-nocopy']
             if cache_volume:argv+=['--mount','type=volume,src='+cache_volume+',dst='+cache_path+',volume-nocopy','--mount','type=volume,src='+cache_volume+',dst=/cache-proof-alias,volume-nocopy']
-        lifetime=1500 if options.deadline_limit else 900 if large_wheel or options.compiler_case or options.large_compiler_case or options.accuracy_case or options.terminal_handoff or options.simulation_case else 900 if options.native_control else 600 if options.native_toolchain or options.operator_analysis or options.control_storage_pressure else 300
+        lifetime=1500 if options.deadline_limit else 900 if large_wheel or options.compiler_case or options.large_compiler_case or options.accuracy_case or options.terminal_handoff or options.simulation_case or options.report_view else 900 if options.native_control else 600 if options.native_toolchain or options.operator_analysis or options.control_storage_pressure else 300
         argv+=['--entrypoint','/usr/bin/timeout',image,'--kill-after=5s',str(lifetime)+'s','/usr/bin/python3','-I','-c','import time;time.sleep('+str(lifetime-5)+')']
         docker(argv);containers.append(name)
         claim='import os,sys;os.chown(sys.argv[1],0,0);os.chmod(sys.argv[1],0o700)'
@@ -427,7 +428,7 @@ try:
     probe='import os,json,sys;p=sys.argv[1];s=os.stat(p);v=os.statvfs(p);print(json.dumps({"device":s.st_dev,"root_inode":s.st_ino,"bytes":v.f_blocks*v.f_frsize,"inodes":v.f_files}))'
     slots=[]
     if user_quota:
-        limits={'users':[{'uid':23003,'bytes':(256 if options.simulation_case else 16)*1024**2,'inodes':2048 if options.native_toolchain else 1024 if options.operator_analysis else 128},{'uid':23004,'bytes':(320 if options.simulation_case else 24)*1024**2,'inodes':3072 if options.native_toolchain else 1024 if options.operator_analysis else 192}]}
+        limits={'users':[{'uid':23003,'bytes':(256 if options.simulation_case or options.report_view else 16)*1024**2,'inodes':2048 if options.native_toolchain else 1024 if options.operator_analysis else 128},{'uid':23004,'bytes':(320 if options.simulation_case or options.report_view else 24)*1024**2,'inodes':3072 if options.native_toolchain else 1024 if options.operator_analysis else 192}]}
         save='import sys;from pathlib import Path;p=Path("/provision/quota-limits.json");p.write_bytes(sys.stdin.buffer.read());p.chmod(0o600)'
         docker(['exec','-i',node,'/usr/bin/python3','-I','-c',save],input=json.dumps(limits))
         prepare_args=['exec',node,'/usr/bin/python3','-B','/bootstrap/servicectl','workspace-prepare','--root',slot_path,
@@ -477,7 +478,7 @@ try:
         '--physical-id',physical_identity(),'--controller-url',controller_url,'--node-state-dir',str(node_state))
     ctl(controller,'controller','admin','--','workerctl','node-templates',enrollment['node_id'],
         '--template','cpu_demo','--template','isolation_probe','--template','ir_v1','--template','environment_probe',
-        *(['--template','build_v1'] if large_wheel or options.dependencies or options.native_toolchain or options.operator_analysis or options.browser_workflow or options.accuracy_case or options.terminal_handoff or options.simulation_case else []),
+        *(['--template','build_v1'] if large_wheel or options.dependencies or options.native_toolchain or options.operator_analysis or options.browser_workflow or options.accuracy_case or options.terminal_handoff or options.simulation_case or options.report_view else []),
         *(['--template','accuracy_v1'] if options.dependencies else []))
     configuration=secret_json(controller,Path(enrollment['config']))
     configuration['environment_setup']=task_setup
@@ -530,6 +531,9 @@ try:
             compiler_reference=json.loads(Path(options.compiler_case or options.large_compiler_case).read_text())
             assert compiler_reference['image']==task_image
             probe_parameters['files'] += [tool['path'] for tool in compiler_reference['tools'].values()]
+        if options.report_view:
+            report_reference=json.loads(Path(options.report_view).read_text());assert report_reference['image']==task_image
+            probe_parameters['files'] += [tool['path'] for tool in report_reference['tools'].values()]
     status,response=api('/api/jobs',{'template':'environment_probe','environment':'worker-python','parameters':probe_parameters})
     assert status==201,response
     probe_job=wait(response['job']['id']);assert probe_job['state']=='succeeded',probe_job
@@ -644,6 +648,10 @@ try:
         sys.path.insert(0,str(ROOT/'tests'));from installed_simulation_check import run as simulation_check
         simulation_proof=simulation_check(globals())
         check('Installed budget-scoped CPU analysis verifies complete four-core historical simulator traces and CSV pipe mappings; independent personal CLI/MCP retains abnormal collection status')
+    if options.report_view:
+        sys.path.insert(0,str(ROOT/'tests'));from installed_report_view_check import run as report_view_check
+        report_view_proof=report_view_check(globals())
+        check('Packaged browser presents actual failed precision, full historical compiler error, abnormal simulator report and pinned profiling comparison through the authenticated bounded archive API')
     if options.dependencies:
         sys.path.insert(0,str(ROOT/'tests'));from installed_dependencies_check import run as dependency_check
         dependency_proof=dependency_check(globals())
@@ -979,6 +987,10 @@ try:
         from installed_simulation_check import after_restore as simulation_after_restore
         simulation_proof['after_restore']=simulation_after_restore(globals(),simulation_proof)
         check('Restore preserves original four-core trace bytes, reports, single attempts and budget charges; old spending credential is revoked')
+    if report_view_proof:
+        from installed_report_view_check import after_restore as report_view_after_restore
+        report_view_proof['after_restore']=report_view_after_restore(globals(),report_view_proof)
+        check('Restore preserves original diagnostic report hashes, failed states and attempts; archived report views remain read-only and old budget spending token is revoked')
     if experiment_budget_proof:
         from installed_experiment_budget_check import after_restore as budget_after_restore
         budget_after_restore(globals(),experiment_budget_proof)
@@ -993,7 +1005,7 @@ try:
         check('Controller/Node restore preserves both browser task identities, single attempts and exact downloaded IR bytes')
     ctl(node,'node','stop');ctl(controller,'controller','stop')
     check('Quiescent node state restores to a new control directory, rebinds the same empty spool and executes another actual IR task')
-    if options.dependencies or options.browser_workflow or options.experiment_budget or options.large_compiler_case or options.accuracy_case or options.terminal_handoff or options.simulation_case:
+    if options.dependencies or options.browser_workflow or options.experiment_budget or options.large_compiler_case or options.accuracy_case or options.terminal_handoff or options.simulation_case or options.report_view:
         # Only the original controller state leaf is host-bound. Preserve an
         # explicit readonly SQLite export of the restored private directory
         # before its owned container is removed; never pretend it was mounted.
@@ -1108,6 +1120,7 @@ try:
             **({'accuracy_case':accuracy_proof} if accuracy_proof else {}),
             **({'terminal_handoff':terminal_handoff_proof} if terminal_handoff_proof else {}),
             **({'simulation':simulation_proof} if simulation_proof else {}),
+            **({'report_view':report_view_proof} if report_view_proof else {}),
             **({'persistent_cache':cache_proof,'cache_disk':cache_disk.report} if cache_proof else {}),
             **({'node_spool_pressure':node_spool_pressure} if node_spool_pressure else {}),
             'fixed_probe_memory':{'explicit_memory_mib':256,'oversized_request_http_status':quota_status,

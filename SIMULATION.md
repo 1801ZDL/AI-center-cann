@@ -1,5 +1,7 @@
 # 仿真流水的离线分析与个人 MCP
 
+网页任务详情另提供按核切换的记录区间图和采集状态摘要，见[REPORT_VIEW.md](REPORT_VIEW.md)。网页有界核验报告字节与确认归档，不重算完整trace；下文个人CLI/MCP保持完整源核验路径。
+
 `simulation_data.py`是标准库CPU分析载荷，复用build_v1的封存输入、环境锁、非root任务和归档合同，不启动新仿真或设备程序。`simulation_diagnostic.py`先授权绑定任务，再下载完整原始字节、校验SHA与输入封存并独立重算，向个人harness交付有限摘要。个人客户端不需要安装完整msagent、Perfetto或设备库。
 
 支持msprof simulator的schemaVersion=1、profilingType=op的每核Chrome trace和配套instr_exe.csv，最多4核。ts/dur按明确的us解释，displayTimeUnit仅记录为显示设置；不能据ns显示标签把时长再缩放。[Perfetto格式说明](https://perfetto.dev/docs/getting-started/other-formats)。支持X指令事件，M元数据及s/t/f流和i/I即时事件计数但不计入占用；其他阶段明确拒绝。只接受有PC的完整指令记录，不从不配套的trace-view或PipeUtilization推导零占用。
