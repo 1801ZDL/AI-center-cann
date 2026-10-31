@@ -59,6 +59,8 @@ CORE.extend(['accuracy_data.py','accuracy_diagnostic.py','ACCURACY.md'])
 OPTIONAL_ADMIN_FILES.update({'accuracy_data.py','accuracy_diagnostic.py','ACCURACY.md'})
 CORE.append('dependency_conditions.py')
 OPTIONAL_ADMIN_FILES.add('dependency_conditions.py')
+CORE.extend(['simulation_data.py','simulation_diagnostic.py','SIMULATION.md'])
+OPTIONAL_ADMIN_FILES.update({'simulation_data.py','simulation_diagnostic.py','SIMULATION.md'})
 
 
 class DeployError(ValueError):pass

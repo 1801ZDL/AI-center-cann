@@ -1,5 +1,7 @@
 # 离线算子性能诊断能力
 
+仿真指令流水使用独立的标准库适配器，见[SIMULATION.md](SIMULATION.md)。它按指令名/PC关联配套CSV、计算时间区间并集，保留异常采集状态；不将每条指令当作一次kernel launch，也不据复用PID推断管线。这里的kernel_details比较器继续保持原格式和证据范围。
+
 当前接入两个可独立复用的上游组件：`msprof-mcp 0.1.8` 的 CSV 算子查询工具，以及固定 msagent 提交中的 `delta_report.py`。分析程序作为中央队列的 CPU 任务运行，JSON/CSV 报告归档后，个人 harness 通过只读 MCP 获取绑定任务的报告。个人客户端不需要安装 pandas、Perfetto、MCP SDK 或完整 msagent。
 
 这是历史 profiling 数据的分析入口。新增固定工具镜像与个人请求配方，复用既有build_v1的受控CPU产物合同；执行对象是离线报告，不是编译任务或第六种设备工作流。当前验收状态以PROGRESS.md为准。先前生产者沿个人Main的协作式host command队列运行，其证据继续保留原范围。CLI 中的任务目录检查用于避免误操作，不能代替管理员设备权限/cgroup 隔离。测试状态见 [PROGRESS.md](PROGRESS.md)。

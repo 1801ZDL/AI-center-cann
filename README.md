@@ -1,6 +1,8 @@
 # AI-center-cann
 
-当前新增失败/超时产物到诊断任务的显式交接，支持摘要封存、传输中重启续接及来源复核；默认成功依赖语义保持不变。946项回归与同机隔离Root安装31项通过，范围见[PROGRESS.md](PROGRESS.md)，请求格式见[DEPENDENCIES.md](DEPENDENCIES.md)。面向新服务器的分阶段接入门槛见[DEPLOYMENT.md](DEPLOYMENT.md)。
+仿真流水新增CPU分析载荷及个人simulation-case CLI/只读MCP：按指令名和PC关联管线、统计区间并集并保留采集异常。962项回归及同机隔离Root安装30项通过；真实历史8核数据完成两用户离线分析及恢复，完整原件私有归档，模型接口只交付有限摘要。见[SIMULATION.md](SIMULATION.md)及[PROGRESS.md](PROGRESS.md)，不代表新的设备采集验收。
+
+失败/超时产物可显式交给诊断任务，支持摘要封存、传输中重启续接及来源复核；默认成功依赖语义保持不变。请求格式见[DEPENDENCIES.md](DEPENDENCIES.md)，新服务器接入门槛见[DEPLOYMENT.md](DEPLOYMENT.md)。
 
 面向 Triton-Ascend / AscendNPU-IR 开发服务器的 AI 任务调度与实验管理原型。程序化中央服务负责资源分配和可靠执行，个人 Agent 通过 MCP/API 提交任务、读取日志和分析结果。
 

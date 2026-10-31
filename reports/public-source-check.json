@@ -1,15 +1,15 @@
 {
   "schema": "ai-center-cann-source-check/v1",
-  "recorded_at": "2026-10-31T05:49:37.736618+00:00",
+  "recorded_at": "2026-10-31T06:20:58.597632+00:00",
   "passed": true,
-  "python_unit_tests": 946,
+  "python_unit_tests": 962,
   "unit_skipped": 0,
-  "unit_seconds": 183.404,
-  "unit_log_sha256": "21c9c436e3d46928e88164431c28f9381285409a650490b09f5e46a8f3b5ba68",
+  "unit_seconds": 210.76,
+  "unit_log_sha256": "8231f03e19a674082bd86bb19e8f171a91c62c597159c9308f614c92fad0f9ca",
   "python": "Python3.12.3",
   "javascript_syntax_passed": true,
   "command": "bash scripts/check.sh /usr/bin/python3",
-  "scope": "Explicit terminal artifact handoff from an actual historical precision CPU replay failure and a controlled15-second CPU timeout. Default success-only child stays unexecuted/cancelled; terminal diagnostics retain producer IDs, attempts, cleanup facts and confirmed artifact hashes. A synthetic6MiB transport file gives a stopped partial-copy checkpoint; controller restart resumes the original sealed input. Five budgeted jobs/255 declared CPU-seconds produce four attempts, survive restore, revoke old spending credentials and reject a genuine incompatible old controller. Main archive admission ceiling intentionally raised4-to8GiB after its409 limit, with no data deletion or CPU/NPU/profile changes. No new NPU, model, real host accounts, PID1 or two-host acceptance.",
+  "scope": "Full four-core historical simulator JSON/CSV analysis through two installed task UIDs and two private personal CLI/MCP UIDs. Instruction/PC pipe matching, interval unions, source hashes, abnormal signal11 collection state, validly sealed invalid CSV failure, single-attempt replay and restore with frozen budgets. No new simulator/NPU/model calls, actual host users, PID1 or two physical hosts.",
   "production_source_sha256": {
     "auth.py": "6bd9b70566fc8dd9b43d3965df5e1fce4c1385e3192239a83052cc0e04778d5f",
     "owner_identity.py": "5a48cf78584b2f717ac45594a73da569589cde6d9441037a0aedffe423f1515b",
@@ -75,7 +75,7 @@
     "storage_files.py": "c2dfe4aec3a4dec6bf8802655eb9e72a414e307d5eb6f4725da99f0484642ebf",
     "storage_lifecycle.py": "cc5778edf04bf1118ac940f6954cc488ae7ceedbee373568af87c6add3cde098",
     "node_storage.py": "185bdeb757c0644cf6319460d74ea15061cf6329b4707354696f8e156a16370c",
-    "deployment.py": "41b9d131f505bc53c52897be97f8a3e1909d769b88cc12e22d2ae3ecca69b866",
+    "deployment.py": "cc97377983109cb3c5244c2742e4ada0940b100937b7791ce8ff9df40a29fb02",
     "maintenance.py": "695ec1f34c339b100a2f1efd55b5fcc11011b56afe5a5bb24de2865595c14a45",
     "servicectl": "68b5035d535174946cc8361f2d086d02cdb452bc5ad25bcade74f853551c8663",
     "accessctl": "c0d0a86c7a027036e202aff0795eae0001beec676c393d13e73a763d685ccdc9",
@@ -87,8 +87,8 @@
     "control_storage.py": "207f4a39a0d1c0c232bf7d36b2ef9a3b455eaa95e3c9979d0bf242b88c2dd29a",
     "control_filesystem.py": "f7fa2c7c0de2d33d87f41ced989aab9a5c84ebc212144521fbb637cf41dae35c",
     "control_process.py": "50d0c78f34087c6fee0a1994d1da223d6b6ef513acc64be409fcb5e088c3b425",
-    "labctl": "2dba6f9b28a49e5ace0b9f77622ce4f9702cc2169f81965e4544e91accc09a29",
-    "install-client": "ccdaa2be2e60e36e3587b9144e54da6990643755de45f6298915c85dbd9012bf",
+    "labctl": "e08af1666fbfff88ce6ad00ffd60a4d1a1098ffe7da3847071ddd15eee74ab42",
+    "install-client": "3fa5560fcf8dde4cc7fcffa12bb8cb6db11b3afe9c15f7ca9394a7aed724378e",
     "mcp_bridge.py": "f28c4d7a3ab388b950fea6140d0c10bdf077600d5a1bdaf4d990dcaab7a58559",
     "diagnostic_case.py": "cca7edb7c45e2942748fbd3e333968dabfb5e7a4857a064d4b96aca6e913dedc",
     "compiler_diagnostic.py": "c05d9812edaf1dba333110d036320df386c54088716ead68f16c9e0b77d61760",
@@ -100,7 +100,9 @@
     "experiment_budget.py": "0a498adbe5b651e80c5b37e389d749474b84f731478d432fe97474cefe059a5c",
     "accuracy_data.py": "033c0bc7ae319567db630eef098f263f353e31217f5dd7fa53c07d079c27665e",
     "accuracy_diagnostic.py": "8b943f6f02ce7cb3efb44a541a4f3898ec21b68f52bdfd078919e62f3e5641cf",
-    "dependency_conditions.py": "4cf3a6e490daf78bfcf34eecd3f321cd327253bf78a70febd56c1361aaa34661"
+    "dependency_conditions.py": "4cf3a6e490daf78bfcf34eecd3f321cd327253bf78a70febd56c1361aaa34661",
+    "simulation_data.py": "95b6467c1a66e681fe4e545c2960299dbf77eb0a41211aad085cd9a7b51eb677",
+    "simulation_diagnostic.py": "9a30ca90625a77f25db4477c9b14c74c64c6472b8326edbfe8fe59558d22f7d8"
   },
   "cpu": 2,
   "memory_mib": 2048,
@@ -7732,5 +7734,184 @@
       "other_user_explicit_effective_limits_unchanged": true,
       "quota_scope_note": "Stored profiles unchanged. Two active historical logical Demo personas and disabled test personas without explicit archive limits inherit the global4-to8GiB ceiling; explicit limits remain unchanged. No OS user or CPU/NPU policy changed."
     }
+  },
+  "simulation": {
+    "passed": true,
+    "scope": "Full four-core historical simulator JSON/CSV analysis through two installed task UIDs and two private personal CLI/MCP UIDs. Instruction/PC pipe matching, interval unions, source hashes, abnormal signal11 collection state, validly sealed invalid CSV failure, single-attempt replay and restore with frozen budgets. No new simulator/NPU/model calls, actual host users, PID1 or two physical hosts.",
+    "job_ids": {
+      "focused-r1": "job-bccfdb488b2a",
+      "pilot-r1": "job-9208b10f9e7f",
+      "full-r1": "job-e3c34f82e47a",
+      "installed-r3": "job-440e19ca25b5"
+    },
+    "unit_tests": 962,
+    "unit_seconds": 210.76,
+    "root_checks": 30,
+    "historical_raw_files": 20,
+    "historical_raw_bytes": 125079884,
+    "original_and_restored_database_integrity": true,
+    "original_source_and_archive_hashes_independently_verified": true,
+    "independent_instruction_counts_and_historical_intervals_verified": true,
+    "web_assets_changed": false,
+    "new_browser_acceptance": false,
+    "owner49_reexecuted": false,
+    "npu_kernel_launches": 0,
+    "model_invocations": 0,
+    "host_accounts_modified": false,
+    "global_services_or_driver_modified": false,
+    "production_ready": false,
+    "overall_goal_complete": false,
+    "material_first_failure": {
+      "parent_job": "job-286a13b0d8b1",
+      "first_four_core_report_succeeded": true,
+      "second_task_failed_before_workload_start": true,
+      "failure_stage": "container_create TimeoutExpired",
+      "node_stop_response_failed_but_original_role_later_confirmed_exited": true,
+      "all_original_attempts_preserved": true,
+      "normal_scoped_cleanup_confirmed": true,
+      "subsequent_uid23004_runtime_probe_passed": true,
+      "root_cause_established": false,
+      "production_changes_after_full_regression": false,
+      "installation_cleanup_observer_changed": true
+    },
+    "material_second_failure": {
+      "parent_job": "job-c8c9e83b9509",
+      "two_full_reports_and_bad_csv_rejection_completed": true,
+      "reason": "Generic fixture used64MiB as an oversized request after dedicated task quota increased to256MiB",
+      "production_code_changed": false,
+      "original_attempts_preserved": true,
+      "normal_scoped_cleanup_confirmed": true,
+      "fix": "Derive negative capacity from actual enrolled slot limits and bound quota write probe to its explicit assigned limit"
+    },
+    "behavior": {
+      "passed": true,
+      "historical_cores": 8,
+      "historical_capture_abnormal_preserved": true,
+      "task_uids": [
+        23003,
+        23004
+      ],
+      "personal_uids": [
+        23642,
+        23643
+      ],
+      "cross_owner_and_personal_home_denied": true,
+      "validly_sealed_invalid_csv_failed": true,
+      "input_stdlib_shadow_not_imported": true,
+      "after_restore": {
+        "passed": true,
+        "same_attempts_and_archived_traces": true,
+        "abnormal_capture_state_preserved": true,
+        "old_spending_credentials_revoked": true,
+        "new_analysis_tasks": 0
+      }
+    },
+    "tasks": [
+      {
+        "label": "candidates512",
+        "job_id": "job-66047d781076",
+        "state": "succeeded",
+        "attempt_id": "attempt-ffe9c71f1b18490db7481260228a9e1e",
+        "attempts": 1,
+        "uid": 23003,
+        "personal_uid": 23642
+      },
+      {
+        "label": "candidates32",
+        "job_id": "job-8205c3a0e375",
+        "state": "succeeded",
+        "attempt_id": "attempt-ab8d160697674456aff558f90ab2c2d8",
+        "attempts": 1,
+        "uid": 23004,
+        "personal_uid": 23643
+      },
+      {
+        "label": "invalid-csv",
+        "job_id": "job-cce62cc9ef6b",
+        "state": "failed",
+        "attempt_id": "attempt-77be547a37fd4f17a2ebe84263342be7",
+        "attempts": 1,
+        "uid": 23003,
+        "personal_uid": 23642
+      }
+    ],
+    "historical_core_summary": [
+      {
+        "dataset": "candidates512",
+        "capture_state": "abnormal",
+        "cores": [
+          {
+            "id": "core0.veccore0",
+            "trace_sha256": "b305144fbfb388ebebf8e2c9f5e965be85f3e0b7c20900c6293fe9aae57ab60d",
+            "events": 29813,
+            "span_us": 36.77757835621014,
+            "all_counts_match": true,
+            "pid_used_for_pipe_classification": false
+          },
+          {
+            "id": "core0.veccore1",
+            "trace_sha256": "e671f41541490ee974352d866816fd5f360215d661e15527e36115448e0dd983",
+            "events": 29298,
+            "span_us": 31.599395275698043,
+            "all_counts_match": true,
+            "pid_used_for_pipe_classification": false
+          },
+          {
+            "id": "core1.veccore0",
+            "trace_sha256": "548ebbb204eb3b1f39af14c76d553a0472becbb83bf3788c87be0f9b21964b54",
+            "events": 29827,
+            "span_us": 37.03697091341019,
+            "all_counts_match": true,
+            "pid_used_for_pipe_classification": false
+          },
+          {
+            "id": "core1.veccore1",
+            "trace_sha256": "395ed5cb12e9f38b1db6ea69e86b2d4402f297b8f06022f460d9af93ba24a26f",
+            "events": 29671,
+            "span_us": 32.78848839038983,
+            "all_counts_match": true,
+            "pid_used_for_pipe_classification": false
+          }
+        ]
+      },
+      {
+        "dataset": "candidates32",
+        "capture_state": "abnormal",
+        "cores": [
+          {
+            "id": "core0.veccore0",
+            "trace_sha256": "d073ac456513af092f4cd1bab639d0a52e8db5316d28acdb3111255e46c49fdd",
+            "events": 16831,
+            "span_us": 20.701211453066207,
+            "all_counts_match": true,
+            "pid_used_for_pipe_classification": false
+          },
+          {
+            "id": "core0.veccore1",
+            "trace_sha256": "29db67a60153fc65e1cd580dafd764c823cd1dfbdae4273241d2870b1db82a50",
+            "events": 16826,
+            "span_us": 21.063636303530075,
+            "all_counts_match": true,
+            "pid_used_for_pipe_classification": false
+          },
+          {
+            "id": "core1.veccore0",
+            "trace_sha256": "6c58902805885460020fafa6ec643fa2bdbe18be7f07f4487e1c50726028c94d",
+            "events": 16815,
+            "span_us": 20.381210329476744,
+            "all_counts_match": true,
+            "pid_used_for_pipe_classification": false
+          },
+          {
+            "id": "core1.veccore1",
+            "trace_sha256": "29ee93656951bf9b2830e48d0a367d9695653c86e6038b3315c0b5a9dfc6665c",
+            "events": 16913,
+            "span_us": 20.63090658246074,
+            "all_counts_match": true,
+            "pid_used_for_pipe_classification": false
+          }
+        ]
+      }
+    ]
   }
 }

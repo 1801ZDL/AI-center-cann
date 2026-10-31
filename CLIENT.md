@@ -1,5 +1,7 @@
 # 个人 CLI / Agent 接入
 
+`simulation-case job-ID`及simulation_diagnostic.py的单任务只读MCP可校验完整历史仿真流水和指令CSV、独立重算占用区间与计数，只交付有限摘要。个人端无需完整领域工具环境；支持范围和采集异常判读见[SIMULATION.md](SIMULATION.md)。
+
 个人客户端现附DEPENDENCIES.md并声明terminal-artifact-handoff-client-v1。固定工作流JSON的artifact_inputs可显式携带when=terminal，中央须声明terminal-artifact-handoff-v1；CLI/MCP仍按批准的同一请求执行，不能由模型临时换parent或导入路径。成功条件仍为默认；预算绑定的源任务读取范围不扩大，恢复后跨预算交接需要个人另行批准。
 
 新客户端声明`experiment-budget-client-v1`，可由个人账号批准累计任务数及CPU/NPU申报秒数，再签发单预算Agent profile。多个固定MCP会话共用中央计费，重连不重复扣费；原个人密码不交给Agent。命令和当前边界见[EXPERIMENT_BUDGET.md](EXPERIMENT_BUDGET.md)。

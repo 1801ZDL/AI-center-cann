@@ -9,14 +9,15 @@ parser=argparse.ArgumentParser();parser.add_argument('--quota-bytes',type=int);p
 root=Path(os.environ['LAB_JOB_DIR']);before=os.statvfs(root)
 user_quota=args.quota_bytes is not None
 assert os.getuid()>=1000
-if user_quota:assert 1<=args.quota_bytes<=64*1024**2 and 1<=args.quota_inodes<=10000 and before.f_blocks*before.f_frsize>args.quota_bytes
+if user_quota:assert 1<=args.quota_bytes<=512*1024**2 and 1<=args.quota_inodes<=10000 and before.f_blocks*before.f_frsize>args.quota_bytes
 else:assert before.f_blocks*before.f_frsize<=64*1024**2
 expected_errno=errno.EDQUOT if user_quota else errno.ENOSPC
 cache=root/'cache';filler=cache/'byte-limit.bin';written=0;byte_errno=None
 try:
     with filler.open('wb',buffering=0) as file:
         block=b'x'*(1024*1024)
-        for _ in range(65):written+=file.write(block)
+        maximum=(args.quota_bytes+len(block)-1)//len(block)+1 if user_quota else 65
+        for _ in range(maximum):written+=file.write(block)
 except OSError as error:byte_errno=error.errno
 finally:filler.unlink(missing_ok=True)
 assert byte_errno==expected_errno,(byte_errno,written)

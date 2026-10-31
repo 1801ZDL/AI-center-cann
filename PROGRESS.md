@@ -1,5 +1,27 @@
 # 实施进度
 
+## 历史仿真流水、PC管线关联与多用户报告（2026-10-31）
+
+**最终962项/210.760秒/无跳过与JS语法通过；同机隔离Root安装30项通过。** full `job-e3c34f82e47a`，最终安装 `job-440e19ca25b5`。92个非文档CORE及已发现test_*.py与完整回归相同，最终安装harness/工作盘探针绑定final-frozen-r3。protected6仍v0.36，APP4/既有r4工具镜像和4个网页资产未变，无镜像重建、模型调用或新NPU启动；没有重新运行开户49或浏览器。初focused15项/11.187秒在最终类型强化及新增脱敏检查之前，最终16项新增检查由完整962覆盖。
+
+新增simulation_data.py/simulation_diagnostic.py/SIMULATION.md及个人simulation-case CLI/只读MCP。标准库处理最多4核、单trace32MiB/100000事件、CSV1MiB/10000行、日志64KiB，总原始数据120MiB；报告128KiB，模型侧总响应192KiB。普通build_v1固定CPU载荷使用封存输入、环境锁、独立非root工作区及归档；不启动仿真或设备程序。完整原件归档并与封存manifest/driver摘要绑定；个人端下载全部块、验证完整SHA并重新计算报告，只交付有限汇总。固定无参数getter拒绝换job/路径或提交实验，个人不需安装完整领域harness或分析依赖。实际设备采集继续用simulation_v1及设备资格。
+
+管线以指令名/PC关联配套instr_exe.csv，不用可复用的PID分类；核对全部X事件和CSV call_count。缺项显式UNMAPPED/计数差异，歧义PC管线拒绝。时间以Chrome trace的us合同解释，保留displayTimeUnit为显示设置；按区间并集统计，零时长事件仍计数。不同pipe、指令组和内联源码位置可重叠；报告不把它们相加成利用率，也不把热点关联时间当成删除代码可节省的关键路径成本。源码路径仅作数据，不读取源文件；前12指令/前8源码位置有界并脱敏。原采集log出现signal11或Running task failed时明确abnormal，即使同时解析成功也不认证采集完整；无错误字样仍是unverified，调用者的exit0可与日志冲突而不能认证来源。
+
+实际输入是原MergeTopK的512/32 candidates、TopK8两组历史仿真，每组4核；只读复制20个原始文件含ELF身份，共125,079,884字节，不运行原脚本。8核trace完整SHA与10月26日冻结证据一致，全部指令/PC计数和CSV一致，跨度及固定指令组区间并集也与历史证据相符。原日志均signal11并完成解析，报告保留abnormal和capture_completeness_certified=false，不声称新的采集、优化收益或设备正确性。已核固定msagent5a9b2a1a的流水材料证据类型及官方Chrome格式，不复制/执行完整Skill或自动采用其启发式阈值。
+
+最终Root30中两个个人各批准预算：proof_user两任务/240声明CPU秒，proof_peer一任务/120秒，合计3任务/360秒/0NPU。UID23003和23004各分析一组完整4核历史数据并成功；一份明确改坏CSV的封存输入独立failed、没有有效分析报告。三任务各1attempt，MCP重连原任务且不重复计费；输入中的json.py同名模块未执行。个人UID23642/23643在私有0700/0600 HOME配置中运行实际安装CLI和stdio只读接口；互读profile及跨应用owner读任务/输入均拒绝。任务无设备/网络、512MiB内存、原生UID配额；本fixture为较大历史数据准备1GiB独立工作盘及256/320MiB个人上限，不扩大Main配置或其他用户配额。
+
+Controller和Node恢复后保持原三job/attempt、完整流水/报告及两预算计费；旧执行凭据401、预算冻结，没有新增分析任务。主助手独立从20个原文件、原归档和原/明确导出的恢复DB核SHA、完整性、单attempt、计费；另按原CSV和X事件独立计数，并对照历史区间证据。恢复归档在当时RoleFS中读取，宿主保存的是显式restored-proof.sqlite3。真实EDQUOT字节/inode检查在256MiB额度上通过；超过全部实际槽位容量的负例保持queued/0attempt后取消，不回退普通目录。
+
+两次中间安装失败保留。首 `job-286a13b0d8b1` 的第一份4核报告成功，第二任务在container_create TimeoutExpired前未进入工作负载；Node停止回执也报无exit event。保留原两个attempt，随后确认角色退出，按确切标签/镜像/挂载/intent正常删除两角色/两卷并释放两loop；私有恢复helper及一次UID23004最小无设备容器均正常退出/删除。未重启Docker或驱动，运行时根因未证。测试清退现保留原角色句柄，在停止回执异常后只读核实际退出，确认后才处理工作区。
+
+第二 `job-c8c9e83b9509` 已完成两份报告、坏CSV失败及个人接口，但旧通用容量负例仍假定64MiB超出槽位，在新256MiB配额下实际可以执行，触发fixture断言。原记录未改状态，清退结束后其旧服务保持停止，不将该轮当完整安装/恢复通过。修正仅为按实际槽位构造超限请求，并让既有有界工作盘写满探针按明确配额（最多512MiB）运行。生产92文件、已发现unit源码及check.sh未变，保留完整962证据；最终重新实际安装30项，含上述真实256MiB配额负例、写满和恢复验收。first/second-install-failure.json、恢复及runtime-probe证据都在本阶段私有目录。
+
+三轮共6个自有loop关联released，5类fixture容器/卷namespace只读确认empty，backings私有保留。Main配置SHA43feb...、19 Node profiles/物理域/CPU254255/2048MiB/SHM1024MiB/1槽及zdl不变，零非终态/有效hold，无宿主账号/全局unit/驱动变更。evidence/simulation-validation.json、runtime/simulation-case-20261031与runtime/main-current-invariants.json留存私有证据；公开精选reports/public-source-check.json.simulation。文档在实际包冻结后完善，最终冻结范围明确区分CORE/unit源码与安装harness。
+
+网页沿通用作业/产物入口，专用报告摘要与流水图形视图待实现。接下来继续真实设备采集→离线诊断→批准候选→中央排队闭环、完整lowering/崩溃、有界reducer、一般DB/归档增长和跨预算源委托。真实宿主用户/PID1、两物理机断网fencing及非root NPU访问/数值/性能/仿真仍待。PUBLIC-001继续延期，production_ready=false，整体目标未完成。
+
 ## 失败产物交接、冻结来源与中断续传（2026-10-31）
 
 **最终946项/183.404秒/无跳过与JS语法通过；同机隔离Root安装31项通过。** full `job-8838db5282be`，安装 `job-11cc578c6430`，focused `job-7483a86667cb`=31项/7.179秒。90个非文档CORE与final-frozen-r1及实际安装包一致，protected6仍v0.36、APP4和既有r4工具镜像未变，无重建；网页资产未改，未重新执行浏览器或开户49检查。本轮0模型调用、0新NPU启动。

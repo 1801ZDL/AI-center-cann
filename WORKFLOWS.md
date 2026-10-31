@@ -150,3 +150,7 @@ compiler_compatibility.py使用compiler-case.json schema=ascend-lab-compiler-inp
 ## 历史精度数据离线重放
 
 `accuracy_data.py`使用明确的actual/reference二进制数据与政策，通过普通build_v1的固定只读输入运行。差异非零时任务failed，原数据、结构化比较和CSV仍保留；匹配仅证明对该参考的比较结果。独立accuracy-case CLI/MCP可核封存摘要并重算，见ACCURACY.md。执行Node须明确登记build_v1。新的设备精度任务继续使用accuracy_v1及NPU资源和资格；本配方不执行设备代码。
+
+## 仿真流水离线分析
+
+标准库CPU分析载荷simulation_data.py支持最多4核，按指令名/PC关联CSV管线，保留异常采集日志。使用build_v1的CPU报告产物合同；实际采集仍使用simulation_v1及NPU资格。个人CLI/MCP按原授权归档完整重算，只返回有限摘要，见[SIMULATION.md](SIMULATION.md)。
