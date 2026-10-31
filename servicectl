@@ -82,6 +82,7 @@ def main():
     p.add_argument('--uid',type=int);p.add_argument('--gid',type=int);p.add_argument('--create-service-user')
     p.add_argument('--node-config');p.add_argument('--port',type=int,default=18765)
     p.add_argument('--payload-config',help='Root-private contract for a new separate central ext4 payload filesystem')
+    p.add_argument('--control-config',help='Root-private contract for an empty finite ext4 control filesystem')
     for flag in ['bind-address','public-url','tls-cert','tls-key','tls-ca']:
         p.add_argument('--'+flag,default='127.0.0.1' if flag=='bind-address' else None)
     p.add_argument('--start',action='store_true',help='Start this new installation in process mode after validation')
@@ -90,6 +91,7 @@ def main():
     p.add_argument('--archive');p.add_argument('--node-config');p.add_argument('--uid',type=int);p.add_argument('--gid',type=int)
     p.add_argument('--create-service-user');p.add_argument('--port',type=int,default=18765)
     p.add_argument('--payload-config')
+    p.add_argument('--control-config')
     for flag in ['bind-address','public-url','tls-cert','tls-key','tls-ca']:
         p.add_argument('--'+flag,default='127.0.0.1' if flag=='bind-address' else None)
     p=commands.add_parser('tls-rotate');p.add_argument('--prefix',required=True)
@@ -102,10 +104,11 @@ def main():
         p=commands.add_parser(action);p.add_argument('--prefix',required=True)
         if action=='admin':p.add_argument('command',nargs=argparse.REMAINDER)
         if action=='backup':p.add_argument('--output',required=True)
-        if action=='restore':p.add_argument('--archive',required=True);p.add_argument('--new-state-dir',required=True);p.add_argument('--payload-config');p.add_argument('--spool-config');p.add_argument('--cache-config')
+        if action=='restore':p.add_argument('--archive',required=True);p.add_argument('--new-state-dir',required=True);p.add_argument('--payload-config');p.add_argument('--spool-config');p.add_argument('--cache-config');p.add_argument('--control-config')
         if action=='activate':
             group=p.add_mutually_exclusive_group(required=True);group.add_argument('--archive');group.add_argument('--release-id')
         if action=='unit-install':p.add_argument('--unit-dir',default='/etc/systemd/system');p.add_argument('--enable',action='store_true')
+    p=commands.add_parser('native-run',help='Trusted Root controller namespace launcher; not a task interface');p.add_argument('--prefix',required=True)
     args=parser.parse_args()
     if args.action=='bundle':result=deploy.bundle(args.output)
     elif args.action in {'owner-provision','owner-provision-node'}:
@@ -280,11 +283,11 @@ def main():
     elif args.action in {'doctor','preflight'}:
         from preflight import plan
         result=plan(args.role,args.prefix,args.state_dir,args.archive,args.uid,args.gid,args.create_service_user,args.node_config,args.port,
-            args.bind_address,args.public_url,args.tls_cert,args.tls_key,args.tls_ca,args.payload_config)
+            args.bind_address,args.public_url,args.tls_cert,args.tls_key,args.tls_ca,args.payload_config,args.control_config)
         print(json.dumps(result,ensure_ascii=False,indent=2));raise SystemExit(0 if result['install_ready'] else 2)
     elif args.action=='install':
         result=deploy.install(args.archive,args.prefix,args.state_dir,args.role,args.uid,args.gid,args.create_service_user,args.node_config,args.port,
-            args.bind_address,args.public_url,args.tls_cert,args.tls_key,args.tls_ca,args.payload_config)
+            args.bind_address,args.public_url,args.tls_cert,args.tls_key,args.tls_ca,args.payload_config,args.control_config)
         if args.start:result['service']=deploy.start(args.prefix)
     elif args.action=='tls-rotate':
         from listener import rotate
@@ -301,6 +304,9 @@ def main():
         else:
             plan=deploy.regular_json(args.plan,private=True)
             result=cache.prune(plan.get('slot_id'),plan.get('key'),expected=plan)
+    elif args.action=='native-run':
+        from control_process import run
+        run(args.prefix);return
     elif args.action=='run':deploy.run_service(args.prefix);return
     elif args.action=='start':result=deploy.start(args.prefix)
     elif args.action=='stop':result=deploy.stop(args.prefix)
@@ -308,7 +314,7 @@ def main():
     elif args.action=='verify':
         _,meta,_=deploy.verify(args.prefix);result={k:meta[k] for k in ['role','uid','gid','state_dir','release_id','state_schema']};result['verified']=True
     elif args.action=='backup':result=snapshot(args.prefix,args.output)
-    elif args.action=='restore':result=restore(args.prefix,args.archive,args.new_state_dir,payload_config=args.payload_config,spool_config=args.spool_config,cache_config=args.cache_config)
+    elif args.action=='restore':result=restore(args.prefix,args.archive,args.new_state_dir,payload_config=args.payload_config,spool_config=args.spool_config,cache_config=args.cache_config,control_config=args.control_config)
     elif args.action=='activate':result=activate(args.prefix,args.archive,args.release_id)
     elif args.action=='admin':
         prefix,meta,release=deploy.verify(args.prefix,owner_recovery=True,delivery_recovery=True,finish_recovery=True)

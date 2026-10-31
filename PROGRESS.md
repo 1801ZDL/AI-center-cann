@@ -1,5 +1,24 @@
 # 实施进度
 
+## 独立有限控制盘、原生启动身份与跨盘恢复（2026-10-31）
+
+**最终865项/146.373秒/无跳过及JS语法通过；84个非文档CORE与实际安装30、开户Root49冻结一致。** 全量 `job-5c10576f12b0`，安装 `job-e4ddce2059c9`，开户 `job-56e51e943e56`。原6个受保护运行文件仍为v0.36哈希；固定r4工具镜像的APP4不变，无需重建。本轮0模型调用、0 NPU kernel，不把旧浏览器41、旧编译诊断或性能镜像验收移作当前84源码的新验收。
+
+新增可选 `--control-config`（doctor/install/restore）：Root:0755、整个独立有限ext4、固定设备/inode/容量/随机存储身份，状态固定root/state；拒绝普通目录、共享FS子目录bind和混用控制/载荷盘。新盘至少实际128MiB/1024inode，另需独立payload盘、managed-only及余量准入。旧Main配置不变，不自动迁移；安装器不分区、格式化、清空未知目录或改变宿主挂载。
+
+可信Root启动器先验证只读代码/保护元数据，建立私有挂载空间并保留原命名空间及父目录FD，再发布控制盘外Root:0444进程记录并降UID/GID。私有视图固定SQLite规范路径及journal；原父目录FD独立观测外侧覆盖。TMPDIR/SQLITE_TMPDIR位于控制盘私有tmp，关闭core dump；实际HTTP进程UID999、有效/许可capability均0，无Docker socket。直接无特权run/server启动该模式被拒绝；同一Root lifetime flock覆盖启动及备份/激活/恢复的短暂初始化窗口。
+
+外侧控制根换盘时新任务/claim/start等待，原任务在原文件系统上回传并完成；不写错误挂载或下层普通目录。准确stop不依赖丢失的控制路径，pidfd仅指向原保护身份；缺CAP_KILL时用服务UID发送同一pidfd。真实退出采样发现/proc可先清空cmdline后变Zombie：现先保留原进程且不信号/不替代，等待身份确认；Root记录变化时拒绝向替代进程发送信号。不可把任意非空未知命令当成已验证服务。
+
+30项安装验收包含基线分角色/实际CPU BishengIR/个人下载/节点备份恢复，以及新原生模式新装、普通快照迁入、挂载覆盖、原IR单attempt完成、新提交503/follower零attempt等待、准确stop、uncover/restart、原生快照迁入第三组新盘及再一次真实IR。两个停止态SQLite导出由主助手独立核integrity和3个任务各1attempt，拒绝请求无job行；最终IR SHA一致。备份带原生合同，省略恢复合同拒绝，不自动落回普通目录。Root49同当前84源码，保持原开户/个人隔离/单attempt IR证据；真实宿主账号/PID1仍未验收。
+
+保留失败：初始full860为4error/1fail（非法测试存储ID及旧stop mock缺元数据），修正后24 focused通过；安装r1拒绝UID降权到exec间隔，r2受限Root无法跨UID信号，r4测试Root无SYS_PTRACE读取environ失败（改为确切服务UID读，不加cap），r5/r6退出窗口采样错误。r3的29项通过属于tmp绑定/原生快照完整恢复之前范围；最终以r7及865为准，失败日志不改成成功。见私有 `evidence/control-filesystem-validation.json`；公开精选 `reports/public-source-check.json.control_filesystem`。
+
+最终65个自有loop关联已释放，安装/开户/原型/diskproof容器及卷namespace独立只读确认empty，backings留存；未宣称此刻生产quota仍挂载。Main config SHA5caf...、19 Node profiles/物理域/CPU254–255/2048MiB/SHM1024MiB/1槽及zdl不变，0非终态/有效hold。角色内恢复态只保存在盘镜像与明确SQLite导出；不宣称宿主直接挂载完整恢复态。
+
+仍需目标机真实账号、PID1及挂载传播、底层设备IO/掉电恢复、两物理机断网fencing、非root NPU数值/性能/仿真、审计增长预算/留存/外部告警、累计实验预算和五类工作流网页。保持单可写中央及稳定API/MCP，推广指南见SCALING.md；PUBLIC-001继续暂缓，整体goal active且production_ready=false。
+
+
 ## 控制存储余量准入、个人MCP与旧代码保护（2026-10-31）
 
 **最终852项/166.934秒/无跳过及JS语法通过，82个非文档CORE与实际安装41、开户Root49冻结一致。** 全量job-a35f4ace8f67，安装最终job-77ba33829c92，开户job-bc1896dc8121。初始focused16项是最终MCP/预检/恢复补充前的探索范围；最终852覆盖全部最终测试源码。六个受保护运行文件保持v0.36哈希，固定工具镜像r4的APP4未变，不重建镜像、不重新调用模型或重跑旧编译诊断案例。

@@ -1,5 +1,19 @@
 # 大产物传输、中央存储预算与留存（v0.20）
 
+## 可选的独立有限控制盘（管理员模式）
+
+新管理员安装可在 `doctor/install` 显式提供 `--control-config /root/control.json`。合同与载荷盘使用相同的 `path/filesystem/device/root_inode/bytes/inodes/storage_id` 字段，但控制根必须为 Root:0755、整个独立 `ext4` 文件系统的挂载（拒绝子目录 bind），实际容量至少128MiB/1024 inode、`nosuid,nodev`、空盘；状态路径固定为其 `state` 子目录。必须另提供不同文件系统的 `--payload-config`，并保留余量准入及 `local_enabled=false`。实际规划应按长期审计/数据库增长留足容量，128MiB只是校验下限。安装器不分区、格式化、挂盘、清空未知目录或改变已有部署。
+
+可信 Root 启动器在加载服务私有配置前建立私有挂载命名空间，保留原命名空间和原父目录 FD，发布安装前缀中的 Root:0444 进程记录，然后降为专用服务 UID/GID。服务本身不带有效/许可 capability，不持有 Docker socket；`TMPDIR/SQLITE_TMPDIR`也绑定控制状态的私有`tmp`目录，启动后关闭core dump；任务仍由独立 Node 执行。SQLite 会解析 FD 别名路径，所以不能只把数据库改成 `/proc/self/fd/N/...` 就认为 journal 被固定；这里保持整个服务的实际挂载视图。SQLite临时目录选择见[官方临时文件说明](https://www.sqlite.org/tempfiles.html)。
+
+外侧固定控制根被覆盖、卸载或换盘时，原父目录 FD 检查会使余量接口暂停新增工作；私有视图保留原数据库和日志路径，已有任务可继续对账/回传，不写入新挂载或下层普通目录。实际底层设备 I/O 故障不保证继续写入；原尝试和租约仍须保留。该模式要求管理员保持祖先目录及宿主挂载拓扑稳定，不是自动发现任意祖先替换、设备恢复、跨机 fencing 或高可用。
+
+该模式的进程启动/停止需要 Root；准确 PID/start_ticks/boot_id 记录位于控制盘之外，控制根不可用时仍可停止已确认的原进程。直接使用无特权 `run/server.py` 启动带此合同的服务会被拒绝。生成的 systemd unit 只在初始化阶段以 Root 运行，实际控制进程会降权；真实 PID1 生命周期仍须在目标服务器验收。
+
+停止态备份记录控制盘绑定且必须放在其他文件系统；恢复需要新的空控制盘和载荷盘，显式提供 `restore --control-config ... --payload-config ...`。可以把旧普通目录快照迁移到此模式，不会自动迁移当前个人 Demo。缺少相应控制盘/启动器实现的旧发布包不能承接该状态。恢复中断的候选目录与原盘应保留供管理员核对，不自动覆盖或清扫。
+
+隔离验收入口为 `tests/install_server_check.py --native-control`。同机自有 Root 容器的30项安装/恢复检查通过：专用UID999、零有效/许可capability、临时目录绑定；挂载覆盖时原IR单attempt完成、新工作503、准确停止；挂载恢复及原生备份迁入另一组新盘后原结果保留，新IR仍单attempt。拒绝共享FS的子目录bind和省略原生恢复合同。证据 `control-filesystem-validation.json` 仅本地，公开精选见 `reports/public-source-check.json`。所有盘均为自有文件盘；不能替代真实宿主账号、PID1/挂载传播、断电、两物理机、NPU或独立硬件故障域验收。
+
 ## 控制存储余量准入
 
 新管理员中央安装默认要求控制文件系统至少剩余64MiB和256个inode；低于任一门槛、只读或无法观测时，暂停新增工作。`doctor`只读检查目标状态目录所在文件系统的余量，并拒绝缺少实现的旧安装包。现有配置缺省保持未启用，不自动修改个人Demo、既有Node或磁盘布局。

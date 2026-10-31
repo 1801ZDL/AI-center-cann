@@ -28,8 +28,9 @@ STOP = threading.Event()
 
 
 class Store:
-    def __init__(self, path):
+    def __init__(self, path,filesystem=None):
         self.path = path
+        self.control_filesystem=filesystem
         with self.connect() as db:
             db.executescript('''
                 CREATE TABLE IF NOT EXISTS state (key TEXT PRIMARY KEY, value TEXT NOT NULL);
@@ -41,6 +42,7 @@ class Store:
             ''')
 
     def connect(self):
+        if self.control_filesystem:self.control_filesystem.check()
         return sqlite3.connect(self.path, timeout=5)
 
     def save(self, snapshot, previous):
@@ -402,8 +404,11 @@ def main():
     if os.getuid()==0:
         parser.error('Run the controller as a dedicated unprivileged service user; root is reserved for a trusted node role')
     runtime=Path(args.state_dir).resolve()
-    runtime.mkdir(mode=0o700,parents=True,exist_ok=True)
     config = json.loads(Path(args.config or runtime/'config.json').read_text())
+    from control_filesystem import Filesystem
+    control_filesystem=Filesystem(runtime,config)
+    control_filesystem.runtime()
+    runtime.mkdir(mode=0o700,parents=True,exist_ok=True)
     from listener import runtime as listener_runtime,TLSHTTPServer,ListenerError
     try:listener_info,tls_context=listener_runtime(config)
     except ListenerError as error:parser.error(str(error))
@@ -411,7 +416,7 @@ def main():
     os.nice(10)
     log = RotatingFileHandler(runtime / 'server.log', maxBytes=1024 * 1024, backupCount=2)
     logging.basicConfig(handlers=[log], level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
-    store = Store(runtime / 'observations.sqlite3')
+    store = Store(runtime / 'observations.sqlite3',control_filesystem)
     # Never expose a prior server's snapshot as a fresh sample after restart.
     with store.connect() as db:
         db.execute("DELETE FROM state WHERE key='latest'")

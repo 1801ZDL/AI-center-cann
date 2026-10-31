@@ -112,6 +112,9 @@ def public(job):
 class JobStore:
     def __init__(self, runtime, config):
         self.runtime = Path(runtime)
+        from control_filesystem import Filesystem
+        self.control_filesystem=Filesystem(self.runtime,config)
+        self.control_filesystem.check()
         from payload_storage import Payload
         self.payload=Payload(self.runtime,config)
         self.root = self.payload.path('jobs')
@@ -152,6 +155,7 @@ class JobStore:
         self.dependencies=Dependencies(self)
 
     def connect(self):
+        self.control_filesystem.check()
         return sqlite3.connect(self.db_path, timeout=5)
 
     @contextmanager
@@ -525,6 +529,9 @@ class JobStore:
         environments = {k:v for k,v in self.environments.items() if ('*' in principal.environments or k in principal.environments)
                         and (self.policy['local_enabled'] or v['type']=='worker')}
         policy = dict(self.policy)
+        if policy.get('control_filesystem'):
+            storage=policy['control_filesystem']
+            policy['control_filesystem']={'enforced':True,'filesystem':storage['filesystem'],'bytes':storage['bytes'],'inodes':storage['inodes']}
         if policy.get('payload_storage'):
             storage=policy['payload_storage']
             policy['payload_storage']={'enforced':True,'filesystem':storage['filesystem'],'bytes':storage['bytes'],'inodes':storage['inodes']}
@@ -599,7 +606,7 @@ class JobStore:
 
     def control_storage(self):
         from control_storage import observe
-        return observe(self.runtime,self.policy.get('control_storage'))
+        return observe(self.runtime,self.policy.get('control_storage'),self.control_filesystem)
 
 
 class Scheduler:

@@ -93,8 +93,11 @@ def snapshot(prefix,output,max_bytes=10*1024**3):
     if output.exists() or output.is_symlink() or output.is_relative_to(state):raise DeployError('Backup target must be new and outside the state tree')
     output.parent.mkdir(mode=0o700,parents=True,exist_ok=True)
     parent=output.parent.stat()
+    if meta.get('control_filesystem') and parent.st_dev==meta['control_filesystem']['device']:
+        raise DeployError('Backup output must use a separate control filesystem')
     if parent.st_uid!=0 or parent.st_mode&0o077:raise DeployError('Backups need a root-owned private parent directory (700)')
-    with state_lock(state,exclusive=True):
+    from control_process import offline
+    with state_lock(state,exclusive=True),offline(prefix,meta):
         assert_quiescent(state,meta['role'])
         policy=meta.get('payload_storage')
         if policy:
@@ -127,6 +130,7 @@ def snapshot(prefix,output,max_bytes=10*1024**3):
             manifest={'format':'ascend-lab-snapshot/v2' if policy else 'ascend-lab-snapshot/v1','role':meta['role'],'release_id':meta['release_id'],
                       'state_schema':meta['state_schema'],'original_state':str(state),'files':files,'directories':directories,'bytes':total,'quiescent':True}
             if policy:manifest['payload_storage']=policy
+            if meta.get('control_filesystem'):manifest['control_filesystem']=meta['control_filesystem']
             if meta['role']=='node' and meta.get('spool_storage'):manifest['node_spool_storage']=meta['spool_storage']
             if meta['role']=='node' and meta.get('persistent_cache'):
                 manifest['persistent_cache']=meta['persistent_cache'];manifest['persistent_cache_data_included']=False
@@ -208,12 +212,23 @@ def relocate(state,old_state,new_state,role,old_payload=None,new_payload=None):
     atomic_json(state/'config.json',config)
 
 
-def restore(prefix,archive_path,new_state,max_bytes=10*1024**3,payload_config=None,spool_config=None,cache_config=None):
+def restore(prefix,archive_path,new_state,max_bytes=10*1024**3,payload_config=None,spool_config=None,cache_config=None,control_config=None):
     require_root();prefix,meta,_=verify(prefix);old=Path(meta['state_dir']);target=secure_parent(new_state)
     if target.exists() or target.is_symlink() or target.is_relative_to(prefix) or prefix.is_relative_to(target):raise DeployError('Restore requires a new separate state directory')
     archive_info=Path(archive_path).lstat()
     if not stat.S_ISREG(archive_info.st_mode) or archive_info.st_mode&0o077 or archive_info.st_nlink!=1:raise DeployError('Restore requires a private regular snapshot file')
-    with state_lock(old,exclusive=True):
+    native=None
+    if control_config:
+        from control_filesystem import inspect_new
+        if meta['role']!='controller' or not payload_config:raise DeployError('Finite control restore requires a controller and separate --payload-config')
+        native=regular_json(control_config,private=True)
+        inspect_new(native,target,prefix,regular_json(payload_config,private=True))
+        if meta.get('control_filesystem',{}).get('device')==native['device']:
+            raise DeployError('Restore must retain the current control filesystem and use a new one')
+    elif meta.get('control_filesystem'):
+        raise DeployError('Finite control restore requires a new --control-config')
+    from control_process import offline
+    with state_lock(old,exclusive=True),offline(prefix,meta):
         assert_quiescent(old,meta['role'])
         stage=Path(tempfile.mkdtemp(prefix='.restore-',dir=target.parent));seen=set();total=0;payload_stage=None;policy=None
         try:
@@ -227,6 +242,12 @@ def restore(prefix,archive_path,new_state,max_bytes=10*1024**3,payload_config=No
                 if not isinstance(manifest.get('original_state'),str) or not Path(manifest['original_state']).is_absolute():raise DeployError('Invalid original state identity')
                 from payload_storage import TREES,inspect_new,validate
                 original_payload=manifest.get('payload_storage')
+                original_control=manifest.get('control_filesystem')
+                if original_control:
+                    from control_filesystem import validate as control_contract
+                    control_contract(original_control)
+                    if meta['role']!='controller' or native is None:raise DeployError('Finite control snapshot requires a new --control-config')
+                    if original_control['storage_id']==native['storage_id']:raise DeployError('Restore requires a fresh control storage ID')
                 node_spool=manifest.get('node_spool_storage')
                 node_cache=manifest.get('persistent_cache')
                 if node_cache or cache_config or meta.get('persistent_cache'):
@@ -281,6 +302,14 @@ def restore(prefix,archive_path,new_state,max_bytes=10*1024**3,payload_config=No
             relocate(stage,manifest['original_state'],target,meta['role'],
                      original_payload['path'] if original_payload else manifest['original_state'],policy['path'] if policy else None)
             restored_config=read_json(stage/'config.json')
+            if restored_config.get('scheduler',{}).get('control_filesystem')!=original_control:
+                raise DeployError('Snapshot configuration and control manifest differ')
+            if native:
+                from control_storage import DEFAULT
+                scheduler=restored_config.setdefault('scheduler',{})
+                scheduler['control_filesystem']=native;scheduler['local_enabled']=False
+                if scheduler.get('control_storage') is None:scheduler['control_storage']=dict(DEFAULT)
+                atomic_json(stage/'config.json',restored_config)
             require_control_storage(restored_config,meta['role'],read_json(prefix/'releases'/meta['release_id']/'release.json'))
             if node_cache:
                 if restored_config.get('persistent_cache')!=node_cache:raise DeployError('Snapshot private cache policy differs from its manifest')
@@ -310,12 +339,20 @@ def restore(prefix,archive_path,new_state,max_bytes=10*1024**3,payload_config=No
                 from device_qualification import invalidate_restored
                 invalidate_restored(stage/'jobs.sqlite3')
             stage.rename(target)
+            if native:
+                from control_filesystem import initialize
+                initialize(native,target,prefix,meta['uid'],meta['gid'])
+                meta['control_filesystem']=native
             meta['previous_state_dir']=str(old);meta['state_dir']=str(target)
             if policy:meta['payload_storage']=policy
             atomic_json(prefix/'installation.json',meta);(prefix/'installation.json').chmod(0o444)
             unit=prefix/'units'/('ascend-lab-'+meta['role']+'.service');unit.chmod(0o644);unit.write_text(unit_text(prefix,meta));unit.chmod(0o444)
+            if native:
+                from control_process import initialize as process_initialize
+                process_initialize(prefix,meta)
             return {'restored_state':str(target),'previous_state_retained':str(old),'role':meta['role'],'started':False,
                     'dedicated_payload_restored':bool(policy),
+                    'finite_control_restored':bool(native),
                     'unit_updated':str(unit),'operator_action':'Reload installed systemd unit before restarting, if using systemd'}
         finally:
             if stage.exists():shutil.rmtree(stage)
@@ -323,6 +360,11 @@ def restore(prefix,archive_path,new_state,max_bytes=10*1024**3,payload_config=No
 
 
 def require_control_storage(config,role,manifest):
+    if role=='controller' and config.get('scheduler',{}).get('control_filesystem') is not None:
+        from control_filesystem import validate
+        validate(config['scheduler']['control_filesystem'])
+        if not {'control_filesystem.py','control_process.py'}<=set(manifest.get('files',{})):
+            raise DeployError('Finite control storage requires a matching launcher and filesystem support; refusing downgrade')
     if role=='controller' and config.get('scheduler',{}).get('control_storage') is not None:
         from control_storage import validate
         validate(config['scheduler']['control_storage'])
@@ -425,7 +467,8 @@ def require_features(state,role,manifest):
 
 def activate(prefix,archive_path=None,release_id=None):
     require_root();prefix,meta,_=verify(prefix);state=Path(meta['state_dir'])
-    with state_lock(state,exclusive=True):
+    from control_process import offline
+    with state_lock(state,exclusive=True),offline(prefix,meta):
         assert_quiescent(state,meta['role'])
         if archive_path:
             from deployment import unpack_release

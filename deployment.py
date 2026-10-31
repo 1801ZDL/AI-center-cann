@@ -30,7 +30,7 @@ CORE=['auth.py','owner_identity.py','owner_handoff.py','qualification_compatibil
       'environment_probe.py','environment_contract.py','device_qualification.py','attempt_inventory.py','executor.py','npu_admission.py','npu_device.py','inputs.py','jobs.py','lab_client.py','client_archive.py','archive_api.py','nodes.py','server.py',
       'templates.py','worker.py','workflow_runner.py','workflow_spec.py','workflow_results.py',
       'state_lock.py','resources.py','queue_policy.py','docker_runtime.py','listener.py','preflight.py','workspace_slots.py','filesystem_quota.py','quota_workspace.py','workspace_quota_admin.py','node_owner_admin.py','group_quota.py','payload_groups.py','payload_quota_admin.py','payload_owner_admin.py','io_policy.py','storage_io.py','payload_storage.py','storage_budget.py','storage_files.py','storage_lifecycle.py','node_storage.py','deployment.py','maintenance.py','servicectl','accessctl','workerctl',
-      'spool_storage.py','spool_transfer.py','persistent_cache.py','dependencies.py','control_storage.py','labctl','install-client','mcp_bridge.py','diagnostic_case.py','compiler_diagnostic.py','operator_profile.py','operator_node.py','operator_workflow.py','CLIENT.md','SERVER.md','API.md','WORKFLOWS.md','NPU.md','WORKSPACE.md','STORAGE.md','CACHE.md','DEPENDENCIES.md',
+      'spool_storage.py','spool_transfer.py','persistent_cache.py','dependencies.py','control_storage.py','control_filesystem.py','control_process.py','labctl','install-client','mcp_bridge.py','diagnostic_case.py','compiler_diagnostic.py','operator_profile.py','operator_node.py','operator_workflow.py','CLIENT.md','SERVER.md','API.md','WORKFLOWS.md','NPU.md','WORKSPACE.md','STORAGE.md','CACHE.md','DEPENDENCIES.md',
       'README.md','DEPLOYMENT.md','SCALING.md','HARNESS.md','OPERATOR_ANALYSIS.md','COMPILER_DIAGNOSTICS.md','ENVIRONMENTS.md','RECOVERY.md','HTTPS.md','SPOOL.md','OWNER_PROVISION.md']
 SCHEMA=1
 EXECUTABLES={'servicectl','accessctl','workerctl','labctl','install-client'}
@@ -46,6 +46,7 @@ OPTIONAL_ADMIN_FILES.add('OPERATOR_ANALYSIS.md')
 OPTIONAL_ADMIN_FILES.update({'operator_node.py','operator_workflow.py'})
 OPTIONAL_ADMIN_FILES.update({'compiler_diagnostic.py','COMPILER_DIAGNOSTICS.md','SCALING.md'})
 OPTIONAL_ADMIN_FILES.add('control_storage.py')
+OPTIONAL_ADMIN_FILES.update({'control_filesystem.py','control_process.py'})
 
 
 class DeployError(ValueError):pass
@@ -219,7 +220,7 @@ def load_installation(prefix):
     return prefix,meta,release
 
 
-def verify(prefix,quota_recovery=False,unit_recovery=False,manager_recovery=False,startup_recovery=False,delivery_recovery=False,finish_recovery=False,owner_recovery=False):
+def verify_code(prefix):
     prefix,meta,release=load_installation(prefix);manifest=regular_json(release/'release.json')
     checked_manifest(manifest)
     if manifest.get('id')!=meta['release_id'] or manifest.get('state_schema')!=meta['state_schema']:raise DeployError('Installed release identity differs')
@@ -228,6 +229,14 @@ def verify(prefix,quota_recovery=False,unit_recovery=False,manager_recovery=Fals
         path=release/name
         info=path.lstat()
         if path.is_symlink() or not stat.S_ISREG(info.st_mode) or info.st_uid!=0 or info.st_mode&0o022 or digest(path)!=record['sha256']:raise DeployError('Installed release checksum/permissions differ')
+    return prefix,meta,release
+
+
+def verify(prefix,quota_recovery=False,unit_recovery=False,manager_recovery=False,startup_recovery=False,delivery_recovery=False,finish_recovery=False,owner_recovery=False):
+    prefix,meta,release=verify_code(prefix)
+    if meta.get('control_filesystem'):
+        from control_process import context
+        context(meta).check()
     if not owner_recovery:
         from owner_provision import guard as owner_guard
         owner_guard(prefix)
@@ -243,6 +252,8 @@ def verify(prefix,quota_recovery=False,unit_recovery=False,manager_recovery=Fals
         raise DeployError('Resume the original owner activation/delivery coordinator before offline maintenance')
     if meta['role']=='controller':
         config=regular_json(Path(meta['state_dir'])/'config.json',private=True)
+        if config.get('scheduler',{}).get('control_filesystem')!=meta.get('control_filesystem'):
+            raise DeployError('Controller filesystem differs from its protected installation binding')
         if not quota_recovery:
             if (prefix/'payload-owner-change.json').exists() or (prefix/'payload-owner-change.json').is_symlink():
                 raise DeployError('Finish the pending owner storage append with its original plan before starting or maintaining this installation')
@@ -284,7 +295,10 @@ def unit_text(prefix,meta):
             workspace.append(str(Path(slot['path']).parent));quota_enabled=True
     def quoted(value):return '"'+value.replace('%','%%').replace('\\','\\\\').replace('"','\\"')+'"'
     extra=''.join(' '+quoted(path) for path in sorted(set(workspace)))
-    mounts=([payload] if payload else [])+sorted(set(workspace))
+    native=meta.get('control_filesystem')
+    mounts=([payload] if payload else [])+([native['path']] if native else [])+sorted(set(workspace))
+    native_rw=(' '+quoted(native['path'])+' '+quoted(prefix)) if native else ''
+    capabilities='CAP_SYS_ADMIN CAP_SETUID CAP_SETGID CAP_DAC_OVERRIDE' if native else 'CAP_SYS_ADMIN' if quota_enabled else ''
     mount_line='RequiresMountsFor='+' '.join(quoted(path) for path in mounts)+'\n' if mounts else ''
     return f'''[Unit]
 Description=Ascend Lab {role}
@@ -295,12 +309,12 @@ StartLimitBurst=3
 
 [Service]
 Type=simple
-User={meta['uid']}
-Group={meta['gid']}
+User={0 if native else meta['uid']}
+Group={0 if native else meta['gid']}
 {group_line}WorkingDirectory={state}
 Environment=HOME={state}
 Environment=PYTHONDONTWRITEBYTECODE=1
-ExecStart=/usr/bin/python3 -I -B {prefix}/current/servicectl run --prefix {prefix}
+ExecStart=/usr/bin/python3 -I -B {prefix}/current/servicectl {'native-run' if native else 'run'} --prefix {prefix}
 Restart=on-failure
 RestartSec=5
 TimeoutStopSec=20
@@ -308,14 +322,14 @@ UMask=0077
 NoNewPrivileges=true
 ProtectSystem=strict
 ProtectHome=read-only
-ReadWritePaths={state}{(' '+quoted(payload)) if payload else ''}{extra}
+ReadWritePaths={state}{(' '+quoted(payload)) if payload else ''}{extra}{native_rw}
 PrivateTmp=true
 ProtectKernelTunables=true
 ProtectKernelModules=true
 ProtectControlGroups=true
 RestrictSUIDSGID=true
 LockPersonality=true
-CapabilityBoundingSet={'CAP_SYS_ADMIN' if quota_enabled else ''}
+CapabilityBoundingSet={capabilities}
 RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
 
 [Install]
@@ -324,16 +338,23 @@ WantedBy=multi-user.target
 
 
 def install(archive,prefix,state,role,uid=None,gid=None,create_user=None,node_config=None,port=18765,
-            bind_address='127.0.0.1',public_url=None,tls_cert=None,tls_key=None,tls_ca=None,payload_config=None):
+            bind_address='127.0.0.1',public_url=None,tls_cert=None,tls_key=None,tls_ca=None,payload_config=None,control_config=None):
     require_root()
     from preflight import plan,configuration_hash,account_creator
-    assessment=plan(role,prefix,state,archive,uid,gid,create_user,node_config,port,bind_address,public_url,tls_cert,tls_key,tls_ca,payload_config)
+    assessment=plan(role,prefix,state,archive,uid,gid,create_user,node_config,port,bind_address,public_url,tls_cert,tls_key,tls_ca,payload_config,control_config)
     if not assessment['install_ready']:raise DeployError('Installation preflight blocked: '+', '.join(assessment['blockers'])+'; run servicectl doctor for the read-only report')
     prefix=secure_parent(prefix);state=secure_parent(state)
     if prefix.exists() or prefix.is_symlink() or state.is_symlink() or state.exists() and (not state.is_dir() or any(state.iterdir())):raise DeployError('Choose a new installation prefix and empty state directory')
     if state.exists() and state.stat().st_uid!=0:raise DeployError('A pre-created empty state directory must already be root-owned')
     if prefix==state or prefix.is_relative_to(state) or state.is_relative_to(prefix):raise DeployError('Code and state must be separate disjoint directories')
     if role not in {'controller','node'}:raise DeployError('Unknown role')
+    native=None
+    if control_config:
+        from control_filesystem import inspect_new,fingerprint
+        native=regular_json(control_config,private=True)
+        expected=next(x['detail']['configuration_sha256'] for x in assessment['checks'] if x['id']=='finite_control_filesystem')
+        if fingerprint(native)!=expected:raise DeployError('Control filesystem contract changed after doctor')
+        inspect_new(native,state,prefix,regular_json(payload_config,private=True))
     if role=='node':
         node_config_path=node_config
         node_config=regular_json(node_config,private=True)
@@ -449,10 +470,18 @@ def install(archive,prefix,state,role,uid=None,gid=None,create_user=None,node_co
               'release_id':manifest['id'],'state_schema':manifest['state_schema'],'previous_releases':[],
               'preflight':{'format':assessment['format'],'checked_at':assessment['checked_at'],'install_ready':True}}
         if role=='controller' and config.get('scheduler',{}).get('payload_storage'):meta['payload_storage']=config['scheduler']['payload_storage']
+        if native:
+            from control_filesystem import initialize
+            initialize(native,state,prefix,uid,gid)
+            config['scheduler']['control_filesystem']=native;meta['control_filesystem']=native
+            atomic_json(state/'config.json',config);os.chown(state/'config.json',uid,gid)
         if role=='node' and config.get('spool_storage'):meta['spool_storage']=config['spool_storage']
         if role=='node' and config.get('persistent_cache'):meta['persistent_cache']=config['persistent_cache']
         (prefix/'current').symlink_to('releases/'+manifest['id'])
         atomic_json(prefix/'installation.json',meta);(prefix/'installation.json').chmod(0o444)
+        if native:
+            from control_process import initialize as process_initialize
+            process_initialize(prefix,meta)
         (prefix/'units').mkdir(mode=0o755);(prefix/'units').chmod(0o755)
         unit=prefix/'units'/('ascend-lab-'+role+'.service');unit.write_text(unit_text(prefix,meta));unit.chmod(0o444)
         return {'prefix':str(prefix),'role':role,'uid':uid,'gid':gid,'state_dir':str(state),'release_id':manifest['id'],'unit':str(unit),'started':False}
@@ -463,7 +492,11 @@ def install(archive,prefix,state,role,uid=None,gid=None,create_user=None,node_co
 
 def process_status(prefix):
     from jobs import identity_alive
-    prefix,meta,_=load_installation(prefix);state=Path(meta['state_dir']);saved=read_json(state/'service-process.json')
+    prefix,meta,_=load_installation(prefix)
+    if meta.get('control_filesystem'):
+        from control_process import status
+        return status(prefix)
+    state=Path(meta['state_dir']);saved=read_json(state/'service-process.json')
     live=identity_alive(saved)
     if live:
         argv=Path('/proc')/str(saved['pid'])/'cmdline'
@@ -504,6 +537,9 @@ def run_service(prefix):
     from jobs import identity
     prefix,meta,release=_service_verify(prefix,startup_recovery=bool(os.environ.get('INVOCATION_ID')))
     if os.geteuid()!=meta['uid'] or os.getegid()!=meta['gid']:raise DeployError('Service must run as its configured UID/GID')
+    if meta.get('control_filesystem'):
+        from control_process import context
+        context(meta).runtime()
     from unit_manager import service_entry
     service_entry(prefix)
     if meta['role']=='controller' and os.access('/var/run/docker.sock',os.R_OK|os.W_OK):raise DeployError('Controller identity must not have access to the Docker socket')
@@ -520,11 +556,19 @@ def run_service(prefix):
     # -I excludes the script directory; add only the verified release explicitly before running it.
     code='import runpy,sys;sys.path.insert(0,sys.argv[1]);sys.argv=sys.argv[2:];runpy.run_path(sys.argv[0],run_name="__main__")'
     from unit_start import process_environment
+    native_env={}
+    if meta.get('control_filesystem'):
+        from control_filesystem import ENVIRONMENT
+        from control_process import context
+        native_env={**{key:os.environ[key] for key in ENVIRONMENT},**context(meta).temporary_environment()}
     os.execve('/usr/bin/python3',['/usr/bin/python3','-I','-B','-c',code,str(release),str(script),*argv[4:]],
-              {'PATH':'/usr/local/bin:/usr/bin:/bin','HOME':str(state),'LANG':'C.UTF-8','PYTHONDONTWRITEBYTECODE':'1',**process_environment(prefix)})
+              {'PATH':'/usr/local/bin:/usr/bin:/bin','HOME':str(state),'LANG':'C.UTF-8','PYTHONDONTWRITEBYTECODE':'1',**process_environment(prefix),**native_env})
 
 
 def start(prefix):
+    if load_installation(prefix)[1].get('control_filesystem'):
+        from control_process import start as native_start
+        return native_start(prefix)
     prefix,meta,release=_service_verify(prefix)
     if os.geteuid() not in {0,meta['uid']}:raise DeployError('Service identity or root is required')
     status=process_status(prefix)
@@ -554,6 +598,9 @@ def start(prefix):
 
 
 def stop(prefix):
+    if load_installation(prefix)[1].get('control_filesystem'):
+        from control_process import stop as native_stop
+        return native_stop(prefix)
     prefix,meta,_=_service_verify(prefix,stopping=True)
     if os.geteuid() not in {0,meta['uid']}:raise DeployError('Service identity or root is required')
     status=process_status(prefix)

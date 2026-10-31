@@ -11,6 +11,8 @@ import stat
 
 
 def exhausted(error):
+    from control_filesystem import Unavailable
+    if isinstance(error,Unavailable):return True
     if isinstance(error, OSError):
         return error.errno in {errno.ENOSPC, errno.EDQUOT}
     if isinstance(error, sqlite3.Error):

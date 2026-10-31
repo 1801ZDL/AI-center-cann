@@ -50,6 +50,9 @@ class AccessControl:
     def __init__(self, runtime, config):
         self.config = config
         self.path = Path(runtime)/'identities.sqlite3' if runtime else None
+        from control_filesystem import Filesystem
+        self.control_filesystem=Filesystem(runtime,config) if runtime else None
+        if self.control_filesystem:self.control_filesystem.check()
         self.state_lock=state_lock(runtime) if runtime else None
         self.local = Principal(config['username'], 'admin',
                                str(Path(config.get('scheduler', {}).get('workspace_root', Path.home())).resolve()),
@@ -85,6 +88,7 @@ class AccessControl:
             self.path.chmod(0o600)
 
     def connect(self):
+        if self.control_filesystem:self.control_filesystem.check()
         return sqlite3.connect(self.path, timeout=5)
 
     def close(self):

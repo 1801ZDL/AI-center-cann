@@ -126,7 +126,7 @@ def controller_transport(config):
 
 
 def plan(role,prefix=None,state=None,archive=None,uid=None,gid=None,create_user=None,node_config=None,port=18765,
-         bind_address='127.0.0.1',public_url=None,tls_cert=None,tls_key=None,tls_ca=None,payload_config=None):
+         bind_address='127.0.0.1',public_url=None,tls_cert=None,tls_key=None,tls_ca=None,payload_config=None,control_config=None):
     checks=[];report={'format':'ascend-lab-preflight/v1','checked_at':dt.datetime.now(dt.timezone.utc).isoformat(),
         'role':role,'read_only':True,'production_ready':False,'checks':checks,
         'identity':{'euid':os.geteuid(),'egid':os.getegid()},
@@ -148,6 +148,7 @@ def plan(role,prefix=None,state=None,archive=None,uid=None,gid=None,create_user=
     if role=='node' and (bind_address!='127.0.0.1' or any(x is not None for x in [public_url,tls_cert,tls_key,tls_ca])):
         checks.append({'id':'listener_role','status':'failed','required':True,'reason':'Listener TLS options belong to a controller installation'})
     if role=='node' and payload_config:checks.append({'id':'payload_role','status':'failed','required':True,'reason':'Central payload storage belongs to the controller'})
+    if role=='node' and control_config:checks.append({'id':'control_role','status':'failed','required':True,'reason':'Finite control storage belongs to the controller'})
     if prefix is not None and state is not None:report['paths']=check('installation_paths',lambda:paths(prefix,state))
     else:checks.append({'id':'installation_paths','status':'not_checked','required':True,'reason':'Supply --prefix and --state-dir for an installation plan'})
     if archive:
@@ -155,6 +156,8 @@ def plan(role,prefix=None,state=None,archive=None,uid=None,gid=None,create_user=
             value=deploy.inspect_release(archive)
             if role=='controller' and 'control_storage.py' not in value['manifest']['files']:
                 raise deploy.DeployError('New controller installations require control storage admission support')
+            if control_config and not {'control_filesystem.py','control_process.py'}<=set(value['manifest']['files']):
+                raise deploy.DeployError('Finite control installation needs namespace and filesystem support')
             return {'id':value['manifest']['id'],'sha256':value['sha256'],'bytes':value['bytes'],
                     'unpacked_bytes':value['unpacked_bytes'],'files':len(value['manifest']['files'])}
         report['release']=check('release_archive',release)
@@ -190,6 +193,14 @@ def plan(role,prefix=None,state=None,archive=None,uid=None,gid=None,create_user=
                 require_membership(value,primary=gid)
                 result=inspect_new(value,state,prefix);result['configuration_sha256']=configuration_hash(value);return result
             report['payload_storage']=check('central_payload_storage',payload)
+        if control_config:
+            def native_control():
+                from control_filesystem import inspect_new
+                if not payload_config:raise deploy.DeployError('Finite control requires --payload-config on a separate filesystem')
+                return inspect_new(deploy.regular_json(control_config,private=True),state,prefix,deploy.regular_json(payload_config,private=True))
+            report['control_filesystem']=check('finite_control_filesystem',native_control)
+            from control_process import probe
+            check('native_controller_namespace',probe)
     elif role=='node':
         config=check('node_config',lambda:deploy.regular_json(node_config,private=True)) if node_config else None
         # Never serialize config or exception text containing URL/token contents.

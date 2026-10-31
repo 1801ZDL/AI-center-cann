@@ -141,7 +141,7 @@ class InputStore:
                 return {'size':size,'reused':True}
             if offset!=size:raise JobError('Input offset must be contiguous',409)
             from control_storage import require
-            require(self.jobs.runtime,self.jobs.policy.get('control_storage'))
+            require(self.jobs.runtime,self.jobs.policy.get('control_storage'),self.jobs.control_filesystem)
             path.parent.mkdir(parents=True,mode=0o700,exist_ok=True)
             from storage_io import write_chunk
             write_chunk(path,size,data,root=self.jobs.payload.base)
@@ -156,7 +156,7 @@ class InputStore:
             self.jobs.lifecycle.available('input',bundle_id,db)
             if bundle['sealed']:return bundle
             from control_storage import require
-            require(self.jobs.runtime,self.jobs.policy.get('control_storage'))
+            require(self.jobs.runtime,self.jobs.policy.get('control_storage'),self.jobs.control_filesystem)
             for item in bundle['files']:
                 path=self.directory(bundle_id)/item['name']
                 if item['size']==0 and not path.exists():

@@ -143,14 +143,16 @@ class Bus:
 def expected(prefix,meta,text):
     lines={line.split('=',1)[0]:line.split('=',1)[1] for line in text.splitlines() if '=' in line}
     env=[line.split('=',1)[1] for line in text.splitlines() if line.startswith('Environment=')]
-    return {'Type':'simple','User':str(meta['uid']),'Group':str(meta['gid']),
+    cap_bits={'CAP_SYS_ADMIN':21,'CAP_SETUID':7,'CAP_SETGID':6,'CAP_DAC_OVERRIDE':1}
+    caps=sum(1<<cap_bits[name] for name in lines['CapabilityBoundingSet'].split())
+    return {'Type':'simple','User':lines['User'],'Group':lines['Group'],
         'SupplementaryGroups':lines.get('SupplementaryGroups','').split(),'WorkingDirectory':meta['state_dir'],
         'Environment':env,'EnvironmentFiles':[],'PassEnvironment':[],'UnsetEnvironment':[],
         'ExecStart':[['/usr/bin/python3',shlex.split(lines['ExecStart']),False]],
         **{key:[] for key in ['ExecStartPre','ExecStartPost','ExecStop','ExecStopPost','ExecReload']},
         'ReadWritePaths':shlex.split(lines['ReadWritePaths']),'RequiresMountsFor':shlex.split(lines.get('RequiresMountsFor','')),
         **{key:True for key in ['NoNewPrivileges','PrivateTmp','ProtectKernelTunables','ProtectKernelModules','ProtectControlGroups','RestrictSUIDSGID','LockPersonality']},
-        'ProtectSystem':'strict','ProtectHome':'read-only','CapabilityBoundingSet':(1<<21) if lines['CapabilityBoundingSet']=='CAP_SYS_ADMIN' else 0,
+        'ProtectSystem':'strict','ProtectHome':'read-only','CapabilityBoundingSet':caps,
         'RestrictAddressFamilies':[True,['AF_UNIX','AF_INET','AF_INET6']],'UMask':0o77,
         'RootDirectory':'','RootImage':'','DynamicUser':False,'PrivateUsers':False,'Restart':'on-failure','RestartUSec':5000000,'TimeoutStopUSec':20000000}
 

@@ -23,16 +23,20 @@ def validate(value):
     return dict(value)
 
 
-def observe(directory,policy):
+def observe(directory,policy,filesystem=None):
     policy=validate(policy)
     result={'capability':CAPABILITY,'enabled':policy is not None,'status':'disabled',
             'blocks_new_work':False,'reason_code':None,'minimum_free_bytes':None,
             'minimum_free_inodes':None,'free_bytes':None,'free_inodes':None,
             'scope':'Control filesystem headroom snapshot; not reserved space, quota, retention or a start guarantee'}
     if policy is None:return result
+    if filesystem is not None and filesystem.policy is not None:
+        result.update(filesystem_enforced=True,filesystem='ext4',
+                      filesystem_bytes=filesystem.policy['bytes'],filesystem_inodes=filesystem.policy['inodes'])
     result.update(minimum_free_bytes=policy['minimum_free_mib']*MIB,
                   minimum_free_inodes=policy['minimum_free_inodes'])
     try:
+        if filesystem is not None:filesystem.origin()
         fd=os.open(directory,os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW)
         try:space=os.fstatvfs(fd)
         finally:os.close(fd)
@@ -58,6 +62,6 @@ class Pressure(JobError):
                 'retryable':True,'original_operation_required':True}
 
 
-def require(directory,policy):
-    observation=observe(directory,policy)
+def require(directory,policy,filesystem=None):
+    observation=observe(directory,policy,filesystem)
     if observation['blocks_new_work']:raise Pressure(observation)

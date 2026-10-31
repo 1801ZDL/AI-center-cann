@@ -4,6 +4,8 @@
 
 `GET /api/control-storage`要求`jobs:read`，返回只读的`enabled,status,blocks_new_work,reason_code,free_bytes,free_inodes,minimum_free_bytes,minimum_free_inodes`和范围说明，不公开路径/设备身份。`GET /api/jobs`的`control_storage`字段返回同一类快照。状态为disabled/ready/pressure/unavailable；门槛是准入保护，非硬配额或预留保证。
 
+启用原生控制盘后，状态额外包含 `filesystem_enforced=true,filesystem,filesystem_bytes,filesystem_inodes`；作业摘要里的 `policy.control_filesystem`也只公开类型和容量，不公开挂载路径、设备号或存储ID。外侧控制根不匹配时状态为unavailable并暂停新增工作，原服务的私有视图继续保存原任务状态。缺少这些字段不能推断已经启用原生模式，具体安装/恢复边界见[STORAGE.md](STORAGE.md)。
+
 新任务、新输入及未提交输入写入在低余量时返回503：`error=control_storage_pressure,retryable=true,original_operation_required=true`，reason_code为control_storage_bytes/control_storage_inodes/control_storage_readonly/control_storage_unavailable。恢复容量后继续原幂等键、原input及原偏移，不据此重复计算。相同已提交分块和已有任务回执保持原身份。Node新claim无grant，未消费start返回wait；原grant恢复、心跳、结果上传及complete仍可继续。实际ENOSPC/EDQUOT仍可能返回原507；上述状态接口不能替代完成回执。
 
 ## 归档算子分析报告
