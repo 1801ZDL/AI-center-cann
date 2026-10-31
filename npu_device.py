@@ -63,7 +63,8 @@ def observe(policy):
         device=next((item for item in devices if item['id']==physical),None)
         if device is None:raise ValueError('Registered physical NPU is missing from management inventory')
         selected.append({'id':physical,'name':device.get('name','UNKNOWN'),'health':device['health'],'utilization_pct':device['utilization_pct'],
-                         'process_count':sum(item['device_id']==physical for item in processes)})
+                         'process_count':sum(item['device_id']==physical for item in processes),
+                         **{key:device[key] for key in ['temperature_c','power_w'] if device.get(key) is not None}})
     return {'status':'ok','sampled_at':now(),'devices':selected,'policy_sha256':fingerprint(policy)}
 
 
@@ -87,6 +88,9 @@ def observation(body,policy):
         name=item.get('name','UNKNOWN')
         if not isinstance(name,str) or not 1<=len(name)<=80 or any(ord(c)<32 for c in name):raise ValueError('Invalid NPU management name')
         result.append({**{key:item[key] for key in ['id','health','utilization_pct','process_count']},'name':name})
+        for key,lower,upper in [('temperature_c',-100,250),('power_w',0,100000)]:
+            value=item.get(key)
+            if type(value) in {int,float} and math.isfinite(value) and lower<=value<=upper:result[-1][key]=value
     if {item['id'] for item in result}!=set(policy['device_ids']):raise ValueError('NPU observation has repeated devices')
     return {'status':'ok','devices':result,'sampled_at':sampled,'policy_sha256':fingerprint(policy)}
 

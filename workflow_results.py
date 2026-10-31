@@ -43,6 +43,8 @@ class ResultStore:
              'input_id':job['input']['id'],'input_manifest_sha256':job['input']['manifest_sha256'],
              'evidence':{'result':job['parameters']['result_file'],'environment':'results/_lab/environment.json'},
              'metrics':{},'assertion_source':'workload-produced; numerical truth is not independently certified'}
+        from npu_conditions import fallback
+        row['device_conditions']=job.get('device_conditions',fallback(job))
         if job.get('depends_on'):
             row['depends_on']=job['depends_on'];row['dependency_provenance_sha256']=job.get('dependency_state',{}).get('provenance_sha256')
             if job.get('input_provenance'):row['evidence']['input_provenance']='dependency-inputs.json'
@@ -112,7 +114,10 @@ class ResultStore:
         visible={job['id']:job for job in self.jobs.access.readable_jobs(principal,self.jobs.all())}
         with self.jobs.connect() as db:records=[json.loads(row[0]) for row in db.execute('SELECT record FROM workflow_results ORDER BY rowid DESC')]
         records=[row for row in records if row['job_id'] in visible and (kind is None or row['kind']==kind)]
-        for row in records:row['archive_state']=visible[row['job_id']].get('archive_status',{}).get('state','available')
+        from npu_conditions import fallback
+        for row in records:
+            row['archive_state']=visible[row['job_id']].get('archive_status',{}).get('state','available')
+            row.setdefault('device_conditions',fallback(visible[row['job_id']]))
         return {'rows':records[offset:offset+limit],'total':len(records),'limit':limit,'offset':offset}
 
     def csv(self,principal,kind=None):
@@ -123,7 +128,7 @@ class ResultStore:
             page=self.rows(principal,kind,200,offset);rows.extend(page['rows']);offset+=len(page['rows'])
             if offset>=page['total']:break
         out=io.StringIO(newline='');writer=csv.writer(out)
-        keys=['job_id','owner','project','kind','name','state','passed','environment_locked','input_id','metrics','recorded_at','archive_state','failure_stage','depends_on','dependency_provenance_sha256']
+        keys=['job_id','owner','project','kind','name','state','passed','environment_locked','input_id','metrics','recorded_at','archive_state','failure_stage','depends_on','dependency_provenance_sha256','device_conditions']
         writer.writerow(keys)
         for row in rows:
             values=[]

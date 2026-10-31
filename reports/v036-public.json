@@ -57,6 +57,7 @@
     "attempt_inventory.py",
     "executor.py",
     "npu_admission.py",
+    "npu_device.py",
     "inputs.py",
     "jobs.py",
     "lab_client.py",
@@ -64,6 +65,7 @@
     "server.py",
     "templates.py",
     "worker.py",
+    "workflow_results.py",
     "resources.py",
     "queue_policy.py",
     "preflight.py",
@@ -102,7 +104,8 @@
     "report_view.py",
     "source_grants.py",
     "node_quota_admin.py",
-    "node_quota_change.py"
+    "node_quota_change.py",
+    "npu_conditions.py"
   ],
   "reproduced_by_public_ci": false,
   "raw_evidence_in_repository": false,

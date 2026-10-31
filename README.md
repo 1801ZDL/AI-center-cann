@@ -1,5 +1,7 @@
 # AI-center-cann
 
+新增任务设备条件证据：认证Node管理采样与启动/清退边界关联到原attempt，结果表、CSV和下载归档区分告警、缺项与采样未见告警；历史数据不补造验证，原精度/性能断言保留。1038项回归、同机隔离Root安装31项及8项浏览器检查通过，设备读数为合成协议证据。每日主动逐卡UT及实际频率适配仍待，见[NPU_CONDITIONS.md](NPU_CONDITIONS.md)。
+
 已有用户的Node工作区与缓存可经停止态计划、中央批准、内核配额CAS和新鲜心跳调整，保留原缓存；旧快照不能丢失已保留的配额历史。最终1020项回归及同机Root安装32项通过，见[NODE_QUOTA.md](NODE_QUOTA.md)与[PROGRESS.md](PROGRESS.md)。每日逐卡UT新需求已登记[PUBLIC-002](BACKLOG.md)，尚未创建定时器或运行主动自检。
 
 跨轮实验新增指定产物授权：本人明确批准旧任务的指定文件交给新预算，Agent仍不能读取旧任务/日志；支持撤销、传输中重启和恢复后重新审批。最终998项回归及同机隔离Root安装30项通过，历史精度11/5376差异保持原样。使用方法见[SOURCE_GRANTS.md](SOURCE_GRANTS.md)，证据范围见[PROGRESS.md](PROGRESS.md)。

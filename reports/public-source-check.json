@@ -1,15 +1,15 @@
 {
   "schema": "ai-center-cann-source-check/v1",
-  "recorded_at": "2026-10-31T08:10:35.796724+00:00",
+  "recorded_at": "2026-10-31T08:36:49.467170+00:00",
   "passed": true,
-  "python_unit_tests": 1020,
+  "python_unit_tests": 1038,
   "unit_skipped": 0,
-  "unit_seconds": 226.885,
-  "unit_log_sha256": "5da18b5a50624226c62ad905edd3c87ff10601400a79b3522107a656c6ce9bab",
+  "unit_seconds": 218.602,
+  "unit_log_sha256": "fed2c82e8c63253d2ab392224fd4b68163e400450e05cd894c08775129e043fe",
   "python": "Python3.12.3",
   "javascript_syntax_passed": true,
   "command": "bash scripts/check.sh /usr/bin/python3",
-  "scope": "Stopped enrolled Node UID work/cache quota maintenance with central approval, real native CAS/EDQUOT, preserved cache key/inode/IR, 13 administrative SIGKILLs and key rotation. Current-history guards reject older controller/Node snapshots before native rebinding, and latest backups restore warm. Same-host isolated Root CPU acceptance, not online/shared-Node resize, real host account/PID1/two-host/NPU acceptance.",
+  "scope": "Authenticated Node management evidence linked to attempts and workflow rows; bounded adverse history, historical/missing telemetry unverified, original workload assertions retained. Packaged browser HTTP/ACL/archive/CSV and same-host isolated Root CPU regression; synthetic NPU telemetry only, no new device computation or daily active UT.",
   "production_source_sha256": {
     "auth.py": "6bd9b70566fc8dd9b43d3965df5e1fce4c1385e3192239a83052cc0e04778d5f",
     "owner_identity.py": "5a48cf78584b2f717ac45594a73da569589cde6d9441037a0aedffe423f1515b",
@@ -40,19 +40,19 @@
     "attempt_inventory.py": "f968f45e14853c2a810bbc33a921b1c8e40b7e553065233c7eb74e05134f0a2c",
     "executor.py": "42cdad27b62cf936263ee8cc41d11ea75260120a4e90a7b4213df5ad82fb677b",
     "npu_admission.py": "c6d39a24b5f4acde33041864e07642f9c1d72d70bb17ce6ef862d7dbda698f1e",
-    "npu_device.py": "97cc78f229163dae267a7ed351fce92b3fc0bbeb781d70d758cedef3d30ea47e",
+    "npu_device.py": "17930b168dce80fd384ef29e1afa97827840463d561c5a4d6640ac015dc8e97c",
     "inputs.py": "e7d16e523275fd3a263374a03e765bd3d915b37f83197ce1269e8dc3ff708dc4",
-    "jobs.py": "ea2ee186175d63e6038979053791500505929f69dcb5f30e5d6b0d13cef3ce97",
+    "jobs.py": "7d175e113834a54eae57da291d0a4b72c2f7decaaaebc90eea09e54c4cd3c072",
     "lab_client.py": "e7da7886406571ceea4439b3a159a063c7ae6d30dd3d372ad5a503aaceb8d4e4",
     "client_archive.py": "eec04a9574e8a87d90dc54c556d4bfe6462dfb92f0332bdc6996ad64e7121c97",
     "archive_api.py": "3e9f6539e3760cb4d68b2f85a8f01b751441e3d79b70675aac1f45e90a527e57",
-    "nodes.py": "48bb7099cc741d4423a86e4c2fcee9dcfef9542087c3577430f6083a819cc6b4",
+    "nodes.py": "5cb72d8beb4a8c81000bd56925e11277479bb55a03562f057bffca4264cbe5f5",
     "server.py": "0a89c7d0b479130a9c625f2562f19c9266058818f8469c15a3d472df9f8c9ef3",
     "templates.py": "72e1a263b07624eb8854ed0ada9cbd4cf9754072719ba0663b8b557b5a203ba8",
-    "worker.py": "097a2359e637f3dce8ec6120ea6227af0d8531a7b568d35371ecaae35247eb8d",
+    "worker.py": "c26a5ada51d01df1fa4a1b1211930245df1b471eadc072065335ead3ace6e099",
     "workflow_runner.py": "239bbcb5eca6414d85f7172808a710896d9743660289039626e54672088078f7",
     "workflow_spec.py": "3c1403328db9e4a3ab228056559250127fd3ff985fe009f1f4646045257dfb6a",
-    "workflow_results.py": "4af089654e6867b3609e7719ec392c7792977ccb79d8d09f1af3ac58fff22377",
+    "workflow_results.py": "64768daa8c90b8a13250dc87535f48851af52294b61972833559e2d83893a244",
     "state_lock.py": "bbad124c6c10376d51e94e49a3a440722bdc8b7999e3396bb6488b973963467a",
     "resources.py": "c480d97bfac202e36350f15ef9474a08a8e483ffbfb5c78113a7c62676f6e12e",
     "queue_policy.py": "461ef2e9ab288aeccd0d484d4a857712fa3508a601a9cf5354eeffdb5f0940b2",
@@ -75,7 +75,7 @@
     "storage_files.py": "c2dfe4aec3a4dec6bf8802655eb9e72a414e307d5eb6f4725da99f0484642ebf",
     "storage_lifecycle.py": "cc5778edf04bf1118ac940f6954cc488ae7ceedbee373568af87c6add3cde098",
     "node_storage.py": "185bdeb757c0644cf6319460d74ea15061cf6329b4707354696f8e156a16370c",
-    "deployment.py": "dfe3916a1e8c441103227044e559decfc7f6f7c8a2c80cbc0237671fda6a0ee8",
+    "deployment.py": "20b8f2abf7b29b256cb48cbcfb122e39e02cbf045e95056df018df5b3cd69460",
     "maintenance.py": "6782a11188ccb415b0c622675427f612b12256b8de349c149dddf88257e9f163",
     "servicectl": "51c83cff183dbe45a9f33bbf0f15850aca8c26a501f0dce2462abee2d694a2fd",
     "accessctl": "c0d0a86c7a027036e202aff0795eae0001beec676c393d13e73a763d685ccdc9",
@@ -106,7 +106,8 @@
     "report_view.py": "32e1e4b159ba22789bd56aea6ab1a6de8e679306a68972100dc1bb64df650618",
     "source_grants.py": "663f81eb6087414ae862edc3b37e475aa5314fcf26e71604b050d496c9224600",
     "node_quota_admin.py": "a982a3768f2e624f7a1f3d10b15c2a5be92c9db819299dff2866d9c652599577",
-    "node_quota_change.py": "fad91ce2ad305da5a130e084365eff428d958665e9c4c28290e9bc5018efba06"
+    "node_quota_change.py": "fad91ce2ad305da5a130e084365eff428d958665e9c4c28290e9bc5018efba06",
+    "npu_conditions.py": "c16743eca5212fe526401757b8bafd567b5afe22b3b8d7d85d9a1ce523a2ff98"
   },
   "cpu": 2,
   "memory_mib": 2048,
@@ -8081,5 +8082,53 @@
     "prior_controller_and_node_downgrade_rejected": true,
     "independent_read_only_ext4_images": 2,
     "peer_limits_unchanged": true
+  },
+  "npu_conditions": {
+    "passed": true,
+    "scope": "Authenticated Node management evidence linked to attempts and workflow rows; bounded adverse history, historical/missing telemetry unverified, original workload assertions retained. Packaged browser HTTP/ACL/archive/CSV and same-host isolated Root CPU regression; synthetic NPU telemetry only, no new device computation or daily active UT.",
+    "job_ids": {
+      "full-r1": "job-379c7cade8ea",
+      "installed-r1": "job-bb5db05ff8de",
+      "browser-r2": "job-bfcbcc9b7911"
+    },
+    "unit_tests": 1038,
+    "unit_seconds": 218.602,
+    "root_checks": 31,
+    "installed_source_manifest_matches": true,
+    "model_invocations": 0,
+    "npu_kernel_launches": 0,
+    "host_accounts_modified": false,
+    "global_services_or_driver_modified": false,
+    "production_ready": false,
+    "overall_goal_complete": false,
+    "daily_card_ut": {
+      "id": "PUBLIC-002",
+      "passive_evidence": "implemented",
+      "active_ut": "backlog",
+      "frequency_adapter": "not_implemented",
+      "timer_created": false,
+      "active_probe_submitted": false
+    },
+    "failed_checks": [
+      {
+        "job": "job-bea8c307df9c",
+        "stage": "browser fixture download",
+        "reason": "Bearer-configured Chromium download was canceled; same scenario succeeded with personal Basic login. No product token-download fix or hardware acceptance claimed."
+      }
+    ],
+    "browser_checks": [
+      "four condition labels separate from failure",
+      "legacy remains unverified",
+      "private normalized evidence download SHA",
+      "CSV conditions and owner scope",
+      "other owner denied archive and rows",
+      "HTML escaping",
+      "mobile width",
+      "no mutation/model/external requests"
+    ],
+    "synthetic_device_telemetry_only": true,
+    "original_assertions_preserved": true,
+    "unknowns_not_promoted": true,
+    "controller_evidence_separate_from_node_receipt": true
   }
 }

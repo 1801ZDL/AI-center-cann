@@ -281,6 +281,8 @@ class NodeRegistry:
             try:report['npu']=observation(body.get('npu_observation'),profile['npu'])
             except ValueError as error:raise JobError(str(error),409) from None
             report['capabilities'].append(CAPABILITY)
+            from npu_conditions import CAPABILITY as CONDITIONS
+            if CONDITIONS in body.get('capabilities',[]):report['capabilities'].append(CONDITIONS)
             from device_qualification import CAPABILITY as ACCESS
             if ACCESS in body.get('capabilities',[]):
                 from workflow_spec import runtime_manifest
@@ -321,6 +323,11 @@ class NodeRegistry:
             self.quota_changes.observe(node_id,profile,report,db)
             db.execute('UPDATE worker_nodes SET report=? WHERE id=?',(json.dumps(report),node_id))
             self.handoff.observe(node_id,profile,report,db,identities)
+            if profile.get('npu'):
+                from npu_conditions import capture
+                for job in self.jobs.all(db):
+                    if job.get('node_id')==node_id and job['state'] in ACTIVE and job['resources']['npu']:
+                        capture(job,report['npu']);self.jobs.write(db,job)
         return {'node_id':node_id,'accepted':True}
 
     def _grant(self,job):
@@ -546,6 +553,8 @@ class NodeRegistry:
                 if wanted['npu']:
                     from npu_device import fingerprint
                     job['_npu_policy_sha256']=fingerprint(profile['npu'])
+                    from npu_conditions import capture
+                    capture(job,node['report']['npu'])
                     if job.get('template')=='npu_access_probe' or job.get('template') in WORKFLOWS:
                         from device_qualification import decision
                         job['_npu_access_context']=decision(node,job['owner'],npus[0])['context_sha256']
@@ -689,19 +698,29 @@ class NodeRegistry:
                     for chunk in iter(lambda:source.read(1024*1024),b''):digest.update(chunk)
                 if entry.get('size')!=uploaded[entry['name']] or digest.hexdigest()!=entry.get('sha256'):raise JobError('Artifact checksum mismatch',409)
             if result['status']=='succeeded' and 'environment.json' not in uploaded:raise JobError('Missing execution environment evidence')
-            allowed={'status','exit_code','started_at','finished_at','reason','termination_confirmed','execution_cleanup_confirmed','execution_finished_at','oom_killed','failure_stage','execution_status','npu_release_confirmed','npu_release_observation','npu_release_basis','workspace_release_confirmed','cache_release_confirmed'}
+            allowed={'status','exit_code','started_at','finished_at','reason','termination_confirmed','execution_cleanup_confirmed','execution_finished_at','oom_killed','failure_stage','execution_status','npu_release_confirmed','npu_release_observation','npu_release_basis','npu_admission_observation','workspace_release_confirmed','cache_release_confirmed'}
             result={key:value for key,value in result.items() if key in allowed}
             if not job['resources']['npu']:
-                result.pop('npu_release_confirmed',None);result.pop('npu_release_observation',None);result.pop('npu_release_basis',None)
+                result.pop('npu_release_confirmed',None);result.pop('npu_release_observation',None);result.pop('npu_release_basis',None);result.pop('npu_admission_observation',None)
             elif result.get('npu_release_observation') is not None:
                 from npu_admission import selected_reading
                 record=result['npu_release_observation']
                 try:
                     if record['policy_sha256']!=job['_npu_policy_sha256']:raise ValueError('Different NPU contract')
                     selected=selected_reading(job['allocation']['npu_ids'],(record['devices'],[]))
+                    for item in selected:
+                        source=next(row for row in record['devices'] if row['id']==item['id'])
+                        for key,lower,upper in [('temperature_c',-100,250),('power_w',0,100000)]:
+                            value=source.get(key)
+                            if type(value) in {int,float} and math.isfinite(value) and lower<=value<=upper:item[key]=value
                     result['npu_release_observation']={'sampled_at':str(record['sampled_at'])[:64],
                         'policy_sha256':record['policy_sha256'],'devices':selected}
                 except (KeyError,TypeError,ValueError,RuntimeError):raise JobError('Invalid NPU release observation',409) from None
+            from npu_conditions import finalize
+            if result['status'] in TERMINAL:finalize(self.jobs,job,result)
+            # The original private receipt need not be duplicated in result.json;
+            # only the normalized, attempt-bound central archive is public.
+            result.pop('npu_admission_observation',None)
             from workflow_spec import WORKFLOWS
             if job.get('template') in WORKFLOWS:
                 job['workflow_result']=self.jobs.results.record(job,result,db)

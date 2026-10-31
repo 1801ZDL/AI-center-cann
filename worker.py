@@ -150,6 +150,8 @@ class Worker:
         if self.config.get('npu'):
             from npu_device import observe,fingerprint,CAPABILITY
             capabilities.append(CAPABILITY)
+            from npu_conditions import CAPABILITY as CONDITIONS
+            capabilities.append(CONDITIONS)
             if time.monotonic()-self.npu_sampled>=10 or self.npu_cache is None:
                 self.npu_sampled=time.monotonic()
                 try:self.npu_cache=observe(self.config['npu'])
@@ -251,6 +253,8 @@ class Worker:
     def finish_attempt(self,engine,result):
         # Helpers and workspace cleanup remain inside the reserved resource lifetime.
         if engine.grant['resources']['npu']:
+            admission=read_json(engine.control/'npu-admission.json')
+            if admission is not None:result['npu_admission_observation']=admission
             if engine.state.get('started_epoch'):
                 from npu_device import check
                 result['npu_release_observation']=check(engine.grant,engine.config['npu'])

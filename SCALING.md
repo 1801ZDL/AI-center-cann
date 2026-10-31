@@ -69,4 +69,4 @@ agent可以提出请求、分析有权限的结果和草拟下一轮实验；不
 
 跨轮迭代已有[SOURCE_GRANTS.md](SOURCE_GRANTS.md)指定产物授权：普通个人明确批准源文件交给新预算，保持来源任务ACL，恢复冻结旧授权。新服务器沿同一任务协议使用；它不新增设备权限、输入仓库按预算隔离或跨机故障接管。实际安装与原始失败保留证据见PROGRESS.md。
 
-现已补已有owner的停止态Node工作/缓存配额CAS及旧快照历史保护，见[NODE_QUOTA.md](NODE_QUOTA.md)。仍需共享多Node存储协调、换盘迁移、真实宿主用户/PID1和跨机故障验收。每日逐卡自检与测量可信度标记登记为PUBLIC-002，尚未运行或设定时器。
+现已补已有owner的停止态Node工作/缓存配额CAS及旧快照历史保护，见[NODE_QUOTA.md](NODE_QUOTA.md)。仍需共享多Node存储协调、换盘迁移、真实宿主用户/PID1和跨机故障验收。PUBLIC-002已补[NPU_CONDITIONS.md](NPU_CONDITIONS.md)的被动观测与结果条件分列；每日主动逐卡UT和实际频率适配仍待，尚未设定时器。

@@ -25,7 +25,7 @@ from templates import expand_template
 TERMINAL = {'succeeded', 'failed', 'cancelled', 'timed_out'}
 ACTIVE = {'reserved', 'running', 'cancelling', 'needs_attention'}
 KINDS = {'command', 'build', 'accuracy', 'performance', 'simulation', 'ir'}
-ARTIFACT_NAMES = {'stdout.log', 'stderr.log', 'request.json', 'result.json', 'environment.json', 'artifacts.json','validated-result.json','artifact-hashes.json','npu-admission.json','dependency-inputs.json'}
+ARTIFACT_NAMES = {'stdout.log', 'stderr.log', 'request.json', 'result.json', 'environment.json', 'artifacts.json','validated-result.json','artifact-hashes.json','npu-admission.json','dependency-inputs.json','npu-conditions.json'}
 
 
 class JobError(ValueError):

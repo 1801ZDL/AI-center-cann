@@ -67,6 +67,8 @@ CORE.extend(['source_grants.py','SOURCE_GRANTS.md'])
 OPTIONAL_ADMIN_FILES.update({'source_grants.py','SOURCE_GRANTS.md'})
 CORE.extend(['node_quota_admin.py','node_quota_change.py','NODE_QUOTA.md'])
 OPTIONAL_ADMIN_FILES.update({'node_quota_admin.py','node_quota_change.py','NODE_QUOTA.md'})
+CORE.extend(['npu_conditions.py','NPU_CONDITIONS.md'])
+OPTIONAL_ADMIN_FILES.update({'npu_conditions.py','NPU_CONDITIONS.md'})
 
 
 class DeployError(ValueError):pass

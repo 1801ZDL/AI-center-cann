@@ -228,5 +228,14 @@ class InputTests(unittest.TestCase):
         for args in [{'kind':'unknown'},{'limit':0},{'offset':-1}]:
             with self.assertRaises(JobError):self.jobs.results.rows(self.alice,**args)
 
+    def test_device_alert_does_not_rewrite_raw_performance_or_claim_numerical_qualification(self):
+        job,result=self.record_fixture('performance')
+        job['device_conditions']={'status':'adverse_observed','numerical_qualification':'unverified',
+            'performance_qualification':'unverified','daily_ut':'not_linked'}
+        with self.jobs.transaction() as db:record=self.jobs.results.record(job,result,db)
+        self.assertTrue(record['passed']);self.assertEqual(result['status'],'succeeded')
+        self.assertEqual(record['metrics']['mean_us'],30)
+        self.assertEqual(record['device_conditions'],job['device_conditions'])
+
 
 if __name__=='__main__':unittest.main()

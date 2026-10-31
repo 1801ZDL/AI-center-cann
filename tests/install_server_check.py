@@ -567,6 +567,10 @@ try:
     if options.native_toolchain:request['parameters']['artifacts']={'file_mib':8,'total_mib':16}
     status,response=api('/api/jobs',request);assert status==201,response
     first=wait(response['job']['id']);assert first['state']=='succeeded',first
+    assert first['device_conditions']['status']=='not_applicable' and first['device_conditions']['daily_ut']=='not_linked'
+    rows=api('/api/results')[1]['rows'];condition_row=next(row for row in rows if row['job_id']==first['id'])
+    assert condition_row['device_conditions']==first['device_conditions'] and condition_row['passed']
+    check('Installed CPU workflow and result row say no NPU requested, without claiming a device numerical or performance UT')
     first_control=node_state/'attempts'/first['attempt_id']/'control'
     deadline=time.monotonic()+15
     while time.monotonic()<deadline:

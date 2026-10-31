@@ -29,9 +29,10 @@ class NpuDeviceTests(unittest.TestCase):
     def setUp(self):
         self.temp=tempfile.TemporaryDirectory(dir=ROOT/'runtime',prefix='test-npu-device-');self.root=Path(self.temp.name)
         self.jobs=JobStore(self.root,{'username':'operator','password':'offline-only','container':'zdl'})
+        self.passwords={}
         for user in ['alice','bob']:
             directory=self.root/user;directory.mkdir()
-            self.jobs.access.create_user(user,directory,environments=['worker-python'],quota={'npu':1})
+            self.passwords[user]=self.jobs.access.create_user(user,directory,environments=['worker-python'],quota={'npu':1})
         domain=self.jobs.resources.get(self.jobs.backend.physical_id)
         self.jobs.resources.configure(domain['physical_id'],{**domain['policy'],'max_running':2},domain['revision'])
         self.npu=policy();self.nodes=[]
@@ -134,7 +135,7 @@ class NpuDeviceTests(unittest.TestCase):
 
     def test_finished_container_with_uncleared_device_is_not_cleaned_or_completed(self):
         worker=object.__new__(Worker);worker.upload=Mock()
-        engine=Mock();engine.grant={'resources':{'npu':1}};engine.state={'started_epoch':1};engine.config={'npu':self.npu}
+        engine=Mock();engine.control=self.root/'control';engine.grant={'resources':{'npu':1}};engine.state={'started_epoch':1};engine.config={'npu':self.npu}
         with patch('npu_device.check',side_effect=RuntimeError('device not clear')):
             with self.assertRaises(RuntimeError):worker.finish_attempt(engine,{'status':'succeeded'})
         engine.cleanup.assert_not_called();worker.upload.assert_not_called()
@@ -142,6 +143,7 @@ class NpuDeviceTests(unittest.TestCase):
     def test_no_kernel_probe_still_requires_device_release_confirmation(self):
         worker=object.__new__(Worker);worker.upload=Mock()
         engine=Mock();engine.grant={'resources':{'npu':1},'template':'npu_probe'}
+        engine.control=self.root/'control'
         engine.state={'started_epoch':1};engine.config={'npu':self.npu}
         with patch('npu_device.check',side_effect=RuntimeError('device state unconfirmed')):
             with self.assertRaises(RuntimeError):worker.finish_attempt(engine,{'status':'failed'})
