@@ -244,3 +244,7 @@ v0.21 节点 heartbeat 的 node-spool-v1 能力附带 disk_free_inodes（非负�
 版本化POST /api/jobs可携带顶层depends_on（最多8个同owner已有工作流）和artifact_inputs（最多32个来源/目标映射），不支持客户端路径访问中央文件。GET job返回dependency_state和完成后的input_provenance；未就绪时无attempt/allocation。POST /api/jobs/JOB/retry-inputs只接受{}，本人未启动任务可继续原摘要交接，不接受来源或命令覆盖。详见DEPENDENCIES.md。
 
 compiler-case是对原任务/日志/artifact-chunk读取接口的固定路径组合，不新增执行端点。完整小IR与封存驱动、受保护工具锁绑定；未知归档仍按原终态门禁拒绝。读取仅需jobs:read，个人候选不能经该getter提交，详见COMPILER_DIAGNOSTICS.md。
+
+## 指定来源产物授权
+
+`/api/me.dependency_capabilities`声明`owner-source-grants-v1`。普通个人账号以`POST /api/source-grants/preview`读取有界、无写入的审批计划，再以`POST /api/source-grants`提交原计划；`GET /api/source-grants`及`GET /api/source-grants/ID`读取本人授权，`POST /api/source-grants/ID/revoke`接收空对象。预算凭据只看到目标为自身预算的授权元数据，不能创建/撤销，也不获得来源job读取权限。工作流`artifact_inputs[]`可添加`source_grant`，其来源、文件和目标预算须精确匹配。字段、限额和恢复语义见[SOURCE_GRANTS.md](SOURCE_GRANTS.md)。

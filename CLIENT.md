@@ -148,3 +148,5 @@ MCP启动可加`--archive --archive-root /本人/归档`，或`--archive --local
 新版客户端声明compiler-large-ir-v2：同一只读compiler-case可校验最多8 MiB封存IR，但大文件仅返回有限脱敏预览、完整SHA和已校验长度。source_complete=false时不能据预览生成精确补丁；完整文件继续通过本人归档下载。配方v2与资源申请见COMPILER_DIAGNOSTICS.md。
 
 客户端accuracy-case-v1新增`labctl --profile PRIVATE accuracy-case job-ID`及`accuracy_diagnostic.py mcp --profile PRIVATE --job-id job-ID`。只读绑定CPU离线比较任务，完整张量经校验与重算后只交付有限差异样本；参考/容差变化不会被标为算子修复。输入和实际验证范围见[ACCURACY.md](ACCURACY.md)。
+
+个人客户端新增`source-grant plan/approve/list/show/revoke`，使用普通个人profile批准指定历史产物交给一个实验预算。新manifest声明`owner-source-grants-client-v1`，仅增加CLI和说明，不安装服务端模块或模型。Agent继续使用目标预算profile与原固定MCP，不能签发授权。命令及私有计划文件要求见[SOURCE_GRANTS.md](SOURCE_GRANTS.md)。

@@ -1,5 +1,7 @@
 # AI-center-cann
 
+跨轮实验新增指定产物授权：本人明确批准旧任务的指定文件交给新预算，Agent仍不能读取旧任务/日志；支持撤销、传输中重启和恢复后重新审批。最终998项回归及同机隔离Root安装30项通过，历史精度11/5376差异保持原样。使用方法见[SOURCE_GRANTS.md](SOURCE_GRANTS.md)，证据范围见[PROGRESS.md](PROGRESS.md)。
+
 任务详情新增精度、编译、仿真和历史性能报告摘要，仿真可按核切换查看管线记录区间。网页核对报告与确认归档的对应关系，并区分原任务状态、原采集异常和未重算的源文件；完整核验仍用个人CLI/MCP。接口及限制见[REPORT_VIEW.md](REPORT_VIEW.md)。
 
 仿真流水新增CPU分析载荷及个人simulation-case CLI/只读MCP：按指令名和PC关联管线、统计区间并集并保留采集异常。962项回归及同机隔离Root安装30项通过；真实历史8核数据完成两用户离线分析及恢复，完整原件私有归档，模型接口只交付有限摘要。见[SIMULATION.md](SIMULATION.md)及[PROGRESS.md](PROGRESS.md)，不代表新的设备采集验收。

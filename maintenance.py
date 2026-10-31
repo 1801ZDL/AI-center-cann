@@ -336,6 +336,8 @@ def restore(prefix,archive_path,new_state,max_bytes=10*1024**3,payload_config=No
             if meta['role']=='controller':
                 from experiment_budget import rebind_restored as freeze_experiments
                 freeze_experiments(stage)
+                from source_grants import rebind_restored as freeze_source_grants
+                freeze_source_grants(stage)
                 from audit_retention import rebind_restored
                 rebind_restored(stage/'identities.sqlite3',restored_config)
                 from storage_lifecycle import rebind_restored
@@ -452,6 +454,9 @@ def require_features(state,role,manifest):
             with sqlite3.connect('file:'+str(path)+'?mode=ro',uri=True) as db:
                 if any(json.loads(row[0]).get('depends_on') for row in db.execute('SELECT data FROM jobs')):
                     raise DeployError('Dependency jobs require matching stage admission support; refusing downgrade')
+    if role=='controller' and 'source_grants.py' not in manifest.get('files',{}):
+        from source_grants import require_compatible
+        require_compatible(state)
     if role=='controller' and 'dependency_conditions.py' not in manifest.get('files',{}):
         path=Path(state)/'jobs.sqlite3'
         if path.exists():

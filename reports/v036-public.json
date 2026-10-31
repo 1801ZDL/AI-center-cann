@@ -98,7 +98,8 @@
     "dependency_conditions.py",
     "simulation_data.py",
     "simulation_diagnostic.py",
-    "report_view.py"
+    "report_view.py",
+    "source_grants.py"
   ],
   "reproduced_by_public_ci": false,
   "raw_evidence_in_repository": false,

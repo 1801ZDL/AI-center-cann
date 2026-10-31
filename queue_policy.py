@@ -75,5 +75,6 @@ def protected(jobs,rows,physical_id,db,identities=None):
     for job in ordered(rows,jobs.policy,epoch):
         if age(job,epoch)<threshold(jobs.policy):break
         target=valid_target(jobs,job,db,epoch)
-        if target and target['physical_id']==physical_id and not jobs.dispatch_permission(job,active,db,identities):return job
+        if (target and target['physical_id']==physical_id and not jobs.dispatch_permission(job,active,db,identities)
+            and not jobs.dependencies.reason(job,db)):return job
     return None

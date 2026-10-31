@@ -157,6 +157,8 @@ class JobStore:
         self.dependencies=Dependencies(self)
         from experiment_budget import Budgets
         self.experiment_budgets=Budgets(self)
+        from source_grants import SourceGrants
+        self.source_grants=SourceGrants(self)
 
     def connect(self):
         self.control_filesystem.check()
@@ -449,7 +451,7 @@ class JobStore:
             self.nodes.probe_submission(spec,principal,db)
             if spec.get('input'):
                 self.lifecycle.available('input',spec['input']['id'],db)
-            self.dependencies.available(spec,db)
+            self.dependencies.available({**spec,'owner':principal.id},db)
             rows = self.all(db)
             if sum(j['state'] == 'queued' for j in rows) >= self.policy['max_queued'] or sum(j.get('archive_status',{}).get('state')!='purged' for j in rows) >= self.policy['max_jobs']:
                 raise JobError('本 Demo 的作业数量已达到上限。', 409)

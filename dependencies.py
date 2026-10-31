@@ -35,12 +35,19 @@ def fields(request):
     if not isinstance(imports,list) or len(imports)>MAX_IMPORTS:raise JobError('Choose at most 32 declared artifact inputs')
     clean=[];targets=set()
     for item in imports:
-        if (not isinstance(item,dict) or set(item)-{'job_id','name','target','sha256','executable','when'} or not {'job_id','name','target'}<=set(item)
+        if (not isinstance(item,dict) or set(item)-{'job_id','name','target','sha256','executable','when','source_grant'} or not {'job_id','name','target'}<=set(item)
             or item['job_id'] not in parents or not relative_name(item['name']) or not item['name'].startswith(('results/','ir/','profile/'))
             or not safe_name(item['target']) or item['target'] in targets
             or type(item.get('executable',False)) is not bool or item.get('when','success') not in ('success','terminal')
             or 'sha256' in item and not re.fullmatch('[0-9a-f]{64}',str(item['sha256']))):raise JobError('Invalid declared artifact input or target')
         targets.add(item['target']);clean.append(dict(item))
+        if 'source_grant' in item:
+            from source_grants import identity
+            identity(item['source_grant'])
+    for parent in parents:
+        selected=[x for x in clean if x['job_id']==parent]
+        grants={x.get('source_grant') for x in selected}
+        if len(grants)>1:raise JobError('All imports from a parent require the same source grant or ordinary access')
     try:conditions(parents,clean)
     except (ValueError,TypeError):raise JobError('All imports from a parent require the same success or terminal condition') from None
     for item in clean:
@@ -58,12 +65,20 @@ class Dependencies:
         result=fields(request)
         if not result:return {}
         with self.jobs.connect() as db:
+            from experiment_budget import select
+            self.jobs.source_grants.check({**result,**select(request,principal),'owner':principal.id},db,active=False)
+            granted={x['job_id'] for x in result['artifact_inputs'] if 'source_grant' in x}
+            # Authorize direct edges. Ancestry is internal owner-bound graph
+            # validation; it conveys no additional read access to the caller.
+            for key in result['depends_on']:
+                parent=self.jobs.get(key,db,None if key in granted else principal)
+                if parent['owner']!=principal.id:raise JobError('Dependency job not found',404)
             visited=set();stack=[(p,1) for p in result['depends_on']]
             while stack:
                 identifier,depth=stack.pop()
                 if depth>64 or len(visited)>512:raise JobError('Dependency ancestry exceeds the supported bound')
                 if identifier in visited:continue
-                visited.add(identifier);parent=self.jobs.get(identifier,db,principal)
+                visited.add(identifier);parent=self.jobs.get(identifier,db)
                 if parent['owner']!=principal.id:raise JobError('Dependency job not found',404)
                 if parent.get('template') not in WORKFLOWS or parent['_environment']['type']!='worker':
                     raise JobError('Parent must be a managed versioned workflow')
@@ -77,9 +92,16 @@ class Dependencies:
         return result
 
     def available(self,spec,db):
+        self.jobs.source_grants.check(spec,db)
         for parent in spec.get('depends_on',[]):self.jobs.lifecycle.available('archive',parent,db)
 
     def reason(self,job,db=None):
+        if any('source_grant' in x for x in job.get('artifact_inputs',[])):
+            try:
+                if db is None:
+                    with self.jobs.connect() as connection:self.jobs.source_grants.check(job,connection)
+                else:self.jobs.source_grants.check(job,db)
+            except JobError:return '来源文件授权不可用或证据已变化，保留原输入与许可等待本人核对'
         if job.get('depends_on') and job.get('dependency_state',{}).get('status')!='ready':
             fallback=('等待上游确认结束、清退及阶段输入封存；尚未预留计算资源' if uses_terminal(job)
                 else '等待上游成功及阶段输入封存；尚未预留计算资源')
@@ -111,7 +133,8 @@ class Dependencies:
         if reason or not value or value!=expected:raise InvalidDependency('Confirmed terminal producer evidence changed')
 
     def pinned(self,parent,db):
-        return any(j['state'] not in TERMINAL and parent in j.get('depends_on',[]) for j in self.jobs.all(db))
+        return (self.jobs.source_grants.pinned(parent,db) or
+            any(j['state'] not in TERMINAL and parent in j.get('depends_on',[]) for j in self.jobs.all(db)))
 
     def upstream(self,job):
         parents=[self.jobs.get(p) for p in job['depends_on']]
@@ -172,6 +195,7 @@ class Dependencies:
                 'producer_input_sha256':parent.get('input',{}).get('manifest_sha256'),
                 'producer_environment_sha256':parent.get('environment_sha256')})
             if item.get('when')=='terminal':provenance[-1].update(when='terminal',producer_state=parent['state'])
+            if 'source_grant' in item:provenance[-1]['source_grant']=item['source_grant']
         try:manifest=self.jobs.inputs.manifest(files)
         except JobError as error:raise InvalidDependency(str(error)) from None
         return manifest,sources,{'version':1,'base_input_id':base['id'],'base_manifest_sha256':base['manifest_sha256'],
@@ -184,6 +208,7 @@ class Dependencies:
             job=self.jobs.get(identifier)
             if job['state']!='queued' or job.get('attempt_id') or not job.get('depends_on') or job.get('dependency_state',{}).get('status') in {'ready','blocked'}:return
             if self.jobs.dispatch_permission(job,[]):return
+            with self.jobs.connect() as db:self.jobs.source_grants.check(job,db)
             parents=self.upstream(job)
             try:modes=conditions(job['depends_on'],job['artifact_inputs'])
             except (KeyError,ValueError,TypeError):raise InvalidDependency('Invalid persisted artifact conditions') from None
@@ -214,6 +239,7 @@ class Dependencies:
                 with self.jobs.transaction() as db:
                     actual=self.jobs.get(identifier,db)
                     if actual['state']!='queued' or actual.get('attempt_id'):return
+                    self.jobs.source_grants.check(actual,db)
                     self.jobs.lifecycle.available('input',planned,db)
                     actual.update(_dependency_binding=binding,dependency_state=pre_stage,reason=pre_stage['reason']);self.jobs.write(db,actual)
                 bundle,_=self.jobs.inputs.create(principal,{'files':manifest})
@@ -233,6 +259,7 @@ class Dependencies:
                             if before.st_size!=item['size']:raise InvalidDependency('Producer file size changed during dependency transfer')
                             stream.seek(offset)
                             while remaining and offset<item['size']:
+                                with self.jobs.connect() as db:self.jobs.source_grants.check(job,db)
                                 block=stream.read(min(self.jobs.inputs.CHUNK,remaining,item['size']-offset))
                                 if not block:raise InvalidDependency('Producer input ended during dependency transfer')
                                 self.jobs.inputs.upload(bundle['id'],principal,{'name':item['name'],'offset':offset,'data':base64.b64encode(block).decode()})
@@ -251,6 +278,7 @@ class Dependencies:
                     actual=self.jobs.get(identifier,db)
                     if actual['state']!='queued' or actual.get('attempt_id'):return
                     if self.jobs.dispatch_permission(actual,[]):return
+                    self.jobs.source_grants.check(actual,db)
                     self.confirm_frozen(actual,db)
                     actual['parameters']['input_id']=bundle['id']
                     actual['input']={k:bundle[k] for k in ['id','owner','files','manifest_sha256','bytes']}

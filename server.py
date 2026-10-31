@@ -164,6 +164,8 @@ def handler_class(store, config, jobs=None):
                 if jobs is not None:
                     from dependency_conditions import CAPABILITY as TERMINAL_HANDOFF
                     value['dependency_capabilities']=[TERMINAL_HANDOFF]
+                    from source_grants import CAPABILITY as SOURCE_GRANTS
+                    value['dependency_capabilities'].append(SOURCE_GRANTS)
                     from report_view import CAPABILITY as REPORT_VIEW
                     value['report_view_capabilities']=[REPORT_VIEW]
                 if jobs is not None:value.update(io_limits=jobs.policy['io_limits'],transfer_chunk_bytes=256*1024,
@@ -194,6 +196,13 @@ def handler_class(store, config, jobs=None):
                         return self.reply(jobs.control_storage())
                     if path == '/api/audit-retention':
                         return self.reply(access.audit_status())
+                    if path == '/api/source-grants':
+                        return self.reply(jobs.source_grants.list(self.principal))
+                    if path.startswith('/api/source-grants/'):
+                        parts=path.strip('/').split('/')
+                        if len(parts)!=3:raise JobError('Source grant not found',404)
+                        with jobs.connect() as db:value=jobs.source_grants.get(db,parts[2],self.principal)
+                        return self.reply({'grant':value})
                     if path == '/api/experiment-budgets':
                         return self.reply(jobs.experiment_budgets.list(self.principal))
                     if path.startswith('/api/experiment-budgets/'):
@@ -321,6 +330,19 @@ def handler_class(store, config, jobs=None):
                 self.connection.settimeout(5)
                 request = json.loads(self.rfile.read(length))
                 if path=='/api/storage/plan':return self.reply(jobs.lifecycle.plan(self.principal,request))
+                if path=='/api/source-grants/preview':
+                    return self.reply({'plan':jobs.source_grants.plan(self.principal,request)})
+                if path=='/api/source-grants':
+                    value,reused=jobs.source_grants.create(self.principal,request)
+                    if not reused:access.record(self.principal,'source_grant.create',value['id'])
+                    return self.reply({'grant':value,'reused':reused},status=200 if reused else 201)
+                if path.startswith('/api/source-grants/'):
+                    parts=path.strip('/').split('/')
+                    if len(parts)!=4 or parts[3]!='revoke':raise JobError('Source grant operation not found',404)
+                    if request!={}:raise JobError('Source grant revocation has no overrides')
+                    value=jobs.source_grants.revoke(self.principal,parts[2])
+                    access.record(self.principal,'source_grant.revoke',parts[2])
+                    return self.reply({'grant':value})
                 if path=='/api/experiment-budgets':
                     self.principal.require('jobs:submit')
                     value,reused=jobs.experiment_budgets.create(self.principal,request)
@@ -487,8 +509,9 @@ def main():
     from control_storage import CAPABILITY as CONTROL_STORAGE
     from dependency_conditions import CAPABILITY as TERMINAL_HANDOFF
     from report_view import CAPABILITY as REPORT_VIEW
+    from source_grants import CAPABILITY as SOURCE_GRANTS
     atomic_json(runtime/'server-ready.json',{**identity(os.getpid()),'controller_instance':jobs.controller_instance,
-        'service_start_id':os.environ.get(START_ENV),'capabilities':[OWNER_HANDOFF,OWNER_ACTIVATION,OWNER_ABORT,OWNER_EXPANSION,OWNER_PROVISION,OWNER_DRAIN,STAGED_DEVICE_PROBE,PROBE_ORCHESTRATION,STARTUP,CONTROL_STORAGE,TERMINAL_HANDOFF,REPORT_VIEW]})
+        'service_start_id':os.environ.get(START_ENV),'capabilities':[OWNER_HANDOFF,OWNER_ACTIVATION,OWNER_ABORT,OWNER_EXPANSION,OWNER_PROVISION,OWNER_DRAIN,STAGED_DEVICE_PROBE,PROBE_ORCHESTRATION,STARTUP,CONTROL_STORAGE,TERMINAL_HANDOFF,REPORT_VIEW,SOURCE_GRANTS]})
     logging.info('Started controller listener using %s on port %s',listener_info['scheme'],config['port'])
 
     def stop(signum, frame):
