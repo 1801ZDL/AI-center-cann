@@ -8,6 +8,7 @@ from pathlib import Path
 import pwd
 import secrets
 import signal
+import stat
 import socket
 import subprocess
 import sys
@@ -134,6 +135,15 @@ def main():
     listing=storage.add_parser('list');listing.add_argument('--state');listing.add_argument('--limit',type=int,default=100);listing.add_argument('--offset',type=int,default=0)
     plan=storage.add_parser('plan');plan.add_argument('kind',choices=['input','archive']);plan.add_argument('object_id');plan.add_argument('operation',choices=['trash','restore','purge','resume'])
     apply=storage.add_parser('apply');apply.add_argument('--plan',required=True);apply.add_argument('--wait-seconds',type=int,default=30)
+    command=sub.add_parser('experiment-budget',help='Approve, inspect and delegate a cumulative managed-workflow budget')
+    budgets=command.add_subparsers(dest='budget_action',required=True)
+    create=budgets.add_parser('create');create.add_argument('--spec',required=True)
+    budgets.add_parser('list')
+    for action in ['show','close','token']:
+        item=budgets.add_parser(action);item.add_argument('budget_id')
+        if action=='token':
+            item.add_argument('--output',required=True,help='New owner-only Agent profile; never prints token')
+            item.add_argument('--read-only',action='store_true',help='Only historical jobs in this budget; cannot submit or cancel')
     for action in ['job', 'logs', 'cancel', 'wait','retry-inputs']:
         command = sub.add_parser(action)
         command.add_argument('job_id')
@@ -146,7 +156,7 @@ def main():
     if (ROOT/'client-only').exists() and not args.profile:
         p.error('This portable client requires a personal --profile and cannot manage the controller')
     if args.profile:
-        if args.action not in {'submit','jobs','job','logs','cancel','wait','me','nodes','input-add','input','environment-lock','archive','archive-config','diagnose','operator-case','compiler-case','storage','retry-inputs'}:
+        if args.action not in {'submit','jobs','job','logs','cancel','wait','me','nodes','input-add','input','environment-lock','archive','archive-config','diagnose','operator-case','compiler-case','storage','retry-inputs','experiment-budget'}:
             p.error('Client profiles only support job operations')
         config = private_profile(args.profile)
     else:
@@ -286,6 +296,38 @@ def main():
             while result.get('pending') and time.monotonic()<end:
                 plan=client.request('/api/storage/plan',{'kind':plan['kind'],'id':plan['id'],'action':'resume'})['plan']
                 result=client.request('/api/storage/apply',plan)
+        print(json.dumps(result,ensure_ascii=False,indent=2))
+    elif args.action=='experiment-budget':
+        base='/api/experiment-budgets'
+        if args.budget_action=='create':
+            raw=Path(args.spec).read_bytes()
+            if len(raw)>32768:p.error('Budget spec exceeds interface limit')
+            result=request(config,base,json.loads(raw))
+        elif args.budget_action=='list':result=request(config,base)
+        else:
+            if not __import__('re').fullmatch('experiment-[0-9a-f]{24}',args.budget_id):p.error('Invalid experiment budget ID')
+            path=base+'/'+args.budget_id
+            if args.budget_action=='show':result=request(config,path)
+            elif args.budget_action=='close':result=request(config,path+'/close',{})
+            else:
+                target=Path(args.output).expanduser().absolute()
+                for parent in [target.parent,*target.parent.parents]:
+                    info=parent.lstat()
+                    if not stat.S_ISDIR(info.st_mode) or info.st_uid not in {0,os.geteuid()} or info.st_mode&0o022:p.error('Profile needs protected non-symlink ancestry')
+                if stat.S_IMODE(target.parent.stat().st_mode)!=0o700 or target.parent.stat().st_uid!=os.geteuid():p.error('Prepare a private owner:0700 output directory first')
+                fd=os.open(target,os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,0o600);created=os.fstat(fd)
+                try:
+                    with os.fdopen(fd,'w') as out:
+                        issued=request(config,path+'/token',{'read_only':True} if args.read_only else {})
+                        value={'controller':url,'token':issued['token'],**({'ca_file':config['ca_file']} if config.get('ca_file') else {})}
+                        json.dump(value,out,indent=2);out.write('\n');out.flush();os.fsync(out.fileno())
+                    directory=os.open(target.parent,os.O_RDONLY|os.O_DIRECTORY)
+                    try:os.fsync(directory)
+                    finally:os.close(directory)
+                except BaseException:
+                    if target.exists() and (target.stat().st_dev,target.stat().st_ino)==(created.st_dev,created.st_ino):target.unlink()
+                    raise
+                result={'experiment_id':issued['experiment_id'],'profile':str(target),'lifetime_seconds':issued['lifetime_seconds'],'scopes':issued['scopes']}
         print(json.dumps(result,ensure_ascii=False,indent=2))
     elif args.action=='input-add':
         client=Client(config);bundle=client.upload_input(args.path)

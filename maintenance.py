@@ -334,6 +334,8 @@ def restore(prefix,archive_path,new_state,max_bytes=10*1024**3,payload_config=No
                 if path.is_dir():path.chmod(0o700)
             stage.chmod(0o700);os.chown(stage,meta['uid'],meta['gid'])
             if meta['role']=='controller':
+                from experiment_budget import rebind_restored as freeze_experiments
+                freeze_experiments(stage)
                 from audit_retention import rebind_restored
                 rebind_restored(stage/'identities.sqlite3',restored_config)
                 from storage_lifecycle import rebind_restored
@@ -382,6 +384,9 @@ def require_control_storage(config,role,manifest):
 def require_features(state,role,manifest):
     config=read_json(Path(state)/'config.json') or {}
     require_control_storage(config,role,manifest)
+    if role=='controller' and 'experiment_budget.py' not in manifest.get('files',{}):
+        from experiment_budget import require_compatible
+        require_compatible(state)
     if role=='controller' and 'qualification_compatibility.py' not in manifest.get('files',{}):
         path=Path(state)/'jobs.sqlite3'
         if path.exists():

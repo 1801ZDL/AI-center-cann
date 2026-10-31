@@ -189,6 +189,13 @@ def handler_class(store, config, jobs=None):
                         return self.reply(jobs.control_storage())
                     if path == '/api/audit-retention':
                         return self.reply(access.audit_status())
+                    if path == '/api/experiment-budgets':
+                        return self.reply(jobs.experiment_budgets.list(self.principal))
+                    if path.startswith('/api/experiment-budgets/'):
+                        parts=path.strip('/').split('/')
+                        if len(parts)!=3:raise JobError('Experiment budget not found',404)
+                        with jobs.connect() as db:value=jobs.experiment_budgets.get(db,parts[2],self.principal)
+                        return self.reply({'budget':value})
                     if path in {'/api/results','/api/results.csv'}:
                         query=parse_qs(parsed.query);kind=query.get('kind',[None])[0]
                         if path.endswith('.csv'):
@@ -304,6 +311,25 @@ def handler_class(store, config, jobs=None):
                 self.connection.settimeout(5)
                 request = json.loads(self.rfile.read(length))
                 if path=='/api/storage/plan':return self.reply(jobs.lifecycle.plan(self.principal,request))
+                if path=='/api/experiment-budgets':
+                    self.principal.require('jobs:submit')
+                    value,reused=jobs.experiment_budgets.create(self.principal,request)
+                    if not reused:access.record(self.principal,'experiment.create',value['id'])
+                    return self.reply({'budget':value,'reused':reused},status=200 if reused else 201)
+                if path.startswith('/api/experiment-budgets/'):
+                    self.principal.require('jobs:submit')
+                    parts=path.strip('/').split('/')
+                    if len(parts)!=4:raise JobError('Experiment budget operation not found',404)
+                    if not isinstance(request,dict) or set(request)-({'read_only'} if parts[3]=='token' else set()):raise JobError('Experiment budget operation has no such overrides')
+                    if parts[3]=='close':
+                        value=jobs.experiment_budgets.close(self.principal,parts[2])
+                        access.record(self.principal,'experiment.close',parts[2])
+                        return self.reply({'budget':value})
+                    if parts[3]=='token':
+                        value=jobs.experiment_budgets.delegate(self.principal,parts[2],read_only=request.get('read_only',False))
+                        access.record(self.principal,'experiment.token',parts[2])
+                        return self.reply(value)
+                    raise JobError('Experiment budget operation not found',404)
                 if path=='/api/storage/apply':
                     value=jobs.lifecycle.apply(self.principal,request)
                     access.record(self.principal,'storage.apply',request.get('id',''))

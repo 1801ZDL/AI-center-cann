@@ -81,6 +81,8 @@ def defaults(config):
     policy.update(config.get('scheduler', {}))
     from control_storage import validate as control_policy
     policy['control_storage']=control_policy(policy.get('control_storage'))
+    from experiment_budget import policy as experiment_policy
+    policy['experiment_budget']=experiment_policy(policy.get('experiment_budget'))
     from workflow_spec import MAX_TIMEOUT_SECONDS
     if type(policy['max_timeout_seconds']) is not int or not 1<=policy['max_timeout_seconds']<=MAX_TIMEOUT_SECONDS:
         raise ValueError('Administrator execution timeout must be within 1..86400 seconds')
@@ -153,6 +155,8 @@ class JobStore:
         self.storage=StorageBudget(self)
         from dependencies import Dependencies
         self.dependencies=Dependencies(self)
+        from experiment_budget import Budgets
+        self.experiment_budgets=Budgets(self)
 
     def connect(self):
         self.control_filesystem.check()
@@ -226,7 +230,7 @@ class JobStore:
                 request = expand_template(request)
             except ValueError as error:
                 raise JobError(str(error), 400)
-        allowed = {'name', 'environment', 'kind', 'cwd', 'argv', 'command', 'cpu', 'memory_mib', 'shm_mib', 'npu', 'timeout_seconds', 'idempotency_key', 'output', 'origin','project','template','parameters','depends_on','artifact_inputs'}
+        allowed = {'name', 'environment', 'kind', 'cwd', 'argv', 'command', 'cpu', 'memory_mib', 'shm_mib', 'npu', 'timeout_seconds', 'idempotency_key', 'output', 'origin','project','template','parameters','depends_on','artifact_inputs','experiment_id'}
         if set(request) - allowed:
             raise JobError('请求含有不支持的字段。身份由登录认证确定，不能由请求指定。')
         argv = request.get('argv')
@@ -333,7 +337,9 @@ class JobStore:
             if value>principal.quota.get(resource_name,value):
                 raise JobError('任务超过当前用户的 '+resource_name+' 配额。', 403)
         dependencies=self.dependencies.validate(request,principal)
-        return {'name': name, 'environment': env_id, '_environment': env, 'kind': kind,**dependencies,
+        from experiment_budget import select
+        experiment=select(request,principal)
+        return {'name': name, 'environment': env_id, '_environment': env, 'kind': kind,**dependencies,**experiment,
                 **({'input':input_manifest} if input_manifest is not None else {}),
                 **({'project':project} if 'project' in request or not principal.legacy else {}),
                 **({'template':request['template'],'parameters':request['parameters']} if 'template' in request else {}),
@@ -358,6 +364,7 @@ class JobStore:
         with self.connect() as db:
             db.execute('PRAGMA query_only=ON')
             db.execute('BEGIN')
+            self.experiment_budgets.check(db,job,principal)
             self.nodes.probe_submission(job,principal,db)
             rows=self.all(db);active=[item for item in rows if item['state'] in ACTIVE]
             input_reason=None
@@ -449,6 +456,7 @@ class JobStore:
             if sum(j['owner']==principal.id and j['state']=='queued' for j in rows)>=principal.quota.get('max_queued', self.policy['max_queued']):
                 raise JobError('当前用户等待队列已满。', 409)
             job_id = 'job-' + uuid.uuid4().hex[:12]
+            experiment_charge=self.experiment_budgets.charge(db,spec,principal,job_id)
             from io_policy import artifacts,MIB,META
             artifact_limits={'file_mib':1,'total_mib':2} if _staged_probe is not None else artifacts(spec.get('parameters',{}).get('artifacts'))
             self.storage.reserve(db,'archive',job_id,principal,artifact_limits['total_mib']*MIB+META)
@@ -474,7 +482,7 @@ class JobStore:
             if source_content:
                 (directory/'source').mkdir(mode=0o700)
                 (directory/'source'/source_content[0]).write_bytes(source_content[1])
-            job = {**spec, 'id': job_id, 'owner': principal.id, 'project':spec.get('project', 'personal:'+principal.id), 'state': 'queued',
+            job = {**spec, **experiment_charge, 'id': job_id, 'owner': principal.id, 'project':spec.get('project', 'personal:'+principal.id), 'state': 'queued',
                    'reason': '等待资源分配', 'created_at': now(), 'started_at': None,
                    'finished_at': None, 'allocation': {}, 'source': source,
                    'archive_dir': str(directory), 'result': None, '_token': secrets.token_hex(24),
@@ -551,6 +559,7 @@ class JobStore:
                 'policy':policy,'identity':self.access.public_profile(principal),'storage':self.storage.summary(principal),
                 'control_storage':self.control_storage(),
                 'audit_retention':self.access.audit_status(),
+                'experiment_budget':self.experiment_budgets.summary(principal),
                 'default_cwd': str(ROOT) if principal.legacy else principal.workspace,
                 'environments': [{'id': k, 'label': v['label'], 'type': v['type']} for k, v in environments.items()],
                 'counts': {s: sum(j['state'] == s for j in readable) for s in ['queued', 'reserved', 'running', 'cancelling', 'needs_attention', *sorted(TERMINAL)]},

@@ -53,6 +53,8 @@ CORE.append('CONTROL_MONITOR.md')
 OPTIONAL_ADMIN_FILES.add('CONTROL_MONITOR.md')
 CORE.extend(['audit_retention.py','AUDIT.md'])
 OPTIONAL_ADMIN_FILES.update({'audit_retention.py','AUDIT.md'})
+CORE.extend(['experiment_budget.py','EXPERIMENT_BUDGET.md'])
+OPTIONAL_ADMIN_FILES.update({'experiment_budget.py','EXPERIMENT_BUDGET.md'})
 
 
 class DeployError(ValueError):pass

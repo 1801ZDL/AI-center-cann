@@ -62,6 +62,7 @@
     "lab_client.py",
     "nodes.py",
     "server.py",
+    "templates.py",
     "worker.py",
     "resources.py",
     "queue_policy.py",
@@ -89,7 +90,8 @@
     "operator_node.py",
     "operator_workflow.py",
     "control_monitor.py",
-    "audit_retention.py"
+    "audit_retention.py",
+    "experiment_budget.py"
   ],
   "reproduced_by_public_ci": false,
   "raw_evidence_in_repository": false,

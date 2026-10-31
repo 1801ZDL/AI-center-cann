@@ -1,17 +1,17 @@
 {
   "schema": "ai-center-cann-source-check/v1",
-  "recorded_at": "2026-10-31T03:31:15.326449+00:00",
+  "recorded_at": "2026-10-31T04:25:10.945243+00:00",
   "passed": true,
-  "python_unit_tests": 886,
+  "python_unit_tests": 905,
   "unit_skipped": 0,
-  "unit_seconds": 146.234,
-  "unit_log_sha256": "63abda4c06ae666e8ed543a40c5c7973f9f839ee4fa3afbf9a4d4a7a84097a51",
+  "unit_seconds": 159.147,
+  "unit_log_sha256": "0c9fc6b4c5b4765b05b97e4844d4895d824f4111f01a1a2d510409c5855d2142",
   "python": "Python3.12.3",
   "javascript_syntax_passed": true,
   "command": "bash scripts/check.sh /usr/bin/python3",
-  "scope": "Web-only production changes; 86 non-document CORE and discovered unit sources unchanged from audit-retention acceptance. New packaged HTTP browser7 and ordinary-preview11 pass; current owned same-host installed dashboard submits two actual single-attempt CPU IR/build workflows, verifies result/CSV/IR downloads with normal Basic browser login and preserves both identities/IR through controller and Node restore. Five device/CPU kind submission semantics tested in a no-worker fixture; no new NPU/model/real-host accounts/PID1/two-host acceptance. Prior full886/Root34/owner49 remain historical, not rerun in this stage.",
+  "scope": "87 non-document CORE with full905/JS, current same-host Root installation including finite native control/audit and dashboard regression, owner49 and six single-attempt real CPU IR tasks. Two additional scoped stdio MCP IR conversations share a 2-job/120 declared CPU-second budget, reject a third, and preserve original attempts on reconnect. Actual restore freezes budgets/revokes previous spending credentials; explicit read-only history delegation and genuine old-package downgrade refusal pass. A stale pre-spend checkpoint and two-card arithmetic are unit fixtures, not physical NPU evidence. Docker create temporarily stalled with Created/PID0 objects; exact owned objects removed normally, then one minimal CPU start succeeded before final retries. No host accounts/PID1/two-host/NPU/model acceptance.",
   "production_source_sha256": {
-    "auth.py": "37558b32db4d81f1613cef4d7f5818213f3113d7e355559f3be2a0f591c7efa9",
+    "auth.py": "6bd9b70566fc8dd9b43d3965df5e1fce4c1385e3192239a83052cc0e04778d5f",
     "owner_identity.py": "5a48cf78584b2f717ac45594a73da569589cde6d9441037a0aedffe423f1515b",
     "owner_handoff.py": "e6f8691104c02dc7ab2dc2ae0fb63017c95f033c03ecb56e71bd3e88a8909183",
     "qualification_compatibility.py": "0a68729c7de707cc63b5e1b66c879cba7cf196878eb959e1aff2f65e7388897b",
@@ -42,13 +42,13 @@
     "npu_admission.py": "c6d39a24b5f4acde33041864e07642f9c1d72d70bb17ce6ef862d7dbda698f1e",
     "npu_device.py": "97cc78f229163dae267a7ed351fce92b3fc0bbeb781d70d758cedef3d30ea47e",
     "inputs.py": "e7d16e523275fd3a263374a03e765bd3d915b37f83197ce1269e8dc3ff708dc4",
-    "jobs.py": "db5f387a23f2fe98724ef13df453810826e5018d2004dde0823b69957c254150",
+    "jobs.py": "7eccc10c83e34990399f22360356e20d8e5ddfddcb02747ccbc8b7cb0eab3008",
     "lab_client.py": "e7da7886406571ceea4439b3a159a063c7ae6d30dd3d372ad5a503aaceb8d4e4",
     "client_archive.py": "eec04a9574e8a87d90dc54c556d4bfe6462dfb92f0332bdc6996ad64e7121c97",
     "archive_api.py": "3e9f6539e3760cb4d68b2f85a8f01b751441e3d79b70675aac1f45e90a527e57",
     "nodes.py": "f4f81c9ade3dd1d574a71cb99e7eca224b33b887ac8474e67c0a3f714fb13a1d",
-    "server.py": "d771cbc2ecd6e976417a0e6beacf443e19392841c431dc5d498953b029993a44",
-    "templates.py": "6ada33ac5851c5ef28a3e7b5f34206962c87c469c6054f10e8d33c68a623d3ba",
+    "server.py": "1d76a12f28a1e2d1217068394bab8fb11e408fa75c3b581b2b48fea88cf5759a",
+    "templates.py": "72e1a263b07624eb8854ed0ada9cbd4cf9754072719ba0663b8b557b5a203ba8",
     "worker.py": "9ccfd770b867d6b9bc48c5c598e13f9988c8ba03de4ece11652c36d301cbcfcb",
     "workflow_runner.py": "239bbcb5eca6414d85f7172808a710896d9743660289039626e54672088078f7",
     "workflow_spec.py": "3c1403328db9e4a3ab228056559250127fd3ff985fe009f1f4646045257dfb6a",
@@ -75,8 +75,8 @@
     "storage_files.py": "c2dfe4aec3a4dec6bf8802655eb9e72a414e307d5eb6f4725da99f0484642ebf",
     "storage_lifecycle.py": "cc5778edf04bf1118ac940f6954cc488ae7ceedbee373568af87c6add3cde098",
     "node_storage.py": "185bdeb757c0644cf6319460d74ea15061cf6329b4707354696f8e156a16370c",
-    "deployment.py": "39033b9e805535ad14978a66062c037c0169aaf932e1999e17eb3c7dcc9ab935",
-    "maintenance.py": "b4617e28e195a186587605f341897a2f2a3d6201b512b3baacd8a95eab55bf83",
+    "deployment.py": "fe4b990851f4dd6306cff7159d5c9a6c234f3c17f8889c3220ab67304de7ccf3",
+    "maintenance.py": "2620d879f911ceab230d3ca71c562762a34badf57c71c6902fe2055dacf672de",
     "servicectl": "68b5035d535174946cc8361f2d086d02cdb452bc5ad25bcade74f853551c8663",
     "accessctl": "c0d0a86c7a027036e202aff0795eae0001beec676c393d13e73a763d685ccdc9",
     "workerctl": "e7edf6c4104c825e90243c333d49126484521e46149c2c3bfb5046b5b1a19195",
@@ -87,16 +87,17 @@
     "control_storage.py": "207f4a39a0d1c0c232bf7d36b2ef9a3b455eaa95e3c9979d0bf242b88c2dd29a",
     "control_filesystem.py": "f7fa2c7c0de2d33d87f41ced989aab9a5c84ebc212144521fbb637cf41dae35c",
     "control_process.py": "50d0c78f34087c6fee0a1994d1da223d6b6ef513acc64be409fcb5e088c3b425",
-    "labctl": "aeb4130dc83908cf0c09f21328a58ecd51539ac63828e5dd3a8773fb17c789f5",
-    "install-client": "0914773d6d9fc468b4afc5290f9bff610188603301b15aee1cdca8109b5f27b6",
-    "mcp_bridge.py": "a74ecb6b9dd9973fbbe66888d53e6d60b907f8bcff3cc677672aa63f8826a48f",
+    "labctl": "9c8033676d7927e7d43c2c5a4633daf540f19282ee08f22731033c1e3fc101ca",
+    "install-client": "d7fe475fd45046318f104c8ca6dd38a6df567843b8451b14a099dcc5d8885c7d",
+    "mcp_bridge.py": "f28c4d7a3ab388b950fea6140d0c10bdf077600d5a1bdaf4d990dcaab7a58559",
     "diagnostic_case.py": "cca7edb7c45e2942748fbd3e333968dabfb5e7a4857a064d4b96aca6e913dedc",
     "compiler_diagnostic.py": "862134008d11556bb59f3d2d1042d4e2390afac1c4bdce2c00a2da22c9102d15",
     "operator_profile.py": "382f4438ea13f2433f582cbf5b5f64c9a52837a1c5f9370a624a94016ff96daf",
     "operator_node.py": "40a5c872904b699ff7e1e15ab7b8a52e63577b71b02caf6a26b69d39096b0412",
     "operator_workflow.py": "c5603836192e9ac05018edcdcbffff7d348a4797d2f37aafbbe811b2a13fd829",
     "control_monitor.py": "d359289fe13410fd219f3972ac84f4c894f67754c4fc91767e573b5435ea6928",
-    "audit_retention.py": "a6e5c3a600c3e8b266538e0555168a56a803dd04ec71ae842ef90ab85e58c233"
+    "audit_retention.py": "a6e5c3a600c3e8b266538e0555168a56a803dd04ec71ae842ef90ab85e58c233",
+    "experiment_budget.py": "0a498adbe5b651e80c5b37e389d749474b84f731478d432fe97474cefe059a5c"
   },
   "cpu": 2,
   "memory_mib": 2048,
@@ -7309,11 +7310,89 @@
       "reason": "Preview title reported failure before response diagnostics were added; precise response was not retained. Both copied-state Basic HTTP replays later returned200, and r5 with response diagnostics passed. Root cause unproven; do not claim a production fix for this observation."
     }
   },
-  "unit_run_provenance": {
-    "stage": "audit-retention",
-    "source_commit": "a57863c7a907a1cd2562782187802913d564d01c",
-    "reexecuted_for_workflow_web": false,
-    "non_document_core_unchanged": 86,
-    "discovered_unit_source_files_unchanged": 73
+  "experiment_budget": {
+    "passed": true,
+    "scope": "87 non-document CORE with full905/JS, current same-host Root installation including finite native control/audit and dashboard regression, owner49 and six single-attempt real CPU IR tasks. Two additional scoped stdio MCP IR conversations share a 2-job/120 declared CPU-second budget, reject a third, and preserve original attempts on reconnect. Actual restore freezes budgets/revokes previous spending credentials; explicit read-only history delegation and genuine old-package downgrade refusal pass. A stale pre-spend checkpoint and two-card arithmetic are unit fixtures, not physical NPU evidence. Docker create temporarily stalled with Created/PID0 objects; exact owned objects removed normally, then one minimal CPU start succeeded before final retries. No host accounts/PID1/two-host/NPU/model acceptance.",
+    "job_ids": {
+      "full-r5": "job-7b92e0f9fff1",
+      "installed-r4": "job-0ad2d7ca716c",
+      "owner-r3": "job-e366a5d2ed51",
+      "browser-r2": "job-a38570591796",
+      "runtime-probe-r2": "job-ea56b0fe47cd"
+    },
+    "root_checks": 38,
+    "owner_faults": 49,
+    "owner_actual_cpu_ir_tasks": 6,
+    "browser_checks": 7,
+    "npu_kernel_launches": 0,
+    "model_invocations": 0,
+    "host_accounts_modified": false,
+    "global_services_or_driver_modified": false,
+    "production_ready": false,
+    "overall_goal_complete": false,
+    "failures": [
+      {
+        "job": "job-b51070a2f528",
+        "reason": "901 tests; only legacy error-message regex failed after adding binding text; wording preserved without weakening checks"
+      },
+      {
+        "job": "job-77d3df841e7d",
+        "reason": "Entry source changed while queued; correctly refused before executing the fixture"
+      },
+      {
+        "job": "job-1ac5426047a0",
+        "reason": "Pre-fence package ran two scoped IR tasks then failed the new restore assertion: previous spending credential remained valid; fixed restore freezes budgets and revokes delegation"
+      },
+      {
+        "job": "job-2907ec504bd3",
+        "reason": "Docker run/create response timeout; helper remained Created/PID0 before any new installation; ownership cleanup request also timed out"
+      },
+      {
+        "job": "job-c3f6284b8b1c",
+        "reason": "Same Docker create timeout before owner onboarding; exact Created helper reconciled and removed normally"
+      },
+      {
+        "job": "job-44c297611935",
+        "reason": "Minimal create response timed out; exact Created object removed normally; no runtime-start success claimed"
+      }
+    ],
+    "behavior": {
+      "passed": true,
+      "id": "experiment-d162679bad574b46be829ee6",
+      "tasks": [
+        {
+          "job_id": "job-b5dcaec041e6",
+          "attempt_id": "attempt-58d86670a23d4667b3014a79334b2354",
+          "attempts": 1
+        },
+        {
+          "job_id": "job-d61082dfeb8d",
+          "attempt_id": "attempt-99eb3eb3c4334959b4f685155d86a9dc",
+          "attempts": 1
+        }
+      ],
+      "charged": {
+        "jobs": 2,
+        "cpu_seconds": 120,
+        "npu_seconds": 0
+      },
+      "original_expiry": 1793421167.5510454,
+      "separate_mcp_sessions": 2,
+      "third_session_rejected": true,
+      "agent_approval_mutations_denied": true,
+      "unrelated_job_hidden": true,
+      "profile_contains_only_scoped_token": true,
+      "npu_kernel_launches": 0,
+      "model_invocations": 0,
+      "restored_history_preserved_and_delegation_fenced": true,
+      "actual_old_code_downgrade_refused": true,
+      "old_budget_credential_revoked": true,
+      "read_only_history_credential_verified": true
+    },
+    "stale_checkpoint_unit_fence": true,
+    "two_card_arithmetic_only": true,
+    "physical_hosts_tested": 1,
+    "token_history_limit": 16,
+    "main_config_and_19_node_profiles_unchanged": true
   }
 }

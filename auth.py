@@ -18,6 +18,7 @@ import owner_identity
 
 SCOPES = frozenset({'jobs:read', 'jobs:submit', 'jobs:cancel', 'monitor:read','storage:manage'})
 AUDIT_ROWS = 10000
+EXPERIMENT_TOKEN_LIMIT = 16
 IDENTIFIER = re.compile(r'^[a-zA-Z][a-zA-Z0-9_-]{0,47}$')
 
 
@@ -37,6 +38,7 @@ class Principal:
     quota: dict
     scopes: frozenset = SCOPES
     legacy: bool = False
+    experiment_id: str | None = None
 
     @property
     def admin(self):
@@ -78,6 +80,8 @@ class AccessControl:
                 ''')
                 if 'expires_at' not in {r[1] for r in db.execute('PRAGMA table_info(tokens)')}:
                     db.execute('ALTER TABLE tokens ADD COLUMN expires_at REAL NOT NULL DEFAULT 0')
+                if 'experiment_id' not in {r[1] for r in db.execute('PRAGMA table_info(tokens)')}:
+                    db.execute('ALTER TABLE tokens ADD COLUMN experiment_id TEXT')
                 # Persist revocation history even when a profile is changed and
                 # restored to identical bytes. Triggers also cover activation's
                 # direct SQL and offline administrative mutations.
@@ -139,11 +143,12 @@ class AccessControl:
         if header.startswith('Bearer ') and self.path:
             digest = hashlib.sha256(header[7:].encode()).hexdigest()
             with self.connect() as db:
-                row = db.execute('SELECT user,scopes FROM tokens WHERE digest=? AND revoked=0 AND expires_at>?', (digest,time.time())).fetchone()
+                row = db.execute('SELECT user,scopes,experiment_id FROM tokens WHERE digest=? AND revoked=0 AND expires_at>?', (digest,time.time())).fetchone()
             if row:
                 principal = self.user(row[0])
                 if principal:
-                    return replace(principal, scopes=principal.scopes & frozenset(json.loads(row[1])))
+                    if row[2] is not None and (not isinstance(row[2],str) or not re.fullmatch('experiment-[0-9a-f]{24}',row[2]) or principal.legacy or principal.admin):return None
+                    return replace(principal, scopes=principal.scopes & frozenset(json.loads(row[1])),experiment_id=row[2])
         return None
 
     def create_user(self, user_id, workspace, environments=('host-python',), quota=None):
@@ -212,7 +217,7 @@ class AccessControl:
         except AccessError:return False
         return value['disabled'] and value['state']=='staged'
 
-    def issue_token(self, user_id, scopes, lifetime_seconds=86400):
+    def issue_token(self, user_id, scopes, lifetime_seconds=86400, *, experiment_id=None):
         with self.connect() as db:
             # Serialize issuance with disable/revocation. A credential created
             # after a concurrent revoke must not revive when the user is enabled.
@@ -220,9 +225,14 @@ class AccessControl:
             principal = self.user(user_id)
             if not principal or not scopes or not set(scopes)<=principal.scopes or not 1<=lifetime_seconds<=30*86400:
                 raise AccessError('无效用户或凭据权限。', 400)
+            if experiment_id is not None and (principal.admin or principal.legacy or not isinstance(experiment_id,str)
+                or not re.fullmatch('experiment-[0-9a-f]{24}',experiment_id) or not set(scopes)<={'jobs:read','jobs:submit','jobs:cancel'}):
+                raise AccessError('Invalid experiment credential binding',400)
+            if experiment_id is not None and db.execute('SELECT count(*) FROM tokens WHERE experiment_id=?',(experiment_id,)).fetchone()[0]>=EXPERIMENT_TOKEN_LIMIT:
+                raise AccessError('Experiment credential issuance limit reached',409)
             token = secrets.token_urlsafe(32)
-            db.execute('INSERT INTO tokens(digest,user,scopes,expires_at) VALUES(?,?,?,?)',
-                       (hashlib.sha256(token.encode()).hexdigest(),user_id,json.dumps(sorted(scopes)),time.time()+lifetime_seconds))
+            db.execute('INSERT INTO tokens(digest,user,scopes,expires_at,experiment_id) VALUES(?,?,?,?,?)',
+                       (hashlib.sha256(token.encode()).hexdigest(),user_id,json.dumps(sorted(scopes)),time.time()+lifetime_seconds,experiment_id))
         return token
 
     def revoke_token(self, token):
@@ -309,19 +319,23 @@ class AccessControl:
         return result
 
     def can_read(self, principal, job):
+        if principal.experiment_id and job.get('experiment_id')!=principal.experiment_id:return False
         return principal.admin or job['owner']==principal.id or bool(self.project_role(principal, job.get('project', 'personal:'+job['owner'])))
 
     def readable_jobs(self, principal, jobs):
+        if principal.experiment_id:jobs=[job for job in jobs if job.get('experiment_id')==principal.experiment_id]
         if principal.admin:return list(jobs)
         # One membership lookup per list request, rather than one DB connection per task.
         projects={p['id'] for p in self.projects(principal)}
         return [job for job in jobs if job['owner']==principal.id or job.get('project','personal:'+job['owner']) in projects]
 
     def can_cancel(self, principal, job):
+        if principal.experiment_id and job.get('experiment_id')!=principal.experiment_id:return False
         return principal.admin or job['owner']==principal.id or self.project_role(principal, job.get('project', 'personal:'+job['owner']))=='manager'
 
     def public_profile(self, principal):
         return {'id':principal.id,'role':principal.role,'workspace':principal.workspace,
+                **({'experiment_id':principal.experiment_id} if principal.experiment_id else {}),
                 'execution_mode':principal.mode,'projects':self.projects(principal),
                 'quota':principal.quota,'scopes':sorted(principal.scopes),
                 'identity_kind':'application-account' if not principal.legacy else 'service-administrator',

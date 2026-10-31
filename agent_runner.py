@@ -158,6 +158,7 @@ def prepare(environment,seconds,client_profile=None,workflow=None):
     model=provider_id+'/'+ALIAS
     session={'run_id':run_id,'created_at':now(),'environment':environment,'seconds':seconds,
              'identity':identity,'execution_mode':execution_mode,
+             **({'experiment_id':principal['experiment_id']} if client_profile and principal.get('experiment_id') else {}),
              **({'client_profile':str(client_profile)} if client_profile else {}),
              'requested_model':REQUESTED_MODEL,'model':model,'configured_label':provider['models'][ALIAS]['name'],
              'credential_source':'zdl:'+CONTAINER_CONFIG,'scope':'one CPU template job; NPU=0; no arbitrary command tools'}
@@ -307,6 +308,7 @@ def execute(binary,directory,workspace,env,session,prompt,timeout):
     success=(process.returncode==0 and not timed_out and not errors and len(verified)==1
              and verified[0]['job']['state']=='succeeded'
              and verified[0]['job'].get('owner')==session.get('identity')
+             and verified[0]['job'].get('experiment_id')==session.get('experiment_id')
              and result_valid
              and all(name in names for name in ['queue_status','submit_job','get_logs','get_result']))
     report={'run_id':session['run_id'],'completed_at':now(),'verified':success,'exit_code':process.returncode,'timed_out':timed_out,

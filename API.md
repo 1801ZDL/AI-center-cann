@@ -1,5 +1,7 @@
 # 作业 API v0.7
 
+累计实验预算：`GET/POST /api/experiment-budgets`、`GET /api/experiment-budgets/<id>`及`POST .../<id>/close|token`。读取需jobs:read，创建/关闭/委托需jobs:submit且普通非预算个人凭据；仅本人可见。创建具备独立幂等键。预算凭据从认证派生experiment_id，省略请求字段仍绑定，指定其他预算403；新任务与计费同事务，超额409，原任务重试不重新计费。token接口返回一次私有token，不能记录或公开；CLI仅写新私有profile。详情见EXPERIMENT_BUDGET.md。原`GET /api/experiments`仍是历史实验观察，语义不变。
+
 新增 `GET /api/audit-retention`（`jobs:read`），jobs摘要及MCP queue_status的`audit_retention`返回相同只读策略/积压。旧配置为rolling_rows；新管理员中央为archive_required，含retained_rows、maximum_unarchived_rows、status=ready|backlog|unavailable及blocks_new_work。积压/不可确认时新任务或输入返回503：`error=audit_retention_backlog,retryable=true,original_operation_required=true`；原任务ID、许可和结果恢复保留，不更换幂等键重跑。新claim无grant、未消费start等待，原grant恢复继续。接口不提供导出或裁剪权限，Root停机维护见[AUDIT.md](AUDIT.md)。control-monitor不查询该积压。
 
 ## 控制存储准入状态

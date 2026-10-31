@@ -37,6 +37,8 @@ flowchart LR
 
 网页现可在“提交方式 → 版本化工作流”导入已有五类任务请求，核对输入/环境锁/资源，再预览和显式提交；保持JSON中的幂等键，重试复用原任务。输入封存和个人目录自动归档继续使用CLI/MCP，见[WORKFLOWS.md](WORKFLOWS.md)。设备类任务能提交不代表NPU验收通过。
 
+累计实验预算现可由个人账号批准任务次数及CPU/NPU申报秒数，再交付只绑定该预算的Agent profile；多个固定MCP会话共享计费，重试不重复扣费。恢复旧快照会冻结预算并撤销原委托，避免额度复活；只读历史访问可另行批准。说明见[EXPERIMENT_BUDGET.md](EXPERIMENT_BUDGET.md)。
+
 ## 本机 CPU Demo
 
 要求 Linux、Python 3.10+。服务和客户端使用 Python 标准库；Node 的受控执行另需管理员准备 Docker、固定本地镜像和存储合同。不要以 root 启动个人 Demo。

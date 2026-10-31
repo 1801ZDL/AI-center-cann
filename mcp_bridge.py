@@ -33,8 +33,10 @@ class Bridge:
     def api(self, path, data=None, raw=False):
         try:
             client = Client.from_profile(self.session.get('client_profile', ROOT/'runtime/config.json'))
-            if self.session.get('identity') and client.request('/api/me').get('id')!=self.session['identity']:
-                raise BridgeError('Client credential identity changed during this conversation')
+            if self.session.get('identity'):
+                actor=client.request('/api/me')
+                if actor.get('id')!=self.session['identity'] or actor.get('experiment_id')!=self.session.get('experiment_id'):
+                    raise BridgeError('Client credential identity changed or experiment binding changed during this conversation')
             return client.request(path, data, raw=raw, max_bytes=1024*1024)
         except ClientError as error:
             raise BridgeError(str(error)) from None
@@ -67,6 +69,7 @@ class Bridge:
                 policy['persistent_cache']=request['parameters'].get('cache')
                 policy['depends_on']=request.get('depends_on',[]);policy['artifact_inputs']=request.get('artifact_inputs',[])
             return {'policy': summary['policy'], 'reserved': summary['reserved'],
+                    'experiment_budget':summary.get('experiment_budget'),
                     'environments': summary['environments'],
                     'control_storage':summary.get('control_storage'),
                     'audit_retention':summary.get('audit_retention'),
@@ -293,13 +296,14 @@ def main():
         path=directory/'session.json'
         bound={'client_profile':str(Path(args.profile).expanduser().absolute()),'identity':identity['id'],
                'environment':args.environment,'seconds':args.seconds,'execution_mode':'templates','client':'user-harness-mcp'}
+        if identity.get('experiment_id'):bound['experiment_id']=identity['experiment_id']
         if args.workflow:bound['workflow_request']=bound_workflow(client,args.workflow,args.environment)
         if args.archive:
             from client_archive import archive_root
             bound['personal_archive']=str(archive_root(client,'job-000000000000',root=args.archive_root,source=args.local_source))
         old=read_json(path)
         if old:
-            if old.get('personal_archive')!=bound.get('personal_archive') or old.get('workflow_request')!=bound.get('workflow_request') or any(old.get(k)!=v for k,v in bound.items() if k!='client' or k in old):
+            if old.get('experiment_id')!=bound.get('experiment_id') or old.get('personal_archive')!=bound.get('personal_archive') or old.get('workflow_request')!=bound.get('workflow_request') or any(old.get(k)!=v for k,v in bound.items() if k!='client' or k in old):
                 raise ClientError('Existing MCP session has a different identity or policy; choose a new session directory')
         else:
             atomic_json(path,{**bound,'run_id':'agent-'+uuid.uuid4().hex[:12],'created_at':now(),

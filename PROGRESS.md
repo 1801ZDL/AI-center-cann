@@ -1,5 +1,24 @@
 # 实施进度
 
+## 累计实验预算、委托凭据与旧快照冻结（2026-10-31）
+
+**最终905项/159.147秒/无跳过与JS语法通过；87个非文档CORE与实际安装Root38、开户Root49一致，网页7组通过。** full `job-7b92e0f9fff1`，安装 `job-0ad2d7ca716c`，开户 `job-e366a5d2ed51`，网页 `job-a38570591796`。protected6仍v0.36，APP4/r4工具镜像未变，不重建。0模型/0 NPU；两卡计费只是数学账本fixture，不是设备执行。原901/903/904均保留中间范围，最终以905及final-frozen-r5为准。
+
+新增experiment_budget.py：普通个人账号可批准一轮实验的任务数、CPU/NPU数量×任务时限、模板及有效期。预算创建有自己的幂等键，重试保留原ID/期限，不重置；新任务与计费在同一作业事务中提交，失败回滚、并发不会超额。失败/取消/未知状态不自动退款，任务幂等重试不再次扣费。计费是获批负载的保守申报量，不是实际CPU/NPU占用、初始化/清理或模型账单。已有工作/权限/环境/工作盘和资源域检查继续执行。
+
+个人账号另签仅绑定该预算的token；请求省略experiment_id也由中央绑定，指定另一预算拒绝。预算token不能创建/关闭预算或再委托，只读/取消也限制到本预算任务。单预算最多16个历史委托token，撤销/过期不自动归还次数，签发受容量/审计保护。普通profile若仍能被Agent读取就不能称为单预算隔离，必须配合harness工具、真实UID与私有HOME/XDG。新安装个人客户端声明experiment-budget-client-v1；CLI可创建/列举/查询/关闭/私有文件委托，不打印token、不覆盖文件。固定MCP会话仍一次一个请求，多个会话共用中央预算；queue_status回显剩余额度，账号或预算绑定变化时拒绝继续。MCP固定JSON省略实验ID，由预算profile提供；普通CLI/网页可显式指定。说明见EXPERIMENT_BUDGET.md。
+
+旧快照可能遗漏后续消费，不能据旧剩余额度自动恢复执行。恢复将预算标记restored_frozen并撤销旧委托；历史计费和结果保留，但计数仅代表检查点已知部分。新的执行需另行批准新预算，人工可签只读历史凭据继续诊断，不能重开额度。合法备份原本就要求所有queued/active任务终态，不能把直接SQLite复制的非静默fixture当作受支持备份。旧包缺少预算实现时，即使预算已关闭/旧token撤销也拒绝激活/恢复，避免丢失边界。
+
+实际Root38从新安装公开CLI审批2任务/120 CPU秒/0NPU预算，交付不含个人密码的预算profile。两个独立stdio MCP会话真实bishengir-opt IR各1attempt，重连免费，第三会话超额失败，不能读取其他个人任务或扩大权限。Controller/Node恢复后旧委托401、预算冻结、同job/attempt及2条计费保留；人工只读profile能读历史任务，提交403。真实0c27e7b旧发布包回滚被拒。随后原生控制盘/挂载覆盖/跨盘恢复、审计128行积压、export exit77/prune exit78及恢复epoch等原验收一并通过。主助手另核原DB、正常恢复显式DB导出、原生roundtrip DB完整性与两任务单attempt/计费120；原状态closed、恢复态frozen，原归档两次task_uid23003及actual IR constant42。开户49同87，另6个真实CPU IR各1attempt；网页7同当前资产，6个排队/取消fixture零attempt。
+
+保留失败：首full901仅旧identity错误文字regex失败，保留原兼容措辞后修复；首安装77d...在排队时入口源码变化被正确拒绝。prefence安装1ac...实际执行2个MCP IR后发现恢复仍保留旧委托，新增恢复门槛拒绝，旧包不能算当前验收。之后安装290...及开户c3f...在Docker run/create回执超时、Created/PID0时失败，尚未启动新安装/开户；清理所有权helper也超时并延迟留下一个Created对象。按精确ID/标签/镜像/挂载/intent inode核实，写释放标记并普通删除，未force。首最小CPU探针create回执也超时，不当作启动成功；所有已发布Created对象正常清退。第二最小CPU探针93a85d...真实create/start一次、输出/exit0并正常删除后，才重试最终Root38/owner49。运行时恢复但根因未证，未重启Docker/驱动或操作他人对象。
+
+28个本轮自有loop关联released，5类fixture容器/卷namespace只读确认empty，backings保留。Main配置SHA5caf...、19 profiles/物理域/CPU254255/2048/SHM1024/1槽及zdl不变，零非终态/有效hold；只有预期新增空预算表及token可空绑定列，Main未审批实验或签预算token。无真实宿主账号、全局unit、驱动改动。私有证据evidence/experiment-budget-validation.json、runtime/experiment-budget-20261031，精选reports/public-source-check.json.experiment_budget。文档在包冻结后完善，只声明非md CORE/测试/网页及harness源码范围一致。
+
+下一步继续大IR/精度错误/卡死/仿真证据和预算内候选生成闭环；本轮没有安装完整领域harness或执行新的模型调用。真实宿主账号/PID1、两物理机断网fencing、NPU ACL/数值/性能/仿真和长期多用户规模仍待，PUBLIC-001继续延期，goal active/production_ready=false。
+
+
 ## 网页五类冻结工作流提交与实际 CPU 闭环（2026-10-31）
 
 **新增打包网页7组、原预览11组及同机Root安装26项通过；最终安装中网页触发的真实IR/编译任务各1attempt，恢复后身份和IR字节不变。** 网页 `job-6243e027be7e`、预览 `job-bb8363c950a7`、最终安装 `job-c687a0b99e05`。86个非文档CORE、73个已发现unit测试文件及protected6/APP4/r4镜像与审计阶段相同；本轮只改生产网页，不重建镜像、未重跑886单元/Root34/owner49，不把历史计数写成新整包验收。当前JS语法及网页资产SHA已核。本轮0模型/0 NPU。

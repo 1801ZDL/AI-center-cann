@@ -62,6 +62,10 @@ def private_values():
     files.update(r.glob('jobs/*/tmp/installation/control-headroom-client.json'))
     files.update(r.glob('jobs/*/tmp/installation/audit-client.json'))
     files.update(r.glob('jobs/*/tmp/installation/workflow-browser-client.json'))
+    files.update(r.glob('jobs/*/tmp/installation/experiment-client.json'))
+    files.update(r.glob('jobs/*/tmp/installation/controller-state/experiment-agent.json'))
+    files.update(r.glob('jobs/*/tmp/installation/experiment-readonly-client.json'))
+    files.update(r.glob('jobs/*/tmp/installation/controller-state/experiment-readonly.json'))
     for pattern in ['jobs/*/tmp/node-owner-binding/control/node/config.json','jobs/*/tmp/node-owner-binding/control/enroll.json']:
         files.update(r.glob(pattern))
     for pattern in ['jobs/*/tmp/node-owner-binding/control/expansion-node/config.json',
