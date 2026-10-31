@@ -1,17 +1,17 @@
 {
   "schema": "ai-center-cann-source-check/v1",
-  "recorded_at": "2026-10-31T02:21:47.947775+00:00",
+  "recorded_at": "2026-10-31T02:41:47.797270+00:00",
   "passed": true,
-  "python_unit_tests": 865,
+  "python_unit_tests": 875,
   "unit_skipped": 0,
-  "unit_seconds": 146.373,
-  "unit_log_sha256": "2b761f9cddfec48adeb6c72dd2a5e5cf30b59c4894d03b2f16792354facff3da",
+  "unit_seconds": 144.707,
+  "unit_log_sha256": "97e62f15b95b4e5cafa1c3e71d684cc98051580e6a1271e1d8387ad431e592a4",
   "python": "Python3.12.3",
   "javascript_syntax_passed": true,
   "command": "bash scripts/check.sh /usr/bin/python3",
-  "scope": "Final84 non-document CORE; full unit/JS, same-host owned Root finite-control install/ordinary-to-native/native-to-native restore plus outside mount cover, and legacy owner49. Numeric UID999 has zero effective/permitted capabilities; original CPU IR attempt uploads/completes during cover and original PID stops safely. No real host accounts/PID1/two hosts/NPU/model calls; no automatic retention/HA claim.",
+  "scope": "85 non-document CORE, full875/JS, same-host Root31 native install/restore with service-UID external monitor, owner49. Read-only fixed-file capacity check and Prometheus output accepted; no DB connections, recursion or credential labels. Threshold injection tests classify actual byte/inode observations and do not change admission; native mount cover is real. No actual alert sender/timer, audit export, host accounts/PID1/two-host/NPU/model acceptance.",
   "production_source_sha256": {
-    "auth.py": "d272a88d6866d7d28520cf025de642d440cf4bc058d31a214915fc5ad3ee40bd",
+    "auth.py": "a866a84c484379c07281cfffa75b4c1bea783eec692d03a00339ca464d456751",
     "owner_identity.py": "5a48cf78584b2f717ac45594a73da569589cde6d9441037a0aedffe423f1515b",
     "owner_handoff.py": "e6f8691104c02dc7ab2dc2ae0fb63017c95f033c03ecb56e71bd3e88a8909183",
     "qualification_compatibility.py": "0a68729c7de707cc63b5e1b66c879cba7cf196878eb959e1aff2f65e7388897b",
@@ -75,9 +75,9 @@
     "storage_files.py": "c2dfe4aec3a4dec6bf8802655eb9e72a414e307d5eb6f4725da99f0484642ebf",
     "storage_lifecycle.py": "cc5778edf04bf1118ac940f6954cc488ae7ceedbee373568af87c6add3cde098",
     "node_storage.py": "185bdeb757c0644cf6319460d74ea15061cf6329b4707354696f8e156a16370c",
-    "deployment.py": "bdfe890e0e6365a2edae071f4969e7cf73d122356dd707caa75900c1ed975bf9",
+    "deployment.py": "130a68a43b5cb839140580306eb6f390de32b513d14657e46eaa3c50561a386e",
     "maintenance.py": "ddb437d7cd233e3f8fd8700ad56037ef7f8c270d480cc3de8b8fb5d5cb889a43",
-    "servicectl": "2a55a7a2505f3d1ef1d1423e4707a83479308d31c332f8d488f11e822c7889b0",
+    "servicectl": "0f9d547eb24d75316bf9b3300ca37e1b5e2b71113230f5f18ecbd0f6ef510b93",
     "accessctl": "c0d0a86c7a027036e202aff0795eae0001beec676c393d13e73a763d685ccdc9",
     "workerctl": "e7edf6c4104c825e90243c333d49126484521e46149c2c3bfb5046b5b1a19195",
     "spool_storage.py": "c8a579146e0b24077ebf504050dd5344505f8023f6e33be1c1cb6e9ff312fea4",
@@ -94,7 +94,8 @@
     "compiler_diagnostic.py": "862134008d11556bb59f3d2d1042d4e2390afac1c4bdce2c00a2da22c9102d15",
     "operator_profile.py": "382f4438ea13f2433f582cbf5b5f64c9a52837a1c5f9370a624a94016ff96daf",
     "operator_node.py": "40a5c872904b699ff7e1e15ab7b8a52e63577b71b02caf6a26b69d39096b0412",
-    "operator_workflow.py": "c5603836192e9ac05018edcdcbffff7d348a4797d2f37aafbbe811b2a13fd829"
+    "operator_workflow.py": "c5603836192e9ac05018edcdcbffff7d348a4797d2f37aafbbe811b2a13fd829",
+    "control_monitor.py": "ce4be9dfa73e9eebc8e5e1d37bcfceb95f33a1aadaa056f438d297e2cfff6fef"
   },
   "cpu": 2,
   "memory_mib": 2048,
@@ -7081,5 +7082,67 @@
       "Cumulative experiment budgets and broader real workflow/GUI cases",
       "PUBLIC-001 nightly regression remains deferred"
     ]
+  },
+  "control_monitor": {
+    "passed": true,
+    "job_ids": {
+      "full-r2": "job-bfd53534788e",
+      "installed": "job-02ba2ba3e5ce",
+      "parser": "job-4a8616134bd5",
+      "owner": "job-de69a5cf5138"
+    },
+    "production_source_files": 85,
+    "root_checks": 31,
+    "owner_faults": 49,
+    "monitor": {
+      "passed": true,
+      "actual_uid": 999,
+      "ready": 0,
+      "warning": 1,
+      "critical": 2,
+      "unknown": 3,
+      "byte_inode_alerts": true,
+      "admission_unchanged_by_alerts": true,
+      "peer_uid_refused": true,
+      "native_mount_loss_critical": true,
+      "no_fallback_stat_or_config": true,
+      "stopped_controller_supported": true,
+      "prometheus_exported": true,
+      "audit_rolling_limit_disclosed": 10000,
+      "audit_archived": false
+    },
+    "parser": {
+      "passed": true,
+      "parser": "prometheus-client 0.23.1",
+      "wheel_sha256": "dd1913e6e76b59cfe44e7a4b83e01afc9873c1bdfd2ed8739f1e76aeca115f99",
+      "product_runtime_dependency": false,
+      "installed_parent": "job-02ba2ba3e5ce",
+      "proof": {
+        "control-monitor.prom": {
+          "samples": 26,
+          "families": 11,
+          "sha256": "440182ab95bd085daa3b863dee6c9542afc419bf028df6907d52547ff4147283",
+          "parse_passed": true
+        },
+        "control-monitor-unavailable.prom": {
+          "samples": 6,
+          "families": 11,
+          "sha256": "bd56ac6edb879aba0b1da22ef54245ffa26898b10a92e04020f244a85c911842",
+          "parse_passed": true
+        }
+      }
+    },
+    "audit_policy": {
+      "maximum_rows_global": 10000,
+      "rolling": true,
+      "archive_before_drop": false
+    },
+    "actual_alert_sender_installed": false,
+    "scheduled_tasks_installed": false,
+    "model_invocations": 0,
+    "npu_kernel_launches": 0,
+    "production_ready": false,
+    "overall_goal_complete": false,
+    "scope": "85 non-document CORE, full875/JS, same-host Root31 native install/restore with service-UID external monitor, owner49. Read-only fixed-file capacity check and Prometheus output accepted; no DB connections, recursion or credential labels. Threshold injection tests classify actual byte/inode observations and do not change admission; native mount cover is real. No actual alert sender/timer, audit export, host accounts/PID1/two-host/NPU/model acceptance."
   }
 }

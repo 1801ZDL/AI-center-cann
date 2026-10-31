@@ -13,6 +13,11 @@ def run(ctx):
     docker=ctx['docker'];api=ctx['api'];check=ctx['check'];ctl=ctx['ctl']
     controller=ctx['controller'];node=ctx['node'];prefix='/opt/ascend-lab-native-controller'
     uid=ctx['installed']['uid'];gid=ctx['installed']['gid'];root=ctx['ROOT']
+    def monitored(*args,expected=0,user=None,rendered=False):
+        result=docker(['exec','--user',str(uid)+':'+str(gid) if user is None else user,controller,
+            '/usr/bin/python3','-B','/bootstrap/servicectl','control-monitor','--prefix',prefix,*args],check=False)
+        assert result.returncode==expected,result.stderr
+        return result.stdout if rendered else json.loads(result.stdout)
     def native(action,*args,check=True):
         try:result=docker(['exec',controller,'/usr/bin/python3','-B','/bootstrap/servicectl',action,'--prefix',prefix,*args],check=check,timeout=45)
         except Exception:
@@ -85,6 +90,18 @@ print(json.dumps({'uid':list(map(int,s['Uid'].split())),'effective':int(s['CapEf
     identity=json.loads(docker(['exec','--user',str(uid)+':'+str(gid),controller,'/usr/bin/python3','-I','-c',inspect,prefix]).stdout)
     assert identity['uid']==[uid]*4 and identity['effective']==identity['permitted']==0 and identity['private_namespace'] and identity['temporary_files_bound']
     check('Restored controller is the configured unprivileged UID with zero effective/permitted capabilities; direct launch without protected descriptors is refused')
+    healthy=monitored();assert healthy['status']=='ready' and healthy['check_success']
+    assert healthy['audit_retention']['maximum_rows']==10000 and healthy['audit_retention']['archive_before_drop'] is False
+    warned=monitored('--warning-free-mib','300',expected=1);assert warned['status']=='warning' and not warned['admission_blocks_new_work']
+    critical=monitored('--warning-free-mib','400','--critical-free-mib','300',expected=2)
+    assert critical['status']=='critical' and not critical['admission_blocks_new_work']
+    inode=monitored('--warning-free-inodes','10000','--critical-free-inodes','9000',expected=2)
+    assert inode['status']=='critical' and 'control_free_inodes' in inode['reason_codes']
+    peer=monitored(expected=3,user='23004:23004');assert peer['status']=='unknown' and peer['components'] is None
+    text=monitored('--format','prometheus',rendered=True)
+    assert 'ascend_lab_control_check_success 1\n' in text and '/srv/' not in text and 'password' not in text
+    (ctx['base']/'control-monitor.prom').write_text(text)
+    check('Installed service UID exports fixed-file control metrics without HTTP dependency; independent warning/critical byte and inode alerts do not change admission; peer UID is refused')
     from lab_client import Client
     from environment_contract import lock_for
     client=Client({'controller':ctx['controller_url'],'token':ctx['token']})
@@ -125,12 +142,18 @@ print(json.dumps({'covered':True,'wrong_device':p.stat().st_dev}))
         separation=json.loads(docker(['exec',controller,'/usr/bin/python3','-I','-c',cover,str(uid),str(gid)]).stdout);covered=True
         assert separation['wrong_device']!=policies[1]['device']
         pressure=api('/api/control-storage')[1];assert pressure['blocks_new_work'] and pressure['status']=='unavailable'
+        observed=monitored(expected=2)
+        assert observed['status']=='critical' and observed['reason_codes']==['required_control_filesystem_unavailable'] and observed['components'] is None
+        missing_metrics=monitored('--format','prometheus',expected=2,rendered=True)
+        assert 'ascend_lab_control_check_success 0\n' in missing_metrics and 'ascend_lab_control_free_bytes 0\n' not in missing_metrics
+        (ctx['base']/'control-monitor-unavailable.prom').write_text(missing_metrics)
         assert '/srv/' not in json.dumps(pressure)
         status,blocked=api('/api/jobs',{**follower_request,'idempotency_key':'native-control-rejected'});assert status==503,blocked
         running=native('status');assert running['running'] and not running['ready'] and not running['control_filesystem_available']
         done=ctx['wait'](identifier);assert done['state']=='succeeded' and done['attempt_id']==attempt,done
         waiting=api('/api/jobs/'+follower)[1]['job'];assert waiting['state']=='queued' and not waiting.get('attempt_id'),waiting
         assert not native('stop')['running']
+        assert monitored(expected=2)['status']=='critical'
         unchanged=docker(['exec',controller,'/usr/bin/python3','-I','-c',
             "from pathlib import Path;p=Path('/srv/native-wrong/state');assert sorted(x.name for x in p.iterdir())==['sentinel'];assert (p/'sentinel').read_bytes()==b'owned wrong filesystem; never a controller state'"])
         assert unchanged.returncode==0
@@ -145,6 +168,7 @@ print(json.dumps({'covered':True,'wrong_device':p.stat().st_dev}))
     assert status==200 and b'arith.constant 42' in data
     original_replay=client.request('/api/jobs',request)['job'];assert original_replay['id']==identifier
     assert not ctl(node,'node','stop')['running'] and not native('stop')['running']
+    assert monitored()['status']=='ready'  # Capacity readiness is not service liveness.
     export=r'''import json,os,sqlite3,sys
 from pathlib import Path
 source=sqlite3.connect('file:/srv/native1/state/jobs.sqlite3?mode=ro',uri=True);target=Path(sys.argv[1]);assert not target.exists()
@@ -178,6 +202,10 @@ print(json.dumps(rows))
     roundtrip_counts=json.loads(docker(['exec',controller,'/usr/bin/python3','-I','-c',export.replace('/srv/native1/state/jobs.sqlite3','/srv/native4/state/jobs.sqlite3'),str(roundtrip_export),identifier,follower,after_roundtrip['id']]).stdout)
     check('Native snapshot refuses an ordinary-directory restore, then rebinds fresh control/payload disks and runs another real IR attempt with original results intact')
     return {'passed':True,'fresh_install':True,'bound_subdirectory_refused':True,'restore_ordinary_snapshot_to_native':True,
+        'external_monitor':{'passed':True,'actual_uid':uid,'ready':0,'warning':1,'critical':2,'unknown':3,
+            'byte_inode_alerts':True,'admission_unchanged_by_alerts':True,'peer_uid_refused':True,
+            'native_mount_loss_critical':True,'no_fallback_stat_or_config':True,'stopped_controller_supported':True,
+            'prometheus_exported':True,'audit_rolling_limit_disclosed':10000,'audit_archived':False},
         'configured_uid':uid,'actual_identity':identity,'separate_filesystems':True,
         'control_capacity_bytes':policies[1]['bytes'],'control_capacity_inodes':policies[1]['inodes'],
         'outside_mount_cover':True,'fallback_untouched':True,'new_submission_http':503,

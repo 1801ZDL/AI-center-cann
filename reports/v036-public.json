@@ -87,7 +87,8 @@
     "compiler_diagnostic.py",
     "operator_profile.py",
     "operator_node.py",
-    "operator_workflow.py"
+    "operator_workflow.py",
+    "control_monitor.py"
   ],
   "reproduced_by_public_ci": false,
   "raw_evidence_in_repository": false,

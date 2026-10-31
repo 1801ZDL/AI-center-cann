@@ -47,6 +47,10 @@ OPTIONAL_ADMIN_FILES.update({'operator_node.py','operator_workflow.py'})
 OPTIONAL_ADMIN_FILES.update({'compiler_diagnostic.py','COMPILER_DIAGNOSTICS.md','SCALING.md'})
 OPTIONAL_ADMIN_FILES.add('control_storage.py')
 OPTIONAL_ADMIN_FILES.update({'control_filesystem.py','control_process.py'})
+CORE.append('control_monitor.py')
+OPTIONAL_ADMIN_FILES.add('control_monitor.py')
+CORE.append('CONTROL_MONITOR.md')
+OPTIONAL_ADMIN_FILES.add('CONTROL_MONITOR.md')
 
 
 class DeployError(ValueError):pass

@@ -1,5 +1,24 @@
 # 实施进度
 
+## 控制存储外部检查与审计滚动策略披露（2026-10-31）
+
+**最终875项/144.707秒/无跳过及JS语法通过；85个非文档CORE与安装Root31、开户Root49一致。** full `job-bfd53534788e`，安装 `job-02ba2ba3e5ce`，owner `job-de69a5cf5138`。protected6仍为v0.36；APP4/r4镜像未变，不重建镜像，不重新调用模型或NPU。旧browser41和前阶段Root30保持原源码范围。
+
+新增可选管理模块control_monitor.py及 `servicectl control-monitor --prefix ... --format json|prometheus`：仅Root或指定中央服务UID，Node/peer拒绝；先校验匹配的只读安装代码及原生根，再通过FD检查固定数据库、journal/WAL/SHM和轮转日志的类型/挂载/逻辑大小/已分配大小。没有SQLite连接、目录扫描、journal恢复、网络、配置写入、删除、PID信号或调度动作；未知值为null/无sample，不记成0。容量快照不代表服务或任务就绪，也不是整个控制树占用。外侧根替换时critical且不读错误挂载config/文件；原私有服务可以仍在原盘完成任务。
+
+退出0/1/2/3分别ready/warning/critical/unknown；监控字节/inode阈值独立于原准入，现有准入暂停也报告critical。固定低基数Prometheus gauge不含用户名、作业ID、路径或凭据，附采样时间供外部缺失/过期告警。命令单次输出，不安装HTTP exporter、node_exporter、Alertmanager、cron/timer或实际告警发送器；外部collector仍需管理员配置，不能只在exit0时更新textfile而把critical丢弃。文档见CONTROL_MONITOR.md。
+
+实际Root31包含当前31项安装/普通到原生/原生跨盘恢复、准确stop和单attempt IR，以及服务UID999读指标、peer23004拒绝、真实字节/inode观测上的阈值注入0/1/2分类、告警条件不改准入、挂载覆盖和服务停止时仍可检查。这里没有新写满控制盘；以前真实ENOSPC41属于旧源码阶段。独立parser `job-4a8616134bd5` 使用仅项目runtime中的prometheus-client0.23.1纯Python wheel（PyPI官方SHA核对；非产品依赖/全局安装），正常26和不可用6 samples、11个families均通过。Root归档停止态DB显式导出完整性及原3任务各1attempt由主助手再核。
+
+核实原认证审计本来会在新增时滚动删除全表10,000条以外行，没有先归档。提取同值AUDIT_ROWS常量和参数化LIMIT，保留行为；检查命令披露rolling/maximum_rows/archive_before_drop=false，修正文档中容易误解的表述。长期审计导出/校验/裁剪仍未实现。单元检查在独立fixture插入10,005条后验证保留10,000和新记录；不裁剪Main审计。
+
+初始focused10有1fail：测试把29字节的journal常量写成28；修正期望后10/0.055秒通过。首轮875/146.671秒在部署CORE注册监控文档之前，最终重新全量并冻结当前85。最终Root和owner使用同85；不拿中间源码直接宣布最终验收。
+
+14个本轮自有loop关联released，installproof/nodeowner/nativeprobe/diskproof容器与卷namespace只读确认empty，backings保留；Main config SHA5caf...、19 profiles/domain/CPU254255/2048/SHM1024/1槽及zdl不变，0非终态/有效hold。私有证据evidence/control-monitor-validation.json、runtime/control-monitor-20261031；公开精选reports/public-source-check.json.control_monitor。
+
+下一步仍为有界审计导出与明确保留策略、累计实验预算、真实大IR/精度/卡死/仿真及五类工作流网页；真实宿主账号/PID1/两机fencing和非root NPU数值/性能/仿真仍待。目标active、production_ready=false，PUBLIC-001继续延期。
+
+
 ## 独立有限控制盘、原生启动身份与跨盘恢复（2026-10-31）
 
 **最终865项/146.373秒/无跳过及JS语法通过；84个非文档CORE与实际安装30、开户Root49冻结一致。** 全量 `job-5c10576f12b0`，安装 `job-e4ddce2059c9`，开户 `job-56e51e943e56`。原6个受保护运行文件仍为v0.36哈希；固定r4工具镜像的APP4不变，无需重建。本轮0模型调用、0 NPU kernel，不把旧浏览器41、旧编译诊断或性能镜像验收移作当前84源码的新验收。

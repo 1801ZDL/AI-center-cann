@@ -109,8 +109,20 @@ def main():
             group=p.add_mutually_exclusive_group(required=True);group.add_argument('--archive');group.add_argument('--release-id')
         if action=='unit-install':p.add_argument('--unit-dir',default='/etc/systemd/system');p.add_argument('--enable',action='store_true')
     p=commands.add_parser('native-run',help='Trusted Root controller namespace launcher; not a task interface');p.add_argument('--prefix',required=True)
+    p=commands.add_parser('control-monitor',help='Read-only external control-filesystem check; never opens databases or starts services')
+    p.add_argument('--prefix',required=True);p.add_argument('--format',choices=['json','prometheus'],default='json')
+    p.add_argument('--warning-free-mib',type=int,default=128);p.add_argument('--critical-free-mib',type=int,default=64)
+    p.add_argument('--warning-free-inodes',type=int,default=512);p.add_argument('--critical-free-inodes',type=int,default=256)
+    p.add_argument('--component-warning-mib',type=int,default=32)
     args=parser.parse_args()
     if args.action=='bundle':result=deploy.bundle(args.output)
+    elif args.action=='control-monitor':
+        from control_monitor import inspect,prometheus
+        result=inspect(args.prefix,warning_free_mib=args.warning_free_mib,critical_free_mib=args.critical_free_mib,
+            warning_free_inodes=args.warning_free_inodes,critical_free_inodes=args.critical_free_inodes,
+            component_warning_mib=args.component_warning_mib)
+        print(prometheus(result) if args.format=='prometheus' else json.dumps(result,ensure_ascii=False,indent=2))
+        raise SystemExit(result['exit_code'])
     elif args.action in {'owner-provision','owner-provision-node'}:
         deploy.require_root();path=Path(args.request if args.action=='owner-provision-node' else args.spec)
         if path.lstat().st_uid!=0:raise deploy.DeployError('Participant request must be Root-owned')

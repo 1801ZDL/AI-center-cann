@@ -17,6 +17,7 @@ from state_lock import state_lock
 import owner_identity
 
 SCOPES = frozenset({'jobs:read', 'jobs:submit', 'jobs:cancel', 'monitor:read','storage:manage'})
+AUDIT_ROWS = 10000
 IDENTIFIER = re.compile(r'^[a-zA-Z][a-zA-Z0-9_-]{0,47}$')
 
 
@@ -270,7 +271,7 @@ class AccessControl:
         with self.connect() as db:
             db.execute('INSERT INTO audit(at,actor,action,target,outcome) VALUES(?,?,?,?,?)',
                        (dt.datetime.now(dt.timezone.utc).isoformat(),principal.id,action,target[:100],outcome))
-            db.execute('DELETE FROM audit WHERE id NOT IN (SELECT id FROM audit ORDER BY id DESC LIMIT 10000)')
+            db.execute('DELETE FROM audit WHERE id NOT IN (SELECT id FROM audit ORDER BY id DESC LIMIT ?)',(AUDIT_ROWS,))
 
     def audit(self, principal):
         if not principal.admin:raise AccessError()
