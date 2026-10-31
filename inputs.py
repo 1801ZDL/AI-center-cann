@@ -135,12 +135,14 @@ class InputStore:
             if offset+len(data)>item['size']:raise JobError('Input chunk exceeds declared size')
             size=bundle['uploaded'].get(name,0);path=self.directory(bundle_id)/name
             if path.is_symlink() or not path.resolve().is_relative_to(self.directory(bundle_id).resolve()):raise JobError('Unsafe input storage path')
-            path.parent.mkdir(parents=True,mode=0o700,exist_ok=True)
             if offset<size:
                 with path.open('rb') as file:file.seek(offset);old=file.read(len(data))
                 if offset+len(data)>size or old!=data:raise JobError('Conflicting input retry',409)
                 return {'size':size,'reused':True}
             if offset!=size:raise JobError('Input offset must be contiguous',409)
+            from control_storage import require
+            require(self.jobs.runtime,self.jobs.policy.get('control_storage'))
+            path.parent.mkdir(parents=True,mode=0o700,exist_ok=True)
             from storage_io import write_chunk
             write_chunk(path,size,data,root=self.jobs.payload.base)
             db.execute('INSERT OR REPLACE INTO input_uploads VALUES(?,?,?)',(bundle_id,name,size+len(data)))
@@ -153,6 +155,8 @@ class InputStore:
             bundle=self.get(bundle_id,principal,db)
             self.jobs.lifecycle.available('input',bundle_id,db)
             if bundle['sealed']:return bundle
+            from control_storage import require
+            require(self.jobs.runtime,self.jobs.policy.get('control_storage'))
             for item in bundle['files']:
                 path=self.directory(bundle_id)/item['name']
                 if item['size']==0 and not path.exists():

@@ -281,6 +281,7 @@ def restore(prefix,archive_path,new_state,max_bytes=10*1024**3,payload_config=No
             relocate(stage,manifest['original_state'],target,meta['role'],
                      original_payload['path'] if original_payload else manifest['original_state'],policy['path'] if policy else None)
             restored_config=read_json(stage/'config.json')
+            require_control_storage(restored_config,meta['role'],read_json(prefix/'releases'/meta['release_id']/'release.json'))
             if node_cache:
                 if restored_config.get('persistent_cache')!=node_cache:raise DeployError('Snapshot private cache policy differs from its manifest')
                 from persistent_cache import Pool
@@ -321,8 +322,17 @@ def restore(prefix,archive_path,new_state,max_bytes=10*1024**3,payload_config=No
             if payload_stage is not None and payload_stage.exists():shutil.rmtree(payload_stage)
 
 
+def require_control_storage(config,role,manifest):
+    if role=='controller' and config.get('scheduler',{}).get('control_storage') is not None:
+        from control_storage import validate
+        validate(config['scheduler']['control_storage'])
+        if 'control_storage.py' not in manifest.get('files',{}):
+            raise DeployError('Control storage admission requires matching support; refusing downgrade')
+
+
 def require_features(state,role,manifest):
     config=read_json(Path(state)/'config.json') or {}
+    require_control_storage(config,role,manifest)
     if role=='controller' and 'qualification_compatibility.py' not in manifest.get('files',{}):
         path=Path(state)/'jobs.sqlite3'
         if path.exists():

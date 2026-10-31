@@ -39,6 +39,7 @@ assert not options.compiler_case or options.operator_analysis, 'Compiler case ex
 disk=options.disk_workspace or user_quota
 assert not (disk and options.large_wheel), 'Keep disk hard-limit and large-wheel fixtures separate'
 assert not options.control_storage_pressure or (not options.storage_pressure and not options.central_payload and not options.large_wheel), 'Control capacity fault injection uses a separate bounded state filesystem'
+assert not options.control_storage_pressure or (not https and not options.operator_analysis), 'Control headroom browser/fault acceptance uses its explicit local CPU role fixture'
 assert not (options.storage_pressure and options.large_wheel), 'Keep the full-disk fault injection bounded'
 assert not (options.central_payload and (options.storage_pressure or options.large_wheel)), 'Keep production storage and fault injection/large transfers separately verifiable'
 large_wheel=Path(options.large_wheel).absolute() if options.large_wheel else None

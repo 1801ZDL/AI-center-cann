@@ -1,5 +1,11 @@
 # 作业 API v0.7
 
+## 控制存储准入状态
+
+`GET /api/control-storage`要求`jobs:read`，返回只读的`enabled,status,blocks_new_work,reason_code,free_bytes,free_inodes,minimum_free_bytes,minimum_free_inodes`和范围说明，不公开路径/设备身份。`GET /api/jobs`的`control_storage`字段返回同一类快照。状态为disabled/ready/pressure/unavailable；门槛是准入保护，非硬配额或预留保证。
+
+新任务、新输入及未提交输入写入在低余量时返回503：`error=control_storage_pressure,retryable=true,original_operation_required=true`，reason_code为control_storage_bytes/control_storage_inodes/control_storage_readonly/control_storage_unavailable。恢复容量后继续原幂等键、原input及原偏移，不据此重复计算。相同已提交分块和已有任务回执保持原身份。Node新claim无grant，未消费start返回wait；原grant恢复、心跳、结果上传及complete仍可继续。实际ENOSPC/EDQUOT仍可能返回原507；上述状态接口不能替代完成回执。
+
 ## 归档算子分析报告
 
 个人客户端的 `operator_profile.py` 使用原有GET任务详情和固定artifact-chunk读取一个<=64KiB报告；没有新增执行型HTTP接口。先按服务端本人/项目ACL授权，再检查固定文件名、完整长度、SHA及schema，拒绝截断/超限/不一致的报告。其独立stdio MCP沿用无参数 `get_diagnostic_case`，启动时绑定job ID；不能提交/取消或覆盖任务/文件路径。报告属于用户工作负载证据，不授予设备资格或独立精度/性能认证。详见OPERATOR_ANALYSIS.md。

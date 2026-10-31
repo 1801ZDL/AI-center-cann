@@ -1,5 +1,9 @@
 # 个人 CLI / Agent 接入
 
+## 控制盘余量
+
+新版个人MCP的`queue_status`包含中央的`control_storage`状态，不暴露其他用户任务。`blocks_new_work=true`时暂停追加实验，查询原任务并等待容量恢复；503不表示旧任务没有提交，不得换幂等键重跑。旧中央未声明时该字段可能为null。已有任务回执、日志、取消和结果恢复继续使用原接口。配置及保护范围见[STORAGE.md](STORAGE.md)；个人客户端不需要安装控制盘管理模块或获得Root权限。
+
 ## 离线算子报告的只读接入
 
 客户端新增 `operator-case job-ID`，读取已归档的 `results/operator-analysis.json`；普通日志诊断命令保持不变。`operator_profile.py mcp --profile 本人配置 --job-id 分析任务ID` 提供无参数 `get_diagnostic_case`，只读绑定任务，不暴露上游 SQL、采集、提交或任意路径。读取只需本人/项目的 jobs:read 授权，不需要安装分析工具依赖。工具环境、输入格式、CPU提交及当前范围见 [OPERATOR_ANALYSIS.md](OPERATOR_ANALYSIS.md)。个人模型密钥和对话仍由各自harness管理。

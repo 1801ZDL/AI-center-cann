@@ -38,6 +38,15 @@ class AgentBoundaryTests(unittest.TestCase):
     def tearDown(self):
         self.temp.cleanup()
 
+    def test_queue_status_exposes_control_admission_without_other_users_jobs(self):
+        state={'enabled':True,'status':'pressure','blocks_new_work':True,'reason_code':'control_storage_bytes'}
+        self.bridge.api=Mock(return_value={'policy':{},'reserved':{},'environments':[],
+                                          'control_storage':state,'jobs':[{'private':'unrelated'}]})
+        result=self.bridge.call('queue_status',{})
+        self.assertEqual(result['control_storage'],state)
+        self.assertNotIn('unrelated',json.dumps(result));self.assertNotIn('jobs',result)
+        self.bridge.api.assert_called_once_with('/api/jobs')
+
     def submit(self, **kwargs):
         return self.bridge.call('submit_job', {'template':'cpu_demo','request_key':'stable', **kwargs})
 

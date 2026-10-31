@@ -32,6 +32,8 @@ class StorageBudget:
         if old:
             if old!=(principal.id,size):raise JobError('Storage allocation conflicts',409)
             return
+        from control_storage import require
+        require(self.jobs.runtime,self.jobs.policy.get('control_storage'))
         cap=self.jobs.policy.get(kind+'_budget_mib')
         user_limit=principal.quota.get(kind+'_storage_mib',cap if cap is not None else 512 if kind=='input' else 2048)
         if cap is not None:user_limit=min(user_limit,cap)

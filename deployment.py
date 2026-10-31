@@ -30,7 +30,7 @@ CORE=['auth.py','owner_identity.py','owner_handoff.py','qualification_compatibil
       'environment_probe.py','environment_contract.py','device_qualification.py','attempt_inventory.py','executor.py','npu_admission.py','npu_device.py','inputs.py','jobs.py','lab_client.py','client_archive.py','archive_api.py','nodes.py','server.py',
       'templates.py','worker.py','workflow_runner.py','workflow_spec.py','workflow_results.py',
       'state_lock.py','resources.py','queue_policy.py','docker_runtime.py','listener.py','preflight.py','workspace_slots.py','filesystem_quota.py','quota_workspace.py','workspace_quota_admin.py','node_owner_admin.py','group_quota.py','payload_groups.py','payload_quota_admin.py','payload_owner_admin.py','io_policy.py','storage_io.py','payload_storage.py','storage_budget.py','storage_files.py','storage_lifecycle.py','node_storage.py','deployment.py','maintenance.py','servicectl','accessctl','workerctl',
-      'spool_storage.py','spool_transfer.py','persistent_cache.py','dependencies.py','labctl','install-client','mcp_bridge.py','diagnostic_case.py','compiler_diagnostic.py','operator_profile.py','operator_node.py','operator_workflow.py','CLIENT.md','SERVER.md','API.md','WORKFLOWS.md','NPU.md','WORKSPACE.md','STORAGE.md','CACHE.md','DEPENDENCIES.md',
+      'spool_storage.py','spool_transfer.py','persistent_cache.py','dependencies.py','control_storage.py','labctl','install-client','mcp_bridge.py','diagnostic_case.py','compiler_diagnostic.py','operator_profile.py','operator_node.py','operator_workflow.py','CLIENT.md','SERVER.md','API.md','WORKFLOWS.md','NPU.md','WORKSPACE.md','STORAGE.md','CACHE.md','DEPENDENCIES.md',
       'README.md','DEPLOYMENT.md','SCALING.md','HARNESS.md','OPERATOR_ANALYSIS.md','COMPILER_DIAGNOSTICS.md','ENVIRONMENTS.md','RECOVERY.md','HTTPS.md','SPOOL.md','OWNER_PROVISION.md']
 SCHEMA=1
 EXECUTABLES={'servicectl','accessctl','workerctl','labctl','install-client'}
@@ -45,6 +45,7 @@ OPTIONAL_ADMIN_FILES.add('operator_profile.py')
 OPTIONAL_ADMIN_FILES.add('OPERATOR_ANALYSIS.md')
 OPTIONAL_ADMIN_FILES.update({'operator_node.py','operator_workflow.py'})
 OPTIONAL_ADMIN_FILES.update({'compiler_diagnostic.py','COMPILER_DIAGNOSTICS.md','SCALING.md'})
+OPTIONAL_ADMIN_FILES.add('control_storage.py')
 
 
 class DeployError(ValueError):pass
@@ -404,11 +405,13 @@ def install(archive,prefix,state,role,uid=None,gid=None,create_user=None,node_co
             if gid==0 or docker_group is not None and docker_group in groups:raise DeployError('Controller service identity cannot belong to root/Docker groups')
         with state_lock(state) as lock:os.fchown(lock.fileno(),uid,gid)
         if role=='controller':
+            from control_storage import DEFAULT as CONTROL_DEFAULT
             cpus=sorted(os.sched_getaffinity(0))[-2:]
             config={'username':'lab_admin','password':secrets.token_urlsafe(32),'host':bind_address,'port':port,'container':'unused',
                     'monitor_local':False,'interval':15,'identity_workspace_root':str(state/'users'),
                     'scheduler':{'local_enabled':False,'workspace_root':str(state/'users'),'cpu_ids':cpus,
                                  'memory_mib':4096,'shm_mib':1024,'max_running':1,'npu_enabled':False,
+                                 'control_storage':dict(CONTROL_DEFAULT),
                                  'require_bounded_workspace':True,'require_pinned_docker':True,'require_environment_contract':True,'require_attempt_inventory':True,'require_node_spool':True,'require_finite_node_spool':True}}
             if payload_config:
                 from payload_storage import inspect_new,initialize

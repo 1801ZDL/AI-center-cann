@@ -41,18 +41,26 @@ print(json.dumps({'uids':list(map(int,s['Uid'].split())),'effective':int(s['CapE
     principal=json.loads(docker(['exec',controller,'/usr/bin/python3','-I','-c',caps,str(identity['pid'])]).stdout)
     assert principal['uids']==[ctx['installed']['uid']]*4 and principal['effective']==principal['permitted']==0
     check('Actual unprivileged controller runs on a bounded owned ext4 state filesystem, separate from Node control/spool')
-    fill=r'''import errno,json,os
+    from control_headroom_check import run as headroom_check
+    headroom=headroom_check(ctx,node_state)
+    fill=r'''import errno,json,os,stat,sys
 from pathlib import Path
-p=Path('/central-pressure/filler');fd=os.open(p,os.O_WRONLY|os.O_CREAT|os.O_EXCL,0o600)
+p=Path('/central-pressure/filler')
+if len(sys.argv)==1:fd=os.open(p,os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,0o600)
+else:
+ fd=os.open(p,os.O_WRONLY|os.O_APPEND|os.O_NOFOLLOW);s=os.fstat(fd)
+ assert [s.st_dev,s.st_ino]==list(map(int,sys.argv[1:]))
+assert stat.S_ISREG(os.fstat(fd).st_mode) and os.fstat(fd).st_nlink==1
+enospc=False
 try:
  while True:os.write(fd,b'x'*65536)
-except OSError as e:assert e.errno==errno.ENOSPC
+except OSError as e:assert e.errno==errno.ENOSPC;enospc=True
 finally:
  try:os.fsync(fd)
  except OSError as e:assert e.errno==errno.ENOSPC
  os.close(fd)
 s=p.stat();v=os.statvfs(p.parent)
-print(json.dumps({'device':s.st_dev,'inode':s.st_ino,'bytes':s.st_size,'free_bytes':v.f_bavail*v.f_frsize}))
+print(json.dumps({'device':s.st_dev,'inode':s.st_ino,'bytes':s.st_size,'free_bytes':v.f_bavail*v.f_frsize,'enospc_observed':enospc}))
 '''
     release=r'''import os,sys
 from pathlib import Path
@@ -90,12 +98,23 @@ Path(os.environ['LAB_RESULT_FILE']).write_text(json.dumps({'schema':'ascend-lab-
         assert detail['job']['state']=='running',detail['job']['state']
         attempt=detail['job']['attempt_id'];control=node_state/'attempts'/attempt/'control'
         grant=secret(node,control/'grant.json');auth={k:grant[k] for k in ['job_id','attempt_id','lease_token']}
-        filler=json.loads(docker(['exec',controller,'/usr/bin/python3','-I','-c',fill]).stdout)
-        assert filler['free_bytes']==0 and filler['bytes']<128*1024**2
-        status,failed=api('/api/worker/update',{**auth,'running':True},extra_headers={'Authorization':'Bearer '+ctx['configuration']['node_key']})
-        assert status==507 and failed['error']=='storage_unavailable',failed
+        fills=[];filler=None
+        for fill_round in range(3):
+            # SQLite journal deletion can free blocks between ENOSPC and statvfs.
+            # Prove the original update actually fails; never infer FULL solely
+            # from an exact-zero free counter or submit replacement computation.
+            append=[] if filler is None else [str(filler['device']),str(filler['inode'])]
+            filler=json.loads(docker(['exec',controller,'/usr/bin/python3','-I','-c',fill,*append]).stdout)
+            assert filler['enospc_observed'] and filler['bytes']<128*1024**2
+            fills.append(filler)
+            (ctx['base']/('full-filler-'+label+'.json')).write_text(json.dumps(fills))
+            status,failed=api('/api/worker/update',{**auth,'running':True},extra_headers={'Authorization':'Bearer '+ctx['configuration']['node_key']})
+            if status==507:
+                assert failed['error']=='storage_unavailable';break
+            assert status==200,'Observe the original control-full attempt before changing fault injection'
+        else:raise AssertionError('No actual SQLite capacity failure observed; original task is not resubmitted')
         status,new=api('/api/jobs',{'template':'cpu_demo','environment':'worker-python','parameters':{'seconds':1},'idempotency_key':'control-full-rejected-'+label})
-        assert status==507 and new['error']=='storage_unavailable',new
+        assert status==503 and new['error']=='control_storage_pressure',new
         # Observe local result while central SQLite cannot commit even a journal.
         # A generic worker exception would abandon tick(), including its deadline.
         deadline=time.monotonic()+35;local={};outcome={}
@@ -132,10 +151,10 @@ Path(os.environ['LAB_RESULT_FILE']).write_text(json.dumps({'schema':'ascend-lab-
         assert local['artifact_receipt']['attempt_id']==attempt
         assert api('/api/jobs')[1]['reserved']['cpu']==0
         proof.append({'case':label,'job_id':identifier,'attempt_id':attempt,'follower_job_id':follower,
-            'local_status_while_full':expected,'worker_update_http':507,'new_submission_http':507,
+            'local_status_while_full':expected,'worker_update_http':507,'new_submission_http':503,
             'local_cleanup_while_full':True,'lease_held_until_ack':True,'follower_no_attempt_while_full':True,
             'same_attempt':True,'idempotent_replay_reused':True,'same_marker':True,'ack_gc_confirmed':True,
-            'filler_identity':filler,'archived_marker_sha256':hashlib.sha256(json.dumps(archived,sort_keys=True).encode()).hexdigest()})
+            'filler_identity':filler,'fill_observations':fills,'archived_marker_sha256':hashlib.sha256(json.dumps(archived,sort_keys=True).encode()).hexdigest()})
         check('Capacity restored: original '+label+' resumes transfers/ACK/GC, idempotent replay reuses it, follower executes once')
     ctl(node,'node','stop');ctl(controller,'controller','stop')
     # The pressure state lives inside the role namespace. Keep an explicit,
@@ -146,10 +165,11 @@ source=Path(sys.argv[1]);target=Path(sys.argv[2]);assert not target.exists()
 a=sqlite3.connect('file:'+str(source)+'?mode=ro',uri=True);b=sqlite3.connect(target)
 a.backup(b);assert b.execute('PRAGMA integrity_check').fetchone()[0]=='ok'
 assert b.execute("SELECT count(*) FROM jobs WHERE idem_key LIKE 'control-full-rejected-%'").fetchone()[0]==0
+assert b.execute("SELECT count(*) FROM jobs WHERE idem_key LIKE 'headroom-rejected-%'").fetchone()[0]==0
 b.close();a.close();target.chmod(0o600)
 '''
     target=ctx['controller_state']/'control-pressure-proof.sqlite3'
     docker(['exec',controller,'/usr/bin/python3','-I','-c',export,str(state/'jobs.sqlite3'),str(target)])
-    return {'passed':True,'cases':proof,'control_filesystem':separation,'actual_service_identity':principal,
+    return {'passed':True,'cases':proof,'headroom_admission':headroom,'control_filesystem':separation,'actual_service_identity':principal,
             'new_uncommitted_jobs_absent':True,'stopped_sqlite_export':str(target),
             'scope':'Same-host owned bounded ext4; actual control SQLITE_FULL, CPU success/deadline and recovery. No power-loss, failover, production storage migration or automatic retention.'}

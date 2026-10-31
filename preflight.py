@@ -153,6 +153,8 @@ def plan(role,prefix=None,state=None,archive=None,uid=None,gid=None,create_user=
     if archive:
         def release():
             value=deploy.inspect_release(archive)
+            if role=='controller' and 'control_storage.py' not in value['manifest']['files']:
+                raise deploy.DeployError('New controller installations require control storage admission support')
             return {'id':value['manifest']['id'],'sha256':value['sha256'],'bytes':value['bytes'],
                     'unpacked_bytes':value['unpacked_bytes'],'files':len(value['manifest']['files'])}
         report['release']=check('release_archive',release)
@@ -161,9 +163,20 @@ def plan(role,prefix=None,state=None,archive=None,uid=None,gid=None,create_user=
                 'systemd_pid1':Path('/proc/1/comm').read_text().strip()=='systemd',
                 'shm_scope':'current service IPC namespace; not the task SHM budget'})
     if role=='controller':
+        from control_storage import DEFAULT as CONTROL_DEFAULT,observe as control_observe
         from listener import assess
         report['listener']=check('controller_listener',lambda:assess(bind_address,port,public_url,tls_cert,tls_key,tls_ca)[0])
         report['controller_defaults']={'local_execution':False,'require_bounded_workspace':True,'require_pinned_docker':True,'require_environment_contract':True,'require_attempt_inventory':True,'require_node_spool':True,'require_finite_node_spool':True}
+        report['controller_defaults']['control_storage']=dict(CONTROL_DEFAULT)
+        if report.get('paths'):
+            def control_headroom():
+                parent=Path(state)
+                while not parent.exists():parent=parent.parent
+                value=control_observe(parent,CONTROL_DEFAULT)
+                if value['blocks_new_work']:
+                    raise deploy.DeployError('Control filesystem lacks configured byte/inode headroom or cannot be observed; no operation was attempted')
+                return value
+            check('control_storage_admission',control_headroom)
         report['service_identity']=check('controller_identity',lambda:controller_identity(uid,gid,create_user))
         if report.get('paths') and report.get('service_identity'):
             check('controller_path_access',lambda:controller_path_access(prefix,state,uid,gid,create_user))

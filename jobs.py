@@ -79,6 +79,8 @@ def defaults(config):
               'workspace_root': str(Path.home()), 'max_jobs': 1000, 'local_enabled':True,
               'require_bounded_workspace':False,'require_pinned_docker':False,'require_environment_contract':False,'require_attempt_inventory':False,'require_node_spool':False,'require_finite_node_spool':False,'aging_seconds':300}
     policy.update(config.get('scheduler', {}))
+    from control_storage import validate as control_policy
+    policy['control_storage']=control_policy(policy.get('control_storage'))
     from workflow_spec import MAX_TIMEOUT_SECONDS
     if type(policy['max_timeout_seconds']) is not int or not 1<=policy['max_timeout_seconds']<=MAX_TIMEOUT_SECONDS:
         raise ValueError('Administrator execution timeout must be within 1..86400 seconds')
@@ -540,6 +542,7 @@ class JobStore:
             policy['cpu_ids'] = policy['cpu_ids'][:principal.quota['cpu']]
         return {'enabled': True, 'backend': 'sqlite-single-node',
                 'policy':policy,'identity':self.access.public_profile(principal),'storage':self.storage.summary(principal),
+                'control_storage':self.control_storage(),
                 'default_cwd': str(ROOT) if principal.legacy else principal.workspace,
                 'environments': [{'id': k, 'label': v['label'], 'type': v['type']} for k, v in environments.items()],
                 'counts': {s: sum(j['state'] == s for j in readable) for s in ['queued', 'reserved', 'running', 'cancelling', 'needs_attention', *sorted(TERMINAL)]},
@@ -586,11 +589,17 @@ class JobStore:
             return '等待有效账号和项目提交权限；不会启动已撤权的作业'
         if '*' not in principal.environments and job['environment'] not in principal.environments:return '执行环境授权已撤销；不会启动作业'
         if principal.mode=='templates' and not job.get('template'):return '账号已限制为模板执行；不会启动旧的任意命令'
+        from control_storage import HOLD as CONTROL_HOLD
+        if self.control_storage()['blocks_new_work']:return CONTROL_HOLD
         user_active=[j for j in active if j['owner']==job['owner']]
         if 'max_running' in principal.quota and len(user_active)>=principal.quota['max_running']:return '等待当前用户的运行名额'
         if any(sum(j['resources'].get(k,0) for j in user_active)+job['resources'].get(k,0)>v
                for k,v in principal.quota.items() if k in {'cpu','memory_mib','shm_mib','npu'}):return '等待当前用户的资源配额'
         return None
+
+    def control_storage(self):
+        from control_storage import observe
+        return observe(self.runtime,self.policy.get('control_storage'))
 
 
 class Scheduler:

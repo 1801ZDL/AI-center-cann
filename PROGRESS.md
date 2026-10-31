@@ -1,5 +1,29 @@
 # 实施进度
 
+## 控制存储余量准入、个人MCP与旧代码保护（2026-10-31）
+
+**最终852项/166.934秒/无跳过及JS语法通过，82个非文档CORE与实际安装41、开户Root49冻结一致。** 全量job-a35f4ace8f67，安装最终job-77ba33829c92，开户job-bc1896dc8121。初始focused16项是最终MCP/预检/恢复补充前的探索范围；最终852覆盖全部最终测试源码。六个受保护运行文件保持v0.36哈希，固定工具镜像r4的APP4未变，不重建镜像、不重新调用模型或重跑旧编译诊断案例。
+
+新增control_storage.py仅对中央状态目录FD做即时fstatvfs观测，不扫描、删除或缓存。新管理员安装默认minimum_free_mib=64、minimum_free_inodes=256，doctor在创建目录/账号前只读检查；缺少实现的旧包不能作为该新安装的代码。旧配置缺省None/disabled，不自动给个人Demo启用。类型/范围/未知字段严格校验，状态为disabled/ready/pressure/unavailable；只读或计数不可用时阻断新增工作。该快照不预占独享空间，不是原生硬配额、增长预算、告警或自动留存，已有工作/外部写入仍可能耗尽磁盘。
+
+新任务/输入预留及未提交输入分块/封存均在原事务中检查；压力返回503/control_storage_pressure，不为逐次拒绝增加审计写入。已存在的任务幂等回执、输入元数据和已提交相同分块保留原ID/偏移；输入重试先核对原字节，再决定是否需要增长，不先mkdir。未消费的start票据返回wait而非失败或消费；claim保留原grant恢复，暂停新grant。已运行/授权任务的心跳、退出/超时、取消与结果上传/complete继续；真正写满的507仍由上一阶段Worker恢复原attempt。权限撤销仍优先拒绝，不能被容量等待掩盖。
+
+GET /api/control-storage及jobs摘要提供授权只读状态，无路径/设备号/其他用户对象；网页显示字节/inode门槛和暂停原因。个人MCP queue_status附带同一状态，无新工具/命令/文件权限，旧中央缺字段时为null。维护激活和恢复都拒绝让已启用状态落到缺少实现的代码，保留原绑定。新文档见STORAGE.md/API.md/CLIENT.md，外部监控和生产控制盘硬边界仍需管理员准备。
+
+实际安装41在自有128MiB backing ext4里复制并绑定新装中央停止态，服务UID999、effective/permitted cap均0。先以真实已发布497cbba源码的旧CLI构建旧包：启用态激活及新安装预检拒绝，当前绑定不变；再用旧CLI创建一个未启动的旧安装，以当前维护工具恢复启用态快照时在发布状态/改绑定前拒绝。原安装之后正常继续运行；没有创建宿主账号或启动第二中央。
+
+真实非零字节压力下，已预留IR任务的原start票据重复wait/未消费，Node能领回同grant，新claim不增attempt；新任务/输入返回503，部分输入已提交3字节仍可重试但不能追加，取消排队任务成功。实际Root doctor拒绝低余量目标且不创建prefix/state。Node启动后等待原许可、无任务容器；真实打包网页显示相同暂停原因与预览，0提交。另装独立公共只读客户端，实际UID23642用本人私有profile读取同一MCP状态、路径覆盖拒绝；中央状态/socket不可读，UID23004不可读取其profile。恢复余量后原IR和follower各1attempt成功，原部分输入从3字节续至6字节并封存。
+
+随后在大量空闲字节下创建受限数量的自有空文件，实际剩余inode低于256，新任务被拒、原任务0attempt；仅核对精确dev/inode和空文件清单后释放自己的填充目录，原排队任务恢复为单attempt成功。最后继续两轮实际全盘ENOSPC：CPU正常结束/本地超时都在Node完成清理，原租约保留、follower不抢跑；释放自有填充文件后原attempt完成续传/marker校验/ACK/GC。主助手另核显式停机SQLite导出integrity_check、7个执行任务各1attempt、取消任务0attempt、拒绝任务0行、输入6字节/sealed及原attempt不变。归档和回执为角色内live检查，角色移除后host只保留明确数据库导出，不能声称完整恢复态目录仍在host或原生quota仍挂载。
+
+范围/失败保留：首轮job-e3767cf64a20为39项成功，当时仅mcp_bridge.py与最终82源码不同，不能称最终客户端验收。第二轮job-6969804bae95在full注入的复合“free==0且size<128MiB”断言失败，保持failed；当时即时读数未保存，停止后的自有镜像只读stat不足以完整还原该瞬间。最终注入记录每次真实ENOSPC，至多3轮只向同一dev/inode追加并重试原授权worker update，直到实际507，不提交替代计算。最终两例首次ENOSPC后分别仍见20KiB/12KiB余量，第二轮追加后实际更新507，验证严格free==0不能充当唯一判据。旧失败loop记录确认释放，backing文件保留。
+
+最终Root49以同82源码、启用容量准入且余量正常的配置重新覆盖原49个SIGKILL/恢复边界；主助手核6个实际CPU IR任务均succeeded/各1attempt、原domain policy恢复。这不表示在开户各阶段注入过低容量，也不是实际systemd PID1/宿主真实账号。两个最终成功范围共10个盘helper/角色/卷独立确认不存在，loop关联释放，backing文件私有保留。原Main configSHA、CPU254/255、2048MiB/SHM1024MiB/1槽、19个Node profile/domain及zdl运行起点/内存/SHM不变，非终态/有效hold为0；Main明确disabled，旧Node未升级、inventory未豁免。
+
+私有证据evidence/control-headroom-validation.json及runtime/control-headroom-20261031，公开精选reports/public-source-check.json.control_headroom。本轮0模型调用/0NPU kernel；历史operator31、compiler模型和数值范围保持冻结。下一优先仍为控制状态硬边界/留存与外部告警、累计实验预算、实际大IR/精度/卡死/仿真案例及五类网页提交；真实管理员账号/PID1、两物理机断网fencing和非root NPU工作流仍待，PUBLIC-001继续延期，overall_goal_complete=false、production_ready=false。
+
+下方为历史阶段。
+
 ## 控制盘耗尽恢复与多服务器接入边界（2026-10-31）
 
 **最终833项/160.064秒/无跳过及JS语法通过，81个非文档CORE与实际控制盘安装33、新镜像安装31的冻结源码一致。** 新增HTTP状态/权限边界专项检查，focused8项通过。全量job-95309786af8c，控制盘最终job-899c6cc36765，镜像回归job-a00718d820ae。六个受保护运行文件保持v0.36哈希；本轮未重跑历史开户Root49、浏览器或实际编译诊断模型案例，不把历史证据升级为当前验收。

@@ -288,6 +288,9 @@ function renderManagedJobs(summary) {
   $('job-budget').innerHTML+=storageQuota?.enforced
     ? `<span>本人中央存储硬限额 <strong>${bytes(storageQuota.bytes_used)} / ${bytes(storageQuota.byte_hard)}</strong></span><span>本人存储 inode <strong>${num(storageQuota.inodes_used,0)} / ${num(storageQuota.inode_hard,0)}</strong></span>`
     : '<span>中央存储：未启用每用户文件系统硬限额</span>';
+  const control=summary.control_storage;
+  const controlLabel=!control?'未声明':!control.enabled?'未启用':control.blocks_new_work?'暂停新工作':'余量正常';
+  $('job-budget').innerHTML+=`<span id="control-storage-status">控制盘准入 <strong>${controlLabel}</strong>${control?.enabled?' · '+bytes(control.free_bytes)+' / 最低 '+bytes(control.minimum_free_bytes)+' · inode '+num(control.free_inodes,0)+' / 最低 '+num(control.minimum_free_inodes,0):''}</span>`;
   $('job-policy').textContent=`个人预算：${summary.policy.cpu_ids.length} CPU / ${summary.policy.memory_mib} MiB，最多同时运行 ${summary.policy.max_running} 个作业。等待超过 ${summary.policy.aging_seconds??300} 秒的任务启用老化优先，仍需通过权限和环境检查。`;
   $('job-cpu').max=summary.policy.cpu_ids.length;
   $('job-memory').max=summary.policy.memory_mib;

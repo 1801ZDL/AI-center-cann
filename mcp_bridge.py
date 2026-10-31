@@ -68,6 +68,7 @@ class Bridge:
                 policy['depends_on']=request.get('depends_on',[]);policy['artifact_inputs']=request.get('artifact_inputs',[])
             return {'policy': summary['policy'], 'reserved': summary['reserved'],
                     'environments': summary['environments'],
+                    'control_storage':summary.get('control_storage'),
                     'session_policy': policy,
                     'session_jobs': (read_json(self.state_path) or {}).get('jobs', [])}
         if name in {'submit_job','preview_job'}:
@@ -180,7 +181,7 @@ def tools(session=None):
                 'annotations':{'readOnlyHint':readonly,'destructiveHint':name=='cancel_job','idempotentHint':name!='submit_job','openWorldHint':False}}
     jid={'type':'string','pattern':'^job-[0-9a-f]{12}$'}
     registered=[
-        tool('queue_status','Read scheduler resource budgets and this session policy; does not expose unrelated task details.',{}),
+        tool('queue_status','Read resource budgets, control storage admission and this session policy; does not expose unrelated task details.',{}),
         tool('submit_job','Submit one real CPU demo to the central queue. This never runs a command directly. Reuse the same request_key and arguments on retries.',
              {'template':{'type':'string','enum':['cpu_demo']},'environment':{'type':'string','enum':['host-python','zdl-python','zdl-mxh-dev','worker-python']},
               'seconds':{'type':'integer','minimum':1,'maximum':10},'request_key':{'type':'string','minLength':1,'maxLength':40},

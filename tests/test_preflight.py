@@ -26,6 +26,27 @@ class PreflightTests(unittest.TestCase):
 
     def tearDown(self):self.tmp.cleanup()
 
+    def test_new_controller_defaults_require_headroom_without_mutating_state(self):
+        from control_storage import DEFAULT
+        from types import SimpleNamespace
+        before={p.relative_to(self.root) for p in self.root.rglob('*')}
+        state=self.root/'new-state';prefix=self.root/'new-prefix'
+        with patch('preflight.paths',return_value={'prefix':str(prefix),'state_dir':str(state)}),\
+             patch('control_storage.os.fstatvfs',return_value=SimpleNamespace(f_frsize=4096,f_bavail=1,f_favail=4096,f_files=8192,f_flag=0)):
+            report=plan('controller',prefix,state,self.archive,uid=24001,gid=24001)
+        self.assertEqual(report['controller_defaults']['control_storage'],DEFAULT)
+        self.assertIn('control_storage_admission',report['blockers'])
+        self.assertFalse(prefix.exists());self.assertFalse(state.exists())
+        self.assertEqual(before,{p.relative_to(self.root) for p in self.root.rglob('*')})
+
+    def test_new_controller_cannot_install_an_archive_without_guard_support(self):
+        value=inspect_release(self.archive);del value['manifest']['files']['control_storage.py']
+        with patch('preflight.deploy.inspect_release',return_value=value):
+            report=plan('controller','/opt/uncreated-headroom','/var/lib/uncreated-headroom',self.archive,uid=24001,gid=24001)
+        self.assertIn('release_archive',report['blockers'])
+        failure=next(v for v in report['checks'] if v['id']=='release_archive')
+        self.assertIn('control storage admission',failure['reason'])
+
     def test_release_inspection_writes_nothing_and_extraction_keeps_client_executable(self):
         before={p.relative_to(self.root) for p in self.root.rglob('*')}
         report=inspect_release(self.archive)

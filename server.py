@@ -21,6 +21,7 @@ from urllib.parse import parse_qs, quote, urlsplit
 from collector import Collector, ROOT, cancel_commands, experiments, now
 from jobs import ARTIFACT_NAMES, JobError, JobStore, Scheduler, public, read_json
 from auth import AccessControl, AccessError
+from control_storage import Pressure
 
 RUNTIME = ROOT / 'runtime'
 STOP = threading.Event()
@@ -181,6 +182,8 @@ def handler_class(store, config, jobs=None):
                         return self.reply({'events':access.audit(self.principal)})
                     if path == '/api/jobs':
                         return self.reply(jobs.summary(self.principal))
+                    if path == '/api/control-storage':
+                        return self.reply(jobs.control_storage())
                     if path in {'/api/results','/api/results.csv'}:
                         query=parse_qs(parsed.query);kind=query.get('kind',[None])[0]
                         if path.endswith('.csv'):
@@ -302,7 +305,8 @@ def handler_class(store, config, jobs=None):
                     return self.reply(value)
                 if path=='/api/inputs':
                     bundle,reused=jobs.inputs.create(self.principal,request)
-                    access.record(self.principal,'input.create',bundle['id'],'reused' if reused else 'created')
+                    if not (reused and jobs.control_storage()['blocks_new_work']):
+                        access.record(self.principal,'input.create',bundle['id'],'reused' if reused else 'created')
                     return self.reply({'input':bundle,'reused':reused},status=200 if reused else 201)
                 if path.startswith('/api/inputs/'):
                     parts=path.strip('/').split('/')
@@ -313,11 +317,13 @@ def handler_class(store, config, jobs=None):
                     if parts[3]=='seal':
                         if request!={}:raise JobError('Seal does not accept fields')
                         bundle=jobs.inputs.seal(bundle_id,self.principal)
-                        access.record(self.principal,'input.seal',bundle_id)
+                        if not jobs.control_storage()['blocks_new_work']:
+                            access.record(self.principal,'input.seal',bundle_id)
                         return self.reply({'input':bundle})
                 if path == '/api/jobs':
                     job, reused = jobs.submit(request, self.principal)
-                    access.record(self.principal,'job.submit',job['id'],'reused' if reused else 'created')
+                    if not (reused and jobs.control_storage()['blocks_new_work']):
+                        access.record(self.principal,'job.submit',job['id'],'reused' if reused else 'created')
                     return self.reply({'job': job, 'reused': reused}, status=200 if reused else 201)
                 if path == '/api/jobs/preview':
                     return self.reply(jobs.preview(request,self.principal,store.latest()))
@@ -336,6 +342,10 @@ def handler_class(store, config, jobs=None):
                     result=jobs.dependencies.retry(parts[2],self.principal)
                     access.record(self.principal,'job.retry-inputs',parts[2]);return self.reply(result)
                 raise JobError('不存在此作业操作。', 404)
+            except Pressure as exc:
+                # Denial itself must not amplify audit growth or need a second
+                # write on a filesystem whose capacity is already insufficient.
+                return self.reply(exc.response(),status=exc.status)
             except (JobError, AccessError) as exc:
                 access.record(self.principal,'request.write','job.submit' if self.path=='/api/jobs' else 'job.cancel-or-unsupported','denied')
                 return self.reply({'error': str(exc)}, status=exc.status)
@@ -430,8 +440,9 @@ def main():
     from owner_activation import CAPABILITY as OWNER_ACTIVATION
     from owner_activation_abort import CAPABILITY as OWNER_ABORT
     from unit_start import START_ENV,CAPABILITY as STARTUP
+    from control_storage import CAPABILITY as CONTROL_STORAGE
     atomic_json(runtime/'server-ready.json',{**identity(os.getpid()),'controller_instance':jobs.controller_instance,
-        'service_start_id':os.environ.get(START_ENV),'capabilities':[OWNER_HANDOFF,OWNER_ACTIVATION,OWNER_ABORT,OWNER_EXPANSION,OWNER_PROVISION,OWNER_DRAIN,STAGED_DEVICE_PROBE,PROBE_ORCHESTRATION,STARTUP]})
+        'service_start_id':os.environ.get(START_ENV),'capabilities':[OWNER_HANDOFF,OWNER_ACTIVATION,OWNER_ABORT,OWNER_EXPANSION,OWNER_PROVISION,OWNER_DRAIN,STAGED_DEVICE_PROBE,PROBE_ORCHESTRATION,STARTUP,CONTROL_STORAGE]})
     logging.info('Started controller listener using %s on port %s',listener_info['scheme'],config['port'])
 
     def stop(signum, frame):
