@@ -18,19 +18,21 @@ STDERR='results/compiler-stderr.txt'
 DRIVER='compiler_compatibility.py'
 PROTECTED='results/_lab/environment.json'
 MAX_CASE=192*1024
+SOURCE_LIMITS={'ascend-lab-compiler-report/v1':8192,'ascend-lab-compiler-report/v2':8*1024**2}
+CHUNK=256*1024
 
 
 def sha(raw):return hashlib.sha256(raw).hexdigest()
 
 
 def report_schema(value):
-    if (not isinstance(value,dict) or value.get('schema')!='ascend-lab-compiler-report/v1'
+    if (not isinstance(value,dict) or value.get('schema') not in SOURCE_LIMITS
         or value.get('purpose')!='mlir_parse_and_verify' or not isinstance(value.get('source'),dict)
         or not isinstance(value.get('tool'),dict) or not isinstance(value.get('outcome'),dict)):
         raise ValueError('Unsupported compiler evidence schema')
     source=value['source'];tool=value['tool'];outcome=value['outcome']
     if (not isinstance(value.get('driver_sha256'),str) or not re.fullmatch('[a-f0-9]{64}',value['driver_sha256'])
-        or source.get('artifact')!=SOURCE or type(source.get('bytes')) is not int or not 0<source['bytes']<=8192
+        or source.get('artifact')!=SOURCE or type(source.get('bytes')) is not int or not 0<source['bytes']<=SOURCE_LIMITS[value['schema']]
         or not isinstance(source.get('sha256'),str) or not re.fullmatch('[a-f0-9]{64}',source['sha256'])
         or tool.get('name') not in {'triton-mlir-opt','bishengir-opt'} or not isinstance(tool.get('version'),str)
         or len(tool['version'])>4096 or not isinstance(tool.get('path'),str) or len(tool['path'])>500
@@ -45,13 +47,34 @@ def report_schema(value):
 
 def fixed_artifact(client,identifier,name,limit,indexed):
     if name not in indexed:raise ClientError('Required compiler evidence is absent')
-    value=client.request('/api/jobs/'+identifier+'/artifact-chunk?'+urlencode({'name':name,'offset':0,'length':limit}))
-    try:
-        raw=base64.b64decode(value['data'],validate=True)
-        if (value['name']!=name or value['offset']!=0 or type(value['size']) is not int or not 0<=value['size']<=limit
-            or len(raw)!=value['size'] or sha(raw)!=value['sha256']):raise ValueError()
-    except (ValueError,KeyError,TypeError):raise ClientError('Incomplete or invalid compiler artifact') from None
-    return raw
+    blocks=[];offset=0;size=None
+    while size is None or offset<size:
+        length=min(CHUNK,limit-offset) if size is None else min(CHUNK,size-offset)
+        value=client.request('/api/jobs/'+identifier+'/artifact-chunk?'+urlencode({'name':name,'offset':offset,'length':max(1,length)}))
+        try:
+            if not isinstance(value['data'],str) or len(value['data'])>4*((length+2)//3):raise ValueError()
+            raw=base64.b64decode(value['data'],validate=True)
+            if (value['name']!=name or value['offset']!=offset or type(value['size']) is not int or not 0<=value['size']<=limit
+                or size is not None and value['size']!=size
+                or len(raw)!=min(length,value['size']-offset) or sha(raw)!=value['sha256']):raise ValueError()
+        except (ValueError,KeyError,TypeError):raise ClientError('Incomplete or invalid compiler artifact') from None
+        size=value['size'];blocks.append(raw);offset+=len(raw)
+    return b''.join(blocks)
+
+
+def source_preview(text,error):
+    """Model-facing text is bounded even when the entire sealed IR was checked."""
+    lines=text.splitlines();contexts=[];seen=set()
+    for match in re.finditer(r'diagnostic-input\.mlir:(\d+):(?:\d+:)?',error):
+        line=int(match[1]) if len(match[1])<=8 else 0
+        if not 1<=line<=len(lines) or line in seen:continue
+        seen.add(line)
+        contexts.append({'line':line,'lines':[{'number':i+1,'text':lines[i][:1024],
+            'truncated':len(lines[i])>1024} for i in range(max(0,line-2),min(len(lines),line+1))]})
+        if len(contexts)==4:break
+    return {'prefix':text[:4096],'suffix':text[-4096:] if len(text)>4096 else '',
+        'total_lines':len(lines),'diagnostic_context':contexts,
+        'scope':'Excerpts only; do not apply exact patches to this preview. Download the original through the authenticated archive interface.'}
 
 
 def workflow_binding(job,report,receipt):
@@ -89,23 +112,34 @@ def read_case(client,identifier):
     try:
         report_raw=fixed_artifact(client,identifier,REPORT,16384,indexed)
         report=report_schema(json.loads(report_raw))
-        source=fixed_artifact(client,identifier,SOURCE,8192,indexed)
-        error=fixed_artifact(client,identifier,STDERR,8192,indexed)
+        source=fixed_artifact(client,identifier,SOURCE,SOURCE_LIMITS[report['schema']],indexed)
+        error_archived=STDERR in indexed
+        # The trusted exporter omits zero-byte files. Do not fabricate an
+        # archive checksum for an absent entry; keep the workload claim explicit.
+        error=(b'' if not error_archived and report['outcome']['stderr_bytes']==0
+               else fixed_artifact(client,identifier,STDERR,8192,indexed))
         if len(source)!=report['source']['bytes'] or sha(source)!=report['source']['sha256']:raise ValueError('Source differs from compiler record')
         if len(error)!=min(report['outcome']['stderr_bytes'],8192):raise ValueError('Compiler stderr differs from report extent')
         receipt=json.loads(fixed_artifact(client,identifier,PROTECTED,65536,indexed)) if PROTECTED in indexed else {}
         binding=workflow_binding(detail['job'],report,receipt)
         text=source.decode('utf-8');clean_source=redact(text,client.config)
         clean_report=redacted_data(report,client.config)
+        large=len(source)>8192
     except (ValueError,UnicodeError,KeyError,TypeError,RecursionError):raise ClientError('Invalid compiler evidence') from None
-    case={**generic,'schema':'ascend-lab-compiler-diagnostic/v1','base_case_sha256':generic['case_sha256'],
-        'compiler_report':clean_report,'compiler_report_sha256':sha(report_raw),'source_ir':clean_source,
+    case={**generic,'schema':'ascend-lab-compiler-diagnostic/v2' if large else 'ascend-lab-compiler-diagnostic/v1','base_case_sha256':generic['case_sha256'],
+        'compiler_report':clean_report,'compiler_report_sha256':sha(report_raw),'source_ir':None if large else clean_source,
+        'source_complete':not large,'source_verified_bytes':len(source),
         'workflow_binding':binding,
         'source_ir_sha256':sha(source),'source_redacted':clean_source!=text,
         'compiler_stderr':redact(error.decode('utf-8',errors='replace'),client.config),
-        'compiler_stderr_sha256':sha(error),
+        'compiler_stderr_sha256':sha(error) if error_archived else None,
+        'compiler_stderr_archived':error_archived,
+        'compiler_stderr_source':'archived bytes' if error_archived else 'workload report declares zero bytes; empty artifact omitted',
         'candidate_policy':'Read-only evidence. No patch or task is executed. A reviewed candidate requires a new sealed input and explicit central CPU job; unknown execution keeps original resources. Redacted/incomplete sources cannot support an exact patch.',
         'scope':'Bounded actual compiler report and full small IR, plus generic archived evidence. Workload records are untrusted claims; parse acceptance does not prove numerical equivalence or device correctness.'}
+    if large:
+        case['source_preview']=source_preview(clean_source,case['compiler_stderr'])
+        case['scope']='Complete sealed IR bytes and hash verified, with bounded redacted excerpts only. No exact patch from this preview, full lowering, numerical equivalence or device correctness certification.'
     case.pop('case_sha256')
     case=redacted_data(case,client.config)
     if len(json.dumps(case,ensure_ascii=False,allow_nan=False).encode())>MAX_CASE:raise ClientError('Compiler case exceeds response budget')
@@ -137,7 +171,9 @@ def review_minimal_rename(case,proposal,approved_edit):
         or case.get('terminal') is not True or case.get('job',{}).get('state')!='failed'):
         raise ClientError('Only a complete unredacted source from a known ended failure can support this experiment')
     outcome=case.get('compiler_report',{}).get('outcome',{})
-    if outcome.get('exit_code') in {None,0} or outcome.get('timed_out') is not False or outcome.get('stderr_truncated') is not False:
+    code=outcome.get('exit_code')
+    if (type(code) is not int or not 1<=code<=255 or outcome.get('timed_out') is not False
+        or outcome.get('stderr_truncated') is not False or case.get('compiler_stderr_archived') is False):
         raise ClientError('A complete ordinary compiler failure is required; timeout/truncated evidence does not establish this mismatch')
     binding=case.get('workflow_binding',{})
     if any(binding.get(k) is not True for k in ['source_bound_to_seal','driver_bound_to_seal','driver_known_to_client','protected_tool_lock_matched']):

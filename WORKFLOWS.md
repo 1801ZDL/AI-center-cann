@@ -140,3 +140,7 @@ parameters可显式增加`"cache":{"mode":"persistent","min_free_mib":1,"min_fre
 
 私有离线镜像对明确compile-only且未设置设备核心限制的路径省去硬件查询；显式NPU_DEVICE_LIMIT拒绝离线推断，并保留正常在线分支。CANN9.1不支持的关闭态metaop参数仅在实测工具不支持时省略，原wheel与共享安装不修改。具体补丁摘要保存在镜像`/opt/ascend-lab-offline-compat.json`并纳入环境锁；这不是设备、数值或在线运行时验收。
 
+
+## 大 IR 解析复现
+
+compiler_compatibility.py使用compiler-case.json schema=ascend-lab-compiler-input/v2时允许最多8 MiB输入与输出；仍仅调用固定版本工具进行parse/verify。普通ir_v1请求需要为完整输入、IR副本和输出申请足够的工作盘与产物额度，不因schema自动扩容。只读诊断提供完整SHA校验和有限预览，不能据此声称完整lowering、数值或设备通过。详见COMPILER_DIAGNOSTICS.md。

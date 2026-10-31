@@ -138,3 +138,5 @@ MCP启动可加`--archive --archive-root /本人/归档`，或`--archive --local
 固定离线报告的可选配方见OPERATOR_ANALYSIS.md：独立客户端包含operator_workflow.py及operator-recipe-v1能力，可由封存input ID和已确认环境锁生成请求，不自动提交。environment-lock现保留machine事实，便于架构准入。
 
 新增compiler-case读取固定编译报告和完整小IR；compiler_diagnostic.py可作为单任务只读MCP。客户端附带compiler_compatibility.py用于封存的CPU ir_v1复现，读取不会调用模型或执行候选。证据绑定与限制见COMPILER_DIAGNOSTICS.md。
+
+新版客户端声明compiler-large-ir-v2：同一只读compiler-case可校验最多8 MiB封存IR，但大文件仅返回有限脱敏预览、完整SHA和已校验长度。source_complete=false时不能据预览生成精确补丁；完整文件继续通过本人归档下载。配方v2与资源申请见COMPILER_DIAGNOSTICS.md。

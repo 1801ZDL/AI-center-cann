@@ -8,6 +8,8 @@
 
 新增审计保留与显式归档：新管理员中央默认先保留记录，积压时暂停新工作；Root停中央后可有界导出、校验SHA并明确裁剪，原Node任务继续。886项回归、同机隔离安装34和开户49通过，见[AUDIT.md](AUDIT.md)。现有Demo缺省仍滚动保留全表最近10,000条，不自动迁移。网页/API/MCP显示审计积压；只读 `servicectl control-monitor` 提供文件系统JSON/Prometheus快照，不查询审计积压，未安装外部告警发送器，见[CONTROL_MONITOR.md](CONTROL_MONITOR.md)。
 
+新增大IR诊断配方v2：最多8 MiB的完整封存IR经分块校验，个人agent仅接收有限脱敏预览与报错行上下文；完整源码继续通过本人归档下载，预览不能授权精确补丁。编译输出采用有限内存捕获、文件大小上限和超时，见[COMPILER_DIAGNOSTICS.md](COMPILER_DIAGNOSTICS.md)。实际通过范围以最新进度为准。
+
 扩展继续保留同一任务 API/MCP 和实验格式。新服务器由管理员准备身份、受控设备、存储和服务，再登记 Node；个人 agent 无需共享模型密钥或更换 harness。当前旧容器仍属协作接入，不能拦截用户自行运行。真实宿主多用户、systemd PID1、两物理机断网/fencing、非 root NPU 精度/性能/仿真及一般资源合同变更仍待验收。操作见 [OWNER_PROVISION.md](OWNER_PROVISION.md)，推广门槛见 [DEPLOYMENT.md](DEPLOYMENT.md)。
 
 ```mermaid

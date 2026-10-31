@@ -91,6 +91,72 @@ class CompilerDiagnosticTests(unittest.TestCase):
         path.unlink()
         with self.assertRaises(ClientError):read_case(self.client,self.identifier)
 
+    def large_source(self,raw=None):
+        raw=raw or self.source+b'// archived real IR extent\n'*24000
+        (self.directory/SOURCE).write_bytes(raw);self.report['schema']='ascend-lab-compiler-report/v2'
+        self.report['source'].update(bytes=len(raw),sha256=sha(raw));atomic_json(self.directory/REPORT,self.report)
+        job=self.base.jobs.get(self.identifier);job['input']['files'][0]['sha256']=sha(raw)
+        with self.base.jobs.transaction() as db:self.base.jobs.write(db,job)
+        return raw
+
+    def test_large_ir_is_fully_checked_but_only_bounded_excerpts_reach_the_harness(self):
+        raw=self.large_source();calls=[];original=self.client.request
+        def request(path,*a,**kw):
+            if 'artifact-chunk?' in path and 'diagnostic-input.mlir' in path:calls.append(path)
+            return original(path,*a,**kw)
+        self.client.request=request;case=read_case(self.client,self.identifier)
+        self.assertGreater(len(calls),2);self.assertEqual(case['source_ir_sha256'],sha(raw));self.assertEqual(case['source_verified_bytes'],len(raw))
+        self.assertIsNone(case['source_ir']);self.assertFalse(case['source_complete']);self.assertLess(len(json.dumps(case).encode()),40000)
+        self.assertEqual(case['schema'],'ascend-lab-compiler-diagnostic/v2')
+        with self.assertRaises(ClientError):review_minimal_rename(case,proposal(case),EDIT)
+
+    def test_changed_middle_chunk_size_offset_checksum_and_short_read_are_rejected(self):
+        self.large_source();original=self.client.request
+        for field,value in [('size',123),('offset',0),('sha256','0'*64),('data','')]:
+            def request(path,*a,**kw):
+                response=original(path,*a,**kw)
+                if 'diagnostic-input.mlir' in path and 'offset=262144' in path:response={**response,field:value}
+                return response
+            self.client.request=request
+            with self.subTest(field=field),self.assertRaises(ClientError):read_case(self.client,self.identifier)
+        self.client.request=original
+
+    def test_large_source_redaction_and_unicode_are_not_split_at_transfer_boundaries(self):
+        secret=self.base.passwords['alice'].encode();raw=b'// '+b'a'*(262144-5)+secret+b'\n// '+('中'*10000).encode()+b'\n'
+        self.large_source(raw);case=read_case(self.client,self.identifier)
+        self.assertTrue(case['source_redacted']);self.assertNotIn(secret.decode(),json.dumps(case));self.assertFalse(case['source_complete'])
+
+    def test_large_ir_diagnostic_location_has_bounded_line_context(self):
+        raw=self.large_source();error=b'/work/ir/diagnostic-input.mlir:12000:7: error: example\n'
+        (self.directory/STDERR).write_bytes(error);self.report['outcome']['stderr_bytes']=len(error);atomic_json(self.directory/REPORT,self.report)
+        case=read_case(self.client,self.identifier);context=case['source_preview']['diagnostic_context']
+        self.assertEqual(context[0]['line'],12000);self.assertEqual([v['number'] for v in context[0]['lines']],[11999,12000,12001])
+        self.assertEqual(case['source_ir_sha256'],sha(raw))
+
+    def test_large_source_aggregate_hash_and_versioned_limit_are_still_required(self):
+        raw=self.large_source();changed=bytearray(raw);changed[300000]=ord('x');(self.directory/SOURCE).write_bytes(changed)
+        with self.assertRaises(ClientError):read_case(self.client,self.identifier)
+        self.report['source']['bytes']=8*1024**2+1;atomic_json(self.directory/REPORT,self.report)
+        with self.assertRaises(ClientError):read_case(self.client,self.identifier)
+
+    def omit_stderr(self):
+        (self.directory/STDERR).unlink();index=json.loads((self.directory/'artifacts.json').read_text())
+        index['files']=[v for v in index['files'] if v['name']!=STDERR];atomic_json(self.directory/'artifacts.json',index)
+
+    def test_successful_large_case_with_omitted_zero_byte_stderr_is_explicit(self):
+        self.large_source();self.omit_stderr();self.report['outcome'].update(exit_code=0,stderr_bytes=0)
+        atomic_json(self.directory/REPORT,self.report);self.set_state('succeeded')
+        case=read_case(self.client,self.identifier)
+        self.assertEqual(case['compiler_stderr'],'');self.assertFalse(case['compiler_stderr_archived'])
+        self.assertIsNone(case['compiler_stderr_sha256']);self.assertIn('zero bytes',case['compiler_stderr_source'])
+
+    def test_missing_nonempty_stderr_is_rejected_and_absent_empty_stderr_cannot_authorize_rename(self):
+        self.omit_stderr()
+        with self.assertRaises(ClientError):read_case(self.client,self.identifier)
+        self.report['outcome']['stderr_bytes']=0;atomic_json(self.directory/REPORT,self.report)
+        case=read_case(self.client,self.identifier)
+        with self.assertRaises(ClientError):review_minimal_rename(case,proposal(case),EDIT)
+
     def test_redacted_source_is_explicit_and_cannot_be_used_as_an_exact_patch(self):
         raw=self.source+b'// password='+self.base.passwords['alice'].encode()+b'\n';(self.directory/SOURCE).write_bytes(raw)
         self.report['source'].update(bytes=len(raw),sha256=sha(raw));atomic_json(self.directory/REPORT,self.report)
@@ -137,7 +203,7 @@ class CompilerDiagnosticTests(unittest.TestCase):
 
     def test_timeout_truncated_or_successful_compiler_outcome_cannot_authorize_this_fix(self):
         case=read_case(self.client,self.identifier)
-        for patch in [{'exit_code':0},{'timed_out':True},{'stderr_truncated':True}]:
+        for patch in [{'exit_code':0},{'exit_code':-6},{'exit_code':-25},{'timed_out':True},{'stderr_truncated':True}]:
             value=copy.deepcopy(case);value['compiler_report']['outcome'].update(patch)
             with self.assertRaises(ClientError):review_minimal_rename(value,proposal(value),EDIT)
 

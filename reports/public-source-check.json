@@ -1,15 +1,15 @@
 {
   "schema": "ai-center-cann-source-check/v1",
-  "recorded_at": "2026-10-31T04:25:10.945243+00:00",
+  "recorded_at": "2026-10-31T04:48:57.872281+00:00",
   "passed": true,
-  "python_unit_tests": 905,
+  "python_unit_tests": 915,
   "unit_skipped": 0,
-  "unit_seconds": 159.147,
-  "unit_log_sha256": "0c9fc6b4c5b4765b05b97e4844d4895d824f4111f01a1a2d510409c5855d2142",
+  "unit_seconds": 168.736,
+  "unit_log_sha256": "34a461d65f2d46e8696a871b9f976ae3a5d600668f08f5ac7a76952b885ecfc7",
   "python": "Python3.12.3",
   "javascript_syntax_passed": true,
   "command": "bash scripts/check.sh /usr/bin/python3",
-  "scope": "87 non-document CORE with full905/JS, current same-host Root installation including finite native control/audit and dashboard regression, owner49 and six single-attempt real CPU IR tasks. Two additional scoped stdio MCP IR conversations share a 2-job/120 declared CPU-second budget, reject a third, and preserve original attempts on reconnect. Actual restore freezes budgets/revokes previous spending credentials; explicit read-only history delegation and genuine old-package downgrade refusal pass. A stale pre-spend checkpoint and two-card arithmetic are unit fixtures, not physical NPU evidence. Docker create temporarily stalled with Created/PID0 objects; exact owned objects removed normally, then one minimal CPU start succeeded before final retries. No host accounts/PID1/two-host/NPU/model acceptance.",
+  "scope": "Full 1,935,540-byte historical MergeTopK HIVM input sealed unchanged and parsed by two pinned actual compiler consumers in installed UID23003 quota tasks. Two separate stdio MCP sessions share 2 jobs/120 declared CPU-seconds, reconnect to original attempts, and offer a bounded read-only case to independent personal UID23642. Complete archive SHA and seal checked; restore preserves attempts and charges and revokes prior spending token. Actual parse results are evidence, not full lowering, compiler repair, device or numerical acceptance.",
   "production_source_sha256": {
     "auth.py": "6bd9b70566fc8dd9b43d3965df5e1fce4c1385e3192239a83052cc0e04778d5f",
     "owner_identity.py": "5a48cf78584b2f717ac45594a73da569589cde6d9441037a0aedffe423f1515b",
@@ -88,10 +88,10 @@
     "control_filesystem.py": "f7fa2c7c0de2d33d87f41ced989aab9a5c84ebc212144521fbb637cf41dae35c",
     "control_process.py": "50d0c78f34087c6fee0a1994d1da223d6b6ef513acc64be409fcb5e088c3b425",
     "labctl": "9c8033676d7927e7d43c2c5a4633daf540f19282ee08f22731033c1e3fc101ca",
-    "install-client": "d7fe475fd45046318f104c8ca6dd38a6df567843b8451b14a099dcc5d8885c7d",
+    "install-client": "d8fb82622783c406151c5a1f4eb4d6bddad5653e29ff96462e1d04d25eb7c052",
     "mcp_bridge.py": "f28c4d7a3ab388b950fea6140d0c10bdf077600d5a1bdaf4d990dcaab7a58559",
     "diagnostic_case.py": "cca7edb7c45e2942748fbd3e333968dabfb5e7a4857a064d4b96aca6e913dedc",
-    "compiler_diagnostic.py": "862134008d11556bb59f3d2d1042d4e2390afac1c4bdce2c00a2da22c9102d15",
+    "compiler_diagnostic.py": "c05d9812edaf1dba333110d036320df386c54088716ead68f16c9e0b77d61760",
     "operator_profile.py": "382f4438ea13f2433f582cbf5b5f64c9a52837a1c5f9370a624a94016ff96daf",
     "operator_node.py": "40a5c872904b699ff7e1e15ab7b8a52e63577b71b02caf6a26b69d39096b0412",
     "operator_workflow.py": "c5603836192e9ac05018edcdcbffff7d348a4797d2f37aafbbe811b2a13fd829",
@@ -7394,5 +7394,105 @@
     "physical_hosts_tested": 1,
     "token_history_limit": 16,
     "main_config_and_19_node_profiles_unchanged": true
+  },
+  "large_ir": {
+    "passed": true,
+    "scope": "Full 1,935,540-byte historical MergeTopK HIVM input sealed unchanged and parsed by two pinned actual compiler consumers in installed UID23003 quota tasks. Two separate stdio MCP sessions share 2 jobs/120 declared CPU-seconds, reconnect to original attempts, and offer a bounded read-only case to independent personal UID23642. Complete archive SHA and seal checked; restore preserves attempts and charges and revokes prior spending token. Actual parse results are evidence, not full lowering, compiler repair, device or numerical acceptance.",
+    "job_ids": {
+      "full-r1": "job-bf971a8b5c4b",
+      "full-r2": "job-49d4bbbe4390",
+      "full-r3": "job-fdcc48125511",
+      "installed-r2": "job-66d152f413e1"
+    },
+    "root_checks": 33,
+    "source_origin_rechecked_read_only": true,
+    "archive_original_and_restored_database_integrity": true,
+    "first_install_failure": {
+      "passed": true,
+      "parent": "job-204c8d8537b8",
+      "parent_passed": false,
+      "tasks": [
+        {
+          "job_id": "job-ac4a4ad9135b",
+          "state": "failed",
+          "attempt_id": "attempt-5ea8b9910d8d4ba9a4f1cb8f4ecdac1b",
+          "source_sha256": "633a18511572b8373360d042f9638234423ce95479612207c76465182ba867bd",
+          "source_bytes": 1935540,
+          "compiler_exit_code": 1,
+          "empty_stderr_omitted": false
+        },
+        {
+          "job_id": "job-a7f85de50633",
+          "state": "succeeded",
+          "attempt_id": "attempt-c9be598e376f4a729391d96ec54096cc",
+          "source_sha256": "633a18511572b8373360d042f9638234423ce95479612207c76465182ba867bd",
+          "source_bytes": 1935540,
+          "compiler_exit_code": 0,
+          "empty_stderr_omitted": true
+        }
+      ],
+      "cause": "Client required a zero-byte stderr artifact that the trusted exporter intentionally omits",
+      "both_tasks_single_attempt": true,
+      "compiler_driver_changed_by_fix": false
+    },
+    "intermediate_full": {
+      "job_id": "job-bf971a8b5c4b",
+      "tests": 913,
+      "seconds": 162.815,
+      "scope": "Before additional negative-signal candidate gate"
+    },
+    "npu_kernel_launches": 0,
+    "model_invocations": 0,
+    "web_assets_changed": false,
+    "new_browser_acceptance": false,
+    "owner49_reexecuted": false,
+    "host_accounts_modified": false,
+    "global_services_or_driver_modified": false,
+    "production_ready": false,
+    "overall_goal_complete": false,
+    "case": {
+      "tasks": [
+        {
+          "job_id": "job-84437e97526e",
+          "label": "triton",
+          "input_id": "input-b600d5f93c8fe331d2156356",
+          "attempt_id": "attempt-8bff792314614662a5e64c4efc413358",
+          "state": "failed",
+          "case_sha256": "f5915a8a7a4f3b277f8282382e90b2063c7f8643e0be592e15e3b021414c4ed8",
+          "compiler_exit_code": 1,
+          "tool_sha256": "535093d8ef035f2336b6680fed1474899802cff71708d4c03bf5908172da5f4c"
+        },
+        {
+          "job_id": "job-530fbc2897c0",
+          "label": "bisheng",
+          "input_id": "input-f7f2ca4b3723fc0fdc13be52",
+          "attempt_id": "attempt-e985dd4884e34c43af0d8ba329de7d52",
+          "state": "succeeded",
+          "case_sha256": "eb813a343b0f14fe2c3f453aaa68a0ba0f36edc49bd5dd8175c4853d6d1c0551",
+          "compiler_exit_code": 0,
+          "tool_sha256": "af69f20f24078cfce5d06886db0da15a3676bded5e6c41720cdc62fa47295222"
+        }
+      ],
+      "budget_id": "experiment-7d228c489f7e457a874d9aa3",
+      "charged": {
+        "jobs": 2,
+        "cpu_seconds": 120,
+        "npu_seconds": 0
+      },
+      "source_sha256": "633a18511572b8373360d042f9638234423ce95479612207c76465182ba867bd",
+      "source_bytes": 1935540,
+      "source_origin": "Read-only copy of historical MergeTopK baseline HIVM dump",
+      "complete_archive_and_seal_verified": true,
+      "bounded_personal_stdio_mcp": true,
+      "mcp_reconnect_same_attempt": true,
+      "preview_patch_authority": false,
+      "after_restore": {
+        "passed": true,
+        "original_attempts_and_source_preserved": true,
+        "charges_preserved": true,
+        "old_spending_token_revoked": true,
+        "new_compiler_tasks": 0
+      }
+    }
   }
 }

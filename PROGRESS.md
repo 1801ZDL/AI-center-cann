@@ -1,5 +1,21 @@
 # 实施进度
 
+## 完整历史算子 IR、有限诊断与空日志一致性（2026-10-31）
+
+**最终915项/168.736秒/无跳过与JS语法通过；同机隔离Root安装33项通过。** full `job-fdcc48125511`，安装 `job-66d152f413e1`，87个非文档CORE及独立compiler_compatibility.py与final-frozen-r3、实际发布包一致。protected6仍v0.36、APP4/r4工具镜像未变，无重建；本轮没有重新运行开户49或浏览器，网页资产逐字节不变。0模型/0 NPU，不把先前模型、设备或全包构建证据转作本轮验收。
+
+配方新增输入schema v2，完整IR输入/输出各最多8 MiB；v1仍保持8192字节。工具路径/文件SHA仍需同时匹配封存配置与受保护环境锁，只运行固定parse/verify。子进程同时排空stdout/stderr，仅各保留8192字节，记录读到的总数，固定20秒编译时限与输出文件大小上限；信号终止、超时或不完整错误不能进入原最小语法重命名实验。个人客户端新增compiler-large-ir-v2：按最多256 KiB的块验证完整归档的名称/偏移/大小/块SHA，再核对报告及封存源SHA。大文件只返回首尾及最多四处报错行附近的脱敏预览，source_ir=null/source_complete=false和完整已校验长度，不能把预览当作精确补丁输入；完整文件沿原授权归档下载。见COMPILER_DIAGNOSTICS.md。
+
+真实输入是只读复制的历史MergeTopK baseline HIVM dump，1,935,540字节，SHA256 `633a18511572b8373360d042f9638234423ce95479612207c76465182ba867bd`；原项目文件前后摘要一致，没有执行原算子脚本。两套固定消费者分别通过独立stdio MCP会话、同一2任务/120声明CPU秒/0NPU预算执行。Triton工具job-84437e97526e明确failed/exit1，在第1行报expected '='；BiShengIR job-530fbc2897c0 succeeded/exit0并输出1,935,541字节verified.mlir。两者各1attempt、task UID23003、无设备/网络及原生UID工作盘配额；任务结果如实保留，不将前者改成测试通过。个人UID23642从独立安装客户端读取有限诊断，不能覆盖路径；peer读取任务404，MCP重连返回原任务且不再计费。这个接受差异不证明任意新旧工具迁移规则、完整lowering、数值等价或设备正确性。
+
+实际Controller/Node恢复后两job/attempt、输入SHA与120秒计费保留，预算冻结，旧预算凭据401；恢复检查不新增编译任务。主助手从原归档独立核完整输入、成功输出与报告SHA、受限运行元数据，并从原/明确导出的恢复DB核integrity、原attempt与计费。恢复归档读取在当时的RoleFS中实际完成；宿主仅保留显式导出的恢复DB，不声称已挂载或保留整个恢复文件盘。
+
+首安装job-204c8d8537b8 failed记录保留：两真实编译已各执行一次，第一失败任务的诊断成功；第二编译成功，但worker传输省略零字节stderr，客户端却要求该条目存在。经原DB/归档独立定位后修读取器：声明零字节且无条目时，明确compiler_stderr_archived=false、sha=null及声明来源；非零缺文件仍拒绝，缺归档错误不能批准原重命名实验。驱动与工具镜像没有因此改变。初次915前的full913/162.815秒与full913/163.834秒均为中间范围，不当作最终915源码。新增检查覆盖大IR中间块破坏/短读/总SHA/大小、跨块中文与脱敏、报错行上下文、两管道大输出、静默超时、输出文件上限及空stderr合同；不是新的实际编译器崩溃或硬件卡死复现。
+
+两次安装共4个自有loop关联released，5类fixture容器/卷namespace只读确认为empty，backings私有保留。Main配置SHA5caf...、19 Node profiles/物理域/CPU254255/2048/SHM1024/1槽及zdl不变，零非终态/有效hold，无宿主账号/全局unit/驱动变更。私有evidence/large-ir-validation.json及runtime/large-ir-20261031，公开精选reports/public-source-check.json.large_ir。文档在冻结包后完善；非文档CORE/driver/测试/网页及harness源码冻结一致。
+
+下一步继续真实精度错误、卡死和仿真证据及预算内候选验证；大IR的有界reducer和完整lowering失败仍待。真实宿主账号/PID1、两物理机断网fencing、NPU ACL/数值/性能/仿真与长期规模验收仍缺。PUBLIC-001继续延期，goal active/production_ready=false。
+
 ## 累计实验预算、委托凭据与旧快照冻结（2026-10-31）
 
 **最终905项/159.147秒/无跳过与JS语法通过；87个非文档CORE与实际安装Root38、开户Root49一致，网页7组通过。** full `job-7b92e0f9fff1`，安装 `job-0ad2d7ca716c`，开户 `job-e366a5d2ed51`，网页 `job-a38570591796`。protected6仍v0.36，APP4/r4工具镜像未变，不重建。0模型/0 NPU；两卡计费只是数学账本fixture，不是设备执行。原901/903/904均保留中间范围，最终以905及final-frozen-r5为准。

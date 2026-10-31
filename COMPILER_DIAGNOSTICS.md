@@ -65,3 +65,16 @@ review_minimal_rename仅检查一个由主助手事先建立依据的单处字�
 初次预探还发现所测triton-mlir-opt不接受--canonicalize，该次错误发生在参数解析阶段；后续改为不加pass的解析实验后才取得上述IR接受矩阵，旧错误单独保留。没有把它当成IR语法错误，也没有据工具的模糊建议擅自替换其他选项。
 
 这是结合已有工程背景构造的最小IR复现，使用真实固定编译器；不是修复原始大算子、完整lowering、数值正确性、NPU故障或性能验收。msagent的[版本对齐参考](https://gitcode.com/Ascend/msagent/blob/5a9b2a1a8a38f35cc63109929850aa4a46db090e/skills/operator/ops-performance-tuning/references/compile/compile-triton.md)强调按目标release核对配套；其[msDebug技能](https://gitcode.com/Ascend/msagent/blob/5a9b2a1a8a38f35cc63109929850aa4a46db090e/skills/operator/msdebug-basic-usage/SKILL.md)明确不覆盖Triton JIT，本例没有执行该调试器流程或宣称安装完整msagent。
+
+
+## 完整大 IR 与有限诊断预览
+
+新的独立客户端声明`compiler-large-ir-v2`。同一配方可将compiler-case.json中的schema明确设为`ascend-lab-compiler-input/v2`，其余字段保持不变；输入和单个输出IR上限各为8 MiB，原v1仍为8192字节。任务仍须单独申请输入、产物、内存、工作盘和时限，schema不会扩大管理员或个人额度。工具调用仍只做固定parse/verify，不新增pass、插件、shell或设备访问。
+
+驱动分别排空stdout/stderr，只保留各前8192字节并记录读到的字节数；输出文件有子进程文件大小限制，固定20秒编译时限覆盖等待和管道读取。超时会结束本次驱动创建的编译器进程组；任务及其后代的最终清退仍由原Node执行器确认。超时、输出截断、异常退出都不能当作正常编译错误的修复依据。
+
+诊断端经原任务ACL读取完整归档，按最多256 KiB的块核对名称、偏移、总长度和块SHA，最终再核对报告与封存input.mlir的完整SHA。完整IR读取量有8 MiB上限；不扩大MCP返回额度。大于8192字节时返回`ascend-lab-compiler-diagnostic/v2`、`source_ir=null`、`source_complete=false`及`source_verified_bytes`，只附经过脱敏的首尾预览和最多四处报错附近的有限行。先对完整有界文本脱敏再取预览，避免传输块或截取边界暴露凭据。
+
+完整字节经过校验，不等于完整源码已交付给模型；`review_minimal_rename`拒绝这种大IR预览。需要修改时，使用本人已认证的归档下载接口取得原文件，在新的本地副本中审查修改，再封存并申请新的预算内任务。只读编译MCP仍只有原绑定任务的空参数getter，不接受任意路径或执行请求。真实历史算子IR只作为私有输入，公开报告仅保留SHA、长度、消费者工具和结果，不公开源码或部署路径。
+
+成功编译可能没有stderr。原归档器省略零字节文件；若报告声明stderr_bytes=0且归档无该条目，诊断明确返回compiler_stderr_archived=false、compiler_stderr_sha256=null及声明来源，不伪造已归档空文件的SHA。报告声明非零而文件缺失时仍拒绝；没有归档错误证据不能授权既有的单处重命名实验。
