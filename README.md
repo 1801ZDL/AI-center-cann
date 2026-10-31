@@ -35,6 +35,8 @@ flowchart LR
 
 新增：提交前可用 `labctl submit --preview` 或 MCP `preview_job` 读取当前节点与准入阻碍；不入队或占用资源，预览不保证实际启动，见 [CLIENT.md](CLIENT.md) / [API.md](API.md)。普通任务仍可等待以后接入的服务器或环境。网页“托管作业”也可点击“检查可运行节点”，查看当前表单的节点与阻碍；修改表单后需重新检查。
 
+网页现可在“提交方式 → 版本化工作流”导入已有五类任务请求，核对输入/环境锁/资源，再预览和显式提交；保持JSON中的幂等键，重试复用原任务。输入封存和个人目录自动归档继续使用CLI/MCP，见[WORKFLOWS.md](WORKFLOWS.md)。设备类任务能提交不代表NPU验收通过。
+
 ## 本机 CPU Demo
 
 要求 Linux、Python 3.10+。服务和客户端使用 Python 标准库；Node 的受控执行另需管理员准备 Docker、固定本地镜像和存储合同。不要以 root 启动个人 Demo。

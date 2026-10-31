@@ -308,6 +308,10 @@ function renderManagedJobs(summary) {
       $('job-template').innerHTML='<option value="cpu_demo">CPU 验收模板</option>'+(summary.environments.some(e=>e.id==='worker-python')&&summary.policy.shm_mib>=16?'<option value="isolation_probe">容器隔离验证模板</option>':'');
       $('job-template').value='cpu_demo';
     }
+    if(summary.environments.some(e=>e.id==='worker-python')) {
+      const option=document.createElement('option');option.value='workflow';option.textContent='版本化工作流 · 五类任务';
+      $('job-template').append(option);
+    }
     configureTemplate();
     $('job-form').dataset.initialized='true';
   }
@@ -372,6 +376,7 @@ function clearJobPreview() {
 }
 
 function jobRequest() {
+  if($('job-template').value==='workflow')return workflowRequest();
   let body={name:$('job-name').value,environment:$('job-environment').value,
     kind:$('job-kind').value,cwd:$('job-cwd').value,command:$('job-command').value,
     cpu:Number($('job-cpu').value),memory_mib:Number($('job-memory').value),shm_mib:Number($('job-shm').value),npu:Number($('job-npu').value),
@@ -380,6 +385,67 @@ function jobRequest() {
   if($('job-project').value) body.project=$('job-project').value;
   return body;
 }
+
+const workflowKinds={accuracy_v1:'精度测试',performance_v1:'性能测试',simulation_v1:'仿真采集',build_v1:'编译构建',ir_v1:'IR 处理'};
+function workflowRequest() {
+  const text=$('workflow-request').value;
+  if(new TextEncoder().encode(text).length>262144)throw new Error('工作流请求最大为 256 KiB。');
+  let request;
+  try{request=JSON.parse(text);}catch{throw new Error('请提供有效的工作流 JSON 对象。');}
+  const object=value=>value!==null&&typeof value==='object'&&!Array.isArray(value);
+  if(!object(request)||!Object.hasOwn(workflowKinds,request.template))throw new Error('请选择 accuracy_v1、performance_v1、simulation_v1、build_v1 或 ir_v1。');
+  const allowed=['template','parameters','name','environment','project','idempotency_key','output','cwd','origin','depends_on','artifact_inputs'];
+  if(Object.keys(request).some(key=>!allowed.includes(key)))throw new Error('工作流顶层含不支持的字段；命令和资源应在 parameters 中。');
+  if(request.environment!=='worker-python')throw new Error('工作流 environment 必须明确为 worker-python。');
+  if(!object(request.parameters))throw new Error('工作流需要 parameters 对象。');
+  if(typeof request.idempotency_key!=='string'||request.idempotency_key.length<1||request.idempotency_key.length>120)throw new Error('请在请求中设置 1–120 字符的 idempotency_key，重试时沿用原值。');
+  return request;
+}
+
+function renderWorkflowDraft() {
+  $('workflow-draft-summary').replaceChildren();
+  try {
+    const request=workflowRequest(),parameters=request.parameters;
+    const fields=[['类型',workflowKinds[request.template]],['名称',request.name||'由入口程序命名'],
+      ['项目',request.project||'本人默认项目'],['输入',parameters.input_id||'尚未填写'],
+      ['执行参数',parameters.argv],['资源',parameters.resources||'采用中央工作流缺省值'],
+      ['时限',parameters.timeout_seconds??300],['环境锁',parameters.lock],
+      ['结果',parameters.result_file||'results/workload-result.json'],['工作盘',parameters.workspace],
+      ['产物额度',parameters.artifacts],['缓存',parameters.cache],['依赖',request.depends_on],
+      ['产物输入',request.artifact_inputs],['幂等键',request.idempotency_key]];
+    const list=document.createElement('dl');
+    for(const [label,value] of fields) {
+      if(value===undefined)continue;
+      const key=document.createElement('dt'),entry=document.createElement('dd');key.textContent=label;
+      entry.textContent=typeof value==='string'?value:JSON.stringify(value,null,2);list.append(key,entry);
+    }
+    $('workflow-draft-summary').append(list);
+    const note=document.createElement('p');note.textContent='这是请求内容核对。封存输入权限、环境匹配和资源条件仍由中央在预览、提交和启动时检查。';
+    $('workflow-draft-summary').append(note);
+  } catch(error){$('workflow-draft-summary').textContent=error.message;}
+}
+
+$('workflow-request').addEventListener('input',renderWorkflowDraft);
+$('workflow-file').addEventListener('change',async event=>{
+  event.stopPropagation();clearJobPreview();
+  const file=$('workflow-file').files[0];if(!file)return;
+  const previous=$('workflow-request').value,sequence=previewSequence;
+  try {
+    if(file.size>262144)throw new Error('工作流请求最大为 256 KiB。');
+    const text=await file.text();
+    if(sequence!==previewSequence||previous!==$('workflow-request').value||$('job-template').value!=='workflow')return;
+    $('workflow-request').value=text;clearJobPreview();renderWorkflowDraft();
+  } catch(error){$('job-form-message').textContent=error.message;$('job-form-message').hidden=false;}
+  finally{$('workflow-file').value='';}
+});
+$('workflow-download').addEventListener('click',()=>{
+  try {
+    const request=workflowRequest();
+    const url=URL.createObjectURL(new Blob([JSON.stringify(request,null,2)+'\n'],{type:'application/json'}));
+    const link=document.createElement('a');link.href=url;link.download='ascend-lab-workflow.json';link.click();
+    setTimeout(()=>URL.revokeObjectURL(url),1000);
+  }catch(error){$('job-form-message').textContent=error.message;$('job-form-message').hidden=false;}
+});
 
 function showJobPreview(result) {
   if(result.version!==1||result.scope!=='placement'||!Array.isArray(result.candidates)||
@@ -424,7 +490,9 @@ $('job-form').addEventListener('change',clearJobPreview);
 $('preview-job').addEventListener('click',async()=>{
   if(!$('job-form').reportValidity())return;
   clearJobPreview();
-  const sequence=previewSequence,body=jobRequest(),fingerprint=JSON.stringify(body),actor=identity?.id;
+  let body;
+  try{body=jobRequest();}catch(error){$('job-form-message').textContent=error.message;$('job-form-message').hidden=false;return;}
+  const sequence=previewSequence,fingerprint=JSON.stringify(body),actor=identity?.id;
   const controller=new AbortController();previewController=controller;
   let timedOut=false;
   const deadline=setTimeout(()=>{timedOut=true;controller.abort();},15000);
@@ -458,9 +526,9 @@ $('job-form').addEventListener('submit',async event=>{
     const body=jobRequest();
     const fingerprint=JSON.stringify(body);
     if(!pendingSubmission||pendingSubmission.fingerprint!==fingerprint) pendingSubmission={fingerprint,key:crypto.randomUUID()};
-    const result=await api('/api/jobs',{...body,idempotency_key:pendingSubmission.key});
+    const result=await api('/api/jobs',{...body,idempotency_key:body.idempotency_key||pendingSubmission.key});
     pendingSubmission=null;
-    $('job-form-message').textContent='已提交 '+result.job.id+'。资源不足时会等待；关闭页面不会取消作业。';
+    $('job-form-message').textContent=(result.reused?'已找到原任务 ':'已提交 ')+result.job.id+'。资源不足时会等待；关闭页面不会取消作业。';
     $('job-form-message').hidden=false;
     await refresh();
     toast('作业已进入统一队列。');
@@ -475,7 +543,15 @@ function configureTemplate() {
     else $('job-template').value='cpu_demo';
   }
   const template=$('job-template').value!=='command';
+  const workflow=$('job-template').value==='workflow';
   const cpu=$('job-template').value==='cpu_demo';
+  $('workflow-editor').hidden=!workflow;
+  for(const id of ['job-name','job-environment','job-kind','job-cwd','job-project']) {
+    $(id).closest('label').hidden=workflow;$(id).disabled=workflow;
+  }
+  $('workflow-request').disabled=!workflow;$('workflow-request').required=workflow;
+  $('workflow-file').disabled=!workflow;
+  if(workflow)renderWorkflowDraft();
   if($('job-template').value==='isolation_probe' && [...$('job-environment').options].some(o=>o.value==='worker-python')) $('job-environment').value='worker-python';
   $('job-seconds').closest('label').hidden=!cpu;
   $('job-seconds').disabled=!cpu;

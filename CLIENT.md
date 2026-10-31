@@ -74,6 +74,8 @@ PROFILE="$HOME/.config/ascend-lab/client.json"
 
 v0.7 CLI 新增 `input-add 路径`、`input 输入编号`、`submit --workflow 请求.json`、`environment-lock 作业编号 --output 新文件`；不依赖中央私有目录。完整工作流合同与当前限制见同目录 WORKFLOWS.md。独立客户端可从控制器受保护证据生成环境锁。
 
+网页也可导入这份工作流JSON进行预览和显式提交，须明确worker-python及idempotency_key。网页保持原键、参数和依赖，不使用普通表单覆盖它；刷新/响应丢失后导入原文件可复用原任务。上传源码和本地自动归档仍用个人客户端，见WORKFLOWS.md。
+
 ## 个人自动归档（v0.11）
 
 ```bash

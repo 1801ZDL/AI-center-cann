@@ -1,6 +1,6 @@
 {
   "schema": "ai-center-cann-source-check/v1",
-  "recorded_at": "2026-10-31T03:10:25.346592+00:00",
+  "recorded_at": "2026-10-31T03:31:15.326449+00:00",
   "passed": true,
   "python_unit_tests": 886,
   "unit_skipped": 0,
@@ -9,7 +9,7 @@
   "python": "Python3.12.3",
   "javascript_syntax_passed": true,
   "command": "bash scripts/check.sh /usr/bin/python3",
-  "scope": "86 non-document CORE, full886/JS, same-host Root34 installation/native restore with audit backlog/export/prune crash recovery, owner49 and six actual single-attempt CPU IR tasks. Final browser warning/preview created no jobs. Actual service-UID hot journal, original export recovery, transactional prune retry, old-code refusal and restored epoch invalidation accepted. Existing Main legacy configuration unchanged. No real host-account/PID1/two-host/NPU/model acceptance; no automated uploader, timer or alert sender.",
+  "scope": "Web-only production changes; 86 non-document CORE and discovered unit sources unchanged from audit-retention acceptance. New packaged HTTP browser7 and ordinary-preview11 pass; current owned same-host installed dashboard submits two actual single-attempt CPU IR/build workflows, verifies result/CSV/IR downloads with normal Basic browser login and preserves both identities/IR through controller and Node restore. Five device/CPU kind submission semantics tested in a no-worker fixture; no new NPU/model/real-host accounts/PID1/two-host acceptance. Prior full886/Root34/owner49 remain historical, not rerun in this stage.",
   "production_source_sha256": {
     "auth.py": "37558b32db4d81f1613cef4d7f5818213f3113d7e355559f3be2a0f591c7efa9",
     "owner_identity.py": "5a48cf78584b2f717ac45594a73da569589cde6d9441037a0aedffe423f1515b",
@@ -7215,5 +7215,105 @@
     "audit_monitor_queries_database": false,
     "physical_hosts_tested": 1,
     "docs_updated_after_bundle": true
+  },
+  "workflow_web": {
+    "passed": true,
+    "scope": "Web-only production changes; 86 non-document CORE and discovered unit sources unchanged from audit-retention acceptance. New packaged HTTP browser7 and ordinary-preview11 pass; current owned same-host installed dashboard submits two actual single-attempt CPU IR/build workflows, verifies result/CSV/IR downloads with normal Basic browser login and preserves both identities/IR through controller and Node restore. Five device/CPU kind submission semantics tested in a no-worker fixture; no new NPU/model/real-host accounts/PID1/two-host acceptance. Prior full886/Root34/owner49 remain historical, not rerun in this stage.",
+    "web_sha256": {
+      "web/app.js": "ad7bc4d4ba6c828cb4a33b62a9956779105d2f04ad58fe9f1d08bc17a8a71da8",
+      "web/style.css": "d238ac15faa6b1ce59d8de9b93c30caf65390849e53eef922f7c2f7120caf922",
+      "web/index.html": "e474cfd8ae64ee85421d96c9031ae9a625cd72135711719be858625292e1645c",
+      "web/favicon.svg": "ff01247506d17005ffe8778b774d7e88f06b5945a50fe29d28e13208b946c10a"
+    },
+    "job_ids": {
+      "browser-r3": "job-6243e027be7e",
+      "preview": "job-bb8363c950a7",
+      "installed-r5": "job-c687a0b99e05",
+      "download-probe-r3": "job-abb9b5443446"
+    },
+    "root_install_checks": 26,
+    "server_release": "12267a53e3ccfc8eb656eabbb7ba1f452d68d8a5849795cb6d3df06d933f6d24",
+    "discovered_unit_source_files_unchanged": 73,
+    "unit_tests_reexecuted_this_stage": false,
+    "prior_unit_tests": 886,
+    "prior_unit_source_commit": "a57863c7a907a1cd2562782187802913d564d01c",
+    "restore_db_independently_verified": true,
+    "browser_download_diagnostic": {
+      "basic_protected_download_passed": true,
+      "extra_header_bearer_download_returned401": true,
+      "scope": "Owned copied HTTP fixture with protected fixed bytes; does not assert a CLI/MCP token failure"
+    },
+    "npu_kernel_launches": 0,
+    "model_invocations": 0,
+    "production_ready": false,
+    "overall_goal_complete": false,
+    "browser_checks": 7,
+    "ordinary_preview_checks": 11,
+    "fixture_queued_cancelled_workflows": 6,
+    "fixture_attempts": 0,
+    "actual_installed_workflows": {
+      "passed": true,
+      "tasks": [
+        {
+          "job_id": "job-f725c1294e57",
+          "attempt_id": "attempt-45fe57f52b664a8e9ad1b8fd7c528442",
+          "template": "ir_v1",
+          "state": "succeeded",
+          "attempts": 1,
+          "artifact": "ir/canonical.mlir"
+        },
+        {
+          "job_id": "job-5ebb81e232a4",
+          "attempt_id": "attempt-242c8253234644d4a067d2c4263b089f",
+          "template": "build_v1",
+          "state": "succeeded",
+          "attempts": 1,
+          "artifact": "results/libascend_lab_smoke.so"
+        }
+      ],
+      "same_json_preview_and_submit": true,
+      "repeated_submit_reuses_original": true,
+      "results_and_csv_contain_both": true,
+      "downloaded_actual_ir_verified": true,
+      "page_errors": [],
+      "outside_requests": [],
+      "npu_kernel_launches": 0,
+      "model_invocations": 0,
+      "scope": "Two CPU workflows from actual installed web assets, Root Node, non-root task UID and protected environment; no device workflow acceptance",
+      "restored_tasks_and_ir_preserved": true
+    },
+    "failed_attempts": [
+      {
+        "job": "job-192d6f96835a",
+        "reason": "Fixture config omitted container key; fixed test config"
+      },
+      {
+        "job": "job-52ce937c3b81",
+        "reason": "All browser checks passed before report writer used id instead of release_id; full browser rerun"
+      },
+      {
+        "job": "job-b6ca47cada99",
+        "reason": "Fixture omitted build_v1 registration; build remained queued/zero attempts, earlier actual IR succeeded; fixed fixture without relaxing admission"
+      },
+      {
+        "job": "job-b399f262bd09",
+        "reason": "Both actual CPU tasks succeeded once; browser fixture injected Bearer header absent on download, resulting in cancellation/401. A bounded protected-download diagnostic confirmed Basic200 versus extra-header Bearer401; fixture changed to Basic"
+      }
+    ],
+    "additional_failed_fixture": {
+      "job": "job-8281721835fa",
+      "reason": "Basic fixture used legacy administrator rather than the input-owning personal user; real input ACL rejected preview before any new workload. Fixed fixture to original personal credentials, without broadening ACL."
+    },
+    "unresolved_preview_observation": {
+      "job": "job-6c0200f9eddb",
+      "reason": "Preview title reported failure before response diagnostics were added; precise response was not retained. Both copied-state Basic HTTP replays later returned200, and r5 with response diagnostics passed. Root cause unproven; do not claim a production fix for this observation."
+    }
+  },
+  "unit_run_provenance": {
+    "stage": "audit-retention",
+    "source_commit": "a57863c7a907a1cd2562782187802913d564d01c",
+    "reexecuted_for_workflow_web": false,
+    "non_document_core_unchanged": 86,
+    "discovered_unit_source_files_unchanged": 73
   }
 }

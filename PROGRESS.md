@@ -1,5 +1,22 @@
 # 实施进度
 
+## 网页五类冻结工作流提交与实际 CPU 闭环（2026-10-31）
+
+**新增打包网页7组、原预览11组及同机Root安装26项通过；最终安装中网页触发的真实IR/编译任务各1attempt，恢复后身份和IR字节不变。** 网页 `job-6243e027be7e`、预览 `job-bb8363c950a7`、最终安装 `job-c687a0b99e05`。86个非文档CORE、73个已发现unit测试文件及protected6/APP4/r4镜像与审计阶段相同；本轮只改生产网页，不重建镜像、未重跑886单元/Root34/owner49，不把历史计数写成新整包验收。当前JS语法及网页资产SHA已核。本轮0模型/0 NPU。
+
+“提交方式 → 版本化工作流”可导入/粘贴accuracy_v1、performance_v1、simulation_v1、build_v1、ir_v1的已有JSON，显示封存输入、执行参数、资源、环境锁、结果位置、工作盘/缓存和依赖。必须明确worker-python及原幂等键，普通命令的名称/项目/资源/cwd不覆盖JSON；下载当前请求不提交。导入文件限256KiB，实际序列化POST仍受中央32KiB限制；源码封存和原脚本同级自动归档继续用个人CLI/MCP。不会从浏览器读取服务器源码或自动保存私人请求。
+
+相同构造同时用于只读预览和显式提交，后端仍核权限、封存输入、环境和容量。导入/编辑使旧预览失效，解析错误在发请求前显示；请求核对用textContent。明确JSON幂等键在响应丢失、刷新后导回原文件时保留原任务；同键改内容拒绝。五类实际HTTP队列语义在无worker的隔离两逻辑用户fixture验证，6个任务最终cancelled/0attempt；设备类提交通过不代表设备执行。7组另覆盖文件下载往返、跨用户输入拒绝、只读POST403、超限导入保留原稿和390px截图。原11组预览计时、乱序/失败/权限和实际Main只读检查也通过。
+
+最终Root26通过实际新装公开代码启动网页：个人proof_user、中央无特权服务、Node0、任务23003。两个网页请求分别运行实际bishengir-opt和cc共享库/ctypes42，固定Python/镜像，资源及命令逐字段与预览/提交相同；重复提交各复用原job/单attempt。结果表/CSV含两条，实际IR下载核constant42。中央与Node备份新目录恢复后，两原job/attempt仍相同，IR字节与下载完全一致；停止态恢复DB显式导出，主助手另核两个数据库integrity及任务各1attempt。Role恢复态不等于宿主完整挂载树。
+
+保留失败与范围：首网页fixture缺container键，第二次7组完成后报告误取release.id，修正为release_id后完整r3通过。安装r1未登记build_v1，原build正确等待/0attempt；r2两个CPU任务成功但Bearer头测试下载被取消，独立受保护HTTP探针复现Basic200/成功与额外Bearer头下载401/取消，测试改为正常Basic登录，不改CLI/MCP协议。r3误用旧管理员而非输入owner，预览被ACL拒绝，改回原个人凭据。r4仍见预览失败但未留下具体响应，原因未证；两次复制状态的Basic只读重放200，新增响应诊断后r5完整通过，不宣称修复了r4根因。早期Root/r3/r4均保留failed，不重试旧任务或放宽准入。
+
+五个自有安装范围的loop均released，4类fixture容器/卷namespace只读确认empty；Main config SHA5caf...、19profiles/domain/CPU254255/2048/SHM1024/1槽及zdl不变，零非终态/有效hold。凭据/原始数据库/截图/下载及测试盘私有留存；精选公开报告在reports/public-source-check.json.workflow_web，私有evidence/workflow-web-validation.json和runtime/workflow-web-20261031。
+
+下一步为累计实验预算及真实大IR/精度错误/卡死/仿真案例，继续稳定API/MCP能力适配。真实宿主用户/PID1、两物理机断网fencing、NPU ACL/数值/性能/仿真、组织身份及长期运维仍需目标机验收；PUBLIC-001继续延期，goal active、production_ready=false。
+
+
 ## 审计先保留、有界归档与确认裁剪（2026-10-31）
 
 **最终886项/146.234秒/无跳过及JS语法通过；86个非文档CORE与同机隔离安装34、开户49冻结一致。** 全量 `job-acd14c77c18e`，安装 `job-abdd47fcde58`，开户 `job-27a0e58d0f6e`，独立归档/恢复验证 `job-db9d0784ef2a`。protected6保持v0.36，APP4/r4镜像不变；本轮0模型/0 NPU，不移用以前设备或编译案例作为当前验收。

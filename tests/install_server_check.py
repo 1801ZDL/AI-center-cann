@@ -22,7 +22,7 @@ from jobs import atomic_json,now
 from deployment import bundle,unpack_release
 from backends import physical_identity
 
-arguments=argparse.ArgumentParser();arguments.add_argument('--large-wheel');arguments.add_argument('--https-network',action='store_true');arguments.add_argument('--disk-workspace',action='store_true');arguments.add_argument('--user-quota-workspace',action='store_true');arguments.add_argument('--storage-pressure',action='store_true');arguments.add_argument('--control-storage-pressure',action='store_true');arguments.add_argument('--central-payload',action='store_true');arguments.add_argument('--central-owner-quotas',action='store_true');arguments.add_argument('--node-spool-pressure',action='store_true');arguments.add_argument('--persistent-cache',action='store_true');arguments.add_argument('--dependencies',action='store_true');arguments.add_argument('--input-durability',action='store_true');arguments.add_argument('--native-toolchain',action='store_true');arguments.add_argument('--payload-quota-resize',action='store_true');arguments.add_argument('--deadline-limit',action='store_true');arguments.add_argument('--operator-analysis');arguments.add_argument('--operator-image');arguments.add_argument('--compiler-case');arguments.add_argument('--native-control',action='store_true');arguments.add_argument('--audit-retention',action='store_true');options=arguments.parse_args()
+arguments=argparse.ArgumentParser();arguments.add_argument('--large-wheel');arguments.add_argument('--https-network',action='store_true');arguments.add_argument('--disk-workspace',action='store_true');arguments.add_argument('--user-quota-workspace',action='store_true');arguments.add_argument('--storage-pressure',action='store_true');arguments.add_argument('--control-storage-pressure',action='store_true');arguments.add_argument('--central-payload',action='store_true');arguments.add_argument('--central-owner-quotas',action='store_true');arguments.add_argument('--node-spool-pressure',action='store_true');arguments.add_argument('--persistent-cache',action='store_true');arguments.add_argument('--dependencies',action='store_true');arguments.add_argument('--input-durability',action='store_true');arguments.add_argument('--native-toolchain',action='store_true');arguments.add_argument('--payload-quota-resize',action='store_true');arguments.add_argument('--deadline-limit',action='store_true');arguments.add_argument('--operator-analysis');arguments.add_argument('--operator-image');arguments.add_argument('--compiler-case');arguments.add_argument('--native-control',action='store_true');arguments.add_argument('--audit-retention',action='store_true');arguments.add_argument('--browser-workflow',action='store_true');options=arguments.parse_args()
 assert not options.native_control or not any([options.control_storage_pressure,options.central_payload,options.operator_analysis,options.https_network,options.large_wheel]), 'Native control uses its independent own disks and CPU fixture'
 assert not options.audit_retention or options.native_control, 'Audit crash/restore proof uses the isolated native control fixture'
 https=options.https_network
@@ -71,7 +71,7 @@ with socket.socket() as probe:probe.bind(('127.0.0.1',0));port=probe.getsockname
 containers=[];volumes=[];networks=[];stopped_main=False;checks=[];token=None;tls_context=None;authority_text=None;renewal=None;https_mcp=None
 retention_proof={};mount_proof={};owned_disk=None;pressure_disk=None;pressure_volume=None;storage_pressure=None;control_storage_pressure=None;spool_disk=None
 central_disks=[];central_volumes=[];payload_args=[];payload_contracts=[];central_proof=None
-native_control_volumes=[];native_control_proof=None
+native_control_volumes=[];native_control_proof=None;browser_workflow_proof=None
 group_pressure={};quota_resize_proof=None;deadline_proof=None;operator_proof=None;compiler_proof=None
 node_spool_pressure=None;cache_disk=None;cache_volume=None;cache_policy=None;cache_proof=None;dependency_proof=None;input_durability=None;native_proof=None
 controller_url=('https://controller.lab:' if https else 'http://127.0.0.1:')+str(port)
@@ -473,7 +473,7 @@ try:
         '--physical-id',physical_identity(),'--controller-url',controller_url,'--node-state-dir',str(node_state))
     ctl(controller,'controller','admin','--','workerctl','node-templates',enrollment['node_id'],
         '--template','cpu_demo','--template','isolation_probe','--template','ir_v1','--template','environment_probe',
-        *(['--template','build_v1'] if large_wheel or options.dependencies or options.native_toolchain or options.operator_analysis else []),
+        *(['--template','build_v1'] if large_wheel or options.dependencies or options.native_toolchain or options.operator_analysis or options.browser_workflow else []),
         *(['--template','accuracy_v1'] if options.dependencies else []))
     configuration=secret_json(controller,Path(enrollment['config']))
     configuration['environment_setup']=task_setup
@@ -543,6 +543,7 @@ try:
     ctl(node,'node','start')
     check('Fixed CPU probe certifies immutable environment; revised node acknowledges before versioned workflows')
     source={name:(ROOT/'examples/workflows'/name).read_bytes() for name in ['ir.py','input.mlir','workspace_probe.py']}
+    if options.browser_workflow:source.update({name:(ROOT/'examples/workflows'/name).read_bytes() for name in ['build.py','kernel.c']})
     def upload_source(headers=None):
         status,response=api('/api/inputs',{'files':[{'name':name,'size':len(data),'sha256':hashlib.sha256(data).hexdigest()} for name,data in source.items()]},extra_headers=headers)
         assert status in {200,201},response
@@ -574,6 +575,29 @@ try:
     assert env['node_spool']['enforced'] and env['node_spool']['bytes']==spool_policy['bytes']
     assert b'arith.constant 42' in api('/api/jobs/'+first['id']+'/artifact?name=ir%2Fcanonical.mlir',raw=True)[1]
     check('Installed services execute actual BishengIR transform as UID23003 and return protected evidence through HTTP')
+    if options.browser_workflow:
+        browser_profile=base/'workflow-browser-client.json'
+        atomic_json(browser_profile,{'controller':outer_url,'username':personal['username'],'password':personal['password']})
+        browser_requests=[]
+        for kind,script in [('ir','ir.py'),('build','build.py')]:
+            browser_requests.append({'template':kind+'_v1','environment':'worker-python','name':'网页实际'+kind,
+                'parameters':{'input_id':input_id,'argv':['python',script],
+                    'resources':{'cpu':1,'memory_mib':512,'shm_mib':0,'npu':0},
+                    'lock':{'python':task_version,'image_sha256':task_image},'timeout_seconds':90},
+                'idempotency_key':'installed-web-'+kind+'-stable'})
+        browser_request_file=base/'workflow-browser-requests.json';atomic_json(browser_request_file,browser_requests)
+        browser_output=base/'workflow-browser.json'
+        browser=subprocess.run(['/bin/bash',str(ROOT/'check-browser.sh'),'tests/browser_installed_workflow_check.py',
+            '--profile',str(browser_profile),'--requests',str(browser_request_file),'--output',str(browser_output)],
+            cwd=ROOT,capture_output=True,text=True,timeout=240)
+        (base/'workflow-browser.log').write_text(browser.stdout+browser.stderr)
+        assert browser.returncode==0,'Inspect private installed workflow browser log and original tasks; no substitute submission'
+        browser_workflow_proof=json.loads(browser_output.read_text());assert browser_workflow_proof['passed']
+        for item in browser_workflow_proof['tasks']:
+            assert len(api('/api/jobs/'+item['job_id'])[1]['attempts'])==1
+            environment=api('/api/jobs/'+item['job_id']+'/artifact?name=environment.json')[1]
+            assert environment['node_daemon_uid']==0 and environment['task_uid']==23003
+        check('Packaged browser submits actual locked CPU IR/build as UID23003, replays each original job and downloads real IR/results CSV')
     if options.deadline_limit:
         sys.path.insert(0,str(ROOT/'tests'));from installed_deadline_check import run as deadline_check
         deadline_proof=deadline_check(globals())
@@ -914,9 +938,18 @@ try:
         from installed_compiler_check import after_restore as compiler_after_restore
         compiler_proof['after_restore']=compiler_after_restore(globals(),compiler_proof)
         check('Restored state retains the original compiler failure and verifies the same sealed candidate once without another model call')
+    if browser_workflow_proof:
+        for item in browser_workflow_proof['tasks']:
+            detail=api('/api/jobs/'+item['job_id'])[1]
+            assert detail['job']['state']=='succeeded' and detail['job']['attempt_id']==item['attempt_id'] and len(detail['attempts'])==1
+        ir_task=next(item for item in browser_workflow_proof['tasks'] if item['template']=='ir_v1')
+        restored_ir=api('/api/jobs/'+ir_task['job_id']+'/artifact?name=ir%2Fcanonical.mlir',raw=True)[1]
+        assert restored_ir==browser_output.with_suffix('.mlir').read_bytes()
+        browser_workflow_proof['restored_tasks_and_ir_preserved']=True
+        check('Controller/Node restore preserves both browser task identities, single attempts and exact downloaded IR bytes')
     ctl(node,'node','stop');ctl(controller,'controller','stop')
     check('Quiescent node state restores to a new control directory, rebinds the same empty spool and executes another actual IR task')
-    if options.dependencies:
+    if options.dependencies or options.browser_workflow:
         # Only the original controller state leaf is host-bound. Preserve an
         # explicit readonly SQLite export of the restored private directory
         # before its owned container is removed; never pretend it was mounted.
@@ -1000,6 +1033,7 @@ try:
             **({'storage_pressure':storage_pressure,'pressure_disk':pressure_disk.report} if storage_pressure else {}),
             **({'control_storage_pressure':control_storage_pressure,'pressure_disk':pressure_disk.report} if control_storage_pressure else {}),
             **({'native_control':native_control_proof,'central_disks':[item.report for item in central_disks]} if native_control_proof else {}),
+            **({'browser_workflow':browser_workflow_proof} if browser_workflow_proof else {}),
             **({'central_payload':central_proof,'central_disks':[item.report for item in central_disks]} if central_proof else {}),
             **({'central_owner_quotas':{'enforced':True,'controller_extra_capabilities':False,'fixture_seccomp_unconfined':True,
                 'host_groups_created':False,'preparation_plan_readonly':True,'pressure':group_pressure,
