@@ -1,6 +1,6 @@
 {
   "schema": "ai-center-cann-publication/v1",
-  "recorded_at": "2026-11-02T18:22:17.022829+00:00",
+  "recorded_at": "2026-11-02T18:38:55.780502+00:00",
   "files": {
     ".gitignore": {
       "sha256": "a6287d1d645bcba2ddfec87d1055724b00577eea69200b919302f4d46cf3680d",
@@ -23,8 +23,8 @@
       "mode": "100644"
     },
     "BACKLOG.md": {
-      "sha256": "40b2cedd1cce34c1b8db94185df7108e600903ea5833a816b3f3ff9fa9f50d6e",
-      "bytes": 16711,
+      "sha256": "d8da7f9da2607aad75d60dfe07a68993279f3f2d3340357303bb52a71d460b36",
+      "bytes": 16891,
       "mode": "100644"
     },
     "CACHE.md": {
@@ -98,8 +98,8 @@
       "mode": "100644"
     },
     "HISTORY_CAPACITY.md": {
-      "sha256": "0c910e3847a532b4b7adb3f475b110d6c00435137173fa8cb5ddc4d2c263048c",
-      "bytes": 7034,
+      "sha256": "163d20255688e4220bc36693028cc42cb6a1ef80e21be6091a8bd363e2138024",
+      "bytes": 7463,
       "mode": "100644"
     },
     "HTTPS.md": {
@@ -168,8 +168,8 @@
       "mode": "100644"
     },
     "PROGRESS.md": {
-      "sha256": "8327c2abbaf9f747860a827825904123c4161fcd0bfa45dff5f5ae82c6eb8186",
-      "bytes": 250850,
+      "sha256": "2bc9cc099e7cfc70118318b62da7386aa39b8fe2367dbd1c164097285414b7f0",
+      "bytes": 252799,
       "mode": "100644"
     },
     "README.md": {
@@ -773,8 +773,8 @@
       "mode": "100644"
     },
     "reports/public-source-check.json": {
-      "sha256": "93886896fd0887a8be16fc238b4e30ef803eaf62a51bba028d3d6c09b15743ea",
-      "bytes": 430498,
+      "sha256": "6439af3fbf6de5d5c50fb40e97a279ffe788455bfb8c36b07bac0c2240848c7b",
+      "bytes": 432024,
       "mode": "100644"
     },
     "reports/v036-public.json": {
@@ -2284,9 +2284,9 @@
     }
   },
   "files_count": 456,
-  "total_bytes": 5839828,
-  "known_private_values_checked": 3947,
-  "private_fixture_files_considered": 5630,
+  "total_bytes": 5843912,
+  "known_private_values_checked": 4005,
+  "private_fixture_files_considered": 5777,
   "model_keys_read": false,
   "raw_runtime_or_evidence_included": false,
   "passed": true

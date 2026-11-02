@@ -9122,6 +9122,42 @@
     "npu_kernel_launches": 0,
     "model_calls": 0,
     "actual_systemd_pid1_start_tested": false,
-    "production_ready": false
+    "production_ready": false,
+    "historical_snapshot": true,
+    "superseded_by": "systemd_preflight"
+  },
+  "systemd_preflight": {
+    "verified_at": "2026-11-02T18:37:24.073165+00:00",
+    "unit_tests": 1310,
+    "unit_seconds": 245.563,
+    "unit_skipped": 0,
+    "javascript_syntax_passed": true,
+    "new_cases": 10,
+    "root_checks": 47,
+    "native_systemctl_script_refused": true,
+    "legacy_enable_refused_before_any_write": true,
+    "non_md_core_files": 110,
+    "installed_package_non_md_core_matches_final_source": true,
+    "loops_released": 3,
+    "main_config_history_limit_only_changed": true,
+    "main_profiles_domain_zdl_and_all_other_policies_unchanged": true,
+    "main_service_restarted": true,
+    "history_capacity_adjustment": {
+      "before_limit": 1000,
+      "after_limit": 1100,
+      "original_config_preserved": true,
+      "compute_concurrency_storage_budgets_unchanged": true,
+      "records_deleted": false,
+      "new_user_approval_claimed": false
+    },
+    "npu_kernel_launches": 0,
+    "model_calls": 0,
+    "actual_systemd_pid1_start_tested": false,
+    "production_ready": false,
+    "overall_goal_complete": false,
+    "scope": "Read-only deployment prerequisites and retirement of a direct startup bypass; actual installed no-device role negative checks and existing CPU Root47 restore acceptance. Not real systemd service start, host users, NPU or two physical machines.",
+    "top_level_test_helpers_frozen": 264,
+    "nested_workloads_unchanged": 3,
+    "protected_runtime_agent_and_web_unchanged": true
   }
 }

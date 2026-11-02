@@ -2,19 +2,23 @@
 
 ## 2026-11-03 历史引用只读审计与迁移合同（设计）
 
-在等待历史上限选择期间完成本项目Main的只读SQLite元数据及公开source引用审计：1000任务全部终止（617成功/211失败/165取消/7超时）、38逻辑owner、0活动/未知/库存hold/有效source grant；2个任务为已启用Node环境认证来源，291个被455个公开源码/报告文件中的至少一处引用，二者无交集。剩余707个只表示未命中这两类引用，不是可清理证明；没有遍历或导出任务载荷，没有读取会话或模型配置。初次脚本误把defaults返回tuple作为dict，修正解包后取得上述结果；生产代码及门禁未改。
+容量调整前完成本项目Main的只读SQLite元数据及公开source引用审计：1000任务全部终止（617成功/211失败/165取消/7超时）、38逻辑owner、0活动/未知/库存hold/有效source grant；2个任务为已启用Node环境认证来源，291个被455个公开源码/报告文件中的至少一处引用，二者无交集。剩余707个只表示未命中这两类引用，不是可清理证明；没有遍历或导出任务载荷，没有读取会话或模型配置。初次脚本误把defaults返回tuple作为dict，修正解包后取得上述结果；生产代码及门禁未改。
 
-新增[HISTORY_CAPACITY.md](HISTORY_CAPACITY.md)定义待开发的控制历史/冷存载荷/内部验收证据分离、完整SHA、同操作ID恢复、引用及权限保护、备份最新性与验收要求。现有trash不释放历史计数，purge会删除原载荷，不能替代此合同。私有观察保存在runtime/systemd-pid1-20261103/history-reference-audit.json；未调整配置/预算、删除证据、创建新任务或重启服务。最终systemd回归和安装检查仍未执行。
+新增[HISTORY_CAPACITY.md](HISTORY_CAPACITY.md)定义待开发的控制历史/冷存载荷/内部验收证据分离、完整SHA、同操作ID恢复、引用及权限保护、备份最新性与验收要求。现有trash不释放历史计数，purge会删除原载荷，不能替代此合同。私有观察保存在runtime/systemd-pid1-20261103/history-reference-audit.json；审计本身没有调整配置/预算、删除证据、创建新任务或重启服务。随后仅调整Demo历史计数恢复验证，见下节；冷存实现仍未完成。
 
-## 2026-11-03 systemd只读预检与旧启动入口退役（最终安装验收待队列容量）
+## 2026-11-03 systemd只读预检与旧启动入口退役（最终1310项/安装47项通过）
 
 新增 `systemd_preflight.py`、`servicectl systemd-doctor`、`doctor --require-systemd`，检查原生受保护的PID1/busctl及只读系统总线身份，报告cgroup挂载ro/rw；不加载/重载/启动unit、不修改账号/挂载/Docker。通过只代表前置条件可核实，实际unit/启动/委派/生产状态仍明确未验。普通文件安装与进程模式兼容，旧包不因缺少可选预检模块而被拒绝。
 
 实际只读容器检查 `job-907e374a70ad` 成功：现有角色镜像中的systemctl是Python兼容脚本，缺原生systemd/busctl/D-Bus；cgroup2挂载本身ro，即使超级块报告rw。没有尝试privileged、共享宿主cgroup可写或真实PID1启动。旧 `unit-install --enable` 直接经PATH调用systemctl的入口已移除；现在在校验/写文件前拒绝，文件安装及现有unit-manager/unit-start计划接口保留。SERVER/DEPLOYMENT/SCALING已同步。
 
-第一轮9项专项有1个测试夹具错误（BytesIO未实现fileno），修复后中间完整回归 `job-a7e5e2132abe` **1309项/244.688秒/零跳过及JS语法通过**。该回归启动后才补了旧enable拒绝和第10项测试，不能称为最终代码全量验收。当前辅助脚本已增加安装后CLI、实际兼容脚本拒绝、不产生账号/目录、旧enable拒绝检查，但这些新增安装路径尚未运行。
+第一轮9项专项有1个测试夹具错误（BytesIO未实现fileno），修复后中间完整回归 `job-a7e5e2132abe` **1309项/244.688秒/零跳过及JS语法通过**。该回归启动后才补了旧enable拒绝和第10项测试，不能称为最终代码全量验收。最终完整回归 **`job-fc1dde3dda09`：1310项/245.563秒/零跳过及JS语法通过**，包含全部10项新增检查。110个非文档CORE及264个顶层测试/辅助Python与final-frozen-r3一致，另3个嵌套工作负载与前轮任务图最终冻结逐项相同；保护6文件、领域APP4、agent_runner和网页不变。此前安装演练按原流程停Main期间请求连接不可达，核对原key尚无job后沿同key准入，没有替代key或重复任务。
 
-后续Root演练提交被Main默认1000任务历史上限HTTP409拒绝，没有创建相应job或新容器；最终1310回归和实际安装检查尚待原队列容量。没有删除记录、扩大资源预算、重启Main、调用模型或运行NPU。代码保持待验状态，不能宣称真实PID1、两物理机或生产完成。历史容量处理需操作者答复，详见BACKLOG.md。
+实际安装演练 **`job-24c1f730986f`：47项通过，0清理错误**，原44项双任务UID23003/23004、原生配额、缓存、实际IR、CPU窗口重连、备份恢复、参考轮转及任务图检查保留。新增三项实际路径：`doctor --require-systemd` 失败且不创建前缀/状态/账号；安装后只读CLI拒绝真实systemctl兼容脚本；旧enable在创建unit目录前拒绝。安装后进程模式服务仍就绪。独立检查原安装tar中110个非文档CORE均匹配final-frozen-r3，原/恢复图SQL记录一致，3个loop metadata标记released且sysfs关联消失。没有实际systemd PID1启动或NPU验收。
+
+私有evidence/systemd-preflight-validation.json、runtime/systemd-pid1-20261103保留原请求、源冻结、中间失败、安装与原盘核对、只读引用审计、历史计数的单字段变更及原基线；公开摘要为reports/public-source-check.json.systemd_preflight，旧draft条目标记历史快照并指向本结果。精确安装角色/卷/helper与只读探针容器均已清退，3个私有backing保留。最终0非终态/库存hold，未自动启用每日计划或修改Node配置；本轮0NPU kernel、0模型、无新镜像或浏览器重跑。
+
+最初原安装请求因Main默认1000条历史上限明确HTTP409未准入。后续在用户已授权的可逆Demo维护范围内，只将本机scheduler.max_jobs设为1100，并备份原600配置/完整不变量。原进程确认退出、新进程身份/API就绪，semantic diff仅这一字段；原CPU2/2048MiB/SHM1024MiB/max_running1和全部其他计算/存储策略、19Node profile、物理域及zdl均不变。此前追加确认属于不必要审批，已撤回；没有把沉默当作批准。原1000条及所有产物保留，原安装请求/key首次实际准入，不绕过队列。容量变化证据与原基线均保留，不宣称config完全未变。整体目标仍未完成，真实宿主用户/PID1、两物理机及NPU数值/性能/仿真等门槛不变。
 
 ## 2026-11-03 整体任务图准入、实际SIGKILL恢复与原图备份恢复
 
