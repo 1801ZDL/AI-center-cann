@@ -59,7 +59,9 @@ def private_values():
                     'jobs/*/tmp/installation/node-control/*/attempts/*/payload/run.json',
                     'jobs/*/tmp/nested-*/nested-*/request.json']:
         files.update(r.glob(pattern))
-    for pattern in ['jobs/*/tmp/large-mixed/client-*.json','jobs/*/tmp/large-mixed/*-private-config.json']:
+    for pattern in ['jobs/*/tmp/large-mixed/client-*.json','jobs/*/tmp/large-mixed/*-private-config.json',
+                    'jobs/*/tmp/large-mixed/graph-authority-*.json',
+                    'jobs/*/tmp/large-mixed/controller-state/graph-authority-*.json']:
         files.update(r.glob(pattern))
     for pattern in ['jobs/*/tmp/native-uid-append/control/node/config.json','jobs/*/tmp/native-uid-append/control/enroll.json']:
         files.update(r.glob(pattern))

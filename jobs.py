@@ -165,6 +165,8 @@ class JobStore:
         self.device_evidence=Evidence(self)
         from performance_reference import References
         self.performance_references=References(self)
+        from job_graphs import Graphs
+        self.graphs=Graphs(self)
 
     def connect(self):
         self.control_filesystem.check()
@@ -229,7 +231,7 @@ class JobStore:
             self.payload.object(path,owner)
         return path
 
-    def normalize(self, request, principal=None):
+    def normalize(self, request, principal=None, *, _db=None):
         if not isinstance(request, dict):
             raise JobError('请求必须是 JSON 对象。')
         principal = principal or self.access.local
@@ -344,7 +346,7 @@ class JobStore:
         for resource_name, value in {'cpu':cpu,'memory_mib':memory,'shm_mib':shm,'npu':npu}.items():
             if value>principal.quota.get(resource_name,value):
                 raise JobError('任务超过当前用户的 '+resource_name+' 配额。', 403)
-        dependencies=self.dependencies.validate(request,principal)
+        dependencies=self.dependencies.validate(request,principal,db=_db)
         from experiment_budget import select
         experiment=select(request,principal)
         placement={}
@@ -453,82 +455,93 @@ class JobStore:
         spec = self.normalize(request, principal)
         if _staged_probe is not None:spec['_staged_device_probe']=_staged_probe
         if _scheduled is not None:spec['_device_schedule']=dict(_scheduled)
-        fingerprint = hashlib.sha256(json.dumps({k: v for k, v in spec.items() if k != 'idempotency_key'}, sort_keys=True).encode()).hexdigest()
         with self.submission_transaction(_staged_probe is not None or _scheduled is not None) as (db,identities):
-            reason=admission_reason(self.runtime,submit=True)
-            if reason:raise JobError(reason,503)
-            if _scheduled is not None:self.device_schedules.validate_action(_scheduled,db,identities)
-            if _staged_probe is not None:
-                from owner_device_probe import validate
-                validate(self,_staged_probe,db,identities)
-            existing = db.execute('SELECT data,fingerprint FROM jobs WHERE owner=? AND idem_key=?', (principal.id, spec['idempotency_key'])).fetchone()
-            if existing:
-                if existing[1] != fingerprint:
-                    raise JobError('该幂等键已经用于不同的任务。', 409)
-                existing_job=json.loads(existing[0])
-                if _staged_probe is not None:validate(self,_staged_probe,db,identities,existing_job)
-                return public(existing_job), True
-            self.nodes.probe_submission(spec,principal,db)
-            if spec.get('input'):
-                self.lifecycle.available('input',spec['input']['id'],db)
-            self.dependencies.available({**spec,'owner':principal.id},db)
-            rows = self.all(db)
-            if sum(j['state'] == 'queued' for j in rows) >= self.policy['max_queued'] or sum(j.get('archive_status',{}).get('state')!='purged' for j in rows) >= self.policy['max_jobs']:
-                raise JobError('本 Demo 的作业数量已达到上限。', 409)
-            if sum(j['owner']==principal.id and j['state']=='queued' for j in rows)>=principal.quota.get('max_queued', self.policy['max_queued']):
-                raise JobError('当前用户等待队列已满。', 409)
-            job_id = 'job-' + uuid.uuid4().hex[:12]
-            experiment_charge=self.experiment_budgets.charge(db,spec,principal,job_id)
-            from io_policy import submission_artifacts,MIB,META
-            artifact_limits={'file_mib':1,'total_mib':2} if _staged_probe is not None or _scheduled is not None else submission_artifacts(spec)
-            self.storage.reserve(db,'archive',job_id,principal,artifact_limits['total_mib']*MIB+META)
-            directory = self.directory(job_id,owner=principal.id)
-            source = None
-            source_content=None
-            for arg in spec['argv'][1:]:
-                if arg.endswith('.py'):
-                    path = (Path(spec['cwd']) / arg).resolve()
-                    from container_engine import SCRIPTS
-                    if path.is_relative_to(Path(principal.workspace)) or spec.get('template') and path==SCRIPTS.get(spec['template']):
-                        try:
-                            if not path.is_file():continue
-                            if path.stat().st_size > min(4*MIB,artifact_limits['file_mib']*MIB):
-                                raise JobError('入口源码超过单文件归档额度或 4 MiB，请调整申报或使用较小的入口脚本。')
-                            content=path.read_bytes()
-                        except OSError:raise JobError('无法读取入口源码，请核对授权路径和安装文件权限。',403)
-                        source={'path':str(path),'sha256':hashlib.sha256(content).hexdigest()}
-                        source_content=(path.name,content)
-                        break
+            return self._submit_record(db,identities,spec,principal,_staged_probe=_staged_probe,_scheduled=_scheduled)
+
+    def _submit_record(self,db,identities,spec,principal,*,_staged_probe=None,_scheduled=None,_defer_archive=False,_job_id=None):
+        from unit_start import admission_reason
+        fingerprint = hashlib.sha256(json.dumps({k: v for k, v in spec.items() if k != 'idempotency_key'}, sort_keys=True).encode()).hexdigest()
+        reason=admission_reason(self.runtime,submit=True)
+        if reason:raise JobError(reason,503)
+        if _scheduled is not None:self.device_schedules.validate_action(_scheduled,db,identities)
+        if _staged_probe is not None:
+            from owner_device_probe import validate
+            validate(self,_staged_probe,db,identities)
+        existing = db.execute('SELECT data,fingerprint FROM jobs WHERE owner=? AND idem_key=?', (principal.id, spec['idempotency_key'])).fetchone()
+        if existing:
+            if existing[1] != fingerprint:
+                raise JobError('该幂等键已经用于不同的任务。', 409)
+            existing_job=json.loads(existing[0])
+            if _staged_probe is not None:validate(self,_staged_probe,db,identities,existing_job)
+            return public(existing_job), True
+        self.nodes.probe_submission(spec,principal,db)
+        if spec.get('input'):
+            self.lifecycle.available('input',spec['input']['id'],db)
+        self.dependencies.available({**spec,'owner':principal.id},db)
+        rows = self.all(db)
+        if sum(j['state'] == 'queued' for j in rows) >= self.policy['max_queued'] or sum(j.get('archive_status',{}).get('state')!='purged' for j in rows) >= self.policy['max_jobs']:
+            raise JobError('本 Demo 的作业数量已达到上限。', 409)
+        if sum(j['owner']==principal.id and j['state']=='queued' for j in rows)>=principal.quota.get('max_queued', self.policy['max_queued']):
+            raise JobError('当前用户等待队列已满。', 409)
+        job_id = _job_id or 'job-' + uuid.uuid4().hex[:12]
+        experiment_charge=self.experiment_budgets.charge(db,spec,principal,job_id)
+        from io_policy import submission_artifacts,MIB,META
+        artifact_limits={'file_mib':1,'total_mib':2} if _staged_probe is not None or _scheduled is not None else submission_artifacts(spec)
+        self.storage.reserve(db,'archive',job_id,principal,artifact_limits['total_mib']*MIB+META)
+        directory = self.directory(job_id,owner=principal.id)
+        source = None
+        source_content=None
+        for arg in spec['argv'][1:]:
+            if arg.endswith('.py'):
+                path = (Path(spec['cwd']) / arg).resolve()
+                from container_engine import SCRIPTS
+                if path.is_relative_to(Path(principal.workspace)) or spec.get('template') and path==SCRIPTS.get(spec['template']):
+                    try:
+                        if not path.is_file():continue
+                        if path.stat().st_size > min(4*MIB,artifact_limits['file_mib']*MIB):
+                            raise JobError('入口源码超过单文件归档额度或 4 MiB，请调整申报或使用较小的入口脚本。')
+                        content=path.read_bytes()
+                    except OSError:raise JobError('无法读取入口源码，请核对授权路径和安装文件权限。',403)
+                    source={'path':str(path),'sha256':hashlib.sha256(content).hexdigest()}
+                    source_content=(path.name,content)
+                    break
+        if not _defer_archive:
             directory.mkdir(mode=0o700)
             self.payload.object(directory,principal.id,create=True)
             if source_content:
                 (directory/'source').mkdir(mode=0o700)
                 (directory/'source'/source_content[0]).write_bytes(source_content[1])
-            job = {**spec, **experiment_charge, 'id': job_id, 'owner': principal.id, 'project':spec.get('project', 'personal:'+principal.id), 'state': 'queued',
-                   'reason': '等待资源分配', 'created_at': now(), 'started_at': None,
-                   'finished_at': None, 'allocation': {}, 'source': source,
-                   'archive_dir': str(directory), 'result': None, '_token': secrets.token_hex(24),
-                   '_max_log_bytes': self.policy['max_log_bytes'],'artifact_limits':artifact_limits}
-            from workflow_spec import WORKFLOWS,runtime_manifest
-            if job.get('template') in WORKFLOWS or job.get('template') in {'environment_probe','npu_access_probe'}:job['runtime_files']=runtime_manifest()
-            if job.get('depends_on'):
-                job['_dependency_base_input']=job['parameters']['input_id']
-                from dependency_conditions import uses_terminal
-                waiting=('等待上游确认结束、资源清退及阶段输入封存；尚未预留计算资源' if uses_terminal(job)
-                    else '等待上游成功及阶段输入封存；尚未预留计算资源')
-                job['dependency_state']={'status':'waiting','reason':waiting}
-                job['reason']=job['dependency_state']['reason']
-            if _staged_probe is not None:
-                from owner_device_probe import bind_job
-                bind_job(self,_staged_probe,job,db,identities)
-            if _scheduled is not None:self.device_schedules.bind(_scheduled,job,db,identities)
-            atomic_json(directory / 'request.json', public(job))
-            db.execute('INSERT INTO jobs VALUES (?,?,?,?,?,?)', (job_id, principal.id, spec['idempotency_key'], fingerprint, job['state'], json.dumps(job, ensure_ascii=False)))
-            return public(job), False
+        job = {**spec, **experiment_charge, 'id': job_id, 'owner': principal.id, 'project':spec.get('project', 'personal:'+principal.id), 'state': 'queued',
+               'reason': '等待资源分配', 'created_at': now(), 'started_at': None,
+               'finished_at': None, 'allocation': {}, 'source': source,
+               'archive_dir': str(directory), 'result': None, '_token': secrets.token_hex(24),
+               '_max_log_bytes': self.policy['max_log_bytes'],'artifact_limits':artifact_limits}
+        from workflow_spec import WORKFLOWS,runtime_manifest
+        if job.get('template') in WORKFLOWS or job.get('template') in {'environment_probe','npu_access_probe'}:job['runtime_files']=runtime_manifest()
+        if job.get('depends_on'):
+            job['_dependency_base_input']=job['parameters']['input_id']
+            from dependency_conditions import uses_terminal
+            waiting=('等待上游确认结束、资源清退及阶段输入封存；尚未预留计算资源' if uses_terminal(job)
+                else '等待上游成功及阶段输入封存；尚未预留计算资源')
+            job['dependency_state']={'status':'waiting','reason':waiting}
+            job['reason']=job['dependency_state']['reason']
+        if _staged_probe is not None:
+            from owner_device_probe import bind_job
+            bind_job(self,_staged_probe,job,db,identities)
+        if _scheduled is not None:self.device_schedules.bind(_scheduled,job,db,identities)
+        if _defer_archive:
+            import base64
+            job['_graph_payload']={'request':public(job),'source':({'name':source_content[0],
+                'base64':base64.b64encode(source_content[1]).decode()} if source_content else None)}
+        else:atomic_json(directory / 'request.json', public(job))
+        db.execute('INSERT INTO jobs VALUES (?,?,?,?,?,?)', (job_id, principal.id, spec['idempotency_key'], fingerprint, job['state'], json.dumps(job, ensure_ascii=False)))
+        return public(job), False
 
     def cancel(self, job_id, principal=None, *, _queued_only=False):
         principal = principal or self.access.local
         principal.require('jobs:cancel')
+        existing=self.get(job_id,principal=principal)
+        if self.graphs.reason(existing):raise JobError('Task graph archives are not ready; resume the original graph before cancelling its tasks',409)
         with self.transaction() as db:
             job = self.get(job_id, db, principal)
             if not self.access.can_cancel(principal,job):
@@ -625,6 +638,8 @@ class JobStore:
     def dispatch_permission(self,job,active,db=None,identities=None):
         from unit_start import admission_reason
         reason=admission_reason(self.runtime)
+        if reason:return reason
+        reason=self.graphs.reason(job,db)
         if reason:return reason
         from owner_device_probe import dispatch_principal
         try:principal=dispatch_principal(self,job,db,identities)
@@ -763,6 +778,7 @@ class Scheduler:
 
     def tick(self):
         self.reconcile()
+        self.jobs.graphs.recover()
         self.jobs.dependencies.tick()
         self.jobs.device_schedules.tick()
         snapshot = self.observations.latest()

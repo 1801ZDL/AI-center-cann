@@ -4,7 +4,7 @@ Only existing immutable job IDs may be parents. Waiting/copying children stay
 queued without compute reservations; inputs are sealed before a start grant.
 """
 import base64
-from contextlib import ExitStack
+from contextlib import ExitStack,nullcontext
 import hashlib
 import json
 import os
@@ -61,10 +61,10 @@ def fields(request):
 class Dependencies:
     def __init__(self,jobs):self.jobs=jobs;self.cursor=0
 
-    def validate(self,request,principal):
+    def validate(self,request,principal,db=None):
         result=fields(request)
         if not result:return {}
-        with self.jobs.connect() as db:
+        with (self.jobs.connect() if db is None else nullcontext(db)) as db:
             from experiment_budget import select
             self.jobs.source_grants.check({**result,**select(request,principal),'owner':principal.id},db,active=False)
             granted={x['job_id'] for x in result['artifact_inputs'] if 'source_grant' in x}

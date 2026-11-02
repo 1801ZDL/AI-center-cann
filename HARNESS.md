@@ -59,3 +59,9 @@ msagent 的 Operator 文档面向单算子性能分析和优化，并要求提�
 这是OpenCode配置片段，需核对实际版本的最终有效权限；其他harness按其MCP配置格式适配，并验相同权限。模型及认证使用本人已有配置，不从中央获取。该MCP只约束自身工具，不隔离同UID进程；同一账号下另开的Shell仍具有账号原有权限。实际模型、安装包、任务UID及恢复验收范围见PROGRESS.md，不能从接口存在推导自动修复能力。
 
 精确执行目标由placement.bound_workflow适配到个人agent_runner和既有固定MCP会话；中央能力须声明exact-node-device-placement-v1，冻结工作流的placement在会话内不能覆盖。旧的无目标入口保留原客户端路径，lab_client与领域工具固定镜像APP4未改；当前新增适配仅验真实HTTP/固定请求合同，没有新增模型harness运行。主动微自检CLI和有限参考/非认证范围见NPU_SELFCHECK.md。
+
+## 固定个人任务图接口
+
+整体流程可以通过[JOB_GRAPHS](JOB_GRAPHS.md)的标准API，或个人安装包中的graph_client.py接入。用户或Agent先准备指定的0600流程文件，在本人0700对话目录保存状态；stdio提供无参数submit_graph/graph_status/resume_graph。一次会话固定请求字节与controller，提交意图先持久保存，丢失回包使用原请求与幂等键解析原结果。既有单任务接口继续可用。
+
+该接口使用已有个人认证和中央预算，不携带模型供应商配置。MCP当前初始化响应协议2025-06-18；CLI/API调用独立于MCP客户端协议版本。本轮实际安装后以另一个UID运行CLI和stdio工具调用，并验证命令覆盖拒绝与服务私有配置不可读；没有再运行模型，也不据此宣称整套msagent或另一完整harness的分析能力均已对接。

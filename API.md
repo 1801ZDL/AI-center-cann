@@ -260,3 +260,11 @@ compiler-case是对原任务/日志/artifact-chunk读取接口的固定路径组
 ## 可选频率证据
 
 `GET /api/me`的`npu_condition_capabilities`声明`npu-condition-evidence-v1`及`npu-frequency-samples-v1`。认证Node设备观测可附带固定schema/source、物理device_id、sampled_at、current_mhz与rated_mhz；字段缺失/非法只使频率未知，不能代替或放宽原健康/占用合同。原任务device_conditions新增frequency摘要（cards的当前/额定极值、心跳样本、独立边界引用计数及缺项），旧兼容字段frequency_mhz仍为null。结果/CSV与归档沿原ACL，性能资格始终未验证；不新增执行或改频接口。预算、时间范围与多芯片限制见[NPU_FREQUENCY.md](NPU_FREQUENCY.md)。
+
+## 整体任务图（atomic-job-graphs-v1）
+
+- `POST /api/job-graphs`：32KiB内的1..16个托管阶段，必需原幂等键。新图201、原图重放200；同键改请求409。任一阶段准入失败无部分job/扣费。归档未准备完时已接受的图返回preparing，各阶段仍0attempt。
+- `GET /api/job-graphs/GRAPH_ID`：原owner及匹配预算凭据可读；返回图准入state与各阶段nodes[].state。外用户404，原job/归档ACL不扩展。
+- `POST /api/job-graphs/GRAPH_ID/resume`：请求体只能`{}`，按原记录继续准备归档；不生成替代图或新的阶段。
+
+图内after与artifact_inputs.node引用局部节点，job内部的普通depends_on/artifact_inputs仍可引用已有任务。全图同一实验预算或都不指定；每阶段正常环境锁/资源/配额/审批与版本协议继续适用。图state=submitted表示全部准入和归档准备完成；执行进展以各节点状态为准。个人CLI/MCP、恢复语义、明确限额与验收边界见[JOB_GRAPHS.md](JOB_GRAPHS.md)。

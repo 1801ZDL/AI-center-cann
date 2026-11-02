@@ -1,5 +1,29 @@
 # 实施进度
 
+## 2026-11-03 整体任务图准入、实际SIGKILL恢复与原图备份恢复
+
+新增[JOB_GRAPHS.md](JOB_GRAPHS.md)：一次提交1..16个托管阶段、32KiB请求，局部依赖和产物引用在同一SQLite事务解析。每阶段沿用原五类工作流、封存输入、版本锁、身份/项目、队列、存储和预算检查；任何阶段准入失败则本次提交全部回滚，没有部分job、扣费或任务目录。全图同一实验预算，或都不指定。阶段名字默认带图名/节点名，原网页任务列表继续展示各阶段资源与状态。
+
+全部原任务、存储预留与预算先持久入账为preparing，再从私有固定入口快照准备归档；全部文件持久后一次submitted，之前任何阶段都不能领取或输入交接。提交后崩溃恢复原jobIDs，不重计费；文件冲突不覆盖，最多32次自动准备后attention，显式resume保持原图。这里保证整体准入，图state是准入/归档状态，执行状态看nodes[].state；资源仍逐任务正常排队。准备期间需先恢复归档才能逐任务取消。4096图历史上限/控制盘余量保留原证据，旧代码不能忽略新合同；当前状态仍在时，旧快照不得丢失图key、原阶段ID/指纹和attempt记录。
+
+新增独立graph_client.py CLI/stdio MCP，与个人安装包一起分发，不改lab_client.py/领域工具镜像。绑定个人0600指定请求与0700对话状态，意图先于POST保存；未知回包重放同一请求/key，不换任务。三工具无参数：submit_graph、graph_status、resume_graph。请求可由用户或其Agent准备，文件绑定本身不是额外人工作批准或同UID沙箱；MCP参数不能替换命令/资源/路径，权限与累计预算仍由中央实施。stdio初始化响应2025-06-18，本轮验证实际安装CLI与stdio工具调用，不宣称另一整套harness或新模型自动规划已验收。
+
+最终完整回归 **`job-f8a4585790b6`：1300项/248.204秒/零跳过及JavaScript语法通过**，其中24项新增图/客户端检查覆盖后期校验/配额/预算失败整体回滚、并发幂等、跨预算/外用户404、真正执行器前的图门、前后commit/partial文件恢复、已发布且开始后丢回包原attempt保留、32次冲突上限、HTTP/MCP及旧代码/旧snapshot拒绝。109个非文档CORE、266测试/辅助Python最终冻结；保护6文件、领域APP4、agent_runner和网页4资产不变。仅测试辅助脚本随后修正，不为此重跑全量；当前源的实际包/独立审计另行核对。
+
+实际安装演练 **`job-c26377ac3a16`** 成功：原Main2CPU/2048MiB/NPU0，自有Controller/Node/4个有限文件盘，4逻辑用户/任务UID23901..23904各一个3job/180申报CPU秒/0NPU预算，完成4图12个真实阶段，每阶段单attempt。链为build模板下的BishengIR常量化→IR再次解析→报告，产物逐阶段SHA一致，最终42；这不是完整Triton/NPU-IR源码重编或数值认证。另有UID23900环境资格探针，合计13个inner job。首图在末阶段输入无效时整批零新增，外用户读图404，正常重放不重复。
+
+3个真实SIGKILL边界分别为第二阶段准入但未commit（零job/charge/目录）、整体commit后尚未写目录（保留原3任务、0attempt）、第一阶段归档写完尚未发布（原3任务、0attempt、一个目录）。仅自有Role中的服务身份进程主动kill自己，持久边界标记和退出确认；Controller/Node先停，重起后后台/原请求恢复同一图，Node再启后执行，各预算仍精确3job/180CPU申报秒。补充组按Root不可变安装metadata中的数字GID初始化，与真实服务启动器一致，不依赖/etc/group名字，也不放宽存储合同。
+
+个人UID23642实际运行安装后的CLI和stdio工具，经HTTP复用首图，参数覆盖被拒；该UID读不到Controller私有配置。独立只读审计 **`job-0dcb3f35bf85`** 读取已解除loop关联的原盘和SQLite，不挂载/编译，核4图12任务/12charge、4UID/GID、256MiB硬内存、无设备无网/只读根、原manifest与Node receipt、原归档字节/SHA及跨阶段provenance和IR42，工作slot/暂存attempts为空。Primary另核每预算SQL sum=(3,180,0)。
+
+当前包完整安装 **`job-135f336797b2`：44项通过**。原42项两UID、配额/缓存、CPU窗口重连、备份新目录恢复及参考轮转继续；另实际3阶段BishengIR图，拒绝缺图key的旧snapshot并保安装元数据，最新snapshot恢复后原图/阶段ID/单attempt不变，原raw请求再次提交免费复用。Primary核原/恢复SQL图记录、指纹和attempt，以及两个实际安装包CORE109/web4；原图IR文件和保护元数据核对。设备规则/性能参考部分仍为合成历史或未准备设备拒绝，不是真机UT。
+
+失败原件保留：两次初1300回归因图检查早于全局启动HOLD导致一个裸初始化门禁检查失败，调整为全局门优先后最终通过；首次真实流水payload混用build/ir产物前缀，首阶段结果合同失败、两个下游0attempt自动取消，仅修示例。两次故障辅助进程未携带显式数字存储组，被原生合同拒绝且尚无SIGKILL；先后明确补足真实组初始化，没有绕过检查。第一次故障清理等待已停止API，确认四job全成功/Node已停后仅启动原Controller使原清理收敛。独立审计首次误用了experiment_id列，改为真实budget_id重读原数据，无工作负载重跑。完整请求、原handle和失败日志留私有。
+
+四轮自有安装及完整Root合计19份loop released、sysfs关联消失，精确命名空间角色/卷/helpers清退，私有backing保留。Root原有stop/start使Main加载最终八个源文件，实际新能力回读；原config43feb...、19profile、物理域预算、zdl启动/内存/SHM不变，0非终态/hold，未在Main提交真实图或启用每日计划/规则/参考。无宿主账户、全局服务、驱动或他人容器修改。本轮管理采样UTC16:36:19卡0Alarm/1进程、卡1OK/2进程，不把读数视为永久状态；无NPU或模型调用、新镜像构建、网页浏览器或20用户突发重跑。
+
+公开摘要reports/public-source-check.json.atomic_job_graphs；私有evidence/workflow-graph-validation.json及runtime/workflow-graph-20261103保留源冻结、原盘审计、故障/恢复/清理。整体目标仍未完成：真实宿主用户/PID1、两物理机/fencing、NPU正向及精度/性能/仿真、混合/长期容量，以及完整领域harness仍需按实际环境验收。
+
 ## 2026-11-03 固定探针小归档预算与Node升级兼容
 
 新建 `environment_probe` / `npu_access_probe` 使用服务端单文件1MiB、总产物2MiB预算，加原8MiB元数据后预留10MiB。此前固定探针不接受调用方产物参数，却沿普通64/128MiB默认值准入，导致小IO/归档账号无法资格检查。普通命令/工作流预算、设备访问和数值资格门槛不变。预算选择不写入规范化请求或指纹，旧任务重放返回原job、原额度和原预留；缺少冻结额度的旧记录保留旧默认。新Node仅接受新固定额度或精确旧默认，仍执行本Node IO上限。

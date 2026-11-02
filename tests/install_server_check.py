@@ -22,12 +22,13 @@ from jobs import atomic_json,now
 from deployment import bundle,unpack_release
 from backends import physical_identity
 
-arguments=argparse.ArgumentParser();arguments.add_argument('--large-wheel');arguments.add_argument('--https-network',action='store_true');arguments.add_argument('--disk-workspace',action='store_true');arguments.add_argument('--user-quota-workspace',action='store_true');arguments.add_argument('--storage-pressure',action='store_true');arguments.add_argument('--control-storage-pressure',action='store_true');arguments.add_argument('--central-payload',action='store_true');arguments.add_argument('--central-owner-quotas',action='store_true');arguments.add_argument('--node-spool-pressure',action='store_true');arguments.add_argument('--persistent-cache',action='store_true');arguments.add_argument('--dependencies',action='store_true');arguments.add_argument('--input-durability',action='store_true');arguments.add_argument('--native-toolchain',action='store_true');arguments.add_argument('--payload-quota-resize',action='store_true');arguments.add_argument('--node-quota-resize',action='store_true');arguments.add_argument('--deadline-limit',action='store_true');arguments.add_argument('--operator-analysis');arguments.add_argument('--operator-image');arguments.add_argument('--compiler-case');arguments.add_argument('--large-compiler-case');arguments.add_argument('--agent-experiment');arguments.add_argument('--accuracy-case');arguments.add_argument('--terminal-handoff');arguments.add_argument('--source-grants');arguments.add_argument('--simulation-case');arguments.add_argument('--report-view');arguments.add_argument('--native-control',action='store_true');arguments.add_argument('--audit-retention',action='store_true');arguments.add_argument('--browser-workflow',action='store_true');arguments.add_argument('--experiment-budget',action='store_true');arguments.add_argument('--device-schedule',action='store_true');arguments.add_argument('--device-evidence',action='store_true');arguments.add_argument('--measurement-windows',action='store_true');arguments.add_argument('--performance-reference',action='store_true');arguments.add_argument('--reference-rotation',action='store_true');options=arguments.parse_args()
+arguments=argparse.ArgumentParser();arguments.add_argument('--large-wheel');arguments.add_argument('--https-network',action='store_true');arguments.add_argument('--disk-workspace',action='store_true');arguments.add_argument('--user-quota-workspace',action='store_true');arguments.add_argument('--storage-pressure',action='store_true');arguments.add_argument('--control-storage-pressure',action='store_true');arguments.add_argument('--central-payload',action='store_true');arguments.add_argument('--central-owner-quotas',action='store_true');arguments.add_argument('--node-spool-pressure',action='store_true');arguments.add_argument('--persistent-cache',action='store_true');arguments.add_argument('--dependencies',action='store_true');arguments.add_argument('--input-durability',action='store_true');arguments.add_argument('--native-toolchain',action='store_true');arguments.add_argument('--payload-quota-resize',action='store_true');arguments.add_argument('--node-quota-resize',action='store_true');arguments.add_argument('--deadline-limit',action='store_true');arguments.add_argument('--operator-analysis');arguments.add_argument('--operator-image');arguments.add_argument('--compiler-case');arguments.add_argument('--large-compiler-case');arguments.add_argument('--agent-experiment');arguments.add_argument('--accuracy-case');arguments.add_argument('--terminal-handoff');arguments.add_argument('--source-grants');arguments.add_argument('--simulation-case');arguments.add_argument('--report-view');arguments.add_argument('--native-control',action='store_true');arguments.add_argument('--audit-retention',action='store_true');arguments.add_argument('--browser-workflow',action='store_true');arguments.add_argument('--experiment-budget',action='store_true');arguments.add_argument('--device-schedule',action='store_true');arguments.add_argument('--device-evidence',action='store_true');arguments.add_argument('--measurement-windows',action='store_true');arguments.add_argument('--performance-reference',action='store_true');arguments.add_argument('--reference-rotation',action='store_true');arguments.add_argument('--job-graph',action='store_true');options=arguments.parse_args()
 assert not options.device_evidence or (options.device_schedule and options.user_quota_workspace), 'Evidence guards use the separate CPU daily-history/UID fixture'
 assert not options.reference_rotation or (options.performance_reference and options.device_evidence), 'Rotation extends installed synthetic reference/evidence histories'
 assert not options.performance_reference or options.measurement_windows, 'Reference source rejection uses three actually completed CPU jobs from the marker fixture'
 assert not options.native_control or not any([options.control_storage_pressure,options.central_payload,options.operator_analysis,options.https_network,options.large_wheel]), 'Native control uses its independent own disks and CPU fixture'
 assert not options.audit_retention or options.native_control, 'Audit crash/restore proof uses the isolated native control fixture'
+assert not options.job_graph or (options.user_quota_workspace and not options.central_payload and not options.operator_analysis),'Graph restore uses the ordinary CPU UID fixture'
 https=options.https_network
 user_quota=options.user_quota_workspace
 central_groups=options.central_owner_quotas
@@ -84,6 +85,7 @@ retention_proof={};mount_proof={};owned_disk=None;pressure_disk=None;pressure_vo
 central_disks=[];central_volumes=[];payload_args=[];payload_contracts=[];central_proof=None
 native_control_volumes=[];native_control_proof=None;browser_workflow_proof=None;experiment_budget_proof=None
 group_pressure={};quota_resize_proof=None;node_quota_proof=None;deadline_proof=None;operator_proof=None;compiler_proof=None;compiler_experiment_proof=None;large_compiler_proof=None;accuracy_proof=None;terminal_handoff_proof=None;source_grant_proof=None;simulation_proof=None;report_view_proof=None;device_schedule_proof=None;device_evidence_proof=None;measurement_proof=None;performance_reference_proof=None;reference_rotation_proof=None
+graph_proof=None
 node_spool_pressure=None;cache_disk=None;cache_volume=None;cache_policy=None;cache_proof=None;dependency_proof=None;input_durability=None;native_proof=None
 controller_url=('https://controller.lab:' if https else 'http://127.0.0.1:')+str(port)
 outer_url=('https' if https else 'http')+'://127.0.0.1:'+str(port)
@@ -418,7 +420,7 @@ try:
     docker(['exec','--user',str(installed['uid'])+':'+str(installed['gid']),controller,
             '/opt/ascend-lab-controller/current/install-client','--prefix',client_target])
     published=secret_json(controller,Path(client_target)/'manifest.json')
-    assert published['version']=='0.33-client' and set(published['sha256'])=={'labctl','lab_client.py','io_policy.py','placement.py','npu_selfcheck.py','NPU_SELFCHECK.md','client_archive.py','diagnostic_case.py','accuracy_data.py','accuracy_diagnostic.py','ACCURACY.md','simulation_data.py','simulation_diagnostic.py','SIMULATION.md','compiler_diagnostic.py','compiler_experiment.py','COMPILER_EXPERIMENT.md','compiler_compatibility.py','COMPILER_DIAGNOSTICS.md','operator_profile.py','operator_node.py','operator_workflow.py','OPERATOR_ANALYSIS.md','mcp_bridge.py','CLIENT.md','WORKFLOWS.md','WORKSPACE.md','DEPENDENCIES.md','STORAGE.md','EXPERIMENT_BUDGET.md','SOURCE_GRANTS.md'}
+    assert published['version']=='0.33-client' and set(published['sha256'])=={'labctl','lab_client.py','io_policy.py','placement.py','npu_selfcheck.py','NPU_SELFCHECK.md','client_archive.py','diagnostic_case.py','accuracy_data.py','accuracy_diagnostic.py','ACCURACY.md','simulation_data.py','simulation_diagnostic.py','SIMULATION.md','compiler_diagnostic.py','compiler_experiment.py','COMPILER_EXPERIMENT.md','graph_client.py','JOB_GRAPHS.md','compiler_compatibility.py','COMPILER_DIAGNOSTICS.md','operator_profile.py','operator_node.py','operator_workflow.py','OPERATOR_ANALYSIS.md','mcp_bridge.py','CLIENT.md','WORKFLOWS.md','WORKSPACE.md','DEPENDENCIES.md','STORAGE.md','EXPERIMENT_BUDGET.md','SOURCE_GRANTS.md'}
     check('Installed public code supplies a standalone personal CLI/MCP installer without controller credentials or model configuration')
     help_result=docker(['exec','--user',str(installed['uid'])+':'+str(installed['gid']),controller,
         '/usr/bin/python3',client_target+'/npu_selfcheck.py','--help'])
@@ -926,6 +928,10 @@ try:
         assert ctl(controller,'controller','start')['ready'];assert ctl(node,'node','start')['ready']
         central_proof['mount_loss_503_no_fallback']=True;central_proof['stop_works_without_payload']=True
         check('Lost payload mount rejects new writes without fallback, while service stop remains available; rebind resumes the same data')
+    if options.job_graph:
+        from installed_graph_check import run as graph_check
+        graph_proof=graph_check(globals())
+        check('Actual three-stage BishengIR graph preserves artifact edges and rejects an older snapshot without its admission keys')
     denied=ctl(controller,'controller','backup','--output','/root/backups/online.tar.gz',check=False)
     assert denied.returncode!=0 and ctl(controller,'controller','status')['ready']
     check('Live state lock rejects backup without stopping or duplicating the running service')
@@ -1037,6 +1043,10 @@ try:
         from installed_accuracy_check import after_restore as accuracy_after_restore
         accuracy_proof['after_restore']=accuracy_after_restore(globals(),accuracy_proof)
         check('Restored state retains original numerical comparisons and three single attempts, freezes budget authority and permits read-only history diagnosis')
+    if graph_proof:
+        from installed_graph_check import after_restore as graph_after_restore
+        graph_proof['after_restore']=graph_after_restore(globals(),graph_proof)
+        check('Restored graph keeps original stage IDs and single attempts; original request replay creates no replacement tasks')
     if terminal_handoff_proof:
         from installed_terminal_handoff_check import after_restore as terminal_after_restore
         terminal_handoff_proof['after_restore']=terminal_after_restore(globals(),terminal_handoff_proof)
@@ -1087,7 +1097,7 @@ try:
         check('Installed fixed-reference history rotation survives actual SIGKILL, blocks bound policies and stale backups, retains CPU results')
     ctl(node,'node','stop');ctl(controller,'controller','stop')
     check('Quiescent node state restores to a new control directory, rebinds the same empty spool and executes another actual IR task')
-    if options.operator_analysis or options.device_schedule or options.dependencies or options.browser_workflow or options.experiment_budget or options.large_compiler_case or options.agent_experiment or options.accuracy_case or options.terminal_handoff or options.source_grants or options.node_quota_resize or options.simulation_case or options.report_view:
+    if options.operator_analysis or options.device_schedule or options.dependencies or options.browser_workflow or options.experiment_budget or options.large_compiler_case or options.agent_experiment or options.accuracy_case or options.terminal_handoff or options.source_grants or options.node_quota_resize or options.simulation_case or options.report_view or options.job_graph:
         # Only the original controller state leaf is host-bound. Preserve an
         # explicit readonly SQLite export of the restored private directory
         # before its owned container is removed; never pretend it was mounted.
@@ -1168,6 +1178,7 @@ try:
             **({'measurement_windows':measurement_proof} if measurement_proof else {}),
             **({'performance_reference':performance_reference_proof} if performance_reference_proof else {}),
             **({'reference_rotation':reference_rotation_proof} if reference_rotation_proof else {}),
+            **({'job_graph':graph_proof} if graph_proof else {}),
             'initial_release':v1['release_id'],'upgrade_release':v2['release_id'],'job_ids':[first['id'],limited_job['id'],second['id']],
             'workspace_probe':quota,'workspace_provider':'per-UID hard quotas on one dedicated ext4 filesystem' if user_quota else 'dedicated file-backed ext4 on disk; not a physical partition or project quota' if disk else 'dedicated tmpfs filesystem; disk-backed ext4 not tested; XFS quota provider not implemented',
             **({'user_quota_workspace':{'prepared_slots':slots,'peer_job_id':peer_job['id'],'peer_task_uid':23004,'cross_owner_jobs_hidden':True,'peer_after_limit_cleanup':True,'root_query_capability':True,'root_fixture_seccomp_unconfined':True,'user_task_capabilities_unchanged':True,'plan_readonly':True,'completed_prepare_idempotent':True}} if user_quota else {}),

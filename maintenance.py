@@ -315,6 +315,8 @@ def restore(prefix,archive_path,new_state,max_bytes=10*1024**3,payload_config=No
             require_evidence_history(old,stage,meta['role'])
             from performance_reference import require_restore_history as require_performance_history
             require_performance_history(old,stage,meta['role'])
+            from job_graphs import require_restore_history as require_graph_history
+            require_graph_history(old,stage,meta['role'])
             relocate(stage,manifest['original_state'],target,meta['role'],
                      original_payload['path'] if original_payload else manifest['original_state'],policy['path'] if policy else None)
             restored_config=read_json(stage/'config.json')
@@ -409,6 +411,12 @@ def require_control_storage(config,role,manifest):
 def require_features(state,role,manifest,installation=None):
     config=read_json(Path(state)/'config.json') or {}
     require_control_storage(config,role,manifest)
+    if role=='controller' and 'job_graphs.py' not in manifest.get('files',{}):
+        path=Path(state)/'jobs.sqlite3'
+        if path.exists():
+            with sqlite3.connect(path.as_uri()+'?mode=ro',uri=True) as db:
+                if db.execute("SELECT 1 FROM sqlite_master WHERE name='job_graphs'").fetchone() and db.execute('SELECT 1 FROM job_graphs LIMIT 1').fetchone():
+                    raise DeployError('Retained atomic task graphs require compatible admission and preparation code; refusing downgrade')
     if role=='controller' and 'cooperative_start.py' not in manifest.get('files',{}):
         path=Path(state)/'jobs.sqlite3'
         if path.exists():

@@ -99,6 +99,8 @@
     "operator_profile.py",
     "operator_node.py",
     "operator_workflow.py",
+    "job_graphs.py",
+    "graph_client.py",
     "control_monitor.py",
     "audit_retention.py",
     "experiment_budget.py",

@@ -164,6 +164,8 @@ def handler_class(store, config, jobs=None):
                 value=access.public_profile(self.principal)
                 if jobs is not None:
                     value['placement_capabilities']=[PLACEMENT]
+                    from job_graphs import CAPABILITY as JOB_GRAPHS
+                    value['job_graph_capabilities']=[JOB_GRAPHS]
                     from device_schedule import CAPABILITY as DEVICE_SCHEDULE
                     value['device_schedule_capabilities']=[DEVICE_SCHEDULE]
                     from npu_conditions import CAPABILITY as CONDITIONS
@@ -226,6 +228,10 @@ def handler_class(store, config, jobs=None):
                         return self.reply({'events':access.audit(self.principal)})
                     if path == '/api/jobs':
                         return self.reply(jobs.summary(self.principal))
+                    if path.startswith('/api/job-graphs/'):
+                        parts=path.strip('/').split('/')
+                        if len(parts)!=3:raise JobError('Task graph not found',404)
+                        return self.reply({'graph':jobs.graphs.get(parts[2],self.principal)})
                     if path == '/api/control-storage':
                         return self.reply(jobs.control_storage())
                     if path == '/api/audit-retention':
@@ -417,6 +423,17 @@ def handler_class(store, config, jobs=None):
                         if not jobs.control_storage()['blocks_new_work']:
                             access.record(self.principal,'input.seal',bundle_id)
                         return self.reply({'input':bundle})
+                if path == '/api/job-graphs':
+                    graph,reused=jobs.graphs.submit(request,self.principal)
+                    access.record(self.principal,'graph.submit',graph['id'],'reused' if reused else 'created')
+                    return self.reply({'graph':graph,'reused':reused},status=200 if reused else 201)
+                if path.startswith('/api/job-graphs/'):
+                    parts=path.strip('/').split('/')
+                    if len(parts)!=4 or parts[3]!='resume':raise JobError('Task graph operation not found',404)
+                    if request!={}:raise JobError('Graph resume has no request overrides')
+                    graph=jobs.graphs.resume(parts[2],self.principal)
+                    access.record(self.principal,'graph.resume',graph['id'])
+                    return self.reply({'graph':graph})
                 if path == '/api/jobs':
                     job, reused = jobs.submit(request, self.principal)
                     if not (reused and (jobs.control_storage()['blocks_new_work'] or access.audit_status()['blocks_new_work'])):
