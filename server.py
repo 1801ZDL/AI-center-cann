@@ -164,6 +164,8 @@ def handler_class(store, config, jobs=None):
                 value=access.public_profile(self.principal)
                 if jobs is not None:
                     value['placement_capabilities']=[PLACEMENT]
+                    from device_schedule import CAPABILITY as DEVICE_SCHEDULE
+                    value['device_schedule_capabilities']=[DEVICE_SCHEDULE]
                     from dependency_conditions import CAPABILITY as TERMINAL_HANDOFF
                     value['dependency_capabilities']=[TERMINAL_HANDOFF]
                     from source_grants import CAPABILITY as SOURCE_GRANTS
@@ -173,6 +175,14 @@ def handler_class(store, config, jobs=None):
                 if jobs is not None:value.update(io_limits=jobs.policy['io_limits'],transfer_chunk_bytes=256*1024,
                                                storage=jobs.storage.summary(self.principal))
                 return self.reply(value)
+            if path=='/api/device-schedules':
+                try:
+                    if jobs is None:raise JobError('Daily schedules unavailable',503)
+                    query=parse_qs(parsed.query,keep_blank_values=True)
+                    if set(query)-{'limit','offset'} or any(len(v)!=1 for v in query.values()):raise JobError('Invalid daily plan page')
+                    return self.reply(jobs.device_schedules.public(self.principal,int(query.get('limit',['4'])[0]),int(query.get('offset',['0'])[0])))
+                except (JobError,AccessError) as error:return self.reply({'error':str(error)},status=error.status)
+                except ValueError:return self.reply({'error':'Invalid daily plan page'},status=400)
             if path in {'/api/snapshot','/api/history','/api/events','/api/experiments'} and 'monitor:read' not in self.principal.scopes:
                 return self.reply({'error':'此身份没有读取个人进程和历史实验的权限。'}, status=403)
             if path == '/api/snapshot':

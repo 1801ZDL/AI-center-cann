@@ -1,32 +1,16 @@
 # AI-center-cann
 
-新增精确Node/物理卡约束与固定NPU微自检入口：指定卡忙时等待，不改用另一张卡；个人客户端0.33可按UTC日期提交并复用原任务，归档中的2832个观察值可独立重算。最终1056项回归、隔离Root33与网页7通过；当前设备证据均为合成，没有新的真机自检、每日timer、性能基线或自动健康准入，见[NPU_SELFCHECK.md](NPU_SELFCHECK.md)。
+面向 Triton-Ascend / AscendNPU-IR 开发服务器的 AI 任务调度与实验管理原型。程序化中央服务负责资源分配和可靠执行，个人 Agent、CLI 与网页通过同一 API 提交任务、读取日志和分析结果。
 
-新增任务设备条件证据：认证Node管理采样与启动/清退边界关联到原attempt，结果表、CSV和下载归档区分告警、缺项与采样未见告警；历史数据不补造验证，原精度/性能断言保留。1038项回归、同机隔离Root安装31项及8项浏览器检查通过，设备读数为合成协议证据。每日主动逐卡UT及实际频率适配仍待，见[NPU_CONDITIONS.md](NPU_CONDITIONS.md)。
+**当前为 v0.36 基线加后续扩展，尚非生产就绪。** 已有个人身份/项目授权、持久资源账本、受控 Node、五类工作流、环境版本锁、日志归档、独立 CLI/MCP、分角色安装及备份恢复。同机隔离环境已验证真实 CPU 工作流、两任务 UID、硬配额和缓存；完整证据、失败记录与源码范围见 [PROGRESS.md](PROGRESS.md)。
 
-已有用户的Node工作区与缓存可经停止态计划、中央批准、内核配额CAS和新鲜心跳调整，保留原缓存；旧快照不能丢失已保留的配额历史。最终1020项回归及同机Root安装32项通过，见[NODE_QUOTA.md](NODE_QUOTA.md)与[PROGRESS.md](PROGRESS.md)。每日逐卡UT新需求已登记[PUBLIC-002](BACKLOG.md)，尚未创建定时器或运行主动自检。
+新增可选的[中央每日设备微自检计划](DEVICE_SCHEDULE.md)：管理员明确批准机器人、项目、精确卡、时区窗口和累计预算，中央通过普通队列在空闲时提交固定访问探针及微用例，前台优先、有限复探、未知执行跟踪原任务。备份恢复不能复活旧授权或已用额度；网页按原权限只读展示。默认没有计划，当前共享服务器未启用每日全卡测试。
 
-跨轮实验新增指定产物授权：本人明确批准旧任务的指定文件交给新预算，Agent仍不能读取旧任务/日志；支持撤销、传输中重启和恢复后重新审批。最终998项回归及同机隔离Root安装30项通过，历史精度11/5376差异保持原样。使用方法见[SOURCE_GRANTS.md](SOURCE_GRANTS.md)，证据范围见[PROGRESS.md](PROGRESS.md)。
+本轮最终1085项回归、同机隔离Root安装35项及网页7项通过，验收范围和中间失败见 [PROGRESS.md](PROGRESS.md)。
 
-任务详情新增精度、编译、仿真和历史性能报告摘要，仿真可按核切换查看管线记录区间。网页核对报告与确认归档的对应关系，并区分原任务状态、原采集异常和未重算的源文件；完整核验仍用个人CLI/MCP。接口及限制见[REPORT_VIEW.md](REPORT_VIEW.md)。
+设备管理采样、固定微用例与业务结果资格分别记录。现有主动自检与设备状态协议证据为合成，真实 NPU 数值/性能、实际频率、获批性能基线和业务证据有效期仍待验收；有限微用例一致不能声明完整设备健康。被动证据见 [NPU_CONDITIONS.md](NPU_CONDITIONS.md)，固定用例见 [NPU_SELFCHECK.md](NPU_SELFCHECK.md)。
 
-仿真流水新增CPU分析载荷及个人simulation-case CLI/只读MCP：按指令名和PC关联管线、统计区间并集并保留采集异常。962项回归及同机隔离Root安装30项通过；真实历史8核数据完成两用户离线分析及恢复，完整原件私有归档，模型接口只交付有限摘要。见[SIMULATION.md](SIMULATION.md)及[PROGRESS.md](PROGRESS.md)，不代表新的设备采集验收。
-
-失败/超时产物可显式交给诊断任务，支持摘要封存、传输中重启续接及来源复核；默认成功依赖语义保持不变。请求格式见[DEPENDENCIES.md](DEPENDENCIES.md)，新服务器接入门槛见[DEPLOYMENT.md](DEPLOYMENT.md)。
-
-面向 Triton-Ascend / AscendNPU-IR 开发服务器的 AI 任务调度与实验管理原型。程序化中央服务负责资源分配和可靠执行，个人 Agent 通过 MCP/API 提交任务、读取日志和分析结果。
-
-**当前为 v0.36 基线加后续修复，尚非生产就绪。** 已实现个人身份/项目授权、持久资源账本、受控 Node、五类工作流合同、版本锁、归档和个人客户端。可恢复开户、排空、原凭据扩第二 Node、已知工作并行期间激活及可运行性预览已有同机隔离验证；领域工具新增固定镜像的受控CPU诊断配方；已有历史profiling、两任务UID、只读客户端，以及实际MLIR版本接口失败→已知证据草稿→主助手批准的单处候选→新封存CPU验证的同机演练。最新通过范围、失败记录和源码冻结见 [PROGRESS.md](PROGRESS.md)。
-
-已增加可选的独立有限控制盘、原生进程身份和跨盘备份恢复：865项回归、同机自有Root安装30及开户49通过。当前个人Demo不自动迁移，真实PID1/跨机和设备工作流仍需目标机验收，见[STORAGE.md](STORAGE.md)。
-
-新增审计保留与显式归档：新管理员中央默认先保留记录，积压时暂停新工作；Root停中央后可有界导出、校验SHA并明确裁剪，原Node任务继续。886项回归、同机隔离安装34和开户49通过，见[AUDIT.md](AUDIT.md)。现有Demo缺省仍滚动保留全表最近10,000条，不自动迁移。网页/API/MCP显示审计积压；只读 `servicectl control-monitor` 提供文件系统JSON/Prometheus快照，不查询审计积压，未安装外部告警发送器，见[CONTROL_MONITOR.md](CONTROL_MONITOR.md)。
-
-新增大IR诊断配方v2：最多8 MiB的完整封存IR经分块校验，个人agent仅接收有限脱敏预览与报错行上下文；完整源码继续通过本人归档下载，预览不能授权精确补丁。编译输出采用有限内存捕获、文件大小上限和超时，见[COMPILER_DIAGNOSTICS.md](COMPILER_DIAGNOSTICS.md)。实际通过范围以最新进度为准。
-
-新增精度差异只读证据：标准库CPU重放明确的实际/参考张量，独立CLI/MCP核完整封存SHA并重算，保留原失败、参考契约和有限差异样本。933项回归与同机Root30通过；历史NPU数据离线重放不代表新设备精度验收，见[ACCURACY.md](ACCURACY.md)。
-
-扩展继续保留同一任务 API/MCP 和实验格式。新服务器由管理员准备身份、受控设备、存储和服务，再登记 Node；个人 agent 无需共享模型密钥或更换 harness。当前旧容器仍属协作接入，不能拦截用户自行运行。真实宿主多用户、systemd PID1、两物理机断网/fencing、非 root NPU 精度/性能/仿真及一般资源合同变更仍待验收。操作见 [OWNER_PROVISION.md](OWNER_PROVISION.md)，推广门槛见 [DEPLOYMENT.md](DEPLOYMENT.md)。
+增加服务器继续使用相同任务 API、客户端及结果格式，由管理员准备身份、设备、存储和服务后登记 Node。当前旧容器属于协作接入，不能拦截用户自行运行；真实宿主多用户、systemd PID1、两物理机故障/fencing 与百人规模负载仍待目标环境验收，见 [SCALING.md](SCALING.md) 与 [DEPLOYMENT.md](DEPLOYMENT.md)。
 
 ```mermaid
 flowchart LR

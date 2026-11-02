@@ -252,3 +252,7 @@ compiler-case是对原任务/日志/artifact-chunk读取接口的固定路径组
 ## 精确执行目标
 
 支持能力exact-node-device-placement-v1由GET /api/me的placement_capabilities声明。托管工作流和普通CPU/NPU模板可额外带`"placement":{"node_id":"worker-0123456789ab","device_ids":[1]}`；CPU只能带node_id，设备约束仅接受单卡物理编号及npu=1。约束参与幂等摘要，忙卡/不匹配不改用其他卡；现有权限、共享物理域账本、环境、工作盘和设备资格继续检查。未指定目标的旧请求不变，预览仍不保证实际启动。旧中央须明确拒绝此未知字段；有目标历史的安装禁止降到缺少placement支持的中央包。固定自检配方与边界见NPU_SELFCHECK.md。
+
+## 每日设备计划只读状态
+
+`GET /api/me`的`device_schedule_capabilities`声明`central-device-schedule-v1`。`GET /api/device-schedules?limit=4&offset=0`按原owner/项目权限读取计划、每卡最近日记录和原任务ID；limit为1–8，total只计本人可见计划。预算Agent凭据返回空列表。状态区分未测、等待、原执行未知、访问失败、微用例不一致和条件未确认；通过有限用例仍返回`health_certified=false,performance_qualified=false`。历史/窗口外记录不会成为当前资格。无HTTP创建、启用、暂停或改预算接口；管理员本地入口、恢复冻结与限额见[DEVICE_SCHEDULE.md](DEVICE_SCHEDULE.md)。

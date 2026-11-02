@@ -89,6 +89,9 @@ class Lifecycle:
         elif any(job['state'] not in TERMINAL and (job.get('input',{}).get('id')==value
                  or job.get('_dependency_base_input')==value or job.get('dependency_state',{}).get('input_id')==value) for job in self.jobs.all(db)):
             raise JobError('A queued, running or unknown task still references this input',409)
+        if kind=='input' and any(json.loads(raw).get('input_id')==value and json.loads(raw)['state']!='retired'
+            for raw, in db.execute('SELECT record FROM device_schedule_plans')):
+            raise JobError('A retained daily microcheck plan still pins this sealed input',409)
         return subject
 
     def event(self,db,record,actor,action,detail=None):

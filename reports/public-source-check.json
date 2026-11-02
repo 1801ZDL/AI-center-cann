@@ -1,15 +1,15 @@
 {
   "schema": "ai-center-cann-source-check/v1",
-  "recorded_at": "2026-10-31T09:09:58.049678+00:00",
+  "recorded_at": "2026-11-02T03:25:06.973620+00:00",
   "passed": true,
-  "python_unit_tests": 1056,
+  "python_unit_tests": 1085,
   "unit_skipped": 0,
-  "unit_seconds": 196.348,
-  "unit_log_sha256": "fb8d13fbd2a0bf502d8a9720dd56c9625ecbf5669d452a62791b043b1497e037",
+  "unit_seconds": 231.857,
+  "unit_log_sha256": "b915ad1ce13dd4a8bd466ecf33af4769c9fa151900a1e72fe4aa912159744165",
   "python": "Python3.12.3",
   "javascript_syntax_passed": true,
   "command": "bash scripts/check.sh /usr/bin/python3",
-  "scope": "Exact managed Node/physical-card constraints, fixed six-case NPU microcheck recipe and owner-authenticated daily idempotent submission; CPU independently recomputes 2832 values; recipe configures 30 event samples without a performance pass. Real personal HTTP input/submission/archive contracts, packaged browser and same-host isolated Root CPU regression. Synthetic NPU captures only; no real device run, central daily timer, approved performance baseline or automatic qualification.",
+  "scope": "Opt-in central daily fixed NPU microcheck state machine: explicit local robot/project approval, exact card, local timezone window, idle/foreground priority, bounded access reprobes preserving original UT, daily/lifetime reservation budgets, restart and restore protection, original job supervision and ACL-scoped read-only web. Synthetic NPU captures and retained-budget fault history only; installed CPU/UID/IR/quota/cache/restore are real. No live device plan, hardware certification, performance baseline or business qualification.",
   "production_source_sha256": {
     "auth.py": "6bd9b70566fc8dd9b43d3965df5e1fce4c1385e3192239a83052cc0e04778d5f",
     "owner_identity.py": "5a48cf78584b2f717ac45594a73da569589cde6d9441037a0aedffe423f1515b",
@@ -42,12 +42,12 @@
     "npu_admission.py": "c6d39a24b5f4acde33041864e07642f9c1d72d70bb17ce6ef862d7dbda698f1e",
     "npu_device.py": "17930b168dce80fd384ef29e1afa97827840463d561c5a4d6640ac015dc8e97c",
     "inputs.py": "e7d16e523275fd3a263374a03e765bd3d915b37f83197ce1269e8dc3ff708dc4",
-    "jobs.py": "6939f531b1b060924714e884004066100658147058fe82d3209cc5e987610509",
+    "jobs.py": "8143113b2c7998900d52f94370c1a25b4a42dfcaae608034777d6d620bbb8212",
     "lab_client.py": "e7da7886406571ceea4439b3a159a063c7ae6d30dd3d372ad5a503aaceb8d4e4",
     "client_archive.py": "eec04a9574e8a87d90dc54c556d4bfe6462dfb92f0332bdc6996ad64e7121c97",
     "archive_api.py": "3e9f6539e3760cb4d68b2f85a8f01b751441e3d79b70675aac1f45e90a527e57",
     "nodes.py": "ac7637e846b54836378b5ee4dd646bff835679b0470dee489699a5d81e81c429",
-    "server.py": "9111fe6ff63a4a1ebf9bf649c834d816e90edfcd9fbec9d6bb0cc7ef070e00d2",
+    "server.py": "4854f1af250e3926f4bf6df54040e3cbc3c0be74a3b6d84a8492132ca6b46d6c",
     "templates.py": "77cd0218927650d174bb7cb565ba404d8bd760e68a998fb626ee7a4ab9418288",
     "worker.py": "c26a5ada51d01df1fa4a1b1211930245df1b471eadc072065335ead3ace6e099",
     "workflow_runner.py": "239bbcb5eca6414d85f7172808a710896d9743660289039626e54672088078f7",
@@ -55,7 +55,7 @@
     "workflow_results.py": "64768daa8c90b8a13250dc87535f48851af52294b61972833559e2d83893a244",
     "state_lock.py": "bbad124c6c10376d51e94e49a3a440722bdc8b7999e3396bb6488b973963467a",
     "resources.py": "c480d97bfac202e36350f15ef9474a08a8e483ffbfb5c78113a7c62676f6e12e",
-    "queue_policy.py": "c21a47808fa5de292258ae78da7a9550b929b6b643709e833867ff720321b72e",
+    "queue_policy.py": "3209ee99a88abcea54859646fafe0da1db4df4696e90863fa7e1143455e9f1a3",
     "docker_runtime.py": "3f57cb1a347ecf036279899b259a94a4de64cd00666f2c698c67cde8ebbe751c",
     "listener.py": "3bf6371e47ae761e87d19570f39f989d2622b2b62b6c64bdfc01cb06ea44a99f",
     "preflight.py": "152734378b10d66665521be2f05be54f2e2ea67b40d552dd4a0439a652625334",
@@ -73,13 +73,13 @@
     "payload_storage.py": "4091fd672211d19a51918064ec2eb3bea5c089d07f426379c361a827611512f0",
     "storage_budget.py": "8a66f81cd44f900992efad0bf3522f29808bb1c85eb73c40ed999001d859fe1d",
     "storage_files.py": "c2dfe4aec3a4dec6bf8802655eb9e72a414e307d5eb6f4725da99f0484642ebf",
-    "storage_lifecycle.py": "cc5778edf04bf1118ac940f6954cc488ae7ceedbee373568af87c6add3cde098",
+    "storage_lifecycle.py": "db3ab5c32b4ce4a7f45aa00625f70c69b71fee458d7604942708559668846fe7",
     "node_storage.py": "185bdeb757c0644cf6319460d74ea15061cf6329b4707354696f8e156a16370c",
-    "deployment.py": "1c44cb08a40c8450959edc7c4a58df681349a14b02b4ff04ec81fafb5b2c2fc0",
-    "maintenance.py": "626de37f36010dcad0b87b726966b5417883dc865196726d3bf52eb2092d47d1",
+    "deployment.py": "66cd0d0c92a4631c24a968404d6688b9e1789d6b2176e6277543291758afeaf8",
+    "maintenance.py": "c2ac8c74dcb61f8cc75eca7a6c3ace9f63c986dfc3e95ab427adb2b58d4519d3",
     "servicectl": "51c83cff183dbe45a9f33bbf0f15850aca8c26a501f0dce2462abee2d694a2fd",
     "accessctl": "c0d0a86c7a027036e202aff0795eae0001beec676c393d13e73a763d685ccdc9",
-    "workerctl": "9777c8aa82c3f3effdf914dc1c5b2266695342f8830373909fb7ac59ecc4b95d",
+    "workerctl": "d0911cabd62abb974d8fbd68496b518764eec0cdeb49e91eb9b62cf936922ed1",
     "spool_storage.py": "c8a579146e0b24077ebf504050dd5344505f8023f6e33be1c1cb6e9ff312fea4",
     "spool_transfer.py": "885bc83a4b4cbc7d4a81c2ab1efd1df1c84b986166911f0e642bc3b214f2dd7b",
     "persistent_cache.py": "d70d394a48ae2068fe25a0a075d0882b1361ff6dda6b2d7ca3717d7fac35bd0b",
@@ -109,7 +109,8 @@
     "node_quota_change.py": "fad91ce2ad305da5a130e084365eff428d958665e9c4c28290e9bc5018efba06",
     "npu_conditions.py": "c16743eca5212fe526401757b8bafd567b5afe22b3b8d7d85d9a1ce523a2ff98",
     "placement.py": "75fb6c48cb72ffbd1268e2c48bfdfb29f602acf0e144047b84095ffece34bad4",
-    "npu_selfcheck.py": "e3fa907516e213a87863b70606548aec42189679796f56f42baa9d9921edf4ab"
+    "npu_selfcheck.py": "e3fa907516e213a87863b70606548aec42189679796f56f42baa9d9921edf4ab",
+    "device_schedule.py": "23d6b5e52508e4c0bc86a8d44fb015e53d82fd0fc12fb9bcd526f3be937a7265"
   },
   "cpu": 2,
   "memory_mib": 2048,
@@ -8207,5 +8208,69 @@
     "configured_event_samples": 30,
     "new_device_timing_samples_collected": 0,
     "automatic_health_admission_changed": false
+  },
+  "device_schedule": {
+    "passed": true,
+    "scope": "Opt-in central daily fixed NPU microcheck state machine: explicit local robot/project approval, exact card, local timezone window, idle/foreground priority, bounded access reprobes preserving original UT, daily/lifetime reservation budgets, restart and restore protection, original job supervision and ACL-scoped read-only web. Synthetic NPU captures and retained-budget fault history only; installed CPU/UID/IR/quota/cache/restore are real. No live device plan, hardware certification, performance baseline or business qualification.",
+    "job_ids": {
+      "full-r3": "job-51855ce487d6",
+      "installed-r4": "job-bd6d544b891f",
+      "browser-r3": "job-b8ab01d71792"
+    },
+    "unit_tests": 1085,
+    "unit_seconds": 231.857,
+    "root_checks": 35,
+    "installed_source_manifest_matches": true,
+    "model_invocations": 0,
+    "npu_kernel_launches": 0,
+    "host_accounts_modified": false,
+    "global_services_or_driver_modified": false,
+    "production_ready": false,
+    "overall_goal_complete": false,
+    "daily_card_ut": {
+      "id": "PUBLIC-002",
+      "central_daily_schedule": "implemented_opt_in",
+      "actual_device_plan_enabled": false,
+      "business_result_qualification": "backlog",
+      "performance_baseline": "backlog",
+      "frequency_adapter": "not_implemented",
+      "os_timer_created": false,
+      "synthetic_capture_only": true
+    },
+    "validation_history": [
+      {
+        "job": "job-bc281d7df79f",
+        "result": "Actual restore exposed a snapshot-manifest/code-manifest mixup in the new integration; history comparison separated from existing release downgrade guard. Final full/Root/browser use corrected source."
+      },
+      {
+        "job": "job-bb25d3b3103d",
+        "result": "1085 tests passed before actual restore integration correction; historical, not final source acceptance."
+      },
+      {
+        "job": "job-273f504e1a27",
+        "result": "Root helper invoked restore with an invalid extra role subcommand; fixed to the existing installed ctl wrapper. Product restore code unchanged; final Root rerun."
+      },
+      {
+        "job": "job-67e4743e7cc7",
+        "result": "Original full test interrupted by external host reboot; old boot/process identities checked and original attempt explicitly reconciled cancelled, never reexecuted."
+      },
+      {
+        "job": "job-43adb04e92ce",
+        "result": "Root stopped at synthetic fixture setup because minimal image omitted IANA timezone files; fixed only owned fixture UTC prerequisite, production refusal retained."
+      }
+    ],
+    "browser_checks": [
+      "daily state separated from full hardware certification",
+      "original task opens under same ACL",
+      "pause makes past evidence historical",
+      "owner/project reader authorization",
+      "private nonmember denied plan and job",
+      "mobile width",
+      "no browser writes or external requests"
+    ],
+    "synthetic_device_capture_only": true,
+    "synthetic_retained_budget_history": true,
+    "restore_paused_cannot_enable": true,
+    "old_snapshot_budget_rewind_refused": true
   }
 }

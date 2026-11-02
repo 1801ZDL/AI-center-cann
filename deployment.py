@@ -71,6 +71,8 @@ CORE.extend(['npu_conditions.py','NPU_CONDITIONS.md'])
 OPTIONAL_ADMIN_FILES.update({'npu_conditions.py','NPU_CONDITIONS.md'})
 CORE.extend(['placement.py','npu_selfcheck.py','NPU_SELFCHECK.md'])
 OPTIONAL_ADMIN_FILES.update({'placement.py','npu_selfcheck.py','NPU_SELFCHECK.md'})
+CORE.extend(['device_schedule.py','DEVICE_SCHEDULE.md'])
+OPTIONAL_ADMIN_FILES.update({'device_schedule.py','DEVICE_SCHEDULE.md'})
 
 
 class DeployError(ValueError):pass

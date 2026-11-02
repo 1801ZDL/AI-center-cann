@@ -309,6 +309,8 @@ def restore(prefix,archive_path,new_state,max_bytes=10*1024**3,payload_config=No
                     if db.execute('PRAGMA integrity_check').fetchone()[0]!='ok':raise DeployError('Restored database failed integrity check')
             from node_quota_change import require_restore_history
             quota_revision=require_restore_history(old,stage,meta['role'],meta,manifest)
+            from device_schedule import require_restore_history as require_schedule_history
+            require_schedule_history(old,stage,meta['role'])
             relocate(stage,manifest['original_state'],target,meta['role'],
                      original_payload['path'] if original_payload else manifest['original_state'],policy['path'] if policy else None)
             restored_config=read_json(stage/'config.json')
@@ -354,6 +356,8 @@ def restore(prefix,archive_path,new_state,max_bytes=10*1024**3,payload_config=No
                 rebind_restored(stage,payload_base=policy['path'] if policy else None)
                 from device_qualification import invalidate_restored
                 invalidate_restored(stage/'jobs.sqlite3')
+                from device_schedule import invalidate_restored as freeze_device_schedules
+                freeze_device_schedules(stage/'jobs.sqlite3')
             stage.rename(target)
             if native:
                 from control_filesystem import initialize
@@ -397,6 +401,12 @@ def require_control_storage(config,role,manifest):
 def require_features(state,role,manifest,installation=None):
     config=read_json(Path(state)/'config.json') or {}
     require_control_storage(config,role,manifest)
+    if role=='controller' and 'device_schedule.py' not in manifest.get('files',{}):
+        path=Path(state)/'jobs.sqlite3'
+        if path.exists():
+            with sqlite3.connect(path.as_uri()+'?mode=ro',uri=True) as db:
+                if db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='device_schedule_plans'").fetchone() and db.execute('SELECT 1 FROM device_schedule_plans LIMIT 1').fetchone():
+                    raise DeployError('Daily-check authorization/budget history requires compatible scheduling support; refusing downgrade')
     if role=='controller' and 'placement.py' not in manifest.get('files',{}):
         path=Path(state)/'jobs.sqlite3'
         if path.exists():

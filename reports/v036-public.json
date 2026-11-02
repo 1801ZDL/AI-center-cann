@@ -77,6 +77,7 @@
     "payload_owner_admin.py",
     "storage_io.py",
     "storage_budget.py",
+    "storage_lifecycle.py",
     "deployment.py",
     "maintenance.py",
     "servicectl",
@@ -107,7 +108,8 @@
     "node_quota_change.py",
     "npu_conditions.py",
     "placement.py",
-    "npu_selfcheck.py"
+    "npu_selfcheck.py",
+    "device_schedule.py"
   ],
   "reproduced_by_public_ci": false,
   "raw_evidence_in_repository": false,

@@ -159,6 +159,8 @@ class JobStore:
         self.experiment_budgets=Budgets(self)
         from source_grants import SourceGrants
         self.source_grants=SourceGrants(self)
+        from device_schedule import Schedules
+        self.device_schedules=Schedules(self)
 
     def connect(self):
         self.control_filesystem.check()
@@ -428,12 +430,16 @@ class JobStore:
         else:
             with self.transaction() as db:yield db,None
 
-    def submit(self, request, principal=None, *, _staged_probe=None):
+    def submit(self, request, principal=None, *, _staged_probe=None, _scheduled=None):
         from unit_start import admission_reason
         reason=admission_reason(self.runtime,submit=True)
         if reason:raise JobError(reason,503)
         principal = principal or self.access.local
         principal.require('jobs:submit')
+        if _scheduled is not None:
+            if _staged_probe is not None:raise JobError('Distinct fixed authorities cannot be combined',403)
+            with self.connect() as connection:plan,run,action=self.device_schedules.load_action(_scheduled,connection)
+            if principal.id!=plan['spec']['owner'] or request!=action['request']:raise JobError('Daily action requires its original fixed request and robot',403)
         if _staged_probe is not None:
             from owner_device_probe import job_request,load
             with self.connect() as connection:original=load(connection,_staged_probe)
@@ -441,10 +447,12 @@ class JobStore:
                 raise JobError('Staged probes require the original fixed administrator request',403)
         spec = self.normalize(request, principal)
         if _staged_probe is not None:spec['_staged_device_probe']=_staged_probe
+        if _scheduled is not None:spec['_device_schedule']=dict(_scheduled)
         fingerprint = hashlib.sha256(json.dumps({k: v for k, v in spec.items() if k != 'idempotency_key'}, sort_keys=True).encode()).hexdigest()
-        with self.submission_transaction(_staged_probe is not None) as (db,identities):
+        with self.submission_transaction(_staged_probe is not None or _scheduled is not None) as (db,identities):
             reason=admission_reason(self.runtime,submit=True)
             if reason:raise JobError(reason,503)
+            if _scheduled is not None:self.device_schedules.validate_action(_scheduled,db,identities)
             if _staged_probe is not None:
                 from owner_device_probe import validate
                 validate(self,_staged_probe,db,identities)
@@ -467,7 +475,7 @@ class JobStore:
             job_id = 'job-' + uuid.uuid4().hex[:12]
             experiment_charge=self.experiment_budgets.charge(db,spec,principal,job_id)
             from io_policy import artifacts,MIB,META
-            artifact_limits={'file_mib':1,'total_mib':2} if _staged_probe is not None else artifacts(spec.get('parameters',{}).get('artifacts'))
+            artifact_limits={'file_mib':1,'total_mib':2} if _staged_probe is not None or _scheduled is not None else artifacts(spec.get('parameters',{}).get('artifacts'))
             self.storage.reserve(db,'archive',job_id,principal,artifact_limits['total_mib']*MIB+META)
             directory = self.directory(job_id,owner=principal.id)
             source = None
@@ -508,17 +516,19 @@ class JobStore:
             if _staged_probe is not None:
                 from owner_device_probe import bind_job
                 bind_job(self,_staged_probe,job,db,identities)
+            if _scheduled is not None:self.device_schedules.bind(_scheduled,job,db,identities)
             atomic_json(directory / 'request.json', public(job))
             db.execute('INSERT INTO jobs VALUES (?,?,?,?,?,?)', (job_id, principal.id, spec['idempotency_key'], fingerprint, job['state'], json.dumps(job, ensure_ascii=False)))
             return public(job), False
 
-    def cancel(self, job_id, principal=None):
+    def cancel(self, job_id, principal=None, *, _queued_only=False):
         principal = principal or self.access.local
         principal.require('jobs:cancel')
         with self.transaction() as db:
             job = self.get(job_id, db, principal)
             if not self.access.can_cancel(principal,job):
                 raise JobError('没有取消此作业的权限。',403)
+            if _queued_only and job['state']!='queued':return public(job)
             if job['state'] in TERMINAL:
                 return public(job)
             if job['state'] == 'queued':
@@ -618,6 +628,9 @@ class JobStore:
             return '等待有效账号和项目提交权限；不会启动已撤权的作业'
         if '*' not in principal.environments and job['environment'] not in principal.environments:return '执行环境授权已撤销；不会启动作业'
         if principal.mode=='templates' and not job.get('template'):return '账号已限制为模板执行；不会启动旧的任意命令'
+        if job.get('_device_schedule'):
+            reason=self.device_schedules.permission(job,active,db,identities)
+            if reason:return reason
         from control_storage import HOLD as CONTROL_HOLD
         if self.control_storage()['blocks_new_work']:return CONTROL_HOLD
         from audit_retention import HOLD as AUDIT_HOLD
@@ -736,6 +749,7 @@ class Scheduler:
     def tick(self):
         self.reconcile()
         self.jobs.dependencies.tick()
+        self.jobs.device_schedules.tick()
         snapshot = self.observations.latest()
         with self.jobs.transaction() as db:
             rows = self.jobs.all(db)

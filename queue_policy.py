@@ -34,8 +34,9 @@ def ordered(rows,policy,epoch=None):
     for job in rows:
         if job.get('reserved_at'):last[job['owner']]=max(last.get(job['owner'],''),job['reserved_at'])
     def key(job):
-        if age(job,epoch)>=limit:return (0,job['created_at'],job['id'])
-        return (1,last.get(job['owner'],''),job['created_at'],job['id'])
+        background=1 if job.get('_device_schedule') else 0
+        if age(job,epoch)>=limit:return (background,0,job['created_at'],job['id'])
+        return (background,1,last.get(job['owner'],''),job['created_at'],job['id'])
     return sorted((job for job in rows if job['state']=='queued'),key=key)
 
 
@@ -60,6 +61,8 @@ def valid_target(jobs,job,db,epoch=None):
 
 def note_wait(jobs,job,node_id,domain,node_revision,db,eligible_when_idle):
     """Only a fresh successful idle placement may establish/refresh protection."""
+    if job.get('_device_schedule'):
+        job.pop('_aging_target',None);return
     target=job.get('_aging_target');current=valid_target(jobs,job,db)
     if not eligible_when_idle or age(job)<threshold(jobs.policy):
         if target and target.get('node_id')==node_id:job.pop('_aging_target',None)
@@ -75,6 +78,7 @@ def protected(jobs,rows,physical_id,db,identities=None):
     epoch=time.time()
     active=[job for job in rows if job['state'] in ACTIVE]
     for job in ordered(rows,jobs.policy,epoch):
+        if job.get('_device_schedule'):continue
         if age(job,epoch)<threshold(jobs.policy):break
         target=valid_target(jobs,job,db,epoch)
         if (target and target['physical_id']==physical_id and not jobs.dispatch_permission(job,active,db,identities)

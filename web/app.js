@@ -252,11 +252,13 @@ async function refresh(manual=false) {
     if(!monitor && !['jobs','results'].includes(currentView)) setView('jobs');
     const responses = await Promise.allSettled([
       ...['/api/snapshot','/api/history','/api/events','/api/experiments'].map(path=>monitor?api(path):Promise.resolve(null)),
-      api('/api/jobs'),api('/api/activity'),api('/api/nodes'),api(workflowResultPath())]);
+      api('/api/jobs'),api('/api/activity'),api('/api/nodes'),api(workflowResultPath()),
+      identity.device_schedule_capabilities?.includes('central-device-schedule-v1')?api('/api/device-schedules'):Promise.resolve({plans:[]})]);
     if(responses[4].status==='fulfilled') renderManagedJobs(responses[4].value);
     if(responses[5].status==='fulfilled') renderActivity(responses[5].value);
     if(responses[6].status==='fulfilled') renderNodes(responses[6].value);
     if(responses[7].status==='fulfilled') renderWorkflowResults(responses[7].value);
+    if(responses[8].status==='fulfilled') renderDeviceSchedules(responses[8].value);
     if(responses[0].status==='rejected') throw responses[0].reason;
     const result=responses[0].value;
     if(monitor && result.snapshot) renderSnapshot(result.snapshot);
@@ -697,6 +699,18 @@ function workflowResultPath() {
 function conditionLabel(status) {
   return ({adverse_observed:'采样发现设备告警',incomplete:'设备观测不完整',sampled_no_alerts:'采样未见告警（非自检通过）',unverified:'设备条件未验证',not_applicable:'未申请 NPU'})[status]||'设备条件未验证';
 }
+function renderDeviceSchedules(data) {
+  const labels={paused:'已暂停',active:'已启用',restore_paused:'恢复后冻结',context_changed:'环境或身份变更，待批准',retired:'已退休',
+    waiting_idle:'等待空闲',waiting_node:'等待节点',waiting_window:'等待时间窗口',submission_pending:'等待提交',following_original_probe:'跟踪原访问探针',
+    following_original:'跟踪原任务',waiting_prior_execution:'等待此前未结束的执行',expired_unmeasured:'窗口已过，未完成',access_failed:'访问探针未通过',
+    probe_limit:'复探次数已达上限',budget_exhausted:'预算已达上限',microchecks_passed:'有限微用例一致（非全卡健康认证）',microchecks_failed:'有限微用例不一致',
+    conditions_unconfirmed:'设备观测条件未确认',execution_failed:'原任务未成功',evidence_invalid:'证据未通过核对'};
+  $('device-schedule-body').innerHTML=data.plans.length?data.plans.flatMap(plan=>plan.cards.map(card=>{
+    const latest=card.latest;const tasks=latest?.jobs||[];
+    return `<tr><td>${esc(plan.name)}<div class="muted small">${esc(plan.timezone)} ${esc(plan.at)} · ${esc(labels[plan.state]||plan.state)}</div></td><td>${esc(card.device_id)}</td><td>${esc(latest?.day||'尚无记录')}</td><td>${latest&&!latest.current_window?'历史记录 · ':''}${esc(latest?labels[latest.state]||latest.state:'未验证')} ${tasks.map(task=>`<button class="detail-button" data-schedule-job="${esc(task.job_id)}" aria-label="查看自检原任务">${task.kind==='probe'?'访问探针':'微用例'} ↗</button>`).join('')}</td></tr>`;
+  })).join(''):'<tr><td colspan="4" class="empty-state">此账号可见范围内没有每日自检计划。</td></tr>';
+}
+$('device-schedule-body').addEventListener('click',event=>{const button=event.target.closest('[data-schedule-job]');if(button)showJob(button.dataset.scheduleJob);});
 function renderWorkflowResults(data) {
   const labels={accuracy:'精度',performance:'性能',simulation:'仿真采集',build:'编译构建',ir:'IR 处理'};
   $('workflow-result-count').textContent=data.total;

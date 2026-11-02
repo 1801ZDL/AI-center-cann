@@ -22,7 +22,7 @@ from jobs import atomic_json,now
 from deployment import bundle,unpack_release
 from backends import physical_identity
 
-arguments=argparse.ArgumentParser();arguments.add_argument('--large-wheel');arguments.add_argument('--https-network',action='store_true');arguments.add_argument('--disk-workspace',action='store_true');arguments.add_argument('--user-quota-workspace',action='store_true');arguments.add_argument('--storage-pressure',action='store_true');arguments.add_argument('--control-storage-pressure',action='store_true');arguments.add_argument('--central-payload',action='store_true');arguments.add_argument('--central-owner-quotas',action='store_true');arguments.add_argument('--node-spool-pressure',action='store_true');arguments.add_argument('--persistent-cache',action='store_true');arguments.add_argument('--dependencies',action='store_true');arguments.add_argument('--input-durability',action='store_true');arguments.add_argument('--native-toolchain',action='store_true');arguments.add_argument('--payload-quota-resize',action='store_true');arguments.add_argument('--node-quota-resize',action='store_true');arguments.add_argument('--deadline-limit',action='store_true');arguments.add_argument('--operator-analysis');arguments.add_argument('--operator-image');arguments.add_argument('--compiler-case');arguments.add_argument('--large-compiler-case');arguments.add_argument('--accuracy-case');arguments.add_argument('--terminal-handoff');arguments.add_argument('--source-grants');arguments.add_argument('--simulation-case');arguments.add_argument('--report-view');arguments.add_argument('--native-control',action='store_true');arguments.add_argument('--audit-retention',action='store_true');arguments.add_argument('--browser-workflow',action='store_true');arguments.add_argument('--experiment-budget',action='store_true');options=arguments.parse_args()
+arguments=argparse.ArgumentParser();arguments.add_argument('--large-wheel');arguments.add_argument('--https-network',action='store_true');arguments.add_argument('--disk-workspace',action='store_true');arguments.add_argument('--user-quota-workspace',action='store_true');arguments.add_argument('--storage-pressure',action='store_true');arguments.add_argument('--control-storage-pressure',action='store_true');arguments.add_argument('--central-payload',action='store_true');arguments.add_argument('--central-owner-quotas',action='store_true');arguments.add_argument('--node-spool-pressure',action='store_true');arguments.add_argument('--persistent-cache',action='store_true');arguments.add_argument('--dependencies',action='store_true');arguments.add_argument('--input-durability',action='store_true');arguments.add_argument('--native-toolchain',action='store_true');arguments.add_argument('--payload-quota-resize',action='store_true');arguments.add_argument('--node-quota-resize',action='store_true');arguments.add_argument('--deadline-limit',action='store_true');arguments.add_argument('--operator-analysis');arguments.add_argument('--operator-image');arguments.add_argument('--compiler-case');arguments.add_argument('--large-compiler-case');arguments.add_argument('--accuracy-case');arguments.add_argument('--terminal-handoff');arguments.add_argument('--source-grants');arguments.add_argument('--simulation-case');arguments.add_argument('--report-view');arguments.add_argument('--native-control',action='store_true');arguments.add_argument('--audit-retention',action='store_true');arguments.add_argument('--browser-workflow',action='store_true');arguments.add_argument('--experiment-budget',action='store_true');arguments.add_argument('--device-schedule',action='store_true');options=arguments.parse_args()
 assert not options.native_control or not any([options.control_storage_pressure,options.central_payload,options.operator_analysis,options.https_network,options.large_wheel]), 'Native control uses its independent own disks and CPU fixture'
 assert not options.audit_retention or options.native_control, 'Audit crash/restore proof uses the isolated native control fixture'
 https=options.https_network
@@ -79,7 +79,7 @@ containers=[];volumes=[];networks=[];stopped_main=False;checks=[];token=None;tls
 retention_proof={};mount_proof={};owned_disk=None;pressure_disk=None;pressure_volume=None;storage_pressure=None;control_storage_pressure=None;spool_disk=None
 central_disks=[];central_volumes=[];payload_args=[];payload_contracts=[];central_proof=None
 native_control_volumes=[];native_control_proof=None;browser_workflow_proof=None;experiment_budget_proof=None
-group_pressure={};quota_resize_proof=None;node_quota_proof=None;deadline_proof=None;operator_proof=None;compiler_proof=None;large_compiler_proof=None;accuracy_proof=None;terminal_handoff_proof=None;source_grant_proof=None;simulation_proof=None;report_view_proof=None
+group_pressure={};quota_resize_proof=None;node_quota_proof=None;deadline_proof=None;operator_proof=None;compiler_proof=None;large_compiler_proof=None;accuracy_proof=None;terminal_handoff_proof=None;source_grant_proof=None;simulation_proof=None;report_view_proof=None;device_schedule_proof=None
 node_spool_pressure=None;cache_disk=None;cache_volume=None;cache_policy=None;cache_proof=None;dependency_proof=None;input_durability=None;native_proof=None
 controller_url=('https://controller.lab:' if https else 'http://127.0.0.1:')+str(port)
 outer_url=('https' if https else 'http')+'://127.0.0.1:'+str(port)
@@ -292,7 +292,7 @@ try:
             argv+=['--mount','type=volume,src='+spool_volume+',dst=/spool-proof-alias,volume-nocopy']
             for mounted,path in work_mounts:argv+=['--mount','type=volume,src='+mounted+',dst='+path+',volume-nocopy']
             if cache_volume:argv+=['--mount','type=volume,src='+cache_volume+',dst='+cache_path+',volume-nocopy','--mount','type=volume,src='+cache_volume+',dst=/cache-proof-alias,volume-nocopy']
-        lifetime=1500 if options.deadline_limit else 1200 if options.node_quota_resize else 900 if large_wheel or options.compiler_case or options.large_compiler_case or options.accuracy_case or options.terminal_handoff or options.source_grants or options.simulation_case or options.report_view else 900 if options.native_control else 600 if options.native_toolchain or options.operator_analysis or options.control_storage_pressure else 300
+        lifetime=900 if options.device_schedule else 1500 if options.deadline_limit else 1200 if options.node_quota_resize else 900 if large_wheel or options.compiler_case or options.large_compiler_case or options.accuracy_case or options.terminal_handoff or options.source_grants or options.simulation_case or options.report_view else 900 if options.native_control else 600 if options.native_toolchain or options.operator_analysis or options.control_storage_pressure else 300
         argv+=['--entrypoint','/usr/bin/timeout',image,'--kill-after=5s',str(lifetime)+'s','/usr/bin/python3','-I','-c','import time;time.sleep('+str(lifetime-5)+')']
         docker(argv);containers.append(name)
         claim='import os,sys;os.chown(sys.argv[1],0,0);os.chmod(sys.argv[1],0o700)'
@@ -602,6 +602,10 @@ try:
     assert env['node_spool']['enforced'] and env['node_spool']['bytes']==spool_policy['bytes']
     assert b'arith.constant 42' in api('/api/jobs/'+first['id']+'/artifact?name=ir%2Fcanonical.mlir',raw=True)[1]
     check('Installed services execute actual BishengIR transform as UID23003 and return protected evidence through HTTP')
+    if options.device_schedule:
+        sys.path.insert(0,str(ROOT/'tests'));from installed_device_schedule_check import run as device_schedule_run
+        device_schedule_proof=device_schedule_run(globals())
+        check('Installed daily scheduling rejects unprepared NPU execution and HTTP writes; synthetic retained charges reject an older backup before rebinding')
     if options.experiment_budget:
         from installed_experiment_budget_check import run as budget_check
         experiment_budget_proof=budget_check(globals())
@@ -1038,9 +1042,13 @@ try:
         assert restored_ir==browser_output.with_suffix('.mlir').read_bytes()
         browser_workflow_proof['restored_tasks_and_ir_preserved']=True
         check('Controller/Node restore preserves both browser task identities, single attempts and exact downloaded IR bytes')
+    if device_schedule_proof:
+        from installed_device_schedule_check import after_restore as device_schedule_after_restore
+        device_schedule_proof['after_restore']=device_schedule_after_restore(globals(),device_schedule_proof)
+        check('Latest restore freezes daily approvals and preserves synthetic charges; old plan cannot be reenabled')
     ctl(node,'node','stop');ctl(controller,'controller','stop')
     check('Quiescent node state restores to a new control directory, rebinds the same empty spool and executes another actual IR task')
-    if options.dependencies or options.browser_workflow or options.experiment_budget or options.large_compiler_case or options.accuracy_case or options.terminal_handoff or options.source_grants or options.node_quota_resize or options.simulation_case or options.report_view:
+    if options.device_schedule or options.dependencies or options.browser_workflow or options.experiment_budget or options.large_compiler_case or options.accuracy_case or options.terminal_handoff or options.source_grants or options.node_quota_resize or options.simulation_case or options.report_view:
         # Only the original controller state leaf is host-bound. Preserve an
         # explicit readonly SQLite export of the restored private directory
         # before its owned container is removed; never pretend it was mounted.
@@ -1116,6 +1124,7 @@ try:
             'controller_preflight':controller_plan,'node_preflight':node_plan,'remote_docker_preflight_rejected':True,
             'direct_personal_installer_executed':True,
             'controller_install_uid':installed['uid'],'controller_install_gid':installed['gid'],'node_uid':0,'task_uid':23003,
+            **({'device_schedule':device_schedule_proof} if device_schedule_proof else {}),
             'initial_release':v1['release_id'],'upgrade_release':v2['release_id'],'job_ids':[first['id'],limited_job['id'],second['id']],
             'workspace_probe':quota,'workspace_provider':'per-UID hard quotas on one dedicated ext4 filesystem' if user_quota else 'dedicated file-backed ext4 on disk; not a physical partition or project quota' if disk else 'dedicated tmpfs filesystem; disk-backed ext4 not tested; XFS quota provider not implemented',
             **({'user_quota_workspace':{'prepared_slots':slots,'peer_job_id':peer_job['id'],'peer_task_uid':23004,'cross_owner_jobs_hidden':True,'peer_after_limit_cleanup':True,'root_query_capability':True,'root_fixture_seccomp_unconfined':True,'user_task_capabilities_unchanged':True,'plan_readonly':True,'completed_prepare_idempotent':True}} if user_quota else {}),
