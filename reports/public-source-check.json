@@ -1,15 +1,15 @@
 {
   "schema": "ai-center-cann-source-check/v1",
-  "recorded_at": "2026-11-02T12:37:44.392484+00:00",
+  "recorded_at": "2026-11-02T13:00:10.689738+00:00",
   "passed": true,
-  "python_unit_tests": 1200,
+  "python_unit_tests": 1210,
   "unit_skipped": 0,
-  "unit_seconds": 250.118,
-  "unit_log_sha256": "ca3bdcbb8e606069e830db79f89d7b27fcb40e5af4e86d905e5df54183d2469c",
+  "unit_seconds": 248.475,
+  "unit_log_sha256": "3a1c4e1767b9065dc687c66e537e730198fbb82c7c1f8d1b743746d5b2bcbca1",
   "python": "Python3.12.3",
   "javascript_syntax_passed": true,
   "command": "bash scripts/check.sh /usr/bin/python3",
-  "scope": "Fixed restricted CANN initialization diagnostic, metadata and no-device backend loading, bounded private log/recent-error capture. Two actual single-card CANN diagnostics completed but aclInit failed500000 before device mapping/context; no application kernel or reset API. Production CORE/web unchanged, prior installation/browser scope reused by byte checks; not ordinary workflow, numerical/performance or new production deployment qualification.",
+  "scope": "Fixed DSMI query-only host/nonroot-container comparison and bounded namespace metadata; no ACL, Context, application kernel, container-service setup or qualification. Production CORE/web unchanged; old Root/browser byte-matched acceptance reused, not re-run.",
   "production_source_sha256": {
     "auth.py": "6bd9b70566fc8dd9b43d3965df5e1fce4c1385e3192239a83052cc0e04778d5f",
     "owner_identity.py": "5a48cf78584b2f717ac45594a73da569589cde6d9441037a0aedffe423f1515b",
@@ -8614,5 +8614,106 @@
       "Private tmpfs logs lost on pre-result crash, stdout/stderr retained",
       "Real host users/PID1,two physical hosts/fencing,20-user mixed and long-term capacity still unverified"
     ]
+  },
+  "driver_mapping": {
+    "passed": true,
+    "scope": "Fixed DSMI query-only host/nonroot-container comparison and bounded namespace metadata; no ACL, Context, application kernel, container-service setup or qualification. Production CORE/web unchanged; old Root/browser byte-matched acceptance reused, not re-run.",
+    "job_ids": {
+      "device-r2": "job-7e5f53b3e199",
+      "live-r1": "job-d2c1d2a9ad7b",
+      "metadata-r1": "job-3046cd3ccbee",
+      "full-r1": "job-cbe6a8206c4d",
+      "metadata-r2": "job-3e34917bd3ac",
+      "namespace-r1": "job-11335473139b",
+      "focused-r1": "job-c0288145a3ab",
+      "device-r1": "job-e7dd121cff2f"
+    },
+    "unit_tests": 1210,
+    "unit_seconds": 248.475,
+    "diagnostic_source_sha256": "e1f8abe5e3d5b202e4d6d448e1855251a2369205956e9055bb419ed1d6b07495",
+    "actual_diagnostic": {
+      "job_id": "job-7e5f53b3e199",
+      "physical_id": 1,
+      "host_status": "mapping_verified",
+      "container_status": "device_count_failed",
+      "host_calls": [
+        {
+          "operation": "dsmi_get_device_count",
+          "return_code": 0,
+          "seconds": 8e-06
+        },
+        {
+          "operation": "dsmi_get_logicid_from_phyid",
+          "return_code": 0,
+          "seconds": 2e-06
+        },
+        {
+          "operation": "dsmi_get_phyid_from_logicid",
+          "return_code": 0,
+          "seconds": 1e-06
+        }
+      ],
+      "container_calls": [
+        {
+          "operation": "dsmi_get_device_count",
+          "return_code": 87,
+          "seconds": 2.8e-05
+        }
+      ],
+      "host_mapping": {
+        "logical_id": 1,
+        "physical_id": 1,
+        "roundtrip_physical_id": 1
+      },
+      "container_mapping": null,
+      "host_device_count": 2,
+      "container_device_count": null,
+      "before_after_healthy_idle": true,
+      "qualification_granted": false,
+      "acl_initialized": false
+    },
+    "reused_source_identical_acceptance": {
+      "source_commit": "0429877fb216b0f1f12156c16ebb2e110a60141e",
+      "root_job": "job-342affe1f003",
+      "root_checks": 42,
+      "browser_job": "job-477e0807876f",
+      "browser_checks": 12,
+      "new_root_or_browser_run": false,
+      "core_and_web_unchanged": true
+    },
+    "validation_history": [
+      {
+        "job": "job-3046cd3ccbee",
+        "result": "Driver header owned by driver identity; rejected Root ancestry before loading/query/container creation. Explicit protected toolkit ABI reference selected instead; no permission change."
+      },
+      {
+        "job": "job-e7dd121cff2f",
+        "result": "Fresh health/occupancy guard rejected selected card before host DSMI or container creation; no device query. New live management evidence precedes the later original bounded diagnostic."
+      }
+    ],
+    "model_invocations": 0,
+    "application_kernel_api_calls": 0,
+    "device_reset_api_calls": 0,
+    "container_service_setup_calls": 0,
+    "qualification_granted": false,
+    "production_ready": false,
+    "overall_goal_complete": false,
+    "known_limitations": [
+      "Driver mapping is not CANN initialization or workload qualification",
+      "Only selected source files pinned, not full transitive ABI closure",
+      "No guessed HAL signatures, container service enable or forced SoC used",
+      "Real host users/PID1,two physical hosts/fencing,20-user mixed and long-term capacity remain unverified"
+    ],
+    "static_driver_error_inspection": {
+      "static_only": true,
+      "driver_count_uses_drvGetDevNum": true,
+      "code87_branch_preserves_return_code": true,
+      "numeric_symbol": "DRV_ERROR_RESOURCE_OCCUPIED",
+      "return_code": 87,
+      "header_sha256": "12660b55834ee0f910ede01f19293e253555a95c5746fc1405afc32bdabc1388",
+      "disassembly_sha256": "99193e38ec8d5a8bb495f966246aab7be1c16a53c4be41075ce714fa5b686dc1",
+      "root_cause_unproven": true,
+      "does_not_prove_compute_occupancy_or_namespace_exhaustion": true
+    }
   }
 }

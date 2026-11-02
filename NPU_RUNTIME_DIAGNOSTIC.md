@@ -1,5 +1,7 @@
 # 固定非 root CANN 初始化诊断
 
+初始化前的设备视图可用独立[驱动编号映射诊断](NPU_DRIVER_MAPPING.md)取证。它只调用已核对签名的固定 DSMI 查询，不运行 ACL 或开启容器服务；不会自动修正可见性配置或授予普通工作流资格。
+
 `tests/npu_runtime_initialization_check.py`是可信维护者通过现有队列运行的独立诊断。它不在普通工作流/API/MCP中授予新权限，不修改设备资格，不安装或重启驱动、Docker，不进入或修改既有用户容器。代码和证据随仓库发布；它不是当前服务器发布包中的新执行后端。
 
 先用`--metadata`请求NPU=0，验证固定镜像中的系统Python、UID23901/设备组1001、零capability、no-new-privileges、只读挂载及选中库/头文件/驱动文件SHA。该模式不暴露NPU且不调用CANN API。基础镜像不包含现有容器后装的包；应以实际预检为准，不从容器名称猜环境。

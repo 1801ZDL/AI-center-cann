@@ -65,23 +65,45 @@ def parent():
         return r
     # Only the already-authorized zdl container is identified. Never inspect or
     # export another holder's process/command, even though Root can read the table.
-    existing=json.loads(docker(['inspect','zdl']).stdout)[0];assert existing['State']['Running']
+    def own_metadata():
+        # Do not load Config.Env, mounts or another user's container metadata.
+        template='['+','.join('{{json '+field+'}}' for field in [
+            '.Id','.State.Running','.State.Pid','.State.StartedAt',
+            '.HostConfig.Privileged','.HostConfig.Memory','.HostConfig.ShmSize','.HostConfig.Runtime'])+']'
+        return json.loads(docker(['inspect','--format',template,'zdl']).stdout)
+    existing=own_metadata();assert existing[1]
     namespace=json.loads(docker(['exec','--user','1104:1001','zdl','/usr/bin/python3','-I','-B','-c',
       'import os,json;print(json.dumps({k:os.stat("/proc/self/ns/"+k).st_ino for k in ["mnt","pid"]}))']).stdout)
     top=docker(['top','zdl','-eo','pid']).stdout.splitlines()[1:]
-    known={**namespace,'namespace_inodes':list(namespace.values()),'pids':sorted({existing['State']['Pid'],*(int(x.strip()) for x in top if x.strip().isdigit())}),
-           'identifiers':[existing['Id'],existing['Id'][:12]]}
+    known={**namespace,'namespace_inodes':list(namespace.values()),'pids':sorted({existing[2],*(int(x.strip()) for x in top if x.strip().isdigit())}),
+           'identifiers':[existing[0],existing[0][:12]]}
     program=directory/'tmp/namespace-reader.py';program.write_bytes(Path(__file__).read_bytes());program.chmod(0o444)
     name='ascend-lab-namespace-'+job['id'][4:];image='sha256:24188496e90e95212870b86a2be4fe5a360da8b556f54fe662fd9a954e94d273'
-    result=docker(['run','--rm','-i','--name',name,'--label','io.ascend-lab.namespace-probe='+job['id'],
+    atomic_json(directory/'tmp/namespace-intent.json',{'name':name,'image':image,'label':job['id']})
+    argv=['create','--pull','never','-i','--name',name,'--label','io.ascend-lab.namespace-probe='+job['id'],
       '--user','0:0','--network','none','--read-only','--cap-drop','ALL','--security-opt','no-new-privileges:true','--ipc','none',
       '--memory','128m','--memory-swap','128m','--pids-limit','32','--cpus','0.25','--cpuset-cpus',str(job['allocation']['cpu_ids'][0]),
       '--mount','type=bind,src='+str(program)+',dst=/probe.py,readonly','--entrypoint','/usr/bin/timeout',image,
-      '--kill-after=2s','15s','/usr/bin/python3','-I','-B','/probe.py','--reader'],input=json.dumps(known))
-    result=json.loads(result.stdout);after=json.loads(docker(['inspect','zdl']).stdout)[0]
-    assert after['State']['StartedAt']==existing['State']['StartedAt'] and after['HostConfig']==existing['HostConfig']
+      '--kill-after=2s','15s','/usr/bin/python3','-I','-B','/probe.py','--reader']
+    try:
+        docker(argv)
+        output=docker(['start','--attach','--interactive',name],input=json.dumps(known))
+        result=json.loads(output.stdout)
+    finally:
+        # Reconcile the original object even if create/start observation timed out.
+        response=docker(['inspect','--format',
+            '{"labels":{{json .Config.Labels}},"image":{{json .Image}},"state":{{json .State}}}',name],check=False)
+        if response.returncode==0:
+            info=json.loads(response.stdout)
+            assert info['labels']['io.ascend-lab.namespace-probe']==job['id'] and info['image']==image
+            if info['state']['Running']:docker(['stop','--time','2',name])
+            state=json.loads(docker(['inspect','--format','{{json .State}}',name]).stdout)
+            assert not state['Running'] and state['Pid']==0,'Original reader termination unconfirmed'
+            docker(['rm',name])
+    after=own_metadata();assert after==existing
     report={'recorded_at':now(),'job_id':job['id'],'management_completed':True,**result,'device_nodes_exposed':[],
-      'acl_initialized':False,'npu_kernel_launches':0,'existing_zdl_unchanged':True,'other_process_identifiers_exported':False}
+      'acl_initialized':False,'npu_kernel_launches':0,'existing_zdl_selected_metadata_unchanged':True,
+      'existing_container_environment_read':False,'reader_container_removed':True,'other_process_identifiers_exported':False}
     atomic_json(directory/'results/namespace-mapping.json',report);print(json.dumps(report,indent=2))
 
 

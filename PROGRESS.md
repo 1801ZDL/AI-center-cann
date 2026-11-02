@@ -1,5 +1,25 @@
 # 实施进度
 
+## 驱动设备视图的宿主／非 root 容器对照（2026-11-02）
+
+**最终1210项/248.475秒/零跳过及JS语法通过，新增DSMI专项10项通过。** full `job-cbe6a8206c4d`、focused `job-c0288145a3ab`。105个非文档CORE、4个网页资产、agent_runner和protected6/APP4与上一发布完全相同；251个测试/辅助文件按final-frozen-r1核对。本轮只有维护诊断、测试和文档，没有生产门禁放宽、中央/Node重启、镜像构建、模型或应用NPU kernel。
+
+新增[驱动编号映射诊断](NPU_DRIVER_MAPPING.md)，可信维护者经原Main队列执行，分别以当前宿主UID1104与新受限容器UID23901调用已核签名的DSMI设备数和指定卡双向编号查询。不是普通HTTP/MCP的新执行后端，不调用ACL、Context、容器服务开启或reset，不授予普通任务资格。容器硬256MiB内存/交换、1CPU/32PID、16MiB私有tmpfs、设备组1001、零cap/NNP、无网络/只读根，驱动及显式ABI参考只读，只暴露原分配单卡和管理节点；没有使用Root设备负载或修改旧zdl。
+
+元数据首任务 `job-3046cd3ccbee`在查询前拒绝：实际驱动include/头文件归驱动用户所有，不满足Root祖先保护。没有加载DSMI、创建容器或暴露NPU。改用现有Root保护CANN9.2的pkg_inc/driver/dsmi_common_interface.h作为显式ABI参考，三个接口原型与实际驱动头及官方源码一致；不是改变文件权限或将非Root来源豁免为可信。`job-3e34917bd3ac`无设备元数据通过，两种身份均未调用DSMI。4个选中文件及程序SHA在实际进程中重核，不声明完整传递DSO/ABI闭包已验收。
+
+首次实际请求 `job-e7dd121cff2f`分配物理1，但新的启动前健康/占用复查拒绝，原stderr保留；没有host查询输出、启动意图或新容器。该任务已明确failed，不是观测超时。等待原全量回归结束后，新只读采样 `job-d2c1d2a9ad7b`看到卡0 Alarm/2进程、卡1 OK/0进程；据新的空闲证据才提交下一次有界请求，没有重提正在执行的任务。
+
+**实际对照 `job-7e5f53b3e199`在卡1健康空闲时完成。** 宿主设备数2、三个API均返回0，物理1→逻辑1→物理1往返通过；受限容器仅调用dsmi_get_device_count，返回87后停止，没有映射、ACL或Context。前后管理状态均OK/利用率0/无进程，源文件SHA一致，原单卡设备对象/cgroup/身份/挂载与清退已核。父job成功表示诊断完整，container.status仍为device_count_failed，不是容器映射通过。此对照同时包含UID、namespace、seccomp和系统依赖等差异，不能将结果直接归因某一个因素；宿主映射也不能直接当容器编号使用。
+
+本机选中库的静态反汇编显示dsmi_get_device_count调用drvGetDevNum，对87分支直接保留该码；Root保护参考错误头定义DRV_ERROR_RESOURCE_OCCUPIED=87。这里只证明驱动管理层返回了该错误类别，不能据此认定卡被其他计算占用、证明namespace容量耗尽或某一权限根因，也没有额外调用未经签名核对的HAL函数。没有第三次CANN初始化，下一步先核受限容器的驱动namespace/访问条件及厂商支持的部署契约，再决定新的正向验收。
+
+原namespace辅助工具也已收窄zdl inspect为必要字段，不读取完整Config.Env；保存本任务意图并按精确标签/镜像清理。无设备 `job-11335473139b`聚合读2017字节、解析14组映射，udevid0/1各14记录，已知zdl匹配各1；未导出其他holder身份/PID/raw表，udevid没有重命名为已证明的物理ID，注册记录不被解释为独占。zdl选中元数据前后相同，读取容器已删除。
+
+10项新专项覆盖已核ABI类型、非恒等编号、缺接口零调用、计数/映射/逆向失败、未写输出、错卡、物理ID类型范围及非整数返回。完整1210覆盖最终源码和既有4项namespace隐私/未知布局测试。Primary另核原JSON/全部job单attempt、原failed阶段、4文件SHA、实际身份/硬限制/设备/只读挂载及本任务容器消失；旧Root42和网页12只沿用源码与实际安装包完全匹配的既有证据，本轮没有重新安装或浏览器运行。
+
+Main配置/19profiles/物理域、zdl启动时间/内存/SHM、0非终态/holds/日程/规则/参考及轮转gen0/无回执保持，4个网页资产实际HTTP回读一致。私有证据evidence/driver-mapping-validation.json及runtime/driver-mapping-20261102，公开仅摘要，不发布原驱动日志/其他进程信息。真实NPU初始化/精度/性能/仿真、完整Agent实验闭环、宿主真实用户/PID1、两机fencing及20人混合/长期容量仍待，整体目标active，PUBLIC-001继续延期。
+
 ## 受限非 root CANN 初始化诊断与有界错误取证（2026-11-02）
 
 **最终1200项/250.118秒/零跳过及JS语法通过，新增C ABI/日志专项11项通过；两次真实单卡诊断均在aclInit失败，未进入映射/Context。** final full `job-ef8e6b82aace`、focused `job-56067d069aef`。105个非文档CORE、4个网页资产及agent_runner与上一发布逐字节一致，249个测试/辅助文件按final-frozen-r2核对。当前新增独立维护诊断及文档，没有修改生产调度/资格或protected6/APP4，没有重启中央/Node、重建镜像或调用模型。上一发布Root42与网页12仅作源码完全相同的既有验收，Primary核其实际包CORE/web匹配；没有声称本轮重新安装或网页验收。

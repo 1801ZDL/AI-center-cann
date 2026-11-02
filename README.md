@@ -74,6 +74,8 @@ ssh -N -L 18765:127.0.0.1:18765 YOUR_USER@YOUR_SERVER
 
 ## 管理员与多服务器接入
 
+新增[固定DSMI驱动编号对照](NPU_DRIVER_MAPPING.md)，最终1210项回归通过。真实单卡查询中宿主映射1→1→1成功，受限非root容器在设备数查询返回87，未进入映射/ACL；这将排查范围推进到驱动访问上下文，但不是设备计算通过或已确定根因。没有放宽普通资格或改变中央/Node部署；旧Root42/网页12仅沿用源码一致的证据，本轮未重新运行。
+
 新增独立[非root CANN诊断](NPU_RUNTIME_DIAGNOSTIC.md)，最终1200项回归通过。真实受限容器中aclInit仍返回500000，已保留初始化/SoC查询阶段的有界错误证据，没有真实算子通过结论。中央/网页代码未改，原Root42/网页12的源码匹配证据沿用，本轮未重新部署。
 
 中断窗口现保留独立有效的告警快照，原结果不改、不重建计时区间，见[NPU_MEASUREMENT.md](NPU_MEASUREMENT.md)。最终1189项回归、同机Root42项及网页12项通过。另一次真实重启后非root设备访问探针仍为EBUSY/blocked，普通精度任务0attempt；并无真机计算通过结论，详见[PROGRESS.md](PROGRESS.md)。
