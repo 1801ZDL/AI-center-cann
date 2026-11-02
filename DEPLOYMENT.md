@@ -1,5 +1,7 @@
 # 多用户/多服务器扩展边界与交付顺序
 
+新增[固定非root CANN诊断](NPU_RUNTIME_DIAGNOSTIC.md)供维护者经队列定位环境准入。当前实际受限容器仍在aclInit返回500000，错误消息指向初始化SoC信息阶段，不能据此判卡损坏或具体驱动根因。没有进入映射/Context或普通算子，不撤销既有资格门槛。该工具在仓库测试目录，非当前服务器包的新后端。
+
 当前共享服务器的重启后准入负例：健康空闲的1号卡在受限非root容器中打开仍返回EBUSY，固定访问资格为blocked；普通精度任务没有执行。这里只证明访问门槛有效和当前路径未通过，不证明设备损坏或确切容器根因。Docker元数据只列出runc相关运行时；官方也提供[手动挂载方案](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/83RC1alpha001/softwareinst/instg/instg_0059.html)，不能仅以没有注册Ascend运行时归因本次错误。目标A5/驱动组合还须单独核对。未更改Docker daemon、驱动、宿主账号或既有容器。
 
 ## 固定逐卡性能参考的迁移（2026-11-02）

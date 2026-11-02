@@ -1,6 +1,6 @@
 {
   "schema": "ai-center-cann-publication/v1",
-  "recorded_at": "2026-11-02T12:00:27.457598+00:00",
+  "recorded_at": "2026-11-02T12:39:43.434693+00:00",
   "files": {
     ".gitignore": {
       "sha256": "a6287d1d645bcba2ddfec87d1055724b00577eea69200b919302f4d46cf3680d",
@@ -23,8 +23,8 @@
       "mode": "100644"
     },
     "BACKLOG.md": {
-      "sha256": "ae2be555111e09cf29de16f987b7cc140e51781d75a58e01ee0fa74ddbb33f88",
-      "bytes": 11940,
+      "sha256": "835032d513e40e82f326daa6cce7dda17e7608034c3ecab0a3b322722784e41a",
+      "bytes": 12285,
       "mode": "100644"
     },
     "CACHE.md": {
@@ -58,8 +58,8 @@
       "mode": "100644"
     },
     "DEPLOYMENT.md": {
-      "sha256": "0f6094b22d0682ee6633b5a020fe2dce5ce4a3455f0d991d955f351f5e9c7c10",
-      "bytes": 63485,
+      "sha256": "8b0d13b7ec9370b085fea985f45fc7bcc0c33832ea1559f50f94d18fca883693",
+      "bytes": 63876,
       "mode": "100644"
     },
     "DEVICE_EVIDENCE.md": {
@@ -117,6 +117,11 @@
       "bytes": 3909,
       "mode": "100644"
     },
+    "NPU_RUNTIME_DIAGNOSTIC.md": {
+      "sha256": "270fdc003ec9f84c69d6ca8a7e2ce5865b51183e5723457dd6683aa95680a556",
+      "bytes": 4507,
+      "mode": "100644"
+    },
     "NPU_SELFCHECK.md": {
       "sha256": "364123ab2a1fb427ddf9b43100dc562dee4eebd20ddeb92643a12090228e5540",
       "bytes": 5715,
@@ -138,13 +143,13 @@
       "mode": "100644"
     },
     "PROGRESS.md": {
-      "sha256": "188ba97e54f391ff155de027fd9129e7be4c210822d885a5bdda038aaa02da0c",
-      "bytes": 201454,
+      "sha256": "281414a8513fe3effaa14eaa9acbd046ded82266a55e61c7883721fbfe83dad6",
+      "bytes": 206757,
       "mode": "100644"
     },
     "README.md": {
-      "sha256": "0c5374a767ca8c8c95ef57e4e10ca53008dad4e5f880e41ca426e4b8f8f8ac7d",
-      "bytes": 11192,
+      "sha256": "13133786f797003e3838f7c746a8f82c0420f3be6a6a14d932024618d6d2340c",
+      "bytes": 11521,
       "mode": "100644"
     },
     "RECOVERY.md": {
@@ -718,8 +723,8 @@
       "mode": "100644"
     },
     "reports/public-source-check.json": {
-      "sha256": "cb3b2a2e60ee3f61eda33cd58d0c0ee226a9106bb789241734da2bf8f36c9d39",
-      "bytes": 404035,
+      "sha256": "ff4e353441bf135cb4fd49c0c20da7e2097a4a128c382efaf0e5ffe58b643c5c",
+      "bytes": 407868,
       "mode": "100644"
     },
     "reports/v036-public.json": {
@@ -1407,6 +1412,11 @@
       "bytes": 6462,
       "mode": "100644"
     },
+    "tests/npu_runtime_initialization_check.py": {
+      "sha256": "6d0c7a3f6853cc2acf207ed6ee08d46793aff353ea9690a609340bab1f51a1c6",
+      "bytes": 17927,
+      "mode": "100644"
+    },
     "tests/owner_busy_activation_root_fixture.py": {
       "sha256": "0fab896331bc5ed92c09173e1663365a9f85583bef5db3b8c4de8135416463db",
       "bytes": 4608,
@@ -1782,6 +1792,11 @@
       "bytes": 2662,
       "mode": "100644"
     },
+    "tests/test_npu_runtime_diagnostic.py": {
+      "sha256": "9c3b024c279b9294e14fd0a91a237ab5de5391200efaa93120fe2f8abb278ebd",
+      "bytes": 5952,
+      "mode": "100644"
+    },
     "tests/test_npu_selfcheck.py": {
       "sha256": "1f1a4c3e926a20d018b1496ed83a657c8b7bb4aa40e80f123bfda60ebd62fc76",
       "bytes": 15674,
@@ -2123,8 +2138,8 @@
       "mode": "100644"
     }
   },
-  "files_count": 424,
-  "total_bytes": 5416223,
+  "files_count": 427,
+  "total_bytes": 5454810,
   "known_private_values_checked": 3113,
   "private_fixture_files_considered": 4685,
   "model_keys_read": false,

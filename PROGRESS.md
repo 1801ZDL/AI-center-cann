@@ -1,5 +1,23 @@
 # 实施进度
 
+## 受限非 root CANN 初始化诊断与有界错误取证（2026-11-02）
+
+**最终1200项/250.118秒/零跳过及JS语法通过，新增C ABI/日志专项11项通过；两次真实单卡诊断均在aclInit失败，未进入映射/Context。** final full `job-ef8e6b82aace`、focused `job-56067d069aef`。105个非文档CORE、4个网页资产及agent_runner与上一发布逐字节一致，249个测试/辅助文件按final-frozen-r2核对。当前新增独立维护诊断及文档，没有修改生产调度/资格或protected6/APP4，没有重启中央/Node、重建镜像或调用模型。上一发布Root42与网页12仅作源码完全相同的既有验收，Primary核其实际包CORE/web匹配；没有声称本轮重新安装或网页验收。
+
+新增[固定CANN诊断](NPU_RUNTIME_DIAGNOSTIC.md)及tests/npu_runtime_initialization_check.py，由可信维护者经原Main队列执行，不向普通HTTP/MCP开放额外执行权限或授予设备资格。无NPU元数据阶段核实际Python、身份/组/cap、选中CANN/驱动/头文件SHA；设备阶段仅在健康空闲的原分配卡运行。新容器UID/GID23901、设备组1001、0caps/NNP、无网络/只读根、硬768MiB内存/交换上限、1CPU/48PID、96MiB私有工作tmpfs，Root保护CANN与驱动只读，明确单卡/管理设备。程序清除可见性环境，要求物理→逻辑→物理往返成功才创建一个显式Context，随后销毁/Finalize；没有设备reset、应用kernel或显式stream/张量分配调用。运行时内部动作不由此认证。
+
+首次无设备 `job-635b4a2b663b`因zdl基础镜像没有/usr/bin/python3失败；该镜像不包含容器后安装的Python，原stderr和清退核对保留，未暴露NPU。改用已知固定Python镜像的 `job-740c64358090`元数据通过，实际Python3.10.12、UID23901、0cap/NNP/无NPU设备、5个选中文件SHA。没有修改既有zdl。首次设备诊断 `job-5030c2ac4b4d`原卡1前后健康空闲，libascendcl加载成功，但aclInit返回500000；没有调用设备数/映射/Context。父job成功只表示诊断产物正常生成，result.status明确为acl_initialization_failed，不是初始化/UT通过。
+
+为排查基本装载问题，NPU=0的 `job-c70ea78d6d86`在无设备容器中成功加载libascendcl、libacl_rt及libacl_rt_impl，未调用初始化或Context API；这是私有固定装载检查，不宣称完整延迟DSO/ABI闭包通过。选中实际库路径排除了devlib/simulator。随后补充当前线程aclGetRecentErrMsg最多4096字节以及本进程私有日志的有界快照（最多8文件、处理128目录项预算、6层、单64KiB/总256KiB，拒绝链接/特殊/非本人文件，标记截断/并发写，失败不覆盖原API结果）；原stdout/stderr单独保留，崩溃前未发出的tmpfs内容仍不可恢复。
+
+新增观察的无设备元数据 `job-4b140d1893ad`通过后，仅再提交一次固定设备诊断 `job-7da3cfa32f5d`，再次在原分配1号卡健康空闲时aclInit=500000。新消息含Resource_Busy/EL0005、SoC版本初始化失败和chipType=0/rtGetDevMsg下游提示；没有有效映射、Context或应用kernel。不能据此认定实际芯片型号不受支持、有人在占卡或某一个驱动/命名空间原因。此次调用没有产生私有日志文件，但有界错误消息与原stdout/stderr已保留；公开仅归档错误类别，不发布消息中的PID或日志正文。工具链、设备及普通任务准入未放宽，也没有第三次设备初始化尝试。
+
+11项专项覆盖C ABI签名/固定顺序、映射错误与错误卡号拒绝、空设备/缺接口/无效Context、创建/销毁/Finalize错误、近期错误截断、私有日志符号/硬链接/FIFO拒绝及文件/字节预算。首次8项与full `job-7505606d18b6`1197/303.612秒是取证补充前版本；final1200覆盖新增11项，Source冻结区分program-v1与最终程序，原设备job不被冒充新源码重跑。两个实际设备阶段均固定一次attempt，另外的环境/装载预检不暴露NPU。
+
+Primary独立核全量日志及源码、原元数据/设备JSON、程序/5选中文件SHA、UID/组/0cap/NNP、cgroup与设备对象/只读挂载实值、原API仅aclInit=500000、前后健康空闲、近期错误与日志字节约束，逐标签确认6个原诊断容器均消失。当前宿主没有/dev/svm0或/dev/devmm_svm，未臆造节点或修改挂载。Main配置/19profiles/物理域、zdl运行时间/内存/SHM基线不变，0非终态/holds/计划/规则/参考，轮转检查点gen0/无回执；未修改宿主账号、daemon、驱动或已有容器。私有证据evidence/cann-runtime-diagnostic-validation.json、runtime/cann-runtime-20261102，公开只整理摘要。
+
+这一步将失败定位到应用算子之前的初始化/SoC信息路径，但没有解决非root真实计算。当前诊断主动清除了ASCEND_RT_VISIBLE_DEVICES，不等于已批准可见性配置的正向验收；后续先核驱动层映射、默认设备选择与容器启动上下文，再决定有依据的固定验证，不猜设备编号、强设SoC或循环重试。普通资格仍阻断；真实精度/性能/仿真、harness预算实验、管理员真用户/PID1、两机fencing及20人混合/长期容量仍待，整体目标active，PUBLIC-001继续延期。
+
 ## 中断窗口保留独立告警及重启后真实设备准入（2026-11-02）
 
 **最终1189项/243.160秒/零跳过及JS语法通过，同机隔离Root42项、网页12项通过。** full `job-c8b299bb0df8`、Root `job-342affe1f003`、browser `job-477e0807876f`；105个非文档CORE、247个测试/辅助文件、4个网页资产及agent_runner冻结，Root/browser包CORE与网页逐项相同。文档和私有fixture扫描随后完善，不声称包文档一致；protected6及固定镜像APP4不变，没有镜像重建、模型或NPU kernel调用。
