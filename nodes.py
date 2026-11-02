@@ -223,7 +223,7 @@ class NodeRegistry:
 
     def heartbeat(self,node_id,body):
         profile=self.node(node_id)['profile']
-        from io_policy import limits,CAPABILITY
+        from io_policy import limits,CAPABILITY,FIXED_PROBE_CAPABILITY
         if limits(body.get('io_limits'))!=limits(profile.get('io_limits')):raise JobError('Node IO policy differs from enrollment',409)
         if type(body.get('policy_revision',1)) is not int or body.get('policy_revision',1)!=profile.get('policy_revision',1):raise JobError('Node policy revision differs; install the current private node configuration',409)
         if body.get('protocol_version')!=1 or not REQUIRED_CAPABILITIES<=set(body.get('capabilities',[])):raise JobError('Node requires start-ticket-v1 and cleanup-before-complete-v1',409)
@@ -245,6 +245,7 @@ class NodeRegistry:
         if cpu is not None and (isinstance(cpu,bool) or not isinstance(cpu,(int,float)) or not math.isfinite(cpu) or not 0<=cpu<=100):raise JobError('Invalid node CPU observation')
         report['host_cpu_utilization_pct']=cpu
         report['capabilities']=sorted((REQUIRED_CAPABILITIES|CAPABILITIES|{MULTI_SLOT})&set(body.get('capabilities',[])))
+        if FIXED_PROBE_CAPABILITY in body.get('capabilities',[]):report['capabilities'].append(FIXED_PROBE_CAPABILITY)
         from npu_measurement import CAPABILITY as MEASUREMENT
         if MEASUREMENT in body.get('capabilities',[]):
             if not re.fullmatch('[0-9a-f]{64}',str(body.get('measurement_source_sha256'))):raise JobError('Invalid measurement runtime identity')
@@ -409,8 +410,11 @@ class NodeRegistry:
         pool=domain['policy']
         cpus=[c for c in profile['policy']['cpu_ids'] if c in pool['cpu_ids'] and c not in {c for j in group for c in j['allocation'].get('cpu_ids',[])}]
         wanted=job['resources']
-        from io_policy import for_job,fits,CAPABILITY
+        from io_policy import for_job,fits,CAPABILITY,FIXED_PROBE_CAPABILITY,submission_artifacts
         contract=for_job(job)
+        if (job.get('template') in {'environment_probe','npu_access_probe'} and contract==submission_artifacts(job)
+            and FIXED_PROBE_CAPABILITY not in node['report']['capabilities']):
+            reason=reason or '节点需要升级固定探针产物预算能力'
         if not fits(contract,profile.get('io_limits')):reason='节点产物容量低于本任务冻结额度'
         if (contract['file_mib']>64 or contract['total_mib']>128) and CAPABILITY not in node['report']['capabilities']:
             reason='节点需要升级大产物分块与预算能力'

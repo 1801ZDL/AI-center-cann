@@ -29,7 +29,7 @@ class StagedDeviceProbeTests(unittest.TestCase):
         self.policy=policy
         with self.jobs.transaction() as db:
             node=self.jobs.nodes.node(self.node,db);p=node['profile'];p.update(npu=policy,templates=[*p['templates'],'npu_access_probe'],spool_storage={'path':'/protocol-fixture-spool','filesystem':'ext4','device':1,'root_inode':2,'bytes':128*1024**2,'inodes':262144,'storage_id':'f'*32})
-            report=node['report'];report['capabilities']+=['npu-device-whitelist-v1',CAPABILITY]
+            report=node['report'];report['capabilities']+=['npu-device-whitelist-v1',CAPABILITY,__import__('io_policy').FIXED_PROBE_CAPABILITY]
             report.update(access_host_sha256='b'*64,access_runtime_files=runtime_manifest(),
                 npu={'status':'ok','sampled_at':now(),'devices':[{'id':i,'health':'OK','name':'protocol-fixture','utilization_pct':0,'process_count':0} for i in [0,1]]})
             handoff=self.jobs.nodes.handoff.get(self.fixture.fixture.plan['id'],db);handoff['after_profile']=p;self.jobs.nodes.handoff.save(db,handoff)

@@ -71,7 +71,7 @@ class AdmissionTests(unittest.TestCase):
         from environment_contract import PROBE_MEMORY_CAPABILITY
         job,_=self.jobs.submit({'template':PROBE,'environment':'worker-python','parameters':{'node_id':self.node,'memory_mib':256}},self.alice)
         self.assertIsNone(self.jobs.nodes.claim(self.node)['grant']);self.assertFalse(self.jobs.attempts(job['id']))
-        self.beat(capabilities=['start-ticket-v1','cleanup-before-complete-v1',CAPABILITY,PROBE_MEMORY_CAPABILITY,*CAPABILITIES])
+        self.beat(capabilities=['start-ticket-v1','cleanup-before-complete-v1',CAPABILITY,PROBE_MEMORY_CAPABILITY,__import__('io_policy').FIXED_PROBE_CAPABILITY,*CAPABILITIES])
         self.assertEqual(self.jobs.nodes.claim(self.node)['grant']['job_id'],job['id'])
     def test_explicit_probe_memory_still_obeys_normal_resource_quota(self):
         with self.assertRaises(JobError):
@@ -89,7 +89,7 @@ class AdmissionTests(unittest.TestCase):
     def tearDown(self):self.temp.cleanup()
     def beat(self,**updates):
         body={'physical_id':self.jobs.backend.physical_id,'policy_revision':1,'protocol_version':1,
-          'capabilities':['start-ticket-v1','cleanup-before-complete-v1',CAPABILITY,*CAPABILITIES],
+          'capabilities':['start-ticket-v1','cleanup-before-complete-v1',CAPABILITY,__import__('io_policy').FIXED_PROBE_CAPABILITY,*CAPABILITIES],
           'cpu_ids':self.jobs.policy['cpu_ids'],'memory_available_bytes':8*1024**3,'disk_free_bytes':8*1024**3,
           'image_sha256':IMAGE,'environment_setup':None,'python_executable':'/usr/bin/python3',**updates}
         self.jobs.nodes.heartbeat(self.node,body)

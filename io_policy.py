@@ -3,6 +3,7 @@ MIB=1024**2
 META=8*MIB
 CHUNK=256*1024
 CAPABILITY='bounded-large-artifacts-v1'
+FIXED_PROBE_CAPABILITY='fixed-probe-artifacts-v1'
 DEFAULT={'file_mib':64,'input_mib':128,'artifact_mib':128}
 
 
@@ -21,6 +22,24 @@ def artifacts(value=None):
             or any(type(v) is not int or not 1<=v<=8192 for v in result.values())
             or result['file_mib']>result['total_mib']):raise ValueError('Invalid finite artifact budget')
     return dict(result)
+
+
+def submission_artifacts(spec):
+    # Fixed probes cannot export user workloads or accept an artifacts override.
+    # Choose their budget outside the normalized request/fingerprint so retries
+    # of pre-upgrade jobs still return the original frozen limits and allocation.
+    if spec.get('template') in {'environment_probe','npu_access_probe'}:
+        return {'file_mib':1,'total_mib':2}
+    return artifacts(spec.get('parameters',{}).get('artifacts'))
+
+
+def validate_grant_artifacts(spec):
+    actual=artifacts(spec.get('artifact_limits'))
+    if actual==submission_artifacts(spec):return actual
+    # Historical fixed probes used the generic default. Preserve that exact
+    # frozen contract, rather than accepting arbitrary smaller/larger budgets.
+    if spec.get('template') in {'environment_probe','npu_access_probe'} and actual==artifacts():return actual
+    raise ValueError('Artifact grant differs from pinned task request')
 
 
 def for_job(job):return artifacts(job.get('artifact_limits'))

@@ -47,7 +47,7 @@ class DailyTests(unittest.TestCase):
             'timezone':'UTC','at':wall.strftime('%H:%M'),'window_minutes':240,'memory_mib':512,
             'max_probes_per_card':2,'daily_npu_seconds':840,'total_npu_seconds':1680}
     def beat(self,busy=None):
-        self.fixture.beat(capabilities=['start-ticket-v1','cleanup-before-complete-v1','npu-device-whitelist-v1',devices.CAPABILITY,ENV,*devices.CAPABILITIES],
+        self.fixture.beat(capabilities=['start-ticket-v1','cleanup-before-complete-v1','npu-device-whitelist-v1',devices.CAPABILITY,ENV,__import__('io_policy').FIXED_PROBE_CAPABILITY,*devices.CAPABILITIES],
             image_sha256=self.manifest['image_sha256'],environment_setup=None,python_executable='/usr/bin/python3',environment_sha256=fingerprint(self.manifest),
             npu_observation={'status':'ok','sampled_at':dt.datetime.fromtimestamp(self.epoch-.001,dt.timezone.utc).isoformat(),'policy_sha256':devices.npu_sha(self.fixture.policy),
                 'devices':[{'id':i,'name':'Ascend-test','health':'OK','utilization_pct':0,'process_count':1 if i==busy else 0} for i in [0,1]]})

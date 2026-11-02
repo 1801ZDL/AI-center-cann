@@ -78,6 +78,7 @@
     "node_owner_admin.py",
     "payload_quota_admin.py",
     "payload_owner_admin.py",
+    "io_policy.py",
     "storage_io.py",
     "storage_budget.py",
     "storage_lifecycle.py",

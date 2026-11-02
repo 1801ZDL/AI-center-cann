@@ -149,7 +149,7 @@ print(json.dumps({'path':str(p),'filesystem':'ext4','storage_id':uuid.uuid4().he
         self.roles_start(mounts)
         self.phase('install-controller-and-provision-twenty-owners')
         payload=self.filesystem(self.controller,'/srv/lab-payload')
-        payload['owner_groups']={'load_'+str(i).zfill(2):{'gid':24500+i,'bytes':((256 if i==0 else 64) if self.small else 4096 if i==0 else 128)*MIB,
+        payload['owner_groups']={'load_'+str(i).zfill(2):{'gid':24500+i,'bytes':(64 if self.small else 4096 if i==0 else 128)*MIB,
                                    'inodes':1024 if self.small else 50000 if i==0 else 2048} for i in range(20)}
         self.write(self.controller,'/provision/payload.json',payload)
         self.docker(['exec',self.controller,'/usr/bin/python3','-B','/bootstrap/servicectl','payload-groups-prepare','--contract','/provision/payload.json'])
@@ -159,10 +159,10 @@ print(json.dumps({'path':str(p),'filesystem':'ext4','storage_id':uuid.uuid4().he
             '--payload-config','/provision/payload.json']).stdout)
         assert installed['uid']>0
         config=self.read(self.controller,self.controller_state/'config.json')
-        # The fixed qualification probe retains the normal128MiB declaration;
-        # ordinary burst jobs request1/4MiB explicitly. Include META separately
-        # in the personal/native-group budgets below, never lower the gate.
-        io_limits={'file_mib':64,'input_mib':128,'artifact_mib':128} if self.small else {'file_mib':2048,'input_mib':2048,'artifact_mib':2048}
+        # Fixed probes now have the server-owned1/2MiB output contract. Both
+        # qualification and ordinary1/4MiB requests must fit this small policy;
+        # personal/native-group budgets still include META separately.
+        io_limits={'file_mib':1,'input_mib':1,'artifact_mib':4} if self.small else {'file_mib':2048,'input_mib':2048,'artifact_mib':2048}
         config['scheduler'].update(cpu_ids=self.cpus,memory_mib=1024 if self.small else 10496,shm_mib=0,max_running=2,max_timeout_seconds=180 if self.small else 7200,
                                    io_limits=io_limits)
         self.write(self.controller,self.controller_state/'config.json',config)
@@ -174,7 +174,7 @@ print(json.dumps({'path':str(p),'filesystem':'ext4','storage_id':uuid.uuid4().he
             self.admin('accessctl','user-add',owner);self.admin('accessctl','environment-grant',owner,'worker-python')
             self.admin('accessctl','quota',owner,'--max-running','1','--max-queued','4','--cpu','1',
                 '--memory-mib','256' if self.small else '8192' if i==0 else '512','--shm-mib','0','--npu','0',
-                '--input-storage-mib','8' if self.small else '256' if i==0 else '64','--archive-storage-mib',('256' if i==0 else '64') if self.small else '4096' if i==0 else '128')
+                '--input-storage-mib','8' if self.small else '256' if i==0 else '64','--archive-storage-mib','64' if self.small else '4096' if i==0 else '128')
             personal=self.read(self.controller,self.controller_state/'personas'/owner/'client.json')
             atomic_json(self.base/('client-'+str(i)+'.json'),personal);self.clients.append(Client(personal))
         self.phase('prepare-node-work-cache-and-spool')

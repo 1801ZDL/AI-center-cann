@@ -145,9 +145,9 @@ class DockerAttempt:
     def validate(self):
         g=self.grant
         if 'node_policy_revision' in g and g['node_policy_revision']!=self.config.get('policy_revision',1):raise ValueError('Grant belongs to another node policy revision')
-        from io_policy import artifacts,fits
+        from io_policy import validate_grant_artifacts,fits
         if not fits(g.get('artifact_limits'),self.config.get('io_limits')):raise ValueError('Artifact budget exceeds node ceiling')
-        if artifacts(g.get('artifact_limits'))!=artifacts(g.get('parameters',{}).get('artifacts')):raise ValueError('Artifact grant differs from pinned task request')
+        validate_grant_artifacts(g)
         if g['template'] not in SCRIPTS or g['template'] not in self.config.get('templates',SCRIPTS):
             raise ValueError('Template not registered on node')
         mapping=self.config['users'].get(g['owner'])

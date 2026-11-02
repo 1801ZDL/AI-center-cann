@@ -1,5 +1,23 @@
 # 实施进度
 
+## 2026-11-03 固定探针小归档预算与Node升级兼容
+
+新建 `environment_probe` / `npu_access_probe` 使用服务端单文件1MiB、总产物2MiB预算，加原8MiB元数据后预留10MiB。此前固定探针不接受调用方产物参数，却沿普通64/128MiB默认值准入，导致小IO/归档账号无法资格检查。普通命令/工作流预算、设备访问和数值资格门槛不变。预算选择不写入规范化请求或指纹，旧任务重放返回原job、原额度和原预留；缺少冻结额度的旧记录保留旧默认。新Node仅接受新固定额度或精确旧默认，仍执行本Node IO上限。
+
+增加 `fixed-probe-artifacts-v1` 心跳能力：新探针遇旧Node保留原job排队、0attempt，升级后领取同一任务；旧默认探针仍可交给满足原条件的旧Node。其他工作流不要求该新能力。五个生产文件更新：io_policy/jobs/nodes/worker/container_engine；107个非文档CORE、261个测试/辅助Python文件和4网页资产最终冻结，保护运行时6文件、任务镜像、领域工具APP与agent_runner未改。无需重建任务镜像，但中央和Node代码需按维护流程升级。
+
+最终完整回归 `job-73be8ccdb3eb` **1276项/245.238秒/零跳过及JavaScript语法检查通过**。新专项 `job-ee9114abd93c` 11项通过，旧预算/指纹/原request字节/存储预留在数据库重开与小IO策略下保留、10MiB边界、调用方覆盖拒绝、旧Node等待/升级领取及实际DockerAttempt预检均覆盖。资格兼容专项 `job-1b39c17d71e0` 24项通过。没有为最终代码重新运行旧20账号60任务、领域模型或网页浏览器检查。
+
+实际小预算安装 `job-20958fcc413b` 通过：沿原Main2CPU/2048MiB/NPU0队列，在自有Root角色/文件盘中安装当前服务，Controller非root、Node0、任务UID23900/23901；中央/Node IO为file1/input1/artifact4MiB，个人及中央原生owner组归档均64MiB。两个真实固定环境探针成功，原探针HTTP重放复用同一个attempt，9MiB归档用户被409拒；另一用户资格通过后真实BishengIR将20+22化简为42。独立队列审计 `job-105762e4004c` 只读解除loop关联后的原盘/SQLite，核对三任务单attempt、实际保护回执及原manifest SHA、UID、256MiB硬内存、无网络/设备、只读根、IR42与Node清退回执；未重新编译或挂载。
+
+当前包通用Root安装 `job-e652f9494754` **42项通过**：两UID真实IR、字节/inode硬配额、缓存、同容器重连、备份/新目录恢复、参考轮转中断恢复继续验证。Primary另核原/恢复SQLite中job/attempt集合、两UID保留IR与两个实际安装包CORE/web SHA。每日设备规则/性能参考部分为合成历史或未准备设备的拒绝路径，不是真机UT/性能采样。
+
+失败完整保留：首轮 `job-3c2d609341d3` 的探针 `job-ff272b70870f` 被旧Node预算一致性校验在node_preflight拒绝，未启动任务程序，清退后补Node新旧合同与升级能力；此前1273全绿只覆盖补Node前源码，不能替代最终1276。中间 `job-fbc239b715b9` 完整回归24 errors均来自一个资格兼容协议夹具未声明新能力；仅修夹具后专项24及最终全量通过，未放宽生产准入。
+
+两轮小资格与通用Root共11份loop关联released、sysfs关联消失，自有角色/卷/辅助容器清退，私有backing证据保留。Root演练原有stop/start已使Main加载最终五文件；核对新进程启动晚于最终源码写入，无额外重启。原配置SHA、19Node profile、物理域预算、zdl运行/内存/SHM不变；0非终态/hold，未启用真实每日计划、规则或参考。无宿主账户/全局服务/驱动/他人容器修改。
+
+本轮改善实际小配额开户与升级兼容，整体仍非生产就绪。真实宿主用户/PID1、两物理主机与fencing、NPU访问正向及数值/性能/仿真、混合和长期负载仍需独立验收。原20账号突发按82403e0冻结证据保留，不改称最终五文件下重新运行。公开摘要见reports/public-source-check.json.fixed_probe_budget，私有原证据不发布。
+
 ## 2026-11-02 当前包20账号突发、60个实际CPU任务与原盘审计
 
 **新增真实突发 parent `job-d04364775015` 和独立只读审计 `job-da0cecd6f8a0` 均通过。** 20个并发Bearer客户端、20个数值任务UID23900..23919，在两个执行槽内完成20个IR、20个CMake冷构建、20个CMake暖构建，60任务各一次attempt。三轮取得120次提交/原幂等键重放回执；独立控制器审计逐job核对created=1、reused=1，没有重复任务或执行。底层传输尝试数未另计，不能从回执数推导无连接重试。每账号max_running=1；前20次工作负载分配覆盖20个不同owner，20次外用户详情读取404。

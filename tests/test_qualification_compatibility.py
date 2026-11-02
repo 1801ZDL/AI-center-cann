@@ -40,7 +40,7 @@ class QualificationCompatibilityTests(unittest.TestCase):
         from npu_device import fingerprint as npu_sha
         p=self.jobs.nodes.node(self.node)['profile']
         body={'physical_id':p['physical_id'],'protocol_version':1,'policy_revision':p['policy_revision'],
-            'capabilities':['start-ticket-v1','cleanup-before-complete-v1',WORK,CACHE,'uid-quota-workspace-v1','npu-device-whitelist-v1',CAPABILITY,*CAPABILITIES],
+            'capabilities':['start-ticket-v1','cleanup-before-complete-v1',WORK,CACHE,'uid-quota-workspace-v1','npu-device-whitelist-v1',CAPABILITY,__import__('io_policy').FIXED_PROBE_CAPABILITY,*CAPABILITIES],
             'cpu_ids':p['policy']['cpu_ids'],'memory_available_bytes':4*1024**3,'disk_free_bytes':4*1024**3,
             'access_host_sha256':'b'*64,'access_runtime_files':runtime_manifest(),
             'npu_observation':{'status':'ok','sampled_at':now(),'policy_sha256':npu_sha(p['npu']),

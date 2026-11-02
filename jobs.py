@@ -301,12 +301,12 @@ class JobStore:
                 raise JobError('注册 NPU 访问组不在服务账号的已授权组内。',403)
             env['gid']=device_gid
         input_manifest=None
-        from io_policy import artifacts,fits
+        from io_policy import artifacts,fits,submission_artifacts
         parameters=request.get('parameters',{})
         if not isinstance(parameters,dict):raise JobError('parameters must be an object')
         if 'template' not in request and set(parameters)-{'artifacts'}:
             raise JobError('Legacy command parameters only support artifacts')
-        try:artifact_request=artifacts(parameters.get('artifacts'))
+        try:artifact_request=submission_artifacts(request)
         except ValueError as error:raise JobError(str(error)) from None
         if not fits(artifact_request,self.policy['io_limits']):raise JobError('Artifact request exceeds administrator IO limits',403)
         # Keep default command fingerprints unchanged for pre-upgrade retries.
@@ -479,8 +479,8 @@ class JobStore:
                 raise JobError('当前用户等待队列已满。', 409)
             job_id = 'job-' + uuid.uuid4().hex[:12]
             experiment_charge=self.experiment_budgets.charge(db,spec,principal,job_id)
-            from io_policy import artifacts,MIB,META
-            artifact_limits={'file_mib':1,'total_mib':2} if _staged_probe is not None or _scheduled is not None else artifacts(spec.get('parameters',{}).get('artifacts'))
+            from io_policy import submission_artifacts,MIB,META
+            artifact_limits={'file_mib':1,'total_mib':2} if _staged_probe is not None or _scheduled is not None else submission_artifacts(spec)
             self.storage.reserve(db,'archive',job_id,principal,artifact_limits['total_mib']*MIB+META)
             directory = self.directory(job_id,owner=principal.id)
             source = None

@@ -36,7 +36,7 @@ class QualificationTests(unittest.TestCase):
 
     def beat(self,**changes):
         body={'physical_id':self.jobs.backend.physical_id,'protocol_version':1,
-          'capabilities':['start-ticket-v1','cleanup-before-complete-v1','npu-device-whitelist-v1',CAPABILITY,*CAPABILITIES],
+          'capabilities':['start-ticket-v1','cleanup-before-complete-v1','npu-device-whitelist-v1',CAPABILITY,__import__('io_policy').FIXED_PROBE_CAPABILITY,*CAPABILITIES],
           'access_host_sha256':'b'*64,'access_runtime_files':runtime_manifest(),
           'cpu_ids':self.jobs.policy['cpu_ids'],'memory_available_bytes':8*1024**3,'disk_free_bytes':8*1024**3,
           'npu_observation':{'status':'ok','sampled_at':now(),'policy_sha256':npu_sha(self.policy),

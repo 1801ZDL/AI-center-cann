@@ -9019,5 +9019,46 @@
     "overall_goal_complete": false,
     "scope": "20 simultaneous token clients and20 numeric task UIDs on one server with two actual CPU slots; three queued workload waves, real IR/CMake cold-warm and private cache. Not20 simultaneously running jobs, full compiler rebuild, NPU, real login users, PID1 or two physical hosts.",
     "first_fixture_failure_retained": "First small fixture omitted the fixed environment probe default128MiB artifact reservation and8MiB metadata overhead. It was denied403 before any probe/workload job; original budgets and cleanup preserved. Fixed only explicit test IO/user/group/disk envelope; runtime gates unchanged."
+  },
+  "fixed_probe_budget": {
+    "verified_at": "2026-11-02T16:28:45.582437+00:00",
+    "unit_tests": 1276,
+    "unit_seconds": 245.238,
+    "unit_skipped": 0,
+    "javascript_syntax_passed": true,
+    "focused_tests": 11,
+    "root_checks": 42,
+    "actual_node_advertised_new_contract": true,
+    "original_probe_created_once_and_reused_once": true,
+    "model_calls": 0,
+    "npu_workloads": 0,
+    "task_image_rebuilt": false,
+    "browser_reexecuted": false,
+    "main_invariants_preserved": true,
+    "production_ready": false,
+    "overall_goal_complete": false,
+    "scope": "Fixed probe resource contract, same-host installed CPU qualification and existing full Root CPU regression; no real host login users, PID1, cross-host rollout, NPU execution, general compiler or long-running load acceptance.",
+    "fixed_artifact_limits": {
+      "file_mib": 1,
+      "total_mib": 2
+    },
+    "new_reservation_including_metadata_mib": 10,
+    "io_limits": {
+      "file_mib": 1,
+      "input_mib": 1,
+      "artifact_mib": 4
+    },
+    "personal_and_native_group_archive_mib": 64,
+    "actual_probe_jobs": 2,
+    "actual_cpu_ir_jobs": 1,
+    "ir_answer": 42,
+    "legacy_budget_and_fingerprint_replay_checked": true,
+    "old_node_waits_zero_attempts": true,
+    "old_default_probe_still_claims_old_node": true,
+    "readonly_raw_disk_audit": true,
+    "released_loop_associations": 11,
+    "first_installed_preflight_mismatch_preserved_and_fixed": true,
+    "full_1273_before_node_fix_historical_only": true,
+    "intermediate_full_24_stale_fixture_errors_preserved": true
   }
 }

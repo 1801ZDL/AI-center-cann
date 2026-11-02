@@ -133,8 +133,9 @@ class Worker:
         maximum=self.config.get('max_timeout_seconds',300)
         if type(maximum) is not int or not 1<=maximum<=MAX_TIMEOUT_SECONDS:raise ValueError('Invalid node execution timeout limit')
         capabilities.append(DEADLINE_CAPABILITY)
-        from io_policy import limits,CAPABILITY
+        from io_policy import limits,CAPABILITY,FIXED_PROBE_CAPABILITY
         capabilities.append(CAPABILITY)
+        capabilities.append(FIXED_PROBE_CAPABILITY)
         from node_storage import CAPABILITY as SPOOL
         capabilities.append(SPOOL)
         npu={}
