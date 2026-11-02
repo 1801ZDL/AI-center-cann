@@ -152,6 +152,8 @@ class Worker:
             capabilities.append(CAPABILITY)
             from npu_conditions import CAPABILITY as CONDITIONS
             capabilities.append(CONDITIONS)
+            from npu_frequency import CAPABILITY as FREQUENCY
+            capabilities.append(FREQUENCY)
             if time.monotonic()-self.npu_sampled>=10 or self.npu_cache is None:
                 self.npu_sampled=time.monotonic()
                 try:self.npu_cache=observe(self.config['npu'])

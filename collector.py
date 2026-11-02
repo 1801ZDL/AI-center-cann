@@ -273,7 +273,11 @@ class Collector:
                 'ascend-lab-monitor', '/data/pri/cann/set_env.sh', tool]
         try:
             devices, processes = parse_npu(command(argv, timeout=12))
-            self.npu_cache = {'status': 'ok', 'sampled_at': now(), 'devices': devices, 'processes': processes}
+            sampled_at=now()
+            from npu_frequency import collect
+            frequencies=collect([row['id'] for row in devices],'/data/pri/cann/set_env.sh',tool)
+            for row in devices:row['frequency']=frequencies[row['id']]
+            self.npu_cache = {'status': 'ok', 'sampled_at': sampled_at, 'devices': devices, 'processes': processes}
         except (OSError, ValueError, RuntimeError, subprocess.TimeoutExpired) as exc:
             self.npu_cache = {**self.npu_cache, 'status': 'error', 'error': type(exc).__name__}
 

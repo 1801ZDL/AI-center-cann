@@ -166,6 +166,9 @@ def handler_class(store, config, jobs=None):
                     value['placement_capabilities']=[PLACEMENT]
                     from device_schedule import CAPABILITY as DEVICE_SCHEDULE
                     value['device_schedule_capabilities']=[DEVICE_SCHEDULE]
+                    from npu_conditions import CAPABILITY as CONDITIONS
+                    from npu_frequency import CAPABILITY as FREQUENCY
+                    value['npu_condition_capabilities']=[CONDITIONS,FREQUENCY]
                     from dependency_conditions import CAPABILITY as TERMINAL_HANDOFF
                     value['dependency_capabilities']=[TERMINAL_HANDOFF]
                     from source_grants import CAPABILITY as SOURCE_GRANTS

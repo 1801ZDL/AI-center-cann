@@ -55,17 +55,21 @@ def fingerprint(policy):
     return hashlib.sha256(json.dumps(policy,sort_keys=True,separators=(',',':')).encode()).hexdigest()
 
 
-def observe(policy):
+def observe(policy,frequency_ids=None):
     validate(policy,host=True)
     devices,processes=query(policy['management_env'],policy['query_tool'])
+    sampled_at=now()
+    from npu_frequency import collect,unknown
+    frequencies=collect(policy['device_ids'] if frequency_ids is None else frequency_ids,policy['management_env'],policy['query_tool'])
     selected=[]
     for physical in policy['device_ids']:
         device=next((item for item in devices if item['id']==physical),None)
         if device is None:raise ValueError('Registered physical NPU is missing from management inventory')
         selected.append({'id':physical,'name':device.get('name','UNKNOWN'),'health':device['health'],'utilization_pct':device['utilization_pct'],
                          'process_count':sum(item['device_id']==physical for item in processes),
-                         **{key:device[key] for key in ['temperature_c','power_w'] if device.get(key) is not None}})
-    return {'status':'ok','sampled_at':now(),'devices':selected,'policy_sha256':fingerprint(policy)}
+                         **{key:device[key] for key in ['temperature_c','power_w'] if device.get(key) is not None},
+                         'frequency':frequencies.get(physical,unknown())})
+    return {'status':'ok','sampled_at':sampled_at,'devices':selected,'policy_sha256':fingerprint(policy)}
 
 
 def observation(body,policy):
@@ -88,6 +92,11 @@ def observation(body,policy):
         name=item.get('name','UNKNOWN')
         if not isinstance(name,str) or not 1<=len(name)<=80 or any(ord(c)<32 for c in name):raise ValueError('Invalid NPU management name')
         result.append({**{key:item[key] for key in ['id','health','utilization_pct','process_count']},'name':name})
+        from npu_frequency import normalize,instant,unknown
+        frequency=normalize(item.get('frequency'),item['id'],sampled)
+        if frequency['status']=='sampled' and not 0<=time.time()-instant(frequency['sampled_at'])<=15:
+            frequency=unknown('unavailable','invalid_observation')
+        result[-1]['frequency']=frequency
         for key,lower,upper in [('temperature_c',-100,250),('power_w',0,100000)]:
             value=item.get(key)
             if type(value) in {int,float} and math.isfinite(value) and lower<=value<=upper:result[-1][key]=value
@@ -101,7 +110,7 @@ def check(grant,policy):
     if (grant['resources']['npu']!=1 or len(ids)!=1 or ids[0] not in policy['device_ids']
         or grant.get('npu_policy_sha256')!=fingerprint(policy)):
         raise ValueError('NPU grant does not match the administrator device contract')
-    reading=observe(policy)
+    reading=observe(policy,frequency_ids=ids)
     wanted=grant['allocation'].get('npu_name')
     if wanted and any(item.get('name','UNKNOWN')!=wanted for item in reading['devices'] if item['id'] in ids):raise ValueError('NPU management name changed after allocation')
     selected_reading(ids,(reading['devices'],[]))

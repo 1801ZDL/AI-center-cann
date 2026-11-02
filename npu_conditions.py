@@ -13,7 +13,7 @@ SCHEMA='ascend-lab-npu-conditions/v1'
 FILE='npu-conditions.json'
 MAX_SAMPLES=64
 MAX_GAP_SECONDS=30
-DISCLAIMER='Discrete management snapshots only; no daily numerical or performance UT is linked. Running occupancy may be this task itself. Frequency was not collected.'
+DISCLAIMER='Discrete management snapshots only; no daily numerical or performance UT is linked. Running occupancy may be this task itself. Frequency snapshots, if present, do not certify stable timing or performance.'
 
 
 def epoch(value):
@@ -37,6 +37,8 @@ def sample(record,job):
         if (item.get('health') not in {'OK','Warning','Alarm','UNKNOWN'} or type(count) is not int or not 0<=count<2**31
             or type(util) not in {int,float} or not math.isfinite(util) or not 0<=util<=100):raise ValueError('Invalid device sample')
         row={key:item[key] for key in ['id','health','utilization_pct','process_count']}
+        from npu_frequency import normalize
+        row['frequency']=normalize(item.get('frequency'),physical,record['sampled_at'])
         for key,lower,upper in [('temperature_c',-100,250),('power_w',0,100000)]:
             value=item.get(key)
             row[key]=value if type(value) in {int,float} and math.isfinite(value) and lower<=value<=upper else None
@@ -49,20 +51,28 @@ def capture(job,record):
     trace=job.setdefault('_npu_conditions',{'samples':[],'sample_count':0,'dropped_samples':0,
         'management_error_count':0,'out_of_order_count':0,'conflicting_sample_count':0,'alert_sample_count':0,'unknown_health_count':0,
         'max_gap_seconds':0,'first_sampled_at':None,'last_sampled_at':None})
+    from npu_frequency import initialize,accumulate
+    frequency_stats=initialize(trace,job['allocation']['npu_ids'])
     try:reading=sample(record,job)
     except (ValueError,TypeError,KeyError,OverflowError):
         trace['management_error_count']+=1
+        accumulate(frequency_stats,{'devices':[{'id':physical} for physical in job['allocation']['npu_ids']]})
         return
     timestamp=reading['sampled_at'];previous=trace['last_sampled_at']
     if previous:
         delta=epoch(timestamp)-epoch(previous)
         if delta==0:
-            if reading!=trace['samples'][-1]:
+            from npu_frequency import unknown
+            prior=trace['samples'][-1]
+            prior={**prior,'devices':[{**row,'frequency':row.get('frequency') or unknown()} for row in prior['devices']]}
+            if reading!=prior:
+                accumulate(frequency_stats,reading,count=False)
                 trace['conflicting_sample_count']=trace.get('conflicting_sample_count',0)+1
                 trace['alert_sample_count']+=int(any(row['health'] in {'Warning','Alarm'} for row in reading['devices']))
                 trace['unknown_health_count']+=int(any(row['health']=='UNKNOWN' for row in reading['devices']))
             return  # Cached Node observations are not new samples.
         if delta<0:
+            accumulate(frequency_stats,reading,count=False)
             trace['out_of_order_count']+=1
             trace['alert_sample_count']+=int(any(row['health'] in {'Warning','Alarm'} for row in reading['devices']))
             trace['unknown_health_count']+=int(any(row['health']=='UNKNOWN' for row in reading['devices']))
@@ -70,6 +80,7 @@ def capture(job,record):
         trace['max_gap_seconds']=max(trace['max_gap_seconds'],delta)
     else:trace['first_sampled_at']=timestamp
     trace['last_sampled_at']=timestamp;trace['sample_count']+=1
+    accumulate(frequency_stats,reading)
     trace['alert_sample_count']+=int(any(row['health'] in {'Warning','Alarm'} for row in reading['devices']))
     trace['unknown_health_count']+=int(any(row['health']=='UNKNOWN' for row in reading['devices']))
     trace['samples'].append(reading)
@@ -127,6 +138,8 @@ def finalize(jobs,job,result):
     summary.update(status='adverse_observed' if alerts else 'incomplete' if reasons else 'sampled_no_alerts',
         alert_sample_count=alerts,reasons=sorted(set(reasons)),max_gap_seconds=round(gap,3),
         snapshot_count=trace.get('sample_count',0)+len(boundaries),frequency_mhz=None)
+    from npu_frequency import summary as frequency_summary
+    summary['frequency']=frequency_summary(trace,boundaries,job['allocation']['npu_ids'])
     document={'schema':SCHEMA,'source':'controller-normalized authenticated Node management evidence',
         'scope':'reservation through terminal completion; includes preparation and artifact transfer, not only execution',
         'job_id':job['id'],'attempt_id':job['attempt_id'],'node_id':job['node_id'],

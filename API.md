@@ -256,3 +256,7 @@ compiler-case是对原任务/日志/artifact-chunk读取接口的固定路径组
 ## 每日设备计划只读状态
 
 `GET /api/me`的`device_schedule_capabilities`声明`central-device-schedule-v1`。`GET /api/device-schedules?limit=4&offset=0`按原owner/项目权限读取计划、每卡最近日记录和原任务ID；limit为1–8，total只计本人可见计划。预算Agent凭据返回空列表。状态区分未测、等待、原执行未知、访问失败、微用例不一致和条件未确认；通过有限用例仍返回`health_certified=false,performance_qualified=false`。历史/窗口外记录不会成为当前资格。无HTTP创建、启用、暂停或改预算接口；管理员本地入口、恢复冻结与限额见[DEVICE_SCHEDULE.md](DEVICE_SCHEDULE.md)。
+
+## 可选频率证据
+
+`GET /api/me`的`npu_condition_capabilities`声明`npu-condition-evidence-v1`及`npu-frequency-samples-v1`。认证Node设备观测可附带固定schema/source、物理device_id、sampled_at、current_mhz与rated_mhz；字段缺失/非法只使频率未知，不能代替或放宽原健康/占用合同。原任务device_conditions新增frequency摘要（cards的当前/额定极值、心跳样本、独立边界引用计数及缺项），旧兼容字段frequency_mhz仍为null。结果/CSV与归档沿原ACL，性能资格始终未验证；不新增执行或改频接口。预算、时间范围与多芯片限制见[NPU_FREQUENCY.md](NPU_FREQUENCY.md)。

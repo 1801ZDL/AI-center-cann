@@ -54,6 +54,7 @@
     "unit_refresh.py",
     "unit_manager.py",
     "unit_start.py",
+    "collector.py",
     "attempt_inventory.py",
     "executor.py",
     "npu_admission.py",
@@ -109,7 +110,8 @@
     "npu_conditions.py",
     "placement.py",
     "npu_selfcheck.py",
-    "device_schedule.py"
+    "device_schedule.py",
+    "npu_frequency.py"
   ],
   "reproduced_by_public_ci": false,
   "raw_evidence_in_repository": false,
