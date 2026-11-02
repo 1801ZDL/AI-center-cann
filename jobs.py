@@ -684,6 +684,13 @@ class Scheduler:
                         self.jobs.write(db,job)
                         continue
                     result = completion.get('result')
+                    if isinstance(result,dict) and result.get('status')=='prestart_deferred':
+                        from cooperative_start import reconcile
+                        outcome=reconcile(self.jobs,db,job,result)
+                        if outcome in {'queued','exhausted'}:continue
+                        job.update(state='needs_attention' if outcome=='invalid' else job['state'],
+                            reason='启动前回队回执异常；保留原资源' if outcome=='invalid' else '等待原执行器退出后确认回队')
+                        self.jobs.write(db,job);continue
                     if not isinstance(result, dict) or result.get('status') not in TERMINAL | {'needs_attention'}:
                         job.update(state='needs_attention', reason='执行器完成记录格式异常；保留资源等待人工核对')
                         self.jobs.write(db, job)
@@ -710,6 +717,9 @@ class Scheduler:
         active=[j for j in all_active if j.get('_physical_id',self.jobs.backend.physical_id)==self.jobs.backend.physical_id]
         pool=domain['policy']
         reason = self.jobs.dispatch_permission(job,all_active) or self.jobs.inventory.reason(domain['physical_id'])
+        if not reason:
+            from cooperative_start import wait_reason
+            reason=wait_reason(job,snapshot)
         used_cpus = {c for j in active for c in j['allocation'].get('cpu_ids', [])}
         free_cpus = [c for c in pool['cpu_ids'] if c not in used_cpus]
         used_memory = sum(memory_cost(j) for j in active)
@@ -784,6 +794,9 @@ class Scheduler:
                            reserved_at=now(), _reserved_epoch=time.time(),
                            node_id=self.jobs.backend.node_id, attempt_id='attempt-'+uuid.uuid4().hex,
                            _token=secrets.token_hex(24),_physical_id=self.jobs.backend.physical_id)
+                if wanted['npu']:
+                    from cooperative_start import contract
+                    job['_cooperative_start']=contract()
                 db.execute('INSERT INTO execution_attempts VALUES(?,?,?,?,?)',
                            (job['attempt_id'],job['id'],job['node_id'],'reserved',job['reserved_at']))
                 self.jobs.write(db, job)

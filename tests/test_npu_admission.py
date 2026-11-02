@@ -11,7 +11,7 @@ from unittest.mock import Mock,patch
 
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 from jobs import ROOT,read_json
-from npu_admission import HostBroker,request_receipt,validate_receipt,selected_reading,RECEIPT_TTL,SOCKET_NAME
+from npu_admission import HostBroker,request_receipt,validate_receipt,selected_reading,RECEIPT_TTL,SOCKET_NAME,NPUNotReady
 from executor import run_command
 
 
@@ -112,6 +112,18 @@ class NpuAdmissionTests(unittest.TestCase):
         process.assert_not_called()
         result=read_json(self.root/'result.json');self.assertEqual(result['status'],'failed')
         self.assertIn('admission refused',result['reason'])
+
+    def test_completed_busy_observation_has_a_distinct_bound_refusal(self):
+        probe=Mock(return_value=([{'id':0,'health':'OK','utilization_pct':1}],[]))
+        with HostBroker(self.root,self.job,probe),self.assertRaises(NPUNotReady):request_receipt(self.root,self.job)
+        probe.assert_called_once()
+
+    def test_unavailable_management_is_not_a_deferrable_observation(self):
+        with HostBroker(self.root,self.job,Mock(side_effect=RuntimeError('query unavailable'))):
+            try:request_receipt(self.root,self.job)
+            except NPUNotReady:self.fail('Missing management observation cannot authorize requeue')
+            except RuntimeError:pass
+            else:self.fail('Management failure was accepted')
 
     def test_supervisor_does_not_report_workload_stopped_after_ambiguous_docker_failure(self):
         from executor import supervisor

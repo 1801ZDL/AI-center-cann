@@ -409,6 +409,12 @@ def require_control_storage(config,role,manifest):
 def require_features(state,role,manifest,installation=None):
     config=read_json(Path(state)/'config.json') or {}
     require_control_storage(config,role,manifest)
+    if role=='controller' and 'cooperative_start.py' not in manifest.get('files',{}):
+        path=Path(state)/'jobs.sqlite3'
+        if path.exists():
+            with sqlite3.connect(path.as_uri()+'?mode=ro',uri=True) as db:
+                if any(json.loads(raw).get('_cooperative_start') or json.loads(raw).get('_cooperative_deferral_count') for raw, in db.execute('SELECT data FROM jobs')):
+                    raise DeployError('Retained cooperative prestart contracts require compatible code; refusing downgrade')
     if role=='controller' and 'reference_maintenance.py' not in manifest.get('files',{}):
         from reference_maintenance import read_ledger
         checkpoint=read_ledger(Path(state)/'jobs.sqlite3')

@@ -24,6 +24,11 @@ RECEIPT_TTL=5
 SOCKET_NAME='npu-admission.sock'
 
 
+class NPUNotReady(RuntimeError):
+    """A completed management observation refused this pre-payload launch."""
+    pass
+
+
 def _socket_directory(directory):
     # Linux sun_path is short even when the containing directory is valid.
     # Anchor lookup to a private directory FD, without global /tmp endpoints,
@@ -47,7 +52,7 @@ def selected_reading(device_ids,observation):
         device=next((item for item in devices if item['id']==device_id),None)
         count=sum(item['device_id']==device_id for item in processes)
         if not device or device['health']!='OK' or device['utilization_pct']!=0 or count or device.get('process_count',0)!=0:
-            raise RuntimeError('NPU health or occupancy changed before launch; user workload was not started')
+            raise NPUNotReady('NPU health or occupancy changed before launch; user workload was not started')
         selected.append({'id':device_id,'health':device['health'],'utilization_pct':device['utilization_pct'],'process_count':count})
     return selected
 
@@ -129,6 +134,12 @@ class HostBroker:
                     if self.stop.is_set() or self.used:raise RuntimeError('NPU admission was already requested or closed; execution is not repeated')
                     self.used=True
                     try:devices=selected_reading(self.job['allocation']['npu_ids'],self.probe())
+                    except NPUNotReady:
+                        connection.sendall(json.dumps({'ok':False,'schema':'ascend-lab-npu-admission-deferred/v1',
+                            'job_id':self.job['id'],'attempt_id':self.job['attempt_id'],'node_id':self.job['node_id'],
+                            'nonce':request['nonce'],'reason_code':'npu_observation_changed',
+                            'issued_monotonic':time.monotonic(),'ttl_seconds':RECEIPT_TTL}).encode()+b'\n')
+                        continue
                     except (OSError,ValueError,RuntimeError,TimeoutError,subprocess.TimeoutExpired) as error:
                         raise RuntimeError('Host NPU management check refused launch ('+type(error).__name__+'); no user workload was started') from None
                     reply={'ok':True,'schema':'ascend-lab-npu-admission/v1','job_id':self.job['id'],
@@ -155,8 +166,15 @@ def request_receipt(directory,job):
             connection.sendall(json.dumps({'job_id':job['id'],'attempt_id':job['attempt_id'],
                 'token':job['_token'],'nonce':nonce}).encode()+b'\n')
             receipt=_receive(connection)
+        if (receipt.get('ok') is False and receipt.get('schema')=='ascend-lab-npu-admission-deferred/v1'
+            and all(receipt.get(k)==job[k] for k in ['attempt_id','node_id']) and receipt.get('job_id')==job['id']
+            and receipt.get('nonce')==nonce and receipt.get('reason_code')=='npu_observation_changed'
+            and type(receipt.get('issued_monotonic')) in {int,float} and receipt.get('ttl_seconds')==RECEIPT_TTL
+            and 0<=time.monotonic()-receipt['issued_monotonic']<=RECEIPT_TTL):
+            raise NPUNotReady('Host management observation changed before payload launch')
         validate_receipt(receipt,job,nonce)
         return {key:value for key,value in receipt.items() if key not in {'nonce'}}
+    except NPUNotReady:raise
     except (OSError,ValueError,RuntimeError,TimeoutError):
         raise RuntimeError('宿主 NPU 启动前复查未通过或回执不可用；未启动用户命令') from None
     finally:

@@ -1,5 +1,25 @@
 # 实施进度
 
+## 协作入口启动前竞争的原任务回队（2026-11-02）
+
+**最终1242项/264.700秒/零跳过及JS语法通过，最终专项20项、重新打包Root安装42项和网页12项通过。** full `job-f515f279f343`、focused `job-6172ec2e8b20`、Root `job-3f1aec86f969`、browser `job-bc9695da36fa`。106个非文档CORE、253个测试/辅助、4网页资产和agent_runner冻结；Root与browser实际包的CORE/web逐项一致。文档随后完善，不声称包中文档与最终checkout相同。protected6和领域镜像APP4不变，没有重建镜像或调用模型。
+
+新增[cooperative_start.py](COOPERATIVE_START.md)，并接入jobs/executor/npu_admission和安装包/兼容回滚检查。新分配的宿主与旧Docker NPU任务冻结四源码摘要及协议版本；负载Popen前先同步本尝试的launch intent，随后任何异常都不能回队。只有完成管理观测而明确拒绝启动的NPUNotReady可产生候选；普通错误文本、查询不可用、通道错误和退出码不触发。Docker拒绝回执绑定peer UID/job/attempt/node/nonce/TTL，原exec exit0及输出流结束、broker关闭后由宿主确认。中央核原候选SHA/身份、源码合同及原supervisor已结束，权限/进程观测错误视为未知保留资源，启动/进程标记包括悬空链接都保守拒绝。
+
+确认后在同一SQLite事务把原尝试记为prestart_deferred、原job回queued，换token而保留job/创建时间/输入/环境/幂等/归档预留；清除已失效的空闲老化保护。5/10/20/40/最多60秒退避，并要求采样晚于拒绝；正常忙卡仍不创建尝试。最多16次分配后竞争，之后以明确未启动失败结束，避免无限增长。取消先于回队，重新分配重新检查权限/配额；已有协议历史阻断缺支持旧包回滚。原受控Node及累计实验预算的worker限定不变，同UID协作信任不冒充Root设备隔离。
+
+20项专项覆盖原ID/幂等与存储预留只一次、活supervisor不释放、错误文本无回队、源变化、Popen前意图、错token/transport、悬空标记、旧回执、重启/重复确认、取消、真实应用身份撤权、CPU可继续、退避/新观测、16次上限、事务回滚及旧包阻断。此前 `job-0f33b48fb9fa`16项/3测试错误是把reserved.npu误当现有字段，已改user_reserved.npu；`job-4f269835e272`宽admission glob含10个双槽cache测试但只申请1CPU，静态容量拒绝；未放宽预算，最终2CPU全量覆盖通过。早期focused16/18不是最终20范围。
+
+实际协议演练 `job-22a3f48fa094`是独立真实HTTP/SQLite/进程及新建无设备Docker fixture，明确模拟NPU管理观测，不调用真实驱动。冻结的生产executor与独立测试注入分开；无Main状态/模型配置/Docker socket/NPU设备挂入任务容器。原job在候选已确认后、回队事务写入但提交前分别实际SIGKILL中央，沿同一数据库重启，两次均保留原未启动尝试；回队后另一个CPU任务先完成，随后原宿主任务只执行一个排他CPU标记。Docker路径经真实Unix peer/broker/exec退出、只读同源码和旧端点清退后回队，原job后续也只生成一次标记。两类各2尝试（延迟、成功），CPU辅助1尝试，所有最终标记/原日志/表及单条已结算归档预留已独立核对。等待不等于超时终态，没有因为观察到断连复制提交。
+
+首演练 `job-a0940612667b`已实际触发两次预设SIGKILL，但启动器将第二次恢复时立即发生的预设终止误判为异常；原DB仍reserved/原attempt、无标记，核对象清退后改启动器。`job-b5fe60731b01`在悬空intent/老化保护补充前通过，最终live-r3才对应最终4源码SHA；原件和失败保留，没有把旧结果当新源码重跑。
+
+这次重新运行Root42及网页12，不沿用旧105源码的报告。Root仍实际Controller999/Node0、Tasks23003/23004，真实BishengIR/字节及inode EDQUOT/cache、CPU窗口中断恢复、备份/两次新目录恢复、参考历史两次SIGKILL和旧快照阻断；设备窗口/参考仍合成，无NPU批准。Primary另核两恢复SQLite/原归档链头/所有job及attempt保留、两UID的42IR、两CPU窗口原结果/表格/日志与端点清退。三个自有loop的释放记录及对应sysfs关联消失、五类fixture容器/卷空核对；backing证据私有保留。网页实际HTTP/归档SHA/CSV/权限/过时响应/移动宽度12项继续通过。
+
+Main在Root演练按既有流程临时停启，原独立验收进程保持运行，恢复后加载当前代码。配置SHA/19profiles/物理域、既有zdl启动时间/内存/SHM未变；0非终态/holds/日程/规则/参考、ledgergen0/无回执，4资产HTTP实际回读。三个协作测试fixture的容器及原保存进程身份均确认消失，未改宿主用户、全局服务、驱动或其他容器。
+
+另提交真实单卡驱动观测 `job-50ef9f133b25`，仍在队列等待且0attempt；随后用事务内queued-only取消，未启动固定程序/trace，不强行打断诊断。该请求不是实际回队或NPU成功证明。私有证据evidence/cooperative-start-validation.json及runtime/cooperative-start-20261102，公开仅摘要与源码/测试。下一步继续实际空闲卡的受限驱动访问/初始化及精度性能仿真，完整harness预算实验、宿主真用户/PID1、两物理机fencing及20人混合/长期容量；整体goal active，PUBLIC-001继续延期。
+
 ## 固定子进程syscall观测与启动占用竞争记录（2026-11-02）
 
 **最终1220项/241.164秒/零跳过及JS语法通过，最终专项20项通过。** full `job-47ae636e17dc`、focused `job-1434f1f1631a`。105个非文档CORE、4网页资产、agent_runner及protected6/APP4与上一发布完全相同，251个测试/辅助文件按final-frozen-r1核对。本轮扩展维护诊断，不修改中央/Node生产执行或普通设备门禁，无Root安装/浏览器重跑、模型或应用kernel。

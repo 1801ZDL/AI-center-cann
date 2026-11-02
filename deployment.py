@@ -27,7 +27,7 @@ from state_lock import state_lock
 
 ROOT=Path(__file__).resolve().parent
 CORE=['auth.py','owner_identity.py','owner_handoff.py','qualification_compatibility.py','owner_node_grant.py','node_owner_provision.py','owner_provision.py','owner_maintenance_drain.py','owner_device_probe.py','owner_probe_adoption.py','node_owner_ack.py','owner_activation.py','owner_activation_abort.py','owner_delivery.py','owner_finish.py','unit_refresh.py','unit_manager.py','unit_start.py','backends.py','collector.py','container_engine.py','container_entry.py','artifact_export.py',
-      'environment_probe.py','environment_contract.py','device_qualification.py','attempt_inventory.py','executor.py','npu_admission.py','npu_device.py','inputs.py','jobs.py','lab_client.py','client_archive.py','archive_api.py','nodes.py','server.py',
+      'environment_probe.py','environment_contract.py','device_qualification.py','attempt_inventory.py','executor.py','npu_admission.py','cooperative_start.py','npu_device.py','inputs.py','jobs.py','lab_client.py','client_archive.py','archive_api.py','nodes.py','server.py',
       'templates.py','worker.py','workflow_runner.py','workflow_spec.py','workflow_results.py',
       'state_lock.py','resources.py','queue_policy.py','docker_runtime.py','listener.py','preflight.py','workspace_slots.py','filesystem_quota.py','quota_workspace.py','workspace_quota_admin.py','node_owner_admin.py','group_quota.py','payload_groups.py','payload_quota_admin.py','payload_owner_admin.py','io_policy.py','storage_io.py','payload_storage.py','storage_budget.py','storage_files.py','storage_lifecycle.py','node_storage.py','deployment.py','maintenance.py','servicectl','accessctl','workerctl',
       'spool_storage.py','spool_transfer.py','persistent_cache.py','dependencies.py','control_storage.py','control_filesystem.py','control_process.py','labctl','install-client','mcp_bridge.py','diagnostic_case.py','compiler_diagnostic.py','operator_profile.py','operator_node.py','operator_workflow.py','CLIENT.md','SERVER.md','API.md','WORKFLOWS.md','NPU.md','WORKSPACE.md','STORAGE.md','CACHE.md','DEPENDENCIES.md',
@@ -46,6 +46,7 @@ OPTIONAL_ADMIN_FILES.add('OPERATOR_ANALYSIS.md')
 OPTIONAL_ADMIN_FILES.update({'operator_node.py','operator_workflow.py'})
 OPTIONAL_ADMIN_FILES.update({'compiler_diagnostic.py','COMPILER_DIAGNOSTICS.md','SCALING.md'})
 OPTIONAL_ADMIN_FILES.add('control_storage.py')
+OPTIONAL_ADMIN_FILES.add('cooperative_start.py')
 OPTIONAL_ADMIN_FILES.update({'control_filesystem.py','control_process.py'})
 CORE.append('control_monitor.py')
 OPTIONAL_ADMIN_FILES.add('control_monitor.py')

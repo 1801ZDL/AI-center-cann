@@ -260,6 +260,8 @@ def run_command(directory, job):
         def prepare():
             os.sched_setaffinity(0, allowed)
             resource.setrlimit(resource.RLIMIT_CORE, (0, 0))
+        from cooperative_start import intent
+        intent(directory,job)
         child = subprocess.Popen(argv, cwd=job['cwd'], env=env, stdout=subprocess.PIPE,
                                  stderr=subprocess.PIPE, stdin=subprocess.DEVNULL,
                                  start_new_session=True, preexec_fn=prepare)
@@ -301,6 +303,10 @@ def run_command(directory, job):
             result.update(status='succeeded' if child.returncode == 0 else 'failed',
                           reason='命令执行成功' if child.returncode == 0 else '命令返回非零退出码')
     except Exception as exc:
+        from npu_admission import NPUNotReady
+        from cooperative_start import defer,DEFERRED
+        if isinstance(exc,NPUNotReady) and child is None and not cancelled(directory,job['_token']):
+            if defer(directory,job):return DEFERRED
         if child and child.poll() is None:
             saved = read_json(directory / 'command-process.json')
             if not saved or not stop_group(child.pid, saved['start_ticks']):
@@ -316,7 +322,9 @@ def supervisor(directory, job):
     own = identity(os.getpid())
     atomic_json(directory / 'supervisor.json', {**own, 'token': job['_token']})
     if job['_environment']['type'] == 'host':
-        run_command(directory, job)
+        outcome=run_command(directory, job)
+        from cooperative_start import DEFERRED,acknowledge
+        if outcome==DEFERRED:acknowledge(directory,job,'host')
         return
     if job['allocation']['npu_ids']:
         from npu_admission import HostBroker
@@ -327,8 +335,10 @@ def supervisor(directory, job):
             finish(directory,job,{'status':'failed','exit_code':None,'started_at':None,
                 'reason':'宿主 NPU 管理通道未能建立；未启动用户命令','failure_stage':'device_management'})
             return
-        try:supervise_docker(directory,job)
+        try:outcome=supervise_docker(directory,job)
         finally:broker.__exit__(None,None,None)
+        from cooperative_start import DEFERRED,acknowledge
+        if outcome==DEFERRED:acknowledge(directory,job,'docker-exec-exit0')
         return
     supervise_docker(directory,job)
 
@@ -350,6 +360,11 @@ def supervise_docker(directory,job):
     completion = read_json(directory/'completion.json')
     if completion and completion.get('token') == job['_token']:
         return
+    from cooperative_start import candidate,DEFERRED
+    if child.poll()==0 and candidate(directory,job) is not None:
+        for thread in threads:thread.join(timeout=2)
+        if any(thread.is_alive() for thread in threads):raise RuntimeError('Original Docker deferral output streams remain unconfirmed')
+        return DEFERRED
     ready = read_json(directory/'inside-ready.json')
     if child.poll() is None:
         atomic_json(directory/'cancel.json', {'token': job['_token'], 'requested_at': now()})

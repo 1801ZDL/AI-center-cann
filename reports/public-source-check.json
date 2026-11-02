@@ -1,15 +1,15 @@
 {
   "schema": "ai-center-cann-source-check/v1",
-  "recorded_at": "2026-11-02T13:18:47.207808+00:00",
+  "recorded_at": "2026-11-02T14:00:36.399552+00:00",
   "passed": true,
-  "python_unit_tests": 1220,
+  "python_unit_tests": 1242,
   "unit_skipped": 0,
-  "unit_seconds": 241.164,
-  "unit_log_sha256": "9c93da3d2e5106bfe771bb19070b508d8e8035f713610decc8597c86dfe211d7",
+  "unit_seconds": 264.7,
+  "unit_log_sha256": "2f16264a90b3dcb92d2836aab91e9b617dcf5eec7c29e4490f32b9845fd93d6f",
   "python": "Python3.12.3",
   "javascript_syntax_passed": true,
   "command": "bash scripts/check.sh /usr/bin/python3",
-  "scope": "Fixed self-subprocess trace metadata verified under nonroot caps0/default seccomp; bounded private live trace and selected-device parser. Actual device request rejected before fixed payload because fresh health/occupancy changed; no actual device syscall trace, ACL or workload qualification. Production CORE/web unchanged; prior Root/browser actual package acceptance byte-matched and reused, not re-run.",
+  "scope": "Cooperative host and existing-Docker pre-payload deferral with persisted launch intent, bound no-start proof, supervisor exit and broker teardown; original job requeued with bounded backoff/new observation. Real HTTP/process/Docker-exec and two actual central SIGKILL recoveries use synthetic NPU readings and fixed CPU payloads. New106 CORE installation42/browser12 regressions, not NPU or real-host multiuser qualification.",
   "production_source_sha256": {
     "auth.py": "6bd9b70566fc8dd9b43d3965df5e1fce4c1385e3192239a83052cc0e04778d5f",
     "owner_identity.py": "5a48cf78584b2f717ac45594a73da569589cde6d9441037a0aedffe423f1515b",
@@ -38,11 +38,12 @@
     "environment_contract.py": "45789813c6922b41724f695158deda79ccfdfb865ef3d58251e9b1472206a4c8",
     "device_qualification.py": "227381a9a9a7a28396dedf1a62f630cdbb41c1c2fcb0196610ff66dbd37f7809",
     "attempt_inventory.py": "f968f45e14853c2a810bbc33a921b1c8e40b7e553065233c7eb74e05134f0a2c",
-    "executor.py": "42cdad27b62cf936263ee8cc41d11ea75260120a4e90a7b4213df5ad82fb677b",
-    "npu_admission.py": "c6d39a24b5f4acde33041864e07642f9c1d72d70bb17ce6ef862d7dbda698f1e",
+    "executor.py": "8e5d1686afc0eddd69ff9cfe41f8918283ed09939b9d8f6171db7222035232b9",
+    "npu_admission.py": "0dce6b71084ea96bc95cdd75062009b36dd2745eca7e7836e1dc681ad9419232",
+    "cooperative_start.py": "abbb872547ce8fb456e6a3148b686070661ffc91492c2536bc1109e9e1525236",
     "npu_device.py": "fc89f20488774a8a5e616d5a66176121123954592dd69b4e262e8f27706bb14a",
     "inputs.py": "e7d16e523275fd3a263374a03e765bd3d915b37f83197ce1269e8dc3ff708dc4",
-    "jobs.py": "cf9dab6cfba916b64e20f14c76ee307adf9f3ca80a715c897bc0559b68690136",
+    "jobs.py": "e70d07d40698ff44f08de2c19100a573c81bca9905baa43e8e9bdd31443c9b96",
     "lab_client.py": "e7da7886406571ceea4439b3a159a063c7ae6d30dd3d372ad5a503aaceb8d4e4",
     "client_archive.py": "eec04a9574e8a87d90dc54c556d4bfe6462dfb92f0332bdc6996ad64e7121c97",
     "archive_api.py": "3e9f6539e3760cb4d68b2f85a8f01b751441e3d79b70675aac1f45e90a527e57",
@@ -75,8 +76,8 @@
     "storage_files.py": "c2dfe4aec3a4dec6bf8802655eb9e72a414e307d5eb6f4725da99f0484642ebf",
     "storage_lifecycle.py": "af0607ef46221778177ee6533793e067c272457d04e453abb00e68b142666b6d",
     "node_storage.py": "185bdeb757c0644cf6319460d74ea15061cf6329b4707354696f8e156a16370c",
-    "deployment.py": "55a2dce1e3170b2c8609c9cd3a2bc0a0539a315fed3b85e42a4e9117bae83654",
-    "maintenance.py": "996babe045a8474f213ce51d425e8c3d3c14527e20f51de517f4bd9ee8b930af",
+    "deployment.py": "7fbab25eaa253e005ee5a60f3b6e960a575e1599367b0f868e5c32303df29185",
+    "maintenance.py": "1fc821c98da18b76c0808febae92cce48b9f5e69e82270b0ebcf8639a0cdd36d",
     "servicectl": "b57cf10845c694ad45bc8c0fac1641f1ea173e96687cf9c4efae2df8d95cb5e1",
     "accessctl": "c0d0a86c7a027036e202aff0795eae0001beec676c393d13e73a763d685ccdc9",
     "workerctl": "7a202bc88db938eaf5ddd21d6c248342e951423b7dba9220dd308f8f6a809c8f",
@@ -8798,5 +8799,111 @@
       "exact_namespace_or_holder_cause_proven": false,
       "unverified_HAL_APIs_called": false
     }
+  },
+  "cooperative_start": {
+    "passed": true,
+    "scope": "Cooperative host and existing-Docker pre-payload deferral with persisted launch intent, bound no-start proof, supervisor exit and broker teardown; original job requeued with bounded backoff/new observation. Real HTTP/process/Docker-exec and two actual central SIGKILL recoveries use synthetic NPU readings and fixed CPU payloads. New106 CORE installation42/browser12 regressions, not NPU or real-host multiuser qualification.",
+    "job_ids": {
+      "live-r1": "job-a0940612667b",
+      "admission-r1": "job-4f269835e272",
+      "live-r3": "job-22a3f48fa094",
+      "focused-r4": "job-952e0d251c01",
+      "full-r1": "job-f515f279f343",
+      "focused-r2": "job-3899196ba92d",
+      "focused-r5": "job-6172ec2e8b20",
+      "root-r1": "job-3f1aec86f969",
+      "live-r2": "job-b5fe60731b01",
+      "browser-r1": "job-bc9695da36fa",
+      "focused-r1": "job-0f33b48fb9fa",
+      "device-r1": "job-50ef9f133b25"
+    },
+    "unit_tests": 1242,
+    "unit_seconds": 264.7,
+    "prestart_contract": {
+      "schema": "ascend-lab-cooperative-prestart/v1",
+      "max_deferrals": 16,
+      "sources": {
+        "cooperative_start.py": "abbb872547ce8fb456e6a3148b686070661ffc91492c2536bc1109e9e1525236",
+        "executor.py": "8e5d1686afc0eddd69ff9cfe41f8918283ed09939b9d8f6171db7222035232b9",
+        "npu_admission.py": "0dce6b71084ea96bc95cdd75062009b36dd2745eca7e7836e1dc681ad9419232",
+        "jobs.py": "e70d07d40698ff44f08de2c19100a573c81bca9905baa43e8e9bdd31443c9b96"
+      }
+    },
+    "independent_payload_proofs": [
+      {
+        "job_id": "job-9cf43fd533d5",
+        "environment": "host-python",
+        "attempt_states": [
+          "prestart_deferred",
+          "succeeded"
+        ],
+        "actual_cpu_marker_once": true,
+        "storage_reservation_count": 1,
+        "no_live_original_process": true
+      },
+      {
+        "job_id": "job-be86111ad00b",
+        "environment": "host-python",
+        "attempt_states": [
+          "succeeded"
+        ],
+        "actual_cpu_marker_once": true,
+        "storage_reservation_count": 1,
+        "no_live_original_process": true
+      },
+      {
+        "job_id": "job-cd6f404288e1",
+        "environment": "zdl-python",
+        "attempt_states": [
+          "prestart_deferred",
+          "succeeded"
+        ],
+        "actual_cpu_marker_once": true,
+        "storage_reservation_count": 1,
+        "no_live_original_process": true
+      }
+    ],
+    "root_checks": 42,
+    "browser_checks": 12,
+    "new_root_and_browser_runs": true,
+    "installed_source_manifest_matches": true,
+    "actual_device_request": {
+      "job_id": "job-50ef9f133b25",
+      "state": "cancelled",
+      "attempts": 0,
+      "queued_only_cancel": true,
+      "device_trace_captured": false
+    },
+    "validation_history": [
+      {
+        "job": "job-0f33b48fb9fa",
+        "result": "16cases/3testerrors from wrong summary field; fixed to user_reserved.npu, no production gate relaxation"
+      },
+      {
+        "job": "job-4f269835e272",
+        "result": "Broad admission glob included10two-slot cache cases under1CPU; fixture capacity rejected; final1242run uses2CPU and passes all"
+      },
+      {
+        "job": "job-a0940612667b",
+        "result": "Two planned actualSIGKILLs occurred; test starter misclassified immediate second fault as unexpected startup failure. Original DB reserved attempt retained; known objects cleaned before new fixture"
+      },
+      {
+        "job": "job-b5fe60731b01",
+        "result": "Pre-final-source HTTP/host/Docker recovery passed; final live-r3 repeats against dangling-intent and aging-proof corrections"
+      }
+    ],
+    "model_invocations": 0,
+    "npu_kernel_launches": 0,
+    "performance_qualified": false,
+    "production_ready": false,
+    "overall_goal_complete": false,
+    "known_limitations": [
+      "Cooperative same-UID trust domain, not Root device isolation",
+      "Fixed completed NPU observation refusal only; arbitrary query/transport errors do not requeue",
+      "Normal busy queues indefinitely without attempts, postallocation races are bounded to16deferrals",
+      "No real NPU trace/initialization/numerical/performance/simulation acceptance in this phase",
+      "Real host users/PID1,two physical hosts/fencing,20-user mixed and long-term capacity remain unverified"
+    ],
+    "source_scope_note": "All106 non-document CORE files and4 web assets match the fresh actual installed Root/browser archives and final full/live source. Documentation updated afterward; protected6 and APP4 unchanged. Cooperative observations are explicitly simulated; fixed CPU payloads do not qualify NPU or Root multiuser isolation."
   }
 }

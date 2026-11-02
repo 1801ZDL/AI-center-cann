@@ -59,6 +59,7 @@
     "attempt_inventory.py",
     "executor.py",
     "npu_admission.py",
+    "cooperative_start.py",
     "npu_device.py",
     "inputs.py",
     "jobs.py",
