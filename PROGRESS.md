@@ -1,5 +1,11 @@
 # 实施进度
 
+## 2026-11-03 历史引用只读审计与迁移合同（设计）
+
+在等待历史上限选择期间完成本项目Main的只读SQLite元数据及公开source引用审计：1000任务全部终止（617成功/211失败/165取消/7超时）、38逻辑owner、0活动/未知/库存hold/有效source grant；2个任务为已启用Node环境认证来源，291个被455个公开源码/报告文件中的至少一处引用，二者无交集。剩余707个只表示未命中这两类引用，不是可清理证明；没有遍历或导出任务载荷，没有读取会话或模型配置。初次脚本误把defaults返回tuple作为dict，修正解包后取得上述结果；生产代码及门禁未改。
+
+新增[HISTORY_CAPACITY.md](HISTORY_CAPACITY.md)定义待开发的控制历史/冷存载荷/内部验收证据分离、完整SHA、同操作ID恢复、引用及权限保护、备份最新性与验收要求。现有trash不释放历史计数，purge会删除原载荷，不能替代此合同。私有观察保存在runtime/systemd-pid1-20261103/history-reference-audit.json；未调整配置/预算、删除证据、创建新任务或重启服务。最终systemd回归和安装检查仍未执行。
+
 ## 2026-11-03 systemd只读预检与旧启动入口退役（最终安装验收待队列容量）
 
 新增 `systemd_preflight.py`、`servicectl systemd-doctor`、`doctor --require-systemd`，检查原生受保护的PID1/busctl及只读系统总线身份，报告cgroup挂载ro/rw；不加载/重载/启动unit、不修改账号/挂载/Docker。通过只代表前置条件可核实，实际unit/启动/委派/生产状态仍明确未验。普通文件安装与进程模式兼容，旧包不因缺少可选预检模块而被拒绝。

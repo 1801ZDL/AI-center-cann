@@ -1,6 +1,6 @@
 {
   "schema": "ai-center-cann-publication/v1",
-  "recorded_at": "2026-11-02T18:13:38.240191+00:00",
+  "recorded_at": "2026-11-02T18:22:17.022829+00:00",
   "files": {
     ".gitignore": {
       "sha256": "a6287d1d645bcba2ddfec87d1055724b00577eea69200b919302f4d46cf3680d",
@@ -23,8 +23,8 @@
       "mode": "100644"
     },
     "BACKLOG.md": {
-      "sha256": "dc1624197a0b88cdb657663df125020b07c1c4bdc318978c5f04b76832d00880",
-      "bytes": 16363,
+      "sha256": "40b2cedd1cce34c1b8db94185df7108e600903ea5833a816b3f3ff9fa9f50d6e",
+      "bytes": 16711,
       "mode": "100644"
     },
     "CACHE.md": {
@@ -97,6 +97,11 @@
       "bytes": 8818,
       "mode": "100644"
     },
+    "HISTORY_CAPACITY.md": {
+      "sha256": "0c910e3847a532b4b7adb3f475b110d6c00435137173fa8cb5ddc4d2c263048c",
+      "bytes": 7034,
+      "mode": "100644"
+    },
     "HTTPS.md": {
       "sha256": "9347b1d887cfac8a47abb122397ee2128af80d23c93789bd0f29dee90d6d42ab",
       "bytes": 6359,
@@ -163,8 +168,8 @@
       "mode": "100644"
     },
     "PROGRESS.md": {
-      "sha256": "dd4d2f7e0414a303f2014aa0ffaa84393f6fd41bd0e3870d39b0cac87882163f",
-      "bytes": 249653,
+      "sha256": "8327c2abbaf9f747860a827825904123c4161fcd0bfa45dff5f5ae82c6eb8186",
+      "bytes": 250850,
       "mode": "100644"
     },
     "README.md": {
@@ -2278,8 +2283,8 @@
       "mode": "100644"
     }
   },
-  "files_count": 455,
-  "total_bytes": 5831249,
+  "files_count": 456,
+  "total_bytes": 5839828,
   "known_private_values_checked": 3947,
   "private_fixture_files_considered": 5630,
   "model_keys_read": false,
