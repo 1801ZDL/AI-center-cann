@@ -19,6 +19,11 @@ def main():
     parser.add_argument('--controller-state',default=str(ROOT/'runtime'))
     sub=parser.add_subparsers(dest='action',required=True)
     sub.add_parser('identity')
+    command=sub.add_parser('device-evidence-add');command.add_argument('--spec',required=True)
+    command=sub.add_parser('device-evidence-list');command.add_argument('--limit',type=int,default=4);command.add_argument('--offset',type=int,default=0)
+    for action in ['enable','pause','retire']:
+        command=sub.add_parser('device-evidence-'+action);command.add_argument('policy_id')
+        if action=='enable':command.add_argument('--replace',action='append',default=[])
     command=sub.add_parser('device-schedule-add');command.add_argument('--spec',required=True)
     command=sub.add_parser('device-schedule-list');command.add_argument('--limit',type=int,default=4);command.add_argument('--offset',type=int,default=0)
     for action in ['enable','pause','retire']:
@@ -79,6 +84,16 @@ def main():
         command=sub.add_parser(action);command.add_argument('--config',required=True)
     args=parser.parse_args()
     if args.action=='identity':print(physical_identity());return
+    if args.action.startswith('device-evidence-'):
+        runtime=Path(args.controller_state).resolve();jobs=JobStore(runtime,read_json(runtime/'config.json'))
+        if args.action=='device-evidence-add':
+            from deployment import regular_json
+            path=Path(args.spec)
+            if path.lstat().st_uid!=os.geteuid():parser.error('Evidence policy must belong to this service administrator identity')
+            value=jobs.device_evidence.create(regular_json(path,max_bytes=65536,private=True))
+        elif args.action=='device-evidence-list':value=jobs.device_evidence.public(jobs.access.local,args.limit,args.offset)
+        else:value=jobs.device_evidence.control(args.policy_id,args.action.removeprefix('device-evidence-'),getattr(args,'replace',[]))
+        print(json.dumps(value,ensure_ascii=False,indent=2));return
     if args.action.startswith('device-schedule-'):
         runtime=Path(args.controller_state).resolve();jobs=JobStore(runtime,read_json(runtime/'config.json'))
         if args.action=='device-schedule-add':

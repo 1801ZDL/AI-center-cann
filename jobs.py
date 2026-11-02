@@ -161,6 +161,8 @@ class JobStore:
         self.source_grants=SourceGrants(self)
         from device_schedule import Schedules
         self.device_schedules=Schedules(self)
+        from device_evidence import Evidence
+        self.device_evidence=Evidence(self)
 
     def connect(self):
         self.control_filesystem.check()
@@ -388,7 +390,8 @@ class JobStore:
                     if principal.id not in profile['users']:continue
                     target=job.get('parameters',{}).get('node_id') if job.get('template') in {'environment_probe','npu_access_probe'} else None
                     if target and target!=node_id:continue
-                    node={'id':node_id,'profile':profile,'last_seen':seen,'report':json.loads(report)}
+                    node={'id':node_id,'profile':profile,'last_seen':seen,'report':json.loads(report),
+                          'device_qualifications':self.nodes.qualifications.records(node_id,db)}
                     domain=self.resources.get(profile['physical_id'],db);pool=domain['policy'];policy=profile['policy']
                     capacity=[]
                     if wanted['cpu']>len(set(policy['cpu_ids'])&set(pool['cpu_ids'])):capacity.append('CPU 数量超过节点与物理域共同上限')

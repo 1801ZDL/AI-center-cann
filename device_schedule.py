@@ -382,6 +382,7 @@ class Schedules:
                 for raw, in db.execute('SELECT record FROM device_schedule_runs WHERE plan_id=? ORDER BY rowid',(plan['id'],)).fetchall():
                     run=json.loads(raw)
                     candidate=self._step(db,identities,plan,run,epoch)
+                    self.jobs.device_evidence.record(plan,run,db)
                     if candidate:pending.append((run.get('last_submit_attempt',0),run['id'],candidate))
                     if plan['state']!='active' or epoch>run['deadline'] or run['state'] in {'access_failed','probe_limit'}:
                         for action in run['actions']:

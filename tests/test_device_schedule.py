@@ -116,6 +116,9 @@ class DailyTests(unittest.TestCase):
         self.epoch+=1801;self.tick();self.fixture.complete_probe();self.epoch+=1801;self.tick()
         self.assertEqual(len(self.jobs.all()),3);self.assertEqual(self.runs()[0]['state'],'probe_limit')
         self.assertEqual(self.jobs.get(ut['id'])['state'],'cancelled');self.assertFalse(self.jobs.attempts(ut['id']))
+        with self.jobs.connect() as db:check=self.jobs.device_evidence.latest(self.identifier,0,db)
+        self.assertEqual(check['state'],'probe_limit');self.assertFalse(check['bounded_microchecks_passed'])
+        self.assertIsNone(check['source_finished_at']);self.assertEqual(check['source_job_id'],ut['id'])
     def test_daily_budget_survives_pause_and_new_authorization_same_day(self):
         self.enable(device_ids=[0],daily_npu_seconds=300);self.tick();self.fixture.complete_probe();self.tick()
         self.assertEqual(self.plan()['total_seconds'],300)
@@ -200,6 +203,7 @@ class DailyTests(unittest.TestCase):
                   'devices':[{'id':i,'name':'Ascend-test','health':'Warning' if i==ids[0] else 'OK','process_count':0,'utilization_pct':0} for i in [0,1]]}
             self.fixture.beat(npu_observation=body)
         self.jobs.nodes.complete(self.node,{**auth,'artifacts':files,'result':{'status':'succeeded' if precision else 'failed','exit_code':0 if precision else 1,
+            'execution_finished_at':dt.datetime.fromtimestamp(self.epoch,dt.timezone.utc).isoformat(),
             'termination_confirmed':True,'execution_cleanup_confirmed':True,'npu_release_confirmed':True,'npu_release_basis':'clear-device-observation',
             'npu_admission_observation':reading,'npu_release_observation':reading}})
         self.tick();return self.jobs.get(grant['job_id']),self.runs()[0]

@@ -82,5 +82,5 @@ def protected(jobs,rows,physical_id,db,identities=None):
         if age(job,epoch)<threshold(jobs.policy):break
         target=valid_target(jobs,job,db,epoch)
         if (target and target['physical_id']==physical_id and not jobs.dispatch_permission(job,active,db,identities)
-            and not jobs.dependencies.reason(job,db)):return job
+            and not jobs.dependencies.reason(job,db) and not jobs.device_evidence.aging_blocked(job,target,db,identities)):return job
     return None

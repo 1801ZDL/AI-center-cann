@@ -476,6 +476,11 @@ class NodeRegistry:
                     checked=[(value,decision(node,job['owner'],value)) for value in npus]
                     npus=[value for value,status in checked if status['status']=='verified']
                     if checked and not npus and not reason:reason=checked[0][1]['reason']
+                if npus and self.jobs.device_evidence.eligible(job):
+                    evidence_cache={}
+                    checked=[(card,self.jobs.device_evidence.gate(job,node,card,db,identities,cache=evidence_cache)) for card in npus]
+                    npus=[card for card,block in checked if not block]
+                    if not npus and not reason:reason=checked[0][1]
                 if not reason and (npu.get('status')!='ok' or not fresh or not npus):reason='等待新鲜、健康且无占用的节点 NPU'
         try:self.jobs.payload.check()
         except JobError:reason='中央载荷文件系统不可用，暂停新执行且不释放原租约'
@@ -557,6 +562,10 @@ class NodeRegistry:
                 if wanted['npu']:
                     from npu_device import fingerprint
                     job['_npu_policy_sha256']=fingerprint(profile['npu'])
+                    from device_evidence import hardware
+                    try:job['_device_hardware_sha256']=hardware(node,npus[0])
+                    except (JobError,ValueError,KeyError,TypeError):pass
+                    self.jobs.device_evidence.reserve(job,node,db,identities)
                     from npu_conditions import capture
                     capture(job,node['report']['npu'])
                     if job.get('template')=='npu_access_probe' or job.get('template') in WORKFLOWS:
@@ -603,6 +612,10 @@ class NodeRegistry:
                 if reason in {HOLD,OWNER_HOLD,CONTROL_HOLD,AUDIT_HOLD}:
                     job['reason']=reason;job['_worker_seen']=time.time();self.jobs.write(db,job)
                     return {'start_permitted':False,'already_authorized':False,'wait':True,'reason':reason}
+                return {'start_permitted':False,'already_authorized':False,'reason':reason}
+            reason=self.jobs.device_evidence.start(job,self.node(node_id,db),db,identities)
+            if reason:
+                job['reason']=reason;job['_worker_seen']=time.time();self.jobs.write(db,job)
                 return {'start_permitted':False,'already_authorized':False,'reason':reason}
             job['_start_authorized']=True;job['_worker_seen']=time.time();self.jobs.write(db,job)
             return {'start_permitted':True,'already_authorized':False}
@@ -714,6 +727,8 @@ class NodeRegistry:
                     selected=selected_reading(job['allocation']['npu_ids'],(record['devices'],[]))
                     for item in selected:
                         source=next(row for row in record['devices'] if row['id']==item['id'])
+                        from npu_frequency import normalize as frequency_observation
+                        item['frequency']=frequency_observation(source.get('frequency'),item['id'],record['sampled_at'])
                         for key,lower,upper in [('temperature_c',-100,250),('power_w',0,100000)]:
                             value=source.get(key)
                             if type(value) in {int,float} and math.isfinite(value) and lower<=value<=upper:item[key]=value
@@ -721,7 +736,7 @@ class NodeRegistry:
                         'policy_sha256':record['policy_sha256'],'devices':selected}
                 except (KeyError,TypeError,ValueError,RuntimeError):raise JobError('Invalid NPU release observation',409) from None
             from npu_conditions import finalize
-            if result['status'] in TERMINAL:finalize(self.jobs,job,result)
+            if result['status'] in TERMINAL:finalize(self.jobs,job,result,db=db,identities=identities,node=self.node(node_id,db))
             # The original private receipt need not be duplicated in result.json;
             # only the normalized, attempt-bound central archive is public.
             result.pop('npu_admission_observation',None)

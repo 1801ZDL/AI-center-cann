@@ -111,7 +111,8 @@
     "placement.py",
     "npu_selfcheck.py",
     "device_schedule.py",
-    "npu_frequency.py"
+    "npu_frequency.py",
+    "device_evidence.py"
   ],
   "reproduced_by_public_ci": false,
   "raw_evidence_in_repository": false,

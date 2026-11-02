@@ -75,6 +75,8 @@ CORE.extend(['device_schedule.py','DEVICE_SCHEDULE.md'])
 OPTIONAL_ADMIN_FILES.update({'device_schedule.py','DEVICE_SCHEDULE.md'})
 CORE.extend(['npu_frequency.py','NPU_FREQUENCY.md'])
 OPTIONAL_ADMIN_FILES.update({'npu_frequency.py','NPU_FREQUENCY.md'})
+CORE.extend(['device_evidence.py','DEVICE_EVIDENCE.md'])
+OPTIONAL_ADMIN_FILES.update({'device_evidence.py','DEVICE_EVIDENCE.md'})
 
 
 class DeployError(ValueError):pass

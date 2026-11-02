@@ -92,6 +92,8 @@ class Lifecycle:
         if kind=='input' and any(json.loads(raw).get('input_id')==value and json.loads(raw)['state']!='retired'
             for raw, in db.execute('SELECT record FROM device_schedule_plans')):
             raise JobError('A retained daily microcheck plan still pins this sealed input',409)
+        if self.record(kind,value,db)['state']=='available' and self.jobs.device_evidence.pins(kind,value,db):
+            raise JobError('A retained self-check policy or active attempt pins this source archive',409)
         return subject
 
     def event(self,db,record,actor,action,detail=None):

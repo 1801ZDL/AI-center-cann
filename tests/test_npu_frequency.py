@@ -131,6 +131,8 @@ class FrequencyProtocolTests(unittest.TestCase):
         with patch.object(fixture.fixture,'reading',side_effect=observed):job,_,_=fixture.run_case('Alarm')
         evidence=json.loads((fixture.jobs.directory(job['id'])/'npu-conditions.json').read_text())
         self.assertEqual(evidence['summary']['frequency']['cards'][0]['min_mhz'],100)
+        self.assertEqual(evidence['boundaries']['release']['devices'][0]['frequency']['current_mhz'],100)
+        self.assertEqual(evidence['summary']['frequency']['cards'][0]['boundary_count'],2)
         self.assertFalse(evidence['summary']['frequency']['performance_qualified']);self.assertEqual(job['state'],'failed')
         self.assertEqual(job['device_conditions']['status'],'adverse_observed');self.assertEqual(len(fixture.jobs.attempts(job['id'])),1)
         row={'job_id':job['id'],'owner':job['owner'],'project':job['project'],'kind':'performance','name':'Synthetic frequency protocol',

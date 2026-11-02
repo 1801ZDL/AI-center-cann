@@ -13,7 +13,7 @@ SCHEMA='ascend-lab-npu-conditions/v1'
 FILE='npu-conditions.json'
 MAX_SAMPLES=64
 MAX_GAP_SECONDS=30
-DISCLAIMER='Discrete management snapshots only; no daily numerical or performance UT is linked. Running occupancy may be this task itself. Frequency snapshots, if present, do not certify stable timing or performance.'
+DISCLAIMER='Discrete management snapshots only; any linked daily microcheck covers its fixed bounded reference, not arbitrary numerics or performance. Running occupancy may be this task itself. Frequency snapshots do not certify stable timing.'
 
 
 def epoch(value):
@@ -95,7 +95,7 @@ def fallback(job):
         'daily_ut':'not_linked','note':DISCLAIMER}
 
 
-def finalize(jobs,job,result):
+def finalize(jobs,job,result,*,db=None,identities=None,node=None):
     """Central metadata is outside the Node upload manifest, with its own SHA."""
     from jobs import atomic_json,now
     summary=fallback(job)
@@ -140,6 +140,10 @@ def finalize(jobs,job,result):
         snapshot_count=trace.get('sample_count',0)+len(boundaries),frequency_mhz=None)
     from npu_frequency import summary as frequency_summary
     summary['frequency']=frequency_summary(trace,boundaries,job['allocation']['npu_ids'])
+    if db is not None and identities is not None and node is not None:
+        linked=jobs.device_evidence.finish(job,result,node,db,identities,summary['status'])
+        if linked is not None:
+            summary['selfcheck']=linked;summary['daily_ut']=linked['status']
     document={'schema':SCHEMA,'source':'controller-normalized authenticated Node management evidence',
         'scope':'reservation through terminal completion; includes preparation and artifact transfer, not only execution',
         'job_id':job['id'],'attempt_id':job['attempt_id'],'node_id':job['node_id'],
