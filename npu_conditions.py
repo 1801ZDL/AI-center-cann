@@ -99,6 +99,10 @@ def finalize(jobs,job,result,*,db=None,identities=None,node=None):
     """Central metadata is outside the Node upload manifest, with its own SHA."""
     from jobs import atomic_json,now
     summary=fallback(job)
+    from npu_measurement import normalize as measurement_windows
+    measured=measurement_windows(job,result.pop('measurement_evidence',None),job.get('_npu_conditions'),result.get('execution_finished_at'))
+    if measured is not None:
+        summary['measurement']=measured;result['measurement_windows']=measured
     if summary['status']=='not_applicable':
         job['device_conditions']=summary
         return summary
@@ -116,6 +120,9 @@ def finalize(jobs,job,result,*,db=None,identities=None,node=None):
     if not job.get('_start_authorized'):reasons.append('no_start_authorization')
     if result.get('npu_release_basis')=='no-container-start-intent':reasons.append('no_container_start_intent')
     alerts=trace.get('alert_sample_count',0)
+    if measured is not None:
+        alerts+=measured.get('observed_alerts',0)
+        if measured['status']=='unconfirmed':reasons.append('measurement_window_unconfirmed')
     for name,reading in boundaries.items():
         if any(row['health'] in {'Warning','Alarm'} for row in reading['devices']):alerts+=1
         if any(row['health']=='UNKNOWN' for row in reading['devices']):reasons.append(name+'_unknown_health')

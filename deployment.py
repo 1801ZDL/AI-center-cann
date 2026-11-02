@@ -77,6 +77,8 @@ CORE.extend(['npu_frequency.py','NPU_FREQUENCY.md'])
 OPTIONAL_ADMIN_FILES.update({'npu_frequency.py','NPU_FREQUENCY.md'})
 CORE.extend(['device_evidence.py','DEVICE_EVIDENCE.md'])
 OPTIONAL_ADMIN_FILES.update({'device_evidence.py','DEVICE_EVIDENCE.md'})
+CORE.extend(['npu_measurement.py','NPU_MEASUREMENT.md'])
+OPTIONAL_ADMIN_FILES.update({'npu_measurement.py','NPU_MEASUREMENT.md'})
 
 
 class DeployError(ValueError):pass

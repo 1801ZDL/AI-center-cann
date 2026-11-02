@@ -169,7 +169,8 @@ def handler_class(store, config, jobs=None):
                     from npu_conditions import CAPABILITY as CONDITIONS
                     from npu_frequency import CAPABILITY as FREQUENCY
                     from device_evidence import CAPABILITY as SELFCHECK
-                    value['npu_condition_capabilities']=[CONDITIONS,FREQUENCY,SELFCHECK]
+                    from npu_measurement import CAPABILITY as MEASUREMENT
+                    value['npu_condition_capabilities']=[CONDITIONS,FREQUENCY,SELFCHECK,MEASUREMENT]
                     from dependency_conditions import CAPABILITY as TERMINAL_HANDOFF
                     value['dependency_capabilities']=[TERMINAL_HANDOFF]
                     from source_grants import CAPABILITY as SOURCE_GRANTS

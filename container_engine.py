@@ -85,7 +85,7 @@ class DockerAttempt:
         self.scratch=self.artifacts.parent/'export-scratch'
         self.state_path=self.control/'state.json'
         self.name='ascend-lab-'+attempt[8:]
-        self.log_process=None;self.log_threads=[];self.log_error=None
+        self.log_process=None;self.log_threads=[];self.log_error=None;self.measurements=None
         saved=read_json(self.control/'grant.json')
         if saved and saved!=grant:raise ValueError('Attempt grant changed; refusing another execution')
         atomic_json(self.control/'grant.json',grant)
@@ -107,6 +107,16 @@ class DockerAttempt:
             self.spool_anchor.__exit__(None,None,None);self.spool_anchor=None
 
     def save(self):atomic_json(self.state_path,self.state)
+
+    def open_measurements(self):
+        if not self.grant.get('measurement_contract') or self.measurements is not None:return
+        from npu_measurement import Broker
+        broker=Broker(self.control,self.grant,self.config['users'][self.grant['owner']]['uid'])
+        broker.policy=self.config.get('npu')
+        self.measurements=broker.open()
+
+    def close_measurements(self):
+        if self.measurements is not None:self.measurements.close()
 
     def binding(self):
         from docker_runtime import discover,DockerRuntimeError
@@ -207,6 +217,9 @@ class DockerAttempt:
                 'image_sha256':self.config['image'],'environment_setup':self.config.get('environment_setup'),
                 **({'input':self.grant['input']} if self.grant.get('input') else {})}
         public['artifact_limits']=self.grant.get('artifact_limits',{'file_mib':64,'total_mib':128})
+        if self.measurements:
+            shutil.copyfile(ROOT/'npu_measurement.py',self.payload/'npu_measurement.py');(self.payload/'npu_measurement.py').chmod(0o444)
+            public['measurement']=self.measurements.public()
         if self.workspace:public['workspace_identity']=self.state['workspace_identity']
         if self.cache:public['cache_identity']=self.state['cache_identity']
         npu_args=[]
@@ -238,6 +251,7 @@ class DockerAttempt:
               *(['--mount','type=bind,src='+str(self.cache.path)+',dst=/cache'] if self.cache else []),
               *(['--mount','type=bind,src='+str(self.input_bind)+',dst=/inputs,readonly'] if self.grant.get('input') else []),
               *(['--mount','type=bind,src='+str(self.receipt)+',dst=/receipt'] if self.protected_receipt else []),
+              *(['--mount','type=bind,src='+str(self.measurements.directory)+',dst=/lab-measurement,readonly'] if self.measurements else []),
               *npu_args,
               '--entrypoint',self.config.get('python','/usr/bin/python3'),self.config['image'],
               '-I','-B','/payload/container_entry.py']
@@ -373,6 +387,8 @@ class DockerAttempt:
                 'termination_confirmed':True,'oom_killed':info['State'].get('OOMKilled',False)}
             self.save()
         result=dict(self.state['execution_result'])
+        self.close_measurements()
+        if self.measurements:result['measurement_evidence']=self.measurements.document()
         self.prepare_spool();self.log_error=None;self.follow_logs()
         if self.log_process:
             try:self.log_process.wait(timeout=5)

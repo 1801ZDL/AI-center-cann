@@ -121,10 +121,18 @@ def run():
             report['checks'].append({'name':case['name'],'dtype':case['dtype'],
                 'values':[x if math.isfinite(x) else 'nan' if math.isnan(x) else 'inf' if x>0 else '-inf' for x in values]})
         timing={'method':'npu-events','workload':'mm512_float16','warmup':WARMUP,'status':'unavailable','rounds_us':[]}
+        marker=None;window={'id':'mm512_fp16','begin':'unsupported','end':'not_requested'}
         try:
             a=torch.ones((512,512),device='npu:0',dtype=torch.float16);b=a.clone();out=torch.empty_like(a)
             for _ in range(WARMUP):torch.mm(a,b,out=out)
             npu.synchronize()
+            if Path('/payload/npu_measurement.py').is_file():
+                import runpy
+                marker=runpy.run_path('/payload/npu_measurement.py')['request']
+                try:
+                    reply=marker('begin',window['id']);window['begin']=reply.get('status','unavailable')
+                    if reply.get('ok') is not True:marker=None
+                except Exception:window['begin']='unavailable';marker=None
             for _ in range(ROUNDS):
                 samples=[]
                 for _ in range(SAMPLES):
@@ -136,6 +144,11 @@ def run():
                 timing['rounds_us'].append(samples)
             timing['status']='collected'
         except Exception as error:timing['error']=type(error).__name__+': '+str(error)[:300]
+        finally:
+            if marker:
+                try:window['end']=marker('end',window['id']).get('status','unavailable')
+                except Exception:window['end']='unavailable'
+            timing['measurement_window']=window
     report['timing']=timing;validation=validate_report(report)
     target=Path('/work')/REPORT;target.parent.mkdir(mode=0o700,parents=True,exist_ok=True)
     target.write_text(json.dumps(report,allow_nan=False)+'\n')

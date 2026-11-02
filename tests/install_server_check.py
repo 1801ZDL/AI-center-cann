@@ -22,7 +22,7 @@ from jobs import atomic_json,now
 from deployment import bundle,unpack_release
 from backends import physical_identity
 
-arguments=argparse.ArgumentParser();arguments.add_argument('--large-wheel');arguments.add_argument('--https-network',action='store_true');arguments.add_argument('--disk-workspace',action='store_true');arguments.add_argument('--user-quota-workspace',action='store_true');arguments.add_argument('--storage-pressure',action='store_true');arguments.add_argument('--control-storage-pressure',action='store_true');arguments.add_argument('--central-payload',action='store_true');arguments.add_argument('--central-owner-quotas',action='store_true');arguments.add_argument('--node-spool-pressure',action='store_true');arguments.add_argument('--persistent-cache',action='store_true');arguments.add_argument('--dependencies',action='store_true');arguments.add_argument('--input-durability',action='store_true');arguments.add_argument('--native-toolchain',action='store_true');arguments.add_argument('--payload-quota-resize',action='store_true');arguments.add_argument('--node-quota-resize',action='store_true');arguments.add_argument('--deadline-limit',action='store_true');arguments.add_argument('--operator-analysis');arguments.add_argument('--operator-image');arguments.add_argument('--compiler-case');arguments.add_argument('--large-compiler-case');arguments.add_argument('--accuracy-case');arguments.add_argument('--terminal-handoff');arguments.add_argument('--source-grants');arguments.add_argument('--simulation-case');arguments.add_argument('--report-view');arguments.add_argument('--native-control',action='store_true');arguments.add_argument('--audit-retention',action='store_true');arguments.add_argument('--browser-workflow',action='store_true');arguments.add_argument('--experiment-budget',action='store_true');arguments.add_argument('--device-schedule',action='store_true');arguments.add_argument('--device-evidence',action='store_true');options=arguments.parse_args()
+arguments=argparse.ArgumentParser();arguments.add_argument('--large-wheel');arguments.add_argument('--https-network',action='store_true');arguments.add_argument('--disk-workspace',action='store_true');arguments.add_argument('--user-quota-workspace',action='store_true');arguments.add_argument('--storage-pressure',action='store_true');arguments.add_argument('--control-storage-pressure',action='store_true');arguments.add_argument('--central-payload',action='store_true');arguments.add_argument('--central-owner-quotas',action='store_true');arguments.add_argument('--node-spool-pressure',action='store_true');arguments.add_argument('--persistent-cache',action='store_true');arguments.add_argument('--dependencies',action='store_true');arguments.add_argument('--input-durability',action='store_true');arguments.add_argument('--native-toolchain',action='store_true');arguments.add_argument('--payload-quota-resize',action='store_true');arguments.add_argument('--node-quota-resize',action='store_true');arguments.add_argument('--deadline-limit',action='store_true');arguments.add_argument('--operator-analysis');arguments.add_argument('--operator-image');arguments.add_argument('--compiler-case');arguments.add_argument('--large-compiler-case');arguments.add_argument('--accuracy-case');arguments.add_argument('--terminal-handoff');arguments.add_argument('--source-grants');arguments.add_argument('--simulation-case');arguments.add_argument('--report-view');arguments.add_argument('--native-control',action='store_true');arguments.add_argument('--audit-retention',action='store_true');arguments.add_argument('--browser-workflow',action='store_true');arguments.add_argument('--experiment-budget',action='store_true');arguments.add_argument('--device-schedule',action='store_true');arguments.add_argument('--device-evidence',action='store_true');arguments.add_argument('--measurement-windows',action='store_true');options=arguments.parse_args()
 assert not options.device_evidence or (options.device_schedule and options.user_quota_workspace), 'Evidence guards use the separate CPU daily-history/UID fixture'
 assert not options.native_control or not any([options.control_storage_pressure,options.central_payload,options.operator_analysis,options.https_network,options.large_wheel]), 'Native control uses its independent own disks and CPU fixture'
 assert not options.audit_retention or options.native_control, 'Audit crash/restore proof uses the isolated native control fixture'
@@ -80,7 +80,7 @@ containers=[];volumes=[];networks=[];stopped_main=False;checks=[];token=None;tls
 retention_proof={};mount_proof={};owned_disk=None;pressure_disk=None;pressure_volume=None;storage_pressure=None;control_storage_pressure=None;spool_disk=None
 central_disks=[];central_volumes=[];payload_args=[];payload_contracts=[];central_proof=None
 native_control_volumes=[];native_control_proof=None;browser_workflow_proof=None;experiment_budget_proof=None
-group_pressure={};quota_resize_proof=None;node_quota_proof=None;deadline_proof=None;operator_proof=None;compiler_proof=None;large_compiler_proof=None;accuracy_proof=None;terminal_handoff_proof=None;source_grant_proof=None;simulation_proof=None;report_view_proof=None;device_schedule_proof=None;device_evidence_proof=None
+group_pressure={};quota_resize_proof=None;node_quota_proof=None;deadline_proof=None;operator_proof=None;compiler_proof=None;large_compiler_proof=None;accuracy_proof=None;terminal_handoff_proof=None;source_grant_proof=None;simulation_proof=None;report_view_proof=None;device_schedule_proof=None;device_evidence_proof=None;measurement_proof=None
 node_spool_pressure=None;cache_disk=None;cache_volume=None;cache_policy=None;cache_proof=None;dependency_proof=None;input_durability=None;native_proof=None
 controller_url=('https://controller.lab:' if https else 'http://127.0.0.1:')+str(port)
 outer_url=('https' if https else 'http')+'://127.0.0.1:'+str(port)
@@ -603,6 +603,10 @@ try:
     assert env['node_spool']['enforced'] and env['node_spool']['bytes']==spool_policy['bytes']
     assert b'arith.constant 42' in api('/api/jobs/'+first['id']+'/artifact?name=ir%2Fcanonical.mlir',raw=True)[1]
     check('Installed services execute actual BishengIR transform as UID23003 and return protected evidence through HTTP')
+    if options.measurement_windows:
+        sys.path.insert(0,str(ROOT/'tests'));from installed_measurement_check import run as measurement_run
+        measurement_proof=measurement_run(globals())
+        check('Actual CPU marker socket binds task UID; idempotent begin and Worker restart preserve original container and unconfirmed window')
     if options.device_schedule:
         sys.path.insert(0,str(ROOT/'tests'));from installed_device_schedule_check import run as device_schedule_run
         device_schedule_proof=device_schedule_run(globals())
@@ -1051,6 +1055,10 @@ try:
         from installed_device_schedule_check import after_restore as device_schedule_after_restore
         device_schedule_proof['after_restore']=device_schedule_after_restore(globals(),device_schedule_proof)
         check('Latest restore freezes daily approvals and preserves synthetic charges; old plan cannot be reenabled')
+    if measurement_proof:
+        from installed_measurement_check import after_restore as measurement_after_restore
+        measurement_proof['after_restore']=measurement_after_restore(globals(),measurement_proof)
+        check('Restored CPU marker archives retain exact original windows and IR without new execution or device qualification')
     if device_evidence_proof:
         from installed_device_evidence_check import after_restore as evidence_after_restore
         device_evidence_proof['after_restore']=evidence_after_restore(globals(),device_evidence_proof)
@@ -1135,6 +1143,7 @@ try:
             'controller_install_uid':installed['uid'],'controller_install_gid':installed['gid'],'node_uid':0,'task_uid':23003,
             **({'device_schedule':device_schedule_proof} if device_schedule_proof else {}),
             **({'device_evidence':device_evidence_proof} if device_evidence_proof else {}),
+            **({'measurement_windows':measurement_proof} if measurement_proof else {}),
             'initial_release':v1['release_id'],'upgrade_release':v2['release_id'],'job_ids':[first['id'],limited_job['id'],second['id']],
             'workspace_probe':quota,'workspace_provider':'per-UID hard quotas on one dedicated ext4 filesystem' if user_quota else 'dedicated file-backed ext4 on disk; not a physical partition or project quota' if disk else 'dedicated tmpfs filesystem; disk-backed ext4 not tested; XFS quota provider not implemented',
             **({'user_quota_workspace':{'prepared_slots':slots,'peer_job_id':peer_job['id'],'peer_task_uid':23004,'cross_owner_jobs_hidden':True,'peer_after_limit_cleanup':True,'root_query_capability':True,'root_fixture_seccomp_unconfined':True,'user_task_capabilities_unchanged':True,'plan_readonly':True,'completed_prepare_idempotent':True}} if user_quota else {}),

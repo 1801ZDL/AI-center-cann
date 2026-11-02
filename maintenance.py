@@ -405,6 +405,12 @@ def require_control_storage(config,role,manifest):
 def require_features(state,role,manifest,installation=None):
     config=read_json(Path(state)/'config.json') or {}
     require_control_storage(config,role,manifest)
+    if role=='controller' and 'npu_measurement.py' not in manifest.get('files',{}):
+        path=Path(state)/'jobs.sqlite3'
+        if path.exists():
+            with sqlite3.connect(path.as_uri()+'?mode=ro',uri=True) as db:
+                if any(json.loads(raw).get('_measurement_contract') for raw, in db.execute('SELECT data FROM jobs')):
+                    raise DeployError('Retained measurement attempt evidence requires compatible code; refusing downgrade')
     if role=='controller' and 'device_evidence.py' not in manifest.get('files',{}):
         path=Path(state)/'jobs.sqlite3'
         if path.exists():

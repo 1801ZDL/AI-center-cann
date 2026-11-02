@@ -1,5 +1,25 @@
 # 实施进度
 
+## 任务测量窗口、边界观测与原尝试恢复（2026-11-02）
+
+**最终1147项/234.659秒/零跳过及JS语法通过，同机隔离Root安装39项、网页10项通过。** full `job-a7ad9681fa4c`、Root `job-bbd49f2163a9`、browser `job-e7d845a1da55`；103个非文档CORE、240个测试/辅助文件、4个网页资产及agent_runner冻结核对，Root/browser包生产文件和网页逐项一致。新增非单测browser helper在full期间补齐，CORE/web/单测源码均未改变。protected6和固定镜像APP4未改，无镜像重建、模型或NPU kernel调用。
+
+新增[npu_measurement.py与NPU_MEASUREMENT.md](NPU_MEASUREMENT.md)，可选npu-measurement-window-v1以Node源码SHA协商并冻结到原grant。任务只能请求本attempt的begin/end标记，由Node自己的UTC/monotonic时钟记录，前后只读查询位于请求窗口外。实际GPU工作由程序负责同步和选择区间，Node记录不等于GPU/Event时间证明。固定微自检在预热/同步后请求一个mm512_fp16窗口，原30份Event样本保留；旧Node和接口中断单独记录unsupported/unconfirmed，不升级性能资格。
+
+每attempt独立Unix socket及令牌，只读挂载、任务UID/SO_PEERCRED和job/attempt校验，不传NodeKey或Docker socket。最多4个不重叠窗口、8次固定设备观测尝试、32条连接，没有任意查询或执行参数。相同ID的请求返回原回执，先持久意图/扣查询计数再读管理状态；重启不重发未知查询，未闭合窗口记interrupted，原任务继续监管。独占本地锁和保留端点身份保护原socket。CPU窗口不申请设备、不查询NPU。
+
+中央从认证Node完成消息独立规范身份、源码和时间，去掉通信令牌/回执及非分配卡/PID/命令，归档到原条件/结果。全任务低频与窗口内快照分别保留；只有管理及频率各自时间戳确实位于窗口内才计数，裁剪历史标不完整，不用边界读数补造稳定频率。窗口缺失/非法/中断保持未确认，窗口观测的告警进入设备条件；原精度断言、性能样本和终态保留，performance_qualified始终false。保留窗口历史时，缺支持模块的旧中央代码不能激活。
+
+19项新检查覆盖真实本地socket、身份与源码绑定、幂等/上限、查询失败、重启、外来端点/重复监听拒绝、旧close不能回写新journal、独立时间戳/裁剪、CPU不查设备及认证Node协议→原性能均值30.5/归档/降级保护。设备观测是合成。真实网页打包/HTTP/归档SHA/CSV/权限和手机宽度10项：全任务100–1650MHz与窗口内1650–1650MHz快照分列，完成/中断与原通过/均值分列，无写入/外部/模型请求。数据不是真机性能采样。
+
+Root39保留原Controller999/Node0、Tasks23003与23004的真实BishengIR、字节/inode配额、缓存和恢复演练；新增两个实际CPU窗口任务都生成42IR。真实任务重复begin返回同一回执；临时放宽本fixture端点DAC后，UID23004即使持有同容器可读的作用域令牌仍被SO_PEERCRED拒绝。窗口打开后停止/重启Node，容器ID/StartedAt不变，原任务单attempt成功，窗口为interrupted，0NPU查询。恢复后原窗口和IR保持一致；不是两台物理机、真实宿主账号、NPU窗口或PID1验收。Primary独立核原/导出恢复SQLite、原两UID保留42IR、两新任务的合同SHA/只读挂载、原结果JSON与表格、私有journal及端点移除。3个loop释放，自有fixture容器/卷空，backing证据留存。
+
+本轮实际队列只读查询 `job-e3796b283f43` 在上海时间约17:56记录两卡都有进程：物理0 Alarm、1650/1650MHz；物理1 OK、1650/1650MHz。没有将历史100MHz当作恒定状态，也未在占用设备上启动新计算、改频/reset或终止进程。该采样验证管理读取，不能认定设备可用于数值/性能。Main配置/19profiles/物理域/zdl运行与资源值未改，0非终态/holds/计划/规则；新接口cap实际读回，不自动升级旧常驻Node或启用日程。
+
+中间专项扩展发现认证完成消息的原字段白名单漏接measurement_evidence，19项中一项显示missing_node_evidence；保持未确认而非误通过。补入Node专有字段后19项通过，最终1147覆盖后续规范来源字段。所有原请求/日志保留在runtime/performance-window-20261102；私有evidence/measurement-window-validation.json含独立原/恢复数据库与归档核验，公开仅整理摘要。
+
+下一优先为明确获批的同卡/同环境性能基线、窗口与实际Event对应、非root真机精度/性能/仿真及设备异常归因；中断窗口的零散边界还可进一步单独保留和呈现，但不能据此恢复一个完整区间。真实宿主用户/PID1、两物理机fencing、约20人混合峰值和长期运维仍待，整体目标未完成。PUBLIC-001夜间PR归因继续延期。
+
 ## 业务任务关联固定逐卡自检证据（2026-11-02）
 
 **最终1128项/227.077秒/零跳过及JS语法通过，同机隔离Root安装37项、网页12项通过。** full `job-a445d3fede51`、Root `job-c647cfaf727f`、browser `job-197f76fa1ec7`。102个非文档CORE、237个测试/辅助文件、4个网页资产与agent_runner按final-frozen-r3核对；最终Root/browser包生产文件与网页逐项一致。protected6及固定镜像APP4未改，无镜像重建、新模型或NPU kernel调用。

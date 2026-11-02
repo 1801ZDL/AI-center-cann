@@ -245,6 +245,10 @@ class NodeRegistry:
         if cpu is not None and (isinstance(cpu,bool) or not isinstance(cpu,(int,float)) or not math.isfinite(cpu) or not 0<=cpu<=100):raise JobError('Invalid node CPU observation')
         report['host_cpu_utilization_pct']=cpu
         report['capabilities']=sorted((REQUIRED_CAPABILITIES|CAPABILITIES|{MULTI_SLOT})&set(body.get('capabilities',[])))
+        from npu_measurement import CAPABILITY as MEASUREMENT
+        if MEASUREMENT in body.get('capabilities',[]):
+            if not re.fullmatch('[0-9a-f]{64}',str(body.get('measurement_source_sha256'))):raise JobError('Invalid measurement runtime identity')
+            report['capabilities'].append(MEASUREMENT);report['measurement_source_sha256']=body['measurement_source_sha256']
         if DEADLINE_CAPABILITY in body.get('capabilities',[]):report['capabilities'].append(DEADLINE_CAPABILITY)
         from node_storage import CAPABILITY as SPOOL
         if SPOOL in body.get('capabilities',[]):
@@ -341,6 +345,7 @@ class NodeRegistry:
                 **({'input':job['input']} if job.get('input') else {}),
                 **({'runtime_files':job['runtime_files']} if job.get('runtime_files') else {}),
                 **({'environment_sha256':job['environment_sha256']} if job.get('environment_sha256') else {}),
+                **({'measurement_contract':job['_measurement_contract']} if job.get('_measurement_contract') else {}),
                 'node_policy_revision':job.get('node_policy_revision',1),
                 **({'npu_policy_sha256':job['_npu_policy_sha256']} if job.get('_npu_policy_sha256') else {}),
                 **({'npu_access_context_sha256':job['_npu_access_context']} if job.get('_npu_access_context') else {}),
@@ -551,6 +556,10 @@ class NodeRegistry:
                 if profile.get('environment_manifest') and job.get('template') in WORKFLOWS:
                     from environment_contract import fingerprint as environment_fingerprint
                     job['environment_sha256']=environment_fingerprint(profile['environment_manifest'])
+                from npu_measurement import CAPABILITY as MEASUREMENT,contract as measurement_contract
+                if (job.get('template') in WORKFLOWS and MEASUREMENT in node['report'].get('capabilities',[])
+                    and node['report'].get('measurement_source_sha256')==measurement_contract()['source_sha256']):
+                    job['_measurement_contract']=measurement_contract()
                 if wanted['npu'] and npus:
                     job['allocation']['npu_name']=next(item.get('name','UNKNOWN') for item in node['report']['npu']['devices'] if item['id']==npus[0])
                 if workspace:
@@ -716,6 +725,7 @@ class NodeRegistry:
                 if entry.get('size')!=uploaded[entry['name']] or digest.hexdigest()!=entry.get('sha256'):raise JobError('Artifact checksum mismatch',409)
             if result['status']=='succeeded' and 'environment.json' not in uploaded:raise JobError('Missing execution environment evidence')
             allowed={'status','exit_code','started_at','finished_at','reason','termination_confirmed','execution_cleanup_confirmed','execution_finished_at','oom_killed','failure_stage','execution_status','npu_release_confirmed','npu_release_observation','npu_release_basis','npu_admission_observation','workspace_release_confirmed','cache_release_confirmed'}
+            allowed.add('measurement_evidence')
             result={key:value for key,value in result.items() if key in allowed}
             if not job['resources']['npu']:
                 result.pop('npu_release_confirmed',None);result.pop('npu_release_observation',None);result.pop('npu_release_basis',None);result.pop('npu_admission_observation',None)

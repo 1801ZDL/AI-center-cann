@@ -29,7 +29,7 @@
 
 ## PUBLIC-002 每日逐卡自检与结果可信度保护（被动证据、主动配方与可选中央日程已有，真机资格待验）
 
-用户报告NPU状态异常可能污染精度和性能数据，需要每日对服务器每张卡运行UT防护。已有[NPU_SELFCHECK.md](NPU_SELFCHECK.md)精确Node/物理卡选择、固定六个NPU微用例、按UTC日期幂等提交与CPU归档重算；[NPU_CONDITIONS.md](NPU_CONDITIONS.md)提供被动管理证据、结果分列与缺项/告警保护。[DEVICE_SCHEDULE.md](DEVICE_SCHEDULE.md)新增本地管理员明确批准的中央日程状态机：机器人/项目、空闲窗口、前台优先、身份/硬件上下文、有限复探、跨日未知任务不替换、日与累计预算及恢复保护，网页沿原权限只读展示。当前未创建或启用真实计划、cron/timer或新NPU工作负载，执行协议中的设备捕获仍为合成。[NPU_FREQUENCY.md](NPU_FREQUENCY.md)已有AI-core额定/当前频率适配、缺项/极值保留及两卡实际只读管理采样；[DEVICE_EVIDENCE.md](DEVICE_EVIDENCE.md)新增可选项目/Node规则，在领取、启动和结果中关联固定微用例的原job/attempt、实际执行结束时间和有效期；已验证合成协议、网页及同机Root恢复保护。规则默认关闭，不能认定完整硬件或性能资格。获批性能基线、真实NPU任务正向、实际计时窗口对齐及规则真机正向继续待验。此项独立于PUBLIC-001的编译器PR归因，不宜把个人CLI直接配置为无人监督cron。
+用户报告NPU状态异常可能污染精度和性能数据，需要每日对服务器每张卡运行UT防护。已有[NPU_SELFCHECK.md](NPU_SELFCHECK.md)精确Node/物理卡选择、固定六个NPU微用例、按UTC日期幂等提交与CPU归档重算；[NPU_CONDITIONS.md](NPU_CONDITIONS.md)提供被动管理证据、结果分列与缺项/告警保护。[DEVICE_SCHEDULE.md](DEVICE_SCHEDULE.md)新增本地管理员明确批准的中央日程状态机：机器人/项目、空闲窗口、前台优先、身份/硬件上下文、有限复探、跨日未知任务不替换、日与累计预算及恢复保护，网页沿原权限只读展示。当前未创建或启用真实计划、cron/timer或新NPU工作负载，执行协议中的设备捕获仍为合成。[NPU_FREQUENCY.md](NPU_FREQUENCY.md)已有AI-core额定/当前频率适配、缺项/极值保留及两卡实际只读管理采样；[DEVICE_EVIDENCE.md](DEVICE_EVIDENCE.md)新增可选项目/Node规则，在领取、启动和结果中关联固定微用例的原job/attempt、实际执行结束时间和有效期；已验证合成协议、网页及同机Root恢复保护。规则默认关闭，不能认定完整硬件或性能资格。[NPU_MEASUREMENT.md](NPU_MEASUREMENT.md)已有任务请求窗口、Node时钟/边界观测、窗口内离散样本及中断保护；已验证真实CPU UID/IPC/原容器重启和合成设备窗口。获批性能基线、真实NPU任务正向、GPU Event与窗口的实际对应及规则真机正向继续待验。此项独立于PUBLIC-001的编译器PR归因，不宜把个人CLI直接配置为无人监督cron。
 
 建议拆成被动观测与主动固定用例两层：先记录驱动健康/告警、温度、实际频率、占用和设备标识；再通过中央队列逐卡独占申请，用冻结的已知正常工具链/二进制、固定种子和参考值运行小规模精度用例及稳定性能基线。每天只触发提交，忙卡继续等待，过期/未测不得显示通过。不能因管理查询成功或util=0就认定卡可用于可信测量，也不能将正在运行的其他用户任务终止或把不受控外部占用当作空闲。
 

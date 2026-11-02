@@ -18,6 +18,8 @@
 | unverified | 历史任务没有本协议证据 |
 | not_applicable | 未申请NPU，不证明任何设备已通过 |
 
-所有NPU状态仍保留 numerical_qualification=unverified、performance_qualification=unverified 和 daily_ut=not_linked。管理状态正常不能替代已知正确参考和稳定性能用例，出现告警也不能直接归因为设备硬件故障、编译器回归或算子bug。SHA用于归档完整性绑定，不是独立硬件证明。
+所有NPU状态仍保留 numerical_qualification=unverified、performance_qualification=unverified。daily_ut默认not_linked；可选[项目自检规则](DEVICE_EVIDENCE.md)仅关联固定有限参考，不授予通用数值/性能资格。管理状态正常不能替代已知正确参考和稳定性能用例，出现告警也不能直接归因为设备硬件故障、编译器回归或算子bug。SHA用于归档完整性绑定，不是独立硬件证明。
+
+可选[测量窗口](NPU_MEASUREMENT.md)在同一attempt下记录任务请求的标记、Node时间、窗口外的前后读数及确实位于区间内的心跳/频率。全任务低频仍保留，窗口内快照另列，不能互相补造。窗口中断、缺失或时钟不一致保持未确认，原性能样本/精度断言不变。窗口内外观测到的Warning/Alarm进入条件告警，但不自动进行硬件故障归因或重置设备。
 
 本能力可随中央/Node分别升级；新Node声明npu-condition-evidence-v1。旧Node缺少启动前凭证时结果不完整，原准入/终止/设备清退合同不放宽；能力缺少不阻断已许可任务的归档和恢复。旧协作式Docker不生成本可信协议证据，不能因其结果JSON自报健康而升级为已验证。新机仍须验证真实非root设备访问、精度/性能/仿真、目标驱动上的频率适配、性能计时窗口及每日主动UT。
