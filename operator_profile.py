@@ -99,6 +99,9 @@ def comparison(before,after):
     if len(set(clocks))!=1:blockers.append('different_or_unstable_core_frequency')
     if before['input_shapes']!=after['input_shapes'] or not before['input_shapes']:blockers.append('different_or_missing_shapes')
     if before['input_dtypes']!=after['input_dtypes'] or not before['input_dtypes']:blockers.append('different_or_missing_dtypes')
+    if any(len(v['input_shapes'])>1 for v in [before,after]):blockers.append('mixed_input_shapes')
+    if any(len(v['input_dtypes'])>1 for v in [before,after]):blockers.append('mixed_input_dtypes')
+    if any(len(v['csv_device_ids'])!=1 for v in [before,after]):blockers.append('mixed_csv_devices')
     if not before['correctness_claim'] or not after['correctness_claim']:blockers.append('correctness_not_claimed_passed')
     same_binary=before['elf_sha256_claim']==after['elf_sha256_claim']
     if same_binary:blockers.append('same_binary_does_not_establish_a_compiler_optimization')
@@ -115,16 +118,42 @@ def validate_report(value):
         or not isinstance(value.get('comparison'),dict) or 'optimization_speedup' not in value['comparison']
         or value['comparison']['optimization_speedup'] is not None or not isinstance(value['comparison'].get('blockers'),list)):
         raise ValueError('Unsupported operator analysis report')
+    identities=set()
     for source in value['sources']:
         if (not isinstance(source,dict) or type(source.get('samples')) is not int or not 1<=source['samples']<=10000
             or not all(finite(source.get(k)) and source[k]>0 for k in ['mean_us','min_us','max_us'])
             or not all(isinstance(source.get(k),str) and re.fullmatch('[0-9a-f]{64}',source[k]) for k in ['csv_sha256','context_sha256'])):
             raise ValueError('Invalid operator analysis source')
         if not source['min_us']<=source['mean_us']<=source['max_us']:raise ValueError('Inconsistent duration range')
+        identifier=source.get('id')
+        if not isinstance(identifier,str) or not re.fullmatch('[a-z][a-z0-9_-]{0,31}',identifier) or identifier in identities:
+            raise ValueError('Invalid or duplicated profile identity')
+        identities.add(identifier)
+        if (type(source.get('physical_device')) is not int or not 0<=source['physical_device']<2**31
+            or type(source.get('correctness_claim')) is not bool
+            or not isinstance(source.get('elf_sha256_claim'),str) or not re.fullmatch('[0-9a-f]{64}',source['elf_sha256_claim'])
+            or any(type(source.get(k)) is not int or not 1<=source[k]<=10000 for k in ['clock_mhz_before','clock_mhz_after'])):
+            raise ValueError('Invalid historical device, precision or core-clock claims')
+        devices=source.get('csv_device_ids')
+        if (not isinstance(devices,list) or not 1<=len(devices)<=source['samples']
+            or any(type(d) is not int or not 0<=d<2**31 for d in devices) or len(devices)!=len(set(devices))):
+            raise ValueError('Invalid CSV device identifiers')
+        for key in ['input_shapes','input_dtypes']:
+            values=source.get(key)
+            if (not isinstance(values,list) or len(values)>source['samples']
+                or any(not isinstance(v,str) or not v or len(v)>4096 for v in values) or len(values)!=len(set(values))):
+                raise ValueError('Invalid shape or dtype metadata')
     if not finite(value['comparison'].get('observed_duration_ratio')) or value['comparison']['observed_duration_ratio']<=0:
         raise ValueError('Invalid observed ratio')
     if not math.isclose(value['comparison']['observed_duration_ratio'],value['sources'][0]['mean_us']/value['sources'][1]['mean_us'],rel_tol=1e-12):
         raise ValueError('Observed ratio differs from source means')
+    # Report bytes and their archive checksum are workload evidence. Recompute
+    # the interpretation from the bounded source fields instead of accepting
+    # a missing conflict merely because an untrusted report says so.
+    expected=comparison(*value['sources'])
+    for key in ['status','blockers','same_binary_claim']:
+        if value['comparison'].get(key)!=expected[key]:raise ValueError('Comparison contradicts its historical source records')
+    if type(value['comparison']['same_binary_claim']) is not bool:raise ValueError('Invalid binary comparison claim')
     if len(json.dumps(value,allow_nan=False).encode())>MAX_REPORT:raise ValueError('Operator report exceeds budget')
     return value
 

@@ -1087,7 +1087,7 @@ try:
         check('Installed fixed-reference history rotation survives actual SIGKILL, blocks bound policies and stale backups, retains CPU results')
     ctl(node,'node','stop');ctl(controller,'controller','stop')
     check('Quiescent node state restores to a new control directory, rebinds the same empty spool and executes another actual IR task')
-    if options.device_schedule or options.dependencies or options.browser_workflow or options.experiment_budget or options.large_compiler_case or options.agent_experiment or options.accuracy_case or options.terminal_handoff or options.source_grants or options.node_quota_resize or options.simulation_case or options.report_view:
+    if options.operator_analysis or options.device_schedule or options.dependencies or options.browser_workflow or options.experiment_budget or options.large_compiler_case or options.agent_experiment or options.accuracy_case or options.terminal_handoff or options.source_grants or options.node_quota_resize or options.simulation_case or options.report_view:
         # Only the original controller state leaf is host-bound. Preserve an
         # explicit readonly SQLite export of the restored private directory
         # before its owned container is removed; never pretend it was mounted.

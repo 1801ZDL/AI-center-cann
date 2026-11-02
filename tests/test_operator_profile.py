@@ -109,6 +109,38 @@ class AnalysisSemanticsTests(unittest.TestCase):
             value=report();mutate(value)
             with self.assertRaises(ValueError):validate_report(value)
 
+    def test_report_cannot_remove_observed_conflicts_or_invent_a_binary_change(self):
+        for changes in [{'blockers':[]},{'status':'requires_controlled_verification'},{'same_binary_claim':False},
+                        {'blockers':['different_physical_device']},{'same_binary_claim':1}]:
+            value=report();value['comparison'].update(changes)
+            with self.subTest(changes=changes),self.assertRaises(ValueError):validate_report(value)
+
+    def test_source_identity_device_clock_precision_and_metadata_types_are_checked(self):
+        changes=[{'id':'../escape'},{'physical_device':True},{'physical_device':-1},
+                 {'clock_mhz_before':True},{'clock_mhz_after':0},{'correctness_claim':'pass'},
+                 {'elf_sha256_claim':'unknown'},{'csv_device_ids':[False]},{'csv_device_ids':[]},
+                 {'csv_device_ids':[0,0]},{'input_shapes':'2x3'},{'input_dtypes':[{}]},
+                 {'input_shapes':['2x3','2x3']},{'input_dtypes':['x'*4097]}]
+        for change in changes:
+            value=report();value['sources'][0].update(change)
+            with self.subTest(change=change),self.assertRaises(ValueError):validate_report(value)
+        value=report();value['sources'][1]['id']=value['sources'][0]['id']
+        with self.assertRaises(ValueError):validate_report(value)
+
+    def test_matching_mixed_shape_dtype_or_csv_device_sets_are_not_a_controlled_comparison(self):
+        for field,values,reason in [('input_shapes',['2x3','4x5'],'mixed_input_shapes'),
+                                    ('input_dtypes',['FLOAT','HALF'],'mixed_input_dtypes'),
+                                    ('csv_device_ids',[0,1],'mixed_csv_devices')]:
+            left=profile(duration='1');right=profile('fast','1');right['elf_sha256_claim']='f'*64
+            for source in [left,right]:source.update(samples=2,**{field:values})
+            value={'schema':SCHEMA,'purpose':'historical_profile_comparison','sources':[left,right],
+                   'comparison':comparison(left,right),'provider':{'name':'msprof-mcp','version':'0.1.8'}}
+            self.assertIn(reason,value['comparison']['blockers']);self.assertIsNone(validate_report(value)['comparison']['optimization_speedup'])
+
+    def test_consistent_legacy_v1_report_keeps_original_values_without_rewrite(self):
+        value=report();before=json.dumps(value,sort_keys=True);self.assertIs(validate_report(value),value)
+        self.assertEqual(json.dumps(value,sort_keys=True),before)
+
 
 class OperatorCaseTests(unittest.TestCase):
     def setUp(self):
@@ -130,6 +162,11 @@ class OperatorCaseTests(unittest.TestCase):
 
     def test_foreign_identity_cannot_fetch_even_the_fixed_artifact(self):
         with self.assertRaises(ClientError):read_case(self.base.clients['bob'],self.identifier)
+
+    def test_archived_checksum_does_not_make_a_contradictory_comparison_valid(self):
+        directory=self.base.jobs.directory(self.identifier);value=report()
+        value['comparison']['blockers']=[];atomic_json(directory/ARTIFACT,value)
+        with self.assertRaises(ClientError):read_case(self.client,self.identifier)
 
     def test_read_only_token_can_read_without_experiment_permissions(self):
         from lab_client import Client

@@ -93,6 +93,21 @@ def main():
             open_job(page,'operator');load(page,'operator');expect(page.locator('#report-content')).to_contain_text('优化收益未认证')
             expect(page.locator('#report-content')).to_contain_text('different_physical_device')
             checks.append('Observed performance ratio preserves blockers and does not become a verified speedup')
+            # Re-sign only this synthetic archive fixture, preserving valid
+            # transport checksums while its report interpretation contradicts
+            # the retained source fields. The real CPU copy case is separate.
+            original_job=copy.deepcopy(jobs.get(identifiers['operator']))
+            fixture.identifier=identifiers['operator'];fixture.directory=jobs.directory(fixture.identifier)
+            contradictory=copy.deepcopy(fixture.values['operator'])
+            contradictory['comparison'].update(blockers=[],status='requires_controlled_verification',same_binary_claim=True)
+            fixture.publish('operator',value=contradictory)
+            page.locator('[data-report-kind="operator"]').click()
+            expect(page.locator('#report-status')).to_have_attribute('data-loading','false')
+            expect(page.locator('#report-status')).to_contain_text('报告暂不可用');expect(page.locator('#report-content')).to_be_empty()
+            fixture.publish('operator')
+            with jobs.transaction() as db:jobs.write(db,original_job)
+            load(page,'operator');expect(page.locator('#report-content')).to_contain_text('different_physical_device')
+            checks.append('Checksum-valid contradictory comparison returns409, clears old content, and original report reads again without job execution')
             # Hold an actual completed HTTP body; old response ignores cancellation.
             page.evaluate("""() => {window.reportOriginalFetch=window.fetch;window.fetch=(path,...rest)=>{
               const real=window.reportOriginalFetch(path,...rest);real.catch(()=>{});

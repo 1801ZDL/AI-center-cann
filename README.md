@@ -106,6 +106,8 @@ ssh -N -L 18765:127.0.0.1:18765 YOUR_USER@YOUR_SERVER
 
 已接入可选的离线算子性能报告：中央 CPU 任务调用固定上游工具，个人 harness 只读取有权限的归档报告；输入、安装和限制见 [OPERATOR_ANALYSIS.md](OPERATOR_ANALYSIS.md)。固定配方复用build_v1的CPU产物合同；当前不代表完整msagent或新的NPU优化验收。
 
+历史性能报告读取器现从来源设备、频率、ELF及输入元数据重算比较结论，拒绝字节摘要正确但解释自相矛盾的报告；原归档和任务状态保留。1265项回归、当前新镜像的同机隔离Root35和报告网页11通过，完整且一致的旧v1继续读取。这里校验报告内部一致性，不认证历史采集或优化收益，详见[最新进度](PROGRESS.md)。
+
 ## Agent 接入
 
 通用客户端不绑定模型供应商。通过 [CLIENT.md](CLIENT.md) 安装独立客户端，按 [HARNESS.md](HARNESS.md) 配置个人 stdio MCP；不同 harness 使用同一任务 API。追加编译、复现、上板和仿真仍需排队。

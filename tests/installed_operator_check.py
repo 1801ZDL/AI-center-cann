@@ -14,6 +14,39 @@ from operator_workflow import prepare,source_locks
 
 PERSONAL_CLIENT='/opt/ascend-lab-operator-client'
 
+
+def contradictory_report(ctx,source_report,request):
+    """A checksum-valid workload artifact is still not trusted interpretation."""
+    from lab_client import Client,ClientError
+    value=copy.deepcopy(source_report)
+    value['comparison'].update(blockers=[],status='requires_controlled_verification',same_binary_claim=False)
+    directory=ctx['base']/'operator-contradictory-report';directory.mkdir(mode=0o700)
+    raw=(json.dumps(value,ensure_ascii=False)+'\n').encode();(directory/'report.json').write_bytes(raw)
+    (directory/'copy_report.py').write_text("import json,os\nfrom pathlib import Path\np=Path('/work/results');p.mkdir(exist_ok=True)\np.joinpath('operator-analysis.json').write_bytes(Path('/inputs/report.json').read_bytes())\nPath(os.environ['LAB_RESULT_FILE']).write_text(json.dumps({'schema':'ascend-lab-result/v1','kind':'build','passed':True,'artifacts':['results/operator-analysis.json'],'purpose':'copy_untrusted_report_bytes_only'}))\n")
+    body=copy.deepcopy(request);body['parameters']['input_id']=upload(ctx,directory)
+    body['parameters']['argv']=['python','-I','-B','copy_report.py']
+    identifier=submit(ctx,body,'operator-contradictory-report')
+    job=ctx['wait'](identifier,seconds=90);assert job['state']=='succeeded'
+    detail=ctx['api']('/api/jobs/'+identifier)[1];assert len(detail['attempts'])==1
+    archived=ctx['api']('/api/jobs/'+identifier+'/artifact?name=results%2Foperator-analysis.json',raw=True)[1]
+    assert archived==raw
+    client=Client({'controller':ctx['controller_url'],'token':ctx['token']})
+    from operator_profile import read_case
+    try:read_case(client,identifier)
+    except ClientError:pass
+    else:raise AssertionError('Archive checksum was mistaken for a consistent comparison')
+    assert ctx['api']('/api/jobs/'+identifier+'/diagnostic-report?kind=operator')[0]==409
+    assert ctx['api']('/api/jobs/'+identifier,extra_headers=ctx['peer_headers'])[0]==404
+    home=ctx['operator_proof']['personal_home'] if ctx.get('operator_proof') else '/home/operator-client'
+    message={'jsonrpc':'2.0','id':1,'method':'tools/call','params':{'name':'get_diagnostic_case','arguments':{}}}
+    response=ctx['docker'](['exec','-i','--user','23642:23642',ctx['controller'],'/usr/bin/python3','-B',
+        PERSONAL_CLIENT+'/operator_profile.py','mcp','--profile',home+'/client.json','--job-id',identifier],input=json.dumps(message)+'\n')
+    assert json.loads(response.stdout)['result']['isError']
+    ctx['check']('A real CPU workload archives a checksum-valid contradictory historical report; installed personal MCP and authenticated web report both reject it while original bytes and the successful copy attempt remain')
+    return {'passed':True,'job_id':identifier,'attempts':1,'raw_report_sha256':hashlib.sha256(raw).hexdigest(),
+        'copy_workload_succeeded':True,'domain_report_rejected':True,'web_http_status':409,'personal_uid':23642,
+        'original_bytes_preserved':True,'no_profiling_or_device_execution':True}
+
 def upload(ctx,source,headers=None):
     files={str(p.relative_to(source)):p.read_bytes() for p in source.rglob('*') if p.is_file()}
     assert files and sum(map(len,files.values()))<8*1024**2
@@ -120,13 +153,14 @@ def run(ctx):
     detail=ctx['api']('/api/jobs/'+bad)[1];assert len(detail['attempts'])==1 and 'results/operator-analysis.json' not in {v['name'] for v in detail['artifacts']}
     receipt=ctx['api']('/api/jobs/'+bad+'/artifact?name=results%2F_lab%2Fenvironment.json')[1]
     assert receipt['locked'] and receipt['workload_started'] and receipt['workload_exit_code']!=0
+    consistency=contradictory_report(ctx,report,fixed)
     return {'passed':True,'first_job':first,'peer_job':peer,'bad_data_job':bad,'invalid_lock_zero_attempt_job':blocked,
         'request':saved,'personal_home':home,'personal_uid':23642,'task_uids':[23003,23004],'input_id':input_id,
         'data_only_shadow_modules_not_imported':True,'sealed_input_survives_local_edit':True,'fixed_recipe_preparation_did_not_submit':True,
         'actual_stdio_read_only_report':True,'cross_owner_input_and_report_denied':True,'bad_data_failed_without_analysis_report':True,
         'source_generator_sha256':report['generator_sha256'],'means_us':[v['mean_us'] for v in report['sources']],
         'optimization_speedup':None,'image':ctx['task_image'],'packages':lock['packages'],'certified_files':lock['files'],
-        'npu_kernel_launches':0,'model_invocations':0,
+        'report_consistency':consistency,'npu_kernel_launches':0,'model_invocations':0,
         'scope':'Same-host installed UID-separated services and actual fixed-image CPU report tasks on native UID quota storage. Existing build_v1 contract; not a compiler build, NPU measurement, actual PID1 or two physical hosts.'}
 
 
@@ -135,4 +169,11 @@ def after_restore(ctx,proof):
     assert case['report']['generator_sha256']==proof['source_generator_sha256']
     identifier=submit(ctx,proof['request'],'operator-fixed-after-restore');_,report=checked(ctx,identifier,23003)
     assert [v['mean_us'] for v in report['sources']]==proof['means_us']
-    return {'passed':True,'new_job':identifier,'attempts':1,'original_archive_readable':True,'original_sealed_input_reused':True}
+    if proof.get('report_consistency'):
+        bad=proof['report_consistency']['job_id']
+        assert ctx['api']('/api/jobs/'+bad+'/diagnostic-report?kind=operator')[0]==409
+        raw=ctx['api']('/api/jobs/'+bad+'/artifact?name=results%2Foperator-analysis.json',raw=True)[1]
+        assert hashlib.sha256(raw).hexdigest()==proof['report_consistency']['raw_report_sha256']
+        assert len(ctx['api']('/api/jobs/'+bad)[1]['attempts'])==1
+    return {'passed':True,'new_job':identifier,'attempts':1,'original_archive_readable':True,'original_sealed_input_reused':True,
+            'contradictory_report_still_rejected_and_original_bytes_preserved':bool(proof.get('report_consistency'))}

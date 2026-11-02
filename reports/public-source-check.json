@@ -8938,5 +8938,37 @@
       "Agent installation report printed one unrelated historical-full-IR PASS label; it is excluded. Corrected final generic installation and unit regression use current helper."
     ],
     "scope": "One actual bounded OpenCode/DeepSeek small authored IR candidate through installed CPU Node, second UID stdio replay and revoked spending after restore. New107 CORE generic Root42/browser12 regressions. No general repair, semantic/numerical correctness, NPU execution, actual host accounts/PID1 or two physical machines."
+  },
+  "operator_report_consistency": {
+    "verified_at": "2026-11-02T15:12:54.916457+00:00",
+    "unit_tests": 1265,
+    "unit_seconds": 270.034,
+    "unit_skipped": 0,
+    "javascript_syntax_passed": true,
+    "focused_tests": 27,
+    "root_checks": 35,
+    "browser_checks": 11,
+    "new_npu_kernel_launches": 0,
+    "new_model_calls": 0,
+    "production_ready": false,
+    "overall_goal_complete": false,
+    "scope": "Internal consistency of historical performance reports. Actual pinned CPU analysis and checksum-valid contradictory copy; separate personal UID MCP/web409, unchanged archived bytes/attempts after restore. Not historical capture truth, optimization gain, actual NPU, host accounts/PID1 or two physical hosts.",
+    "consistent_legacy_v1_report_preserved": true,
+    "contradictory_copy_rejected_by_personal_mcp_and_web": true,
+    "matching_archive_checksum_is_not_interpretation_truth": true,
+    "actual_task_uids": [
+      23003,
+      23004
+    ],
+    "personal_uid": 23642,
+    "actual_current_packages_matched": true,
+    "new_offline_image_built": true,
+    "source_component_changed": "operator_profile.py",
+    "rejected_copy_workload_stays_succeeded": true,
+    "old_invalid_reports_not_rewritten": true,
+    "failures_retained": [
+      "First operator installation preflight rejected an independently queued browser check before creating fixture services; it was left intact, observed to completion, then installation was submitted alone.",
+      "First successful operator installation lacked a retained restored SQLite export; the verification-only export condition was corrected and a new successful installation retained and independently checked both databases."
+    ]
   }
 }

@@ -1,5 +1,25 @@
 # 实施进度
 
+## 2026-11-02 历史性能报告的来源字段与比较结论一致性
+
+**最终1265项/270.034秒/零跳过及JS语法通过，专项27项、最终同机隔离Root安装35项和报告网页11项通过。** full `job-a6d839858679`、focused `job-f5b1dfe6c207`、final Root `job-5b110743b9dc`、browser `job-c87bbbde6674`。本轮生产源码只有operator_profile.py改变，CORE仍107；protected6、其余APP3、cooperative4、agent_runner及4网页资产不变，未调用模型或运行NPU。生产及单元测试源码在完整回归后未变；浏览器辅助及安装脚本的恢复数据库导出分支分别由最终网页/Root演练覆盖，final-frozen-r2保存最终256测试/辅助文件。文档随后完成，不声称包中文档与最终checkout相同。
+
+实际复现：从上一轮真实Node归档取得历史MergeTopK分析报告的副本，保留两份30次样本、不同物理卡、100与1650MHz前后快照和同ELF声明，仅清空blockers、改status/same_binary_claim，旧读取器仍接受。optimization_speedup此前已经始终为null，本修复不是修复“已经认证伪造收益”，而是拒绝与来源字段矛盾的解释。原报告、CSV、源文件与数据库均未修改。
+
+现在个人CLI/MCP和网页共享读取器校验来源ID唯一性、设备/CSV设备集合、前后频率、精度布尔声明、ELF摘要、shape/dtype集合及有限耗时范围，再从来源重新计算status/blockers/same_binary_claim。缺字段、错类型、重复或矛盾解释拒绝；混合shape、dtype或CSV设备新增明确原因，即使两份集合相同也不把混合均值当受控优化。完整一致旧v1报告仍可原样读取，缺项或矛盾旧报告保留原件并拒绝领域展示。内部自洽不证明来源CSV逐字节、历史采集、连续频率、精度或优化收益；详见[OPERATOR_ANALYSIS.md](OPERATOR_ANALYSIS.md)。
+
+因APP4中的operator_profile.py变化，复用固定44wheel和已有基础镜像离线新建分析镜像 `sha256:d8cafd50c68d56e144bcc8a31b1dd257b1395176c9d129cd7276de8122d97c97`（build `job-0f2e7538b6f3`）。实际硬1CPU/1GiB构建、无网络；源码/依赖摘要随镜像记录。新Root注册该镜像并重新探针/环境锁，未热改Main的19个旧profile或其他人的环境。旧镜像不自动升级，个人配方需匹配对应源码与资格。
+
+最终Root35实际Controller999/Node0、Tasks23003/23004及个人UID23642：正常历史分析经固定上游工具生成、MCP读取；额外普通CPU任务只复制一个刻意清空冲突的报告并成功归档。该任务的原始字节和Node确认SHA一致，通用build产物合同通过，但个人MCP及diagnostic-report返回409；原任务仍成功，不把领域解释失败冒充执行失败。恢复后旧矛盾报告继续409且字节SHA、原attempt不变，正常原报告仍读并完成一次新分析。Primary独立核原始及导出的恢复SQLite、两UID正常报告与复制任务各一次尝试、原始报告SHA、实际新镜像生成器SHA、保护回执、无设备/无网络/只读根及清退。
+
+报告网页11使用当前实际包/HTTP/ACL及明确合成的归档确认，覆盖四类报告、校验摘要仍匹配但解释矛盾的409、清空旧内容、恢复原报告重读、迟到响应、读超时、只读账号、外用户404、移动宽度和无外部请求/POST。Root与网页实际包逐项匹配107CORE/4web。它不是新NPU、物理机或宿主用户验收，也不声称重新运行上一轮测量窗口网页12或通用Root42。
+
+中间问题保留：Root `job-db669d625c82` 因操作者提前排入独立网页任务，触发安装脚本独占验收预检，创建服务前拒绝；观察原网页成功后才独立提交。Root `job-9ed907bb23f0` 安装/接口恢复本已成功，但Primary独立核对时发现普通operator模式没保留恢复数据库导出；补验收导出分支后新Root `job-5b110743b9dc`成功并留存可核对副本。未放宽预检、重置未知任务、重复模型或重跑NPU。后续未改生产/单元测试，未因辅助脚本变动重复全量单元检查。
+
+本轮只读管理 `job-26a3fb74825c` 显示两卡均有进程、卡0Alarm，未提交设备请求或新probe。Main空闲后明确重载自有服务加载新验证器；配置SHA/19profiles/一物理域、CPU254255/2048MiB/SHM1024MiB/单任务、zdl启动/内存/SHM不变，0非终态/holds/日程/规则/真实参考及ledgergen0/无回执，4资产HTTP读回一致。四份自有loop关联释放且sysfs关联消失、五类fixture容器/卷空，backing证据留存；不改宿主账号、全局服务、驱动或其他容器。
+
+整体目标保持active/production_ready=false。真实非root NPU访问/精度/性能/仿真、业务测量窗口与同卡参考、真实宿主账号/PID1、两物理机fencing和20人混合/长期容量仍待；PUBLIC-001继续暂缓，Main每日全卡自检未启用。私有证据 `evidence/operator-consistency-validation.json` 与 `runtime/driver-boundary-20261102`，公开仅摘要，不上传原始报告/部署/会话/密钥。
+
 ## 2026-11-02 预算内小IR候选：实际 Agent→MCP→受控CPU→归档
 
 **最终1260项/260.139秒/零跳过及JS语法通过，18项专项、最终同机隔离Root安装42项和网页12项通过。** full `job-53d9a7be6b3c`、focused `job-d6c64f7f249a`、final Root `job-0a3deefb6a50`、browser `job-9762fbcf2fa1`。107个非文档CORE、256个测试/辅助文件、4网页资产及agent_runner冻结；实际模型演练、最终Root与browser的三个包逐项匹配CORE/web，文档随后完善，不声称包中文档与最终checkout完全相同。protected6、APP4及jobs/executor/npu_admission/cooperative_start不变，未重建镜像或扩大设备资格。

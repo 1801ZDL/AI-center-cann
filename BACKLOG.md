@@ -7,6 +7,8 @@
 
 ## 下一优先
 
+2026-11-02已修历史性能报告内部一致性：读取器从两份来源重算比较结论，拒绝校验摘要正确但设备/频率/二进制/元数据与解释矛盾的报告；混合shape/dtype/设备单列原因。1265项回归、实际新镜像Root35及报告网页11通过，正常旧v1原样读取、矛盾原件保留，详见OPERATOR_ANALYSIS.md/PROGRESS.md。它不认证原始历史采集或收益，逐样本输入分布/覆盖、连续频率、健康/外部负载及同条件对照仍需真实验证。
+
 预算内候选闭环新增[COMPILER_EXPERIMENT.md](COMPILER_EXPERIMENT.md)：18项专项及一次实际OpenCode/DeepSeek固定MCP实验已验证小IR返回类型错误、单处候选、CPU排队与真实归档；另一UID便携MCP复用同一候选，恢复冻结预算/撤销消费凭据、新只读profile继续读原结果。本轮完整1260项回归已通过，最终安装与网页检查以PROGRESS.md为准。这是一个自编小IR的parse/verify案例，不是一般bug自动修复；大IR候选/有界reducer、完整lowering、真实精度/卡死/性能/仿真和第二种harness仍待。下面涉及“预算内候选闭环”的旧条目应按这个已验范围继续扩展，而非重新实现小样例。
 
 **COOP-001启动前占用竞争恢复已实现（2026-11-02）。** 宿主与旧Docker入口的明确观测拒绝现在用源码/身份/尝试绑定的未启动回执回队，要求原supervisor结束和Docker broker清退；持久化launch intent之后不允许走此路径。原job/幂等/输入和存储预留保留，5–60秒退避及新观测，最多16次分配后竞争；取消/撤权/未知状态及不兼容回滚分别处理。1242项回归、20专项、实际HTTP/宿主/Docker exec与两次SIGKILL恢复、同机Root安装42及网页12通过，详见[COOPERATIVE_START.md](COOPERATIVE_START.md)。NPU观测为模拟，实际CPU标记只执行一次；一次真实请求仍因资源条件等待后按queued-only取消、0attempt。仍需真实NPU竞争/空闲窗口下的正向运行，不将此协作协议当Root隔离证明，也未扩大仅worker模板可用的累计实验预算凭据范围。

@@ -17,6 +17,9 @@ from simulation_data import analyze,sha
 
 
 def reports():
+    from test_operator_profile import profile,comparison
+    sources=[profile('slow','20',0,1650),profile('fast','10',1,1650)]
+    sources[1]['elf_sha256_claim']='f'*64
     av,ab=accuracy_fixture([1.,2.],[1.,3.]);sv,sb=simulation_fixture()
     return {
         'accuracy':{'schema':'ascend-lab-accuracy-report/v1','purpose':'offline_accuracy_replay','input':av,'comparison':compare(av,ab)},
@@ -26,8 +29,7 @@ def reports():
             'tool':{'name':'bishengir-opt','path':'/fixed/bishengir-opt','version':'test-version','sha256':'b'*64},
             'outcome':{'exit_code':1,'timed_out':False,'stderr_bytes':0,'stderr_truncated':False}},
         'operator':{'schema':'ascend-lab-operator-analysis/v1','purpose':'historical_profile_comparison','operator':'unit-only',
-            'provider':{'name':'msprof-mcp','version':'0.1.8'},'sources':[{'id':str(i),'samples':30,'mean_us':mean,'min_us':mean,'max_us':mean,'csv_sha256':'a'*64,'context_sha256':'b'*64,'physical_device':i} for i,mean in enumerate([20.,10.])],
-            'comparison':{'observed_duration_ratio':2.,'optimization_speedup':None,'blockers':['different_physical_device']}}}
+            'provider':{'name':'msprof-mcp','version':'0.1.8'},'sources':sources,'comparison':comparison(*sources)}}
 
 
 class ReportViewTests(unittest.TestCase):
