@@ -96,10 +96,12 @@ def main():
     p.add_argument('--role',choices=['controller','node'],required=True);p.add_argument('--prefix');p.add_argument('--state-dir')
     p.add_argument('--archive');p.add_argument('--node-config');p.add_argument('--uid',type=int);p.add_argument('--gid',type=int)
     p.add_argument('--create-service-user');p.add_argument('--port',type=int,default=18765)
+    p.add_argument('--require-systemd',action='store_true',help='Also require verified native PID1 and the read-only system-bus identity')
     p.add_argument('--payload-config')
     p.add_argument('--control-config')
     for flag in ['bind-address','public-url','tls-cert','tls-key','tls-ca']:
         p.add_argument('--'+flag,default='127.0.0.1' if flag=='bind-address' else None)
+    commands.add_parser('systemd-doctor',help='Read-only native PID1/system-bus prerequisites; does not load or start units')
     p=commands.add_parser('tls-rotate');p.add_argument('--prefix',required=True)
     p.add_argument('--tls-cert',required=True);p.add_argument('--tls-key',required=True);p.add_argument('--tls-ca')
     for action in ['cache-list','cache-plan','cache-prune']:
@@ -130,6 +132,8 @@ def main():
     p=commands.add_parser('reference-prune',help='Rotate SHA-confirmed unbound history and revoke its reference approvals; retain jobs and payloads')
     p.add_argument('--prefix',required=True);p.add_argument('--archive',required=True);p.add_argument('--confirm-sha256',required=True)
     args=parser.parse_args()
+    if args.action=='unit-install' and args.enable:
+        raise deploy.DeployError('unit-install --enable is retired before any write; use file-only unit-install, systemd-doctor, unit-manager and unit-start plan/apply')
     if args.action=='bundle':result=deploy.bundle(args.output)
     elif args.action=='reference-export':
         from reference_maintenance import export
@@ -332,10 +336,14 @@ def main():
                 try:os.fsync(descriptor)
                 finally:os.close(descriptor)
                 result={'already_prepared':prepared['already_prepared'],'policy_file':str(target),'slots':len(prepared['policy']['slots'])}
+    elif args.action=='systemd-doctor':
+        from systemd_preflight import assess
+        result=assess()
+        print(json.dumps(result,ensure_ascii=False,indent=2));raise SystemExit(0 if result['prerequisites_ready'] else 2)
     elif args.action in {'doctor','preflight'}:
         from preflight import plan
         result=plan(args.role,args.prefix,args.state_dir,args.archive,args.uid,args.gid,args.create_service_user,args.node_config,args.port,
-            args.bind_address,args.public_url,args.tls_cert,args.tls_key,args.tls_ca,args.payload_config,args.control_config)
+            args.bind_address,args.public_url,args.tls_cert,args.tls_key,args.tls_ca,args.payload_config,args.control_config,require_systemd=args.require_systemd)
         print(json.dumps(result,ensure_ascii=False,indent=2));raise SystemExit(0 if result['install_ready'] else 2)
     elif args.action=='install':
         result=deploy.install(args.archive,args.prefix,args.state_dir,args.role,args.uid,args.gid,args.create_service_user,args.node_config,args.port,
@@ -392,10 +400,7 @@ def main():
         if target.exists() or target.is_symlink():raise deploy.DeployError('Unit already exists; existing services were not overwritten')
         with target.open('x') as file:file.write(deploy.unit_text(prefix,meta))
         target.chmod(0o644)
-        if args.enable:
-            subprocess.run(['systemctl','daemon-reload'],check=True)
-            subprocess.run(['systemctl','enable','--now',target.name],check=True)
-        result={'unit':str(target),'enabled':args.enable}
+        result={'unit':str(target),'enabled':False}
     print(json.dumps(result,ensure_ascii=False,indent=2))
 
 

@@ -126,7 +126,7 @@ def controller_transport(config):
 
 
 def plan(role,prefix=None,state=None,archive=None,uid=None,gid=None,create_user=None,node_config=None,port=18765,
-         bind_address='127.0.0.1',public_url=None,tls_cert=None,tls_key=None,tls_ca=None,payload_config=None,control_config=None):
+         bind_address='127.0.0.1',public_url=None,tls_cert=None,tls_key=None,tls_ca=None,payload_config=None,control_config=None,require_systemd=False):
     checks=[];report={'format':'ascend-lab-preflight/v1','checked_at':dt.datetime.now(dt.timezone.utc).isoformat(),
         'role':role,'read_only':True,'production_ready':False,'checks':checks,
         'identity':{'euid':os.geteuid(),'egid':os.getegid()},
@@ -279,6 +279,12 @@ def plan(role,prefix=None,state=None,archive=None,uid=None,gid=None,create_user=
                 from persistent_cache import Pool
                 report['persistent_cache']=check('private_persistent_cache',lambda:Pool(state or config['state_dir'],config).inspect_new())
         elif node_config is None:checks.append({'id':'node_config','status':'not_checked','required':True,'reason':'Supply --node-config'})
+    if require_systemd:
+        from systemd_preflight import assess
+        report['systemd']=assess()
+        checks.append({'id':'systemd_prerequisites','required':True,
+                       'status':'passed' if report['systemd']['prerequisites_ready'] else 'failed',
+                       'detail':{'blockers':report['systemd']['blockers'],'service_start_verified':False}})
     report['install_ready']=all(item['status']=='passed' for item in checks if item['required'])
     report['task_dispatch_prerequisites']=bool(report['install_ready'] and role=='node' and report.get('workspace'))
     report['versioned_workflows_ready']=bool(report['task_dispatch_prerequisites'] and any(item['id']=='certified_environment' and item['status']=='passed' for item in checks))

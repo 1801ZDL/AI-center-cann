@@ -99,6 +99,7 @@
     "operator_profile.py",
     "operator_node.py",
     "operator_workflow.py",
+    "systemd_preflight.py",
     "job_graphs.py",
     "graph_client.py",
     "control_monitor.py",

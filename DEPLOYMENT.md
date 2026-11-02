@@ -345,3 +345,14 @@ Node同样支持，替换为其安装前缀及 `ascend-lab-node.service`。默�
 ## NPU 结果条件的增量交付
 
 中央/Node包包含可选npu-condition-evidence-v1及NPU_CONDITIONS.md；新Node传递私有启动前receipt，中央记录认证心跳并生成独立条件归档。旧Node缺项保持不完整，不阻断既有任务归档，也不放宽设备清退。旧结果只读回退为未验证；CPU的未申请NPU不表示设备已通过。当前1038项、同机Root31及浏览器8已验，设备数据为合成，未运行新的NPU或每日UT。新机上线继续按实际非root设备/环境、频率、数值/性能与两机故障门槛验收。
+# systemd 服务部署前的只读预检
+
+旧 `unit-install --enable` 已退役：命令在安装校验、目录或单元文件写入前返回错误。`unit-install` 仅生成文件；加载/启动采用现有 `unit-manager-*` 与 `unit-start-*` 的计划、应用和恢复协议。不会再通过 PATH 中的 `systemctl enable --now` 绕过启动回执。已运行服务及已有开机配置不受该命令变更影响。
+
+先在目标服务器运行 `./servicectl systemd-doctor`。返回 JSON，前置条件可核实时退出 0，缺失或无权限核实时退出 2。安装计划也可增加 `doctor --require-systemd`，沿用原有角色、归档、身份和路径参数；检查失败会使该计划的 `install_ready=false`。普通安装及进程模式的原接口不变，安装器不会因此自动安装 systemd 或启动服务。
+
+预检核对 `/proc/1/comm` 与实际 executable、受保护的原生 ELF `busctl`，再通过只读 D-Bus 方法核对 Root/PID1/唯一 owner。`systemctl --version` 可以来自 Python 兼容脚本，不能作为服务部署证明。cgroup 报告区分挂载本身的 `ro` 与超级块的 `rw`；只读挂载不等于宿主服务一定不可运行，也不证明存在容器内嵌套 PID1 所需的可写委派。
+
+`prerequisites_ready` 只说明上述前置条件；`unit_configuration_verified`、`service_start_verified`、`cgroup_delegation_verified` 和 `production_ready` 仍为 false。后续需使用现有 unit-manager/unit-start 流程核对实际生效单元与原启动回执。检查不调用 LoadUnit、Reload、StartUnit，不改账号、Docker、设备或挂载；系统总线不可达或身份无法核实时明确报告不可验证。
+
+本机自有无设备测试容器已发现 `systemctl.py` 兼容脚本、缺少原生 systemd/busctl/D-Bus，以及 cgroup v2 的只读挂载。该发现用于避免错误的部署就绪判断，不是实际 PID1 启动验收。容器化 systemd 所需的挂载、cgroup 委派与设备限制应按 [systemd 容器接口](https://systemd.io/CONTAINER_INTERFACE/)准备，不能通过对共享宿主启用 privileged 来补验收。

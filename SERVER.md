@@ -138,13 +138,16 @@ daemon身份变化、Socket不可达或历史尝试没有可信绑定时，不�
 
 节点是受信任的 root/Docker 管理角色，任务仍以独立非 root UID 运行。节点已有可选 NPU 设备白名单接口，但实际初始化/数值验收未通过；工作区已支持有限文件系统槽位并通过 tmpfs 演练，真实磁盘、输入/归档和缓存硬配额仍缺。安装完成不代表可以向全体用户开放任意规模构建。
 
-安装器生成 systemd 文件，可显式安装并启动新服务：
+安装器生成 systemd 文件。先核对目标机的原生管理器，再显式安装文件：
 
 ```bash
-/opt/ascend-lab-controller/current/servicectl unit-install --prefix /opt/ascend-lab-controller --enable
+/opt/ascend-lab-controller/current/servicectl systemd-doctor
+/opt/ascend-lab-controller/current/servicectl unit-install --prefix /opt/ascend-lab-controller
 ```
 
 已有同名 unit 时拒绝覆盖。进程模式和 systemd 选择一种管理方式。systemd 的只读文件系统设置使用 ReadWritePaths 放开本实例数据目录；UNIX socket 的连接不因只读挂载而受阻。节点 Docker 权限仍属于受信任边界。[systemd 执行环境文档](https://www.freedesktop.org/software/systemd/man/256/systemd.exec.html)
+
+`unit-install` 不启动服务；旧 `--enable` 选项在任何写入前拒绝。按[部署说明](DEPLOYMENT.md)使用 `unit-manager-plan/apply` 核对加载的单元，再使用 `unit-start-plan/apply` 跟踪一次启动和原回执。计划文件保存于新的 Root 私有路径；响应未知时保留原计划，不另建一次启动。
 
 ## 停机维护
 

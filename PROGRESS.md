@@ -1,5 +1,15 @@
 # 实施进度
 
+## 2026-11-03 systemd只读预检与旧启动入口退役（最终安装验收待队列容量）
+
+新增 `systemd_preflight.py`、`servicectl systemd-doctor`、`doctor --require-systemd`，检查原生受保护的PID1/busctl及只读系统总线身份，报告cgroup挂载ro/rw；不加载/重载/启动unit、不修改账号/挂载/Docker。通过只代表前置条件可核实，实际unit/启动/委派/生产状态仍明确未验。普通文件安装与进程模式兼容，旧包不因缺少可选预检模块而被拒绝。
+
+实际只读容器检查 `job-907e374a70ad` 成功：现有角色镜像中的systemctl是Python兼容脚本，缺原生systemd/busctl/D-Bus；cgroup2挂载本身ro，即使超级块报告rw。没有尝试privileged、共享宿主cgroup可写或真实PID1启动。旧 `unit-install --enable` 直接经PATH调用systemctl的入口已移除；现在在校验/写文件前拒绝，文件安装及现有unit-manager/unit-start计划接口保留。SERVER/DEPLOYMENT/SCALING已同步。
+
+第一轮9项专项有1个测试夹具错误（BytesIO未实现fileno），修复后中间完整回归 `job-a7e5e2132abe` **1309项/244.688秒/零跳过及JS语法通过**。该回归启动后才补了旧enable拒绝和第10项测试，不能称为最终代码全量验收。当前辅助脚本已增加安装后CLI、实际兼容脚本拒绝、不产生账号/目录、旧enable拒绝检查，但这些新增安装路径尚未运行。
+
+后续Root演练提交被Main默认1000任务历史上限HTTP409拒绝，没有创建相应job或新容器；最终1310回归和实际安装检查尚待原队列容量。没有删除记录、扩大资源预算、重启Main、调用模型或运行NPU。代码保持待验状态，不能宣称真实PID1、两物理机或生产完成。历史容量处理需操作者答复，详见BACKLOG.md。
+
 ## 2026-11-03 整体任务图准入、实际SIGKILL恢复与原图备份恢复
 
 新增[JOB_GRAPHS.md](JOB_GRAPHS.md)：一次提交1..16个托管阶段、32KiB请求，局部依赖和产物引用在同一SQLite事务解析。每阶段沿用原五类工作流、封存输入、版本锁、身份/项目、队列、存储和预算检查；任何阶段准入失败则本次提交全部回滚，没有部分job、扣费或任务目录。全图同一实验预算，或都不指定。阶段名字默认带图名/节点名，原网页任务列表继续展示各阶段资源与状态。

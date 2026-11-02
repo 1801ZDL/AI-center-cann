@@ -9102,5 +9102,26 @@
     "failures_retained": true,
     "unchanged_agent_and_web_sources": true,
     "main_actual_daily_plans_rules_references_enabled": false
+  },
+  "systemd_preflight_draft": {
+    "recorded_at": "2026-11-02T18:13:20.889695+00:00",
+    "validation_status": "pending_final_and_installed_checks",
+    "actual_readonly_container_probe": true,
+    "actual_systemctl_is_compatibility_script": true,
+    "intermediate_full_tests": 1309,
+    "intermediate_full_seconds": 244.688,
+    "intermediate_full_is_final_source_evidence": false,
+    "final_expected_tests": 1310,
+    "new_installed_checks_executed": false,
+    "queue_history_count": 1000,
+    "root_submission_http_status": 409,
+    "root_job_created": false,
+    "main_config_changed": false,
+    "records_deleted": false,
+    "main_restarted": false,
+    "npu_kernel_launches": 0,
+    "model_calls": 0,
+    "actual_systemd_pid1_start_tested": false,
+    "production_ready": false
   }
 }

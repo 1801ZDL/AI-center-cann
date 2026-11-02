@@ -370,12 +370,31 @@ try:
     assert controller_before==controller_after=={'prefix_exists':False,'state_entries':[],'service_account_exists':False}
     assert controller_plan['release']['id']==v1['release_id']
     check('Read-only controller doctor validates the exact package without creating a prefix, state files or service account')
+    systemd_plan=docker(['exec',controller,'/usr/bin/python3','-I','-B','/bootstrap/servicectl','doctor','--require-systemd',
+        '--archive','/provision/server-v1.tar.gz','--role','controller','--prefix','/opt/ascend-lab-controller',
+        '--state-dir',str(controller_state),'--create-service-user','labsvc','--port',str(port),*listener_args,*payload_args],check=False)
+    systemd_report=json.loads(systemd_plan.stdout)
+    assert systemd_plan.returncode==2 and 'systemd_prerequisites' in systemd_report['blockers']
+    assert not systemd_report['systemd']['prerequisites_ready'] and not systemd_report['systemd']['service_start_verified']
+    assert json.loads(docker(['exec',controller,'/usr/bin/python3','-I','-c',plan_probe,'/opt/ascend-lab-controller',str(controller_state)]).stdout)==controller_before
+    check('Explicit systemd prerequisite failure preserves the uninstalled prefix, state and account')
     installed=json.loads(docker(['exec',controller,'/usr/bin/python3','-B','/bootstrap/servicectl','install',
         '--archive','/provision/server-v1.tar.gz','--role','controller','--prefix','/opt/ascend-lab-controller',
         '--state-dir',str(controller_state),'--create-service-user','labsvc','--port',str(port),*listener_args,*payload_args,'--start']).stdout)
     assert installed['uid']>0 and not installed['started']
     assert ctl(controller,'controller','verify')['verified']
     assert installed['service']['ready']
+    systemd_installed=docker(['exec',controller,'/usr/bin/python3','-I','-B','/opt/ascend-lab-controller/current/servicectl','systemd-doctor'],check=False)
+    systemd_installed_report=json.loads(systemd_installed.stdout)
+    assert systemd_installed.returncode==2 and systemd_installed_report['read_only'] and not systemd_installed_report['service_start_verified']
+    shim_check='import sys;sys.path.insert(0,"/opt/ascend-lab-controller/current");from systemd_preflight import native_binary\ntry:native_binary("/usr/bin/systemctl")\nexcept ValueError:print("native-script-refused")\nelse:raise SystemExit(1)'
+    assert docker(['exec',controller,'/usr/bin/python3','-I','-B','-c',shim_check]).stdout.strip()=='native-script-refused'
+    check('Installed read-only systemd doctor rejects the actual systemctl compatibility script without stopping the process service')
+    retired_enable=docker(['exec',controller,'/usr/bin/python3','-I','-B','/opt/ascend-lab-controller/current/servicectl',
+        'unit-install','--prefix','/opt/ascend-lab-controller','--unit-dir','/opt/retired-enable-must-not-exist','--enable'],check=False)
+    assert retired_enable.returncode==1 and 'retired before any write' in retired_enable.stderr
+    assert docker(['exec',controller,'/usr/bin/python3','-I','-c','from pathlib import Path;assert not Path("/opt/retired-enable-must-not-exist").exists()']).returncode==0
+    check('Installed legacy --enable refuses before unit directory creation and cannot invoke the compatibility systemctl')
     if central_groups:central_initial_identity=actual_controller_identity()
     ctl(controller,'controller','stop')
     # Short grace is confined to this new, isolated acceptance controller.
@@ -1173,6 +1192,11 @@ try:
             'controller_preflight':controller_plan,'node_preflight':node_plan,'remote_docker_preflight_rejected':True,
             'direct_personal_installer_executed':True,
             'controller_install_uid':installed['uid'],'controller_install_gid':installed['gid'],'node_uid':0,'task_uid':23003,
+            'systemd_prerequisites':{'required_plan':systemd_report['systemd'],'installed_cli':systemd_installed_report,
+                'required_plan_exit':systemd_plan.returncode,'installed_cli_exit':systemd_installed.returncode,
+                'uninstalled_prefix_state_account_unchanged':True,'actual_systemctl_script_refused_without_execution':True,
+                'process_service_ready_after_check':True,'actual_systemd_pid1_start_tested':False},
+            'legacy_unit_enable_refused_before_write':True,
             **({'device_schedule':device_schedule_proof} if device_schedule_proof else {}),
             **({'device_evidence':device_evidence_proof} if device_evidence_proof else {}),
             **({'measurement_windows':measurement_proof} if measurement_proof else {}),
