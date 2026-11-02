@@ -1,5 +1,21 @@
 # 实施进度
 
+## 2026-11-03 旧pending库存显式对账与修复升级（最终1372/原生两类对象恢复通过）
+
+新增storage_reconciliation.py和Root-only `storage-reconcile-plan/apply`，处理legacy v1 pending trash/restore/purge。保留原操作/完整批准清单/计费，只在当前FD和非mount元数据核对后发布v2库存、递增revision及小回执；archive同步job.archive_status。Root计划/原像私有留在prefix历史，单SQLite事务保持记录/事件一致。重放不重复生效，不移动/删除负载、不释放额度或重跑任务，属主继续走原授权接口。
+
+发现并处理升级前置死锁：普通activate仍拒pending，新增显式唯一kind/id的code-only repair activation，只接legacy所选对象和带helper的新包，允许其他存储pending保留以避免多对象互锁，执行/hold/交接检查不变。另加回执保留的降级保护与旧快照丢回执拒绝；空安装无jobs.sqlite3保持兼容，不创建空库。参考[维护说明](STORAGE_RECONCILIATION.md)，Root完整prefix历史仍需独立保留，不能说普通状态备份已保存全部Root原像。
+
+实际最终 **job-73ee60424443**：原生systemd PID1/UID999 controller，从没有helper的真实旧113源码包安装、HTTP创建输入并隔离；明确模拟legacy pending记录，真实库存取自原服务视图，Root实际mount ID不同。普通升级拒绝、显式修复代码升级保留原数据/计费；同一Root计划在prepared/updated/committed/receipt四处实际SIGKILL（各-9），回滚/热journal由服务UID恢复，最后一份回执/事件。新v2保持pending，正常重启已核对原unit后，原owner通过HTTP resume/restore原字节。
+
+再用实际中央提交后尚未执行就取消的IR任务验证archive分支：0attempt，Root对账同步job.archive_status.revision，计费不变，属主resume/restore后的原归档manifest/字节保持。两个输入pending同时保留，逐个对账且另一个记录/计费不变；再验证归档，共三计划各一份回执/事件；旧备份缺回执被拒，最新备份保留三份回执和数据，迁移目录后旧Root计划被拒。实际包114个非mdCORE与最终冻结一致；私有tar/SQLite/原库存及Root计划已独立核对。该legacy意图是模拟，不能写成旧v1服务实际SIGKILL；四处新helper SIGKILL是真实执行。
+
+专项 **job-a77aaff35bcf：65项通过**（空安装补充前）；首次专项job-f84aaae279fb有1个测试时间戳粒度问题，改为显式不同mtime，未扩大生产比较语义。完整中间 **job-d24146095e34：1371项/246.508秒/零跳过+JS**；补空库兼容与多pending互锁后最终 **job-6b455d942293：1372项/244.373秒/零跳过+JS**，15项新增单测。source-frozen-r8=114非mdCORE+282递归tests/helpers+scanner，最终unit/native用同一冻结。
+
+中间native-r1已过四个SIGKILL但误建新manager计划，被pending静默门禁正确拒；改用已核对原unit的正常restart后native-r2输入路径通过。增加archive后native-r3裸命令被固定模板策略403拒，native-r4缺显式授权cwd获400；补为规范IR模板/授权cwd后native-r5双对象通过。随后修正空库兼容，再验证native-r6；随后补多pending互锁场景，最终native-r7验证两个输入和一个归档、三个计划。所有原终态/清理确认后才新key，无超时换任务；失败原证据保留。
+
+Main配置/19profiles/资源域/CPU内存SHM并发/保护6与领域agent/web/zdl均保持原值，未触发Main修复或数据迁移，未启实际每日计划/规则/参考/图。全部自有夹具已清退，0新image/0模型/0NPU应用kernel。历史冷存仍未实现，临时1100计数不替代长期方案；下一步继续冷存/容量与管理员目标机验收，整体目标仍未完成。
+
 ## 2026-11-03 原生 Node 文件权限修复与双原生角色验收（最终1357/原生48通过）
 
 实际原生 controller + Node 演练 **job-62e37ffa52e9：48项/0清理错误**。两个独立容器均以真实 systemd 249.11 PID1 管理原生成 unit；初装先验证进程模式兼容，再在业务执行前切到原生 unit。controller 仍UID999、CAPeff0、NoNewPrivileges，无Docker socket；受信Node为Root，保留原有Docker管理权限，普通任务使用UID23003/23004。不是宿主开机或真实登录用户验收。

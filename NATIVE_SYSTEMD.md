@@ -1,5 +1,7 @@
 # 原生 systemd 的开发验收
 
+新增[旧pending库存管理员对账](https://github.com/1801ZDL/AI-center-cann/blob/main/STORAGE_RECONCILIATION.md)：停止态精确计划、同计划中断恢复、原计费/批准清单保留及缺helper的显式修复升级。输入和取消任务归档已做实际原生服务验收；它不执行冷存或自动清理，部署边界见PROGRESS.md。
+
 新增 `--scenario storage` 实测原生服务与恢复器的不同挂载视图，经过真实隔离/备份/新目录恢复后由属主恢复输入并核对字节。完整 CPU 集成还可用 install_server_check.py 的 `--native-controller-image sha256:...`，默认连接原有独立进程模式Node；增加`--native-node-image sha256:...`可验证独立原生Node。原生控制器仍无Docker socket，受信Node的容器管理权限与受限任务身份沿原合同。结果及限制见 [UNIT_RELOCATION.md](UNIT_RELOCATION.md) / [PROGRESS.md](PROGRESS.md)。
 
 本说明面向源码维护者，验证同一发布包在原生 PID1 下的部署、启动和恢复。它不是空白宿主机安装器，不为普通任务或个人 agent 增加权限。最新结果和失败记录见 [PROGRESS.md](PROGRESS.md)。

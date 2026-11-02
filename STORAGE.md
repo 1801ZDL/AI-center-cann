@@ -1,5 +1,7 @@
 # 大产物传输、中央存储预算与留存（v0.20）
 
+新增[旧pending库存管理员对账](https://github.com/1801ZDL/AI-center-cann/blob/main/STORAGE_RECONCILIATION.md)：停止态精确计划、同计划中断恢复、原计费/批准清单保留及缺helper的显式修复升级。输入和取消任务归档已做实际原生服务验收；它不执行冷存或自动清理，部署边界见PROGRESS.md。
+
 新库存使用版本化持久指纹，支持 systemd 隔离挂载视图；实际删除仍检查本次 FD 和嵌套挂载。旧库存保持原严格行为，验证后的离线恢复才重新绑定，详见源码仓库的 [UNIT_RELOCATION.md](https://github.com/1801ZDL/AI-center-cann/blob/main/UNIT_RELOCATION.md)。这不实现冷存迁移或自动回收，也不释放未确认的资源。
 
 

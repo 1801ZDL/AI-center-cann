@@ -1,5 +1,7 @@
 # 从个人 Demo 扩展到多用户、多服务器
 
+新增[旧pending库存管理员对账](https://github.com/1801ZDL/AI-center-cann/blob/main/STORAGE_RECONCILIATION.md)：停止态精确计划、同计划中断恢复、原计费/批准清单保留及缺helper的显式修复升级。输入和取消任务归档已做实际原生服务验收；它不执行冷存或自动清理，部署边界见PROGRESS.md。
+
 本项目选择程序化中央调度器。个人 agent、CLI 和网页是同一 API 的客户端；分析能力可以更换，身份、资源账本、执行许可、日志和归档合同保持稳定。目标规模约100名可访问用户、峰值20名使用者，不等于已经完成该规模的负载验收。
 
 最新在原生controller/独立进程Node集成基础上，补齐独立native Node的实际CPU集成：两任务 UID、硬配额/缓存、中央重启时同容器/attempt继续、两次恢复绑定 SIGKILL 与后续 unit/库存交接。跨隔离挂载视图的存储恢复已从409修为200并核对原字节，见[恢复合同](https://github.com/1801ZDL/AI-center-cann/blob/main/UNIT_RELOCATION.md)。最新整体1357项、双原生角色48项通过；Node旧unit精确升级、7次实际进程能力快照、活任务期间Node/中央分别重启和缓存恢复已验收。此前进程47项为历史范围。宿主开机、真实登录账号、两机和NPU计算仍独立列为门槛。

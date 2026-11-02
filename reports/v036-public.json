@@ -105,6 +105,7 @@
     "unit_bus_pin.py",
     "unit_relocation.py",
     "storage_inventory.py",
+    "storage_reconciliation.py",
     "job_graphs.py",
     "graph_client.py",
     "control_monitor.py",

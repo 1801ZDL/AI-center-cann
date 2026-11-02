@@ -1,5 +1,7 @@
 # AI-center-cann
 
+新增[旧pending库存管理员对账](https://github.com/1801ZDL/AI-center-cann/blob/main/STORAGE_RECONCILIATION.md)：停止态精确计划、同计划中断恢复、原计费/批准清单保留及缺helper的显式修复升级。输入和取消任务归档已做实际原生服务验收；它不执行冷存或自动清理，部署边界见PROGRESS.md。
+
 面向 Triton-Ascend / AscendNPU-IR 开发服务器的 AI 任务调度与实验管理原型。程序化中央服务负责资源分配和可靠执行，个人 Agent、CLI 与网页通过同一 API 提交任务、读取日志和分析结果。
 
 **当前为 v0.36 基线加后续扩展，尚非生产就绪。** 已有个人身份/项目授权、持久资源账本、受控 Node、五类工作流、环境版本锁、日志归档、独立 CLI/MCP、分角色安装及备份恢复。同机隔离环境已验证真实 CPU 工作流、两任务 UID、硬配额和缓存；完整证据、失败记录与源码范围见 [PROGRESS.md](PROGRESS.md)。

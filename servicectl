@@ -115,6 +115,7 @@ def main():
         if action=='restore':p.add_argument('--archive',required=True);p.add_argument('--new-state-dir',required=True);p.add_argument('--payload-config');p.add_argument('--spool-config');p.add_argument('--cache-config');p.add_argument('--control-config')
         if action=='activate':
             group=p.add_mutually_exclusive_group(required=True);group.add_argument('--archive');group.add_argument('--release-id')
+            p.add_argument('--repair-storage-kind',choices=['input','archive']);p.add_argument('--repair-storage-id')
         if action=='unit-install':p.add_argument('--unit-dir',default='/etc/systemd/system');p.add_argument('--enable',action='store_true')
     p=commands.add_parser('native-run',help='Trusted Root controller namespace launcher; not a task interface');p.add_argument('--prefix',required=True)
     p=commands.add_parser('control-monitor',help='Read-only external control-filesystem check; never opens databases or starts services')
@@ -131,10 +132,26 @@ def main():
     p.add_argument('--prefix',required=True);p.add_argument('--output',required=True)
     p=commands.add_parser('reference-prune',help='Rotate SHA-confirmed unbound history and revoke its reference approvals; retain jobs and payloads')
     p.add_argument('--prefix',required=True);p.add_argument('--archive',required=True);p.add_argument('--confirm-sha256',required=True)
+    p=commands.add_parser('storage-reconcile-plan',help='Preview one stopped legacy pending storage inventory; no payload changes')
+    p.add_argument('--prefix',required=True);p.add_argument('--kind',required=True,choices=['input','archive']);p.add_argument('--id',required=True);p.add_argument('--output',required=True)
+    p=commands.add_parser('storage-reconcile-apply',help='Rebind only the exact Root-approved legacy inventory; retain data and billing')
+    p.add_argument('--prefix',required=True);p.add_argument('--plan',required=True)
     args=parser.parse_args()
     if args.action=='unit-install' and args.enable:
         raise deploy.DeployError('unit-install --enable is retired before any write; use file-only unit-install, systemd-doctor, unit-manager and unit-start plan/apply')
     if args.action=='bundle':result=deploy.bundle(args.output)
+    elif args.action=='storage-reconcile-plan':
+        from storage_reconciliation import plan
+        from payload_quota_admin import write
+        deploy.require_root();target=deploy.secure_parent(args.output)
+        if target.exists() or target.is_symlink():raise deploy.DeployError('Choose a new Root-private reconciliation plan output')
+        value=plan(args.prefix,args.kind,args.id);write(target,value)
+        result={'read_only':True,'plan_id':value['id'],'plan_file':str(target),'payload_mutated':False,'quota_released':False}
+    elif args.action=='storage-reconcile-apply':
+        from storage_reconciliation import apply,MAX_BYTES
+        deploy.require_root();path=Path(args.plan)
+        if path.lstat().st_uid!=0:raise deploy.DeployError('Storage reconciliation plan must be Root-owned')
+        result=apply(args.prefix,deploy.regular_json(path,max_bytes=MAX_BYTES,private=True))
     elif args.action=='reference-export':
         from reference_maintenance import export
         result=export(args.prefix,args.output)
@@ -375,7 +392,11 @@ def main():
         _,meta,_=deploy.verify(args.prefix);result={k:meta[k] for k in ['role','uid','gid','state_dir','release_id','state_schema']};result['verified']=True
     elif args.action=='backup':result=snapshot(args.prefix,args.output)
     elif args.action=='restore':result=restore(args.prefix,args.archive,args.new_state_dir,payload_config=args.payload_config,spool_config=args.spool_config,cache_config=args.cache_config,control_config=args.control_config)
-    elif args.action=='activate':result=activate(args.prefix,args.archive,args.release_id)
+    elif args.action=='activate':
+        if bool(args.repair_storage_kind)!=bool(args.repair_storage_id):raise deploy.DeployError('Code-only storage repair requires both the exact kind and ID')
+        if args.repair_storage_kind:
+            result=activate(args.prefix,args.archive,args.release_id,storage_reconcile=(args.repair_storage_kind,args.repair_storage_id))
+        else:result=activate(args.prefix,args.archive,args.release_id)
     elif args.action=='admin':
         prefix,meta,release=deploy.verify(args.prefix,owner_recovery=True,delivery_recovery=True,finish_recovery=True)
         if meta['role']!='controller':raise deploy.DeployError('Account/node enrollment is administered on the controller installation')

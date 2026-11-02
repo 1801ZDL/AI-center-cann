@@ -1,5 +1,9 @@
 # 后续任务
 
+## 2026-11-03 legacy pending对账前置已补齐
+
+旧v1 pending存储操作现有显式Root对账及缺helper安装的code-only修复升级，真实原生controller输入/取消任务归档、四处同计划SIGKILL、owner继续原操作和恢复拒旧快照已验证，见STORAGE_RECONCILIATION.md/PROGRESS.md。不再列为完全缺少入口。它只更新已验证库存，冷存副本/读路径/原件维护与历史计数拆分仍待；1024份Root回执历史的导出轮转亦待。真实宿主/多机/NPU门槛及PUBLIC-001延期不变。
+
 ## 2026-11-03 双原生角色验收后的下一优先
 
 native Node容器CPU路径已完成，不再作为全未验项：实际48项、最终1357项回归，旧生成unit升级、双UID/配额/缓存、活任务中Node/中央重启及恢复已通过。限定受信Node的文件能力修复见NATIVE_SYSTEMD.md/PROGRESS.md。真实受限设备trace进一步确认manager可打开而/dev/davinci1返回EBUSY，仍未取得设备访问或计算资格，不重复无变化探针、不处置其他holder。
