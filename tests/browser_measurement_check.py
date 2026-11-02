@@ -45,6 +45,7 @@ def main():
                 job=fixture.consumer('performance');grant,auth=fixture.grant(job);before=reading(fixture.iso())
                 current=1650;fixture.advance(1);start=fixture.iso();fixture.advance(1);end=fixture.iso()
                 current=100;fixture.advance(1);after=reading(fixture.iso())
+                if label=='interrupted':before['devices'][0]['health']='Alarm'
                 document={'schema':measurement.SCHEMA,'source_sha256':measurement.source_sha(),
                     'binding':{**{k:grant.get(k) for k in ['job_id','attempt_id','node_id','physical_id','environment_sha256','npu_policy_sha256']},'device_ids':[0]},
                     'queries':2,'restarts':0,'windows':[{'id':'mm512_fp16','state':'closed' if label=='recorded' else 'interrupted',
@@ -84,11 +85,19 @@ def main():
             assert not archived['performance_qualified'] and 'token' not in json.dumps(archived)
             page.locator('#close-drawer').click();page.locator('[data-result-job="'+records['interrupted']['id']+'"]').click()
             expect(drawer).to_contain_text('测量窗口未确认');expect(drawer).to_contain_text('未采集或区间未确认')
+            expect(drawer).to_contain_text('未闭合窗口的独立观测');expect(drawer).to_contain_text('卡 0 Alarm')
+            expect(drawer).to_contain_text('不重建区间、先后关系或稳定频率')
+            interrupted=records['interrupted']['device_conditions'];assert interrupted['status']=='adverse_observed'
+            assert interrupted['measurement']['status']=='unconfirmed' and interrupted['measurement']['observed_alerts']==1
+            snapshot=interrupted['measurement']['windows'][0];assert 'duration_seconds' not in snapshot and 'frequency_in_window' not in snapshot
+            assert snapshot['partial_observations']['before']['devices'][0]['health']=='Alarm'
             page.locator('#close-drawer').click()
             response=context.request.get(url+'/api/results.csv');assert response.status==200
             rows=list(csv.DictReader(io.StringIO(response.body().decode('utf-8-sig'))));assert len(rows)==3
             row=next(row for row in rows if row['job_id']==actual['id'])
             assert json.loads(row['metrics'])['mean_us']==30.5 and json.loads(row['device_conditions'])['measurement']==archived
+            interrupted_row=next(r for r in rows if r['job_id']==records['interrupted']['id'])
+            assert json.loads(interrupted_row['device_conditions'])['measurement']==interrupted['measurement']
             other=browser.new_context(extra_http_headers={'Authorization':'Bearer '+alice})
             assert other.request.get(url+'/api/results').json()['total']==0
             assert other.request.get(url+'/api/jobs/'+actual['id']+'/artifact?name=npu-conditions.json').status in {403,404}
@@ -101,6 +110,7 @@ def main():
                 'archive normalized evidence SHA and no token','CSV preserves exact window metadata','legacy workflow remains compatible',
                 'other owner cannot read rows or archive','mobile width','GET-only with no model or external request'],
             'release':release['release_id'],'job_ids':{k:v['id'] for k,v in records.items()},'new_npu_launches':0,'new_model_calls':0,'browser_errors':errors}
+        report['checks']+=['interrupted Alarm retained without reconstructing interval','CSV retains partial snapshots and original mean']
         atomic_json(Path(os.environ['LAB_JOB_DIR'])/'results/measurement-browser.json',report);print(json.dumps(report,ensure_ascii=False))
     finally:
         if server:server.shutdown();server.server_close()

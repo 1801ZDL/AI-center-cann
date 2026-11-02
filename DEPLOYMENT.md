@@ -1,5 +1,7 @@
 # 多用户/多服务器扩展边界与交付顺序
 
+当前共享服务器的重启后准入负例：健康空闲的1号卡在受限非root容器中打开仍返回EBUSY，固定访问资格为blocked；普通精度任务没有执行。这里只证明访问门槛有效和当前路径未通过，不证明设备损坏或确切容器根因。Docker元数据只列出runc相关运行时；官方也提供[手动挂载方案](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/83RC1alpha001/softwareinst/instg/instg_0059.html)，不能仅以没有注册Ascend运行时归因本次错误。目标A5/驱动组合还须单独核对。未更改Docker daemon、驱动、宿主账号或既有容器。
+
 ## 固定逐卡性能参考的迁移（2026-11-02）
 
 [PERFORMANCE_REFERENCE.md](PERFORMANCE_REFERENCE.md)新增显式管理员批准的同卡/环境/身份固定微用例经验参考，项目规则按物理卡固定批准摘要。新服务器必须先完成实际非root设备、Node窗口与Event对应、精度和性能采集验收，再从本机原任务建立参考；合成测试和CPU任务不能批准。恢复冻结原参考且不能重新批准历史，需新采样和新参考。业务原结果保留，经验界限不认证完整硬件或任意算子收益。

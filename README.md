@@ -74,6 +74,8 @@ ssh -N -L 18765:127.0.0.1:18765 YOUR_USER@YOUR_SERVER
 
 ## 管理员与多服务器接入
 
+中断窗口现保留独立有效的告警快照，原结果不改、不重建计时区间，见[NPU_MEASUREMENT.md](NPU_MEASUREMENT.md)。最终1189项回归、同机Root42项及网页12项通过。另一次真实重启后非root设备访问探针仍为EBUSY/blocked，普通精度任务0attempt；并无真机计算通过结论，详见[PROGRESS.md](PROGRESS.md)。
+
 固定逐卡微用例现可绑定管理员明确批准的[经验性能参考](PERFORMANCE_REFERENCE.md)，与原业务均值/精度断言分列。原固定参考1171项回归、Root41项通过；新增[离线确认轮转](REFERENCE_MAINTENANCE.md)最终1183项回归、同机隔离Root42项和重新打包网页10项通过，含两次实际SIGKILL恢复。设备参考为合成验收，当前未创建真实NPU参考或启用规则。真实Linux用户/PID1、两物理机与峰值/长期负载仍需目标机验收；推广阶段与权限切换见[SCALING.md](SCALING.md)。
 
 新管理员安装默认启用控制盘64MiB/256 inode余量准入，低余量暂停新增工作，原任务继续恢复；网页/MCP可读状态。旧Demo不自动启用，原生硬配额、留存和外部告警仍需另配，见[STORAGE.md](STORAGE.md)。

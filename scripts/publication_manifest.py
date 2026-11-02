@@ -46,6 +46,8 @@ def private_values():
         elif isinstance(v,list):
             for x in v:collect(x)
     files.add(r/'config.json')
+    files.update(r.glob('jobs/*/tmp/qualification/controller/config.json'))
+    files.update(r.glob('jobs/*/tmp/qualification/node-config.json'))
     for pattern in ['personas/*/client.json','workers/*/config.json',
                     'full-build-20261030/personal-profile.json','full-build-20261030/root-node-state/config.json',
                     'jobs/*/tmp/installation/controller-*/config.json',

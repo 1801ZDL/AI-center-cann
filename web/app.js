@@ -440,6 +440,11 @@ async function showJob(jobId) {
       for(const window of measurement.windows||[]){
         fields.push(['窗口 '+window.id,`${window.status} · Node区间 ${window.started_at||'未闭合'} → ${window.ended_at||'未闭合'} · 区间内心跳 ${window.heartbeat_samples_in_window??0} / 频率 ${window.frequency_samples_in_window??0}${window.heartbeat_retention_incomplete?' · 历史不完整':''}；边界读数不代表区间内稳定频率`]);
         fields.push(['窗口内频率快照',(window.frequency_in_window||[]).map(v=>`卡 ${v.device_id}：${v.min_mhz}–${v.max_mhz} MHz / ${v.samples} 份离散快照`).join('；')||'未采集或区间未确认']);
+        if(window.partial_observations){
+          const snapshots=Object.entries(window.partial_observations).map(([side,v])=>`${side==='before'?'原before':'原after'} ${v.sampled_at||v.status}：${(v.devices||[]).map(d=>`卡 ${d.id} ${d.health}`).join('；')||'无有效设备快照'}`);
+          fields.push(['未闭合窗口的独立观测',snapshots.join('；')||'没有可独立核验的快照']);
+          fields.push(['独立观测边界','保留已知告警；不重建区间、先后关系或稳定频率']);
+        }
       }
     }
     if(j.placement)fields.push(['指定执行目标',j.placement.node_id+(j.placement.device_ids?' / 物理卡 '+j.placement.device_ids.join(', '):'')]);

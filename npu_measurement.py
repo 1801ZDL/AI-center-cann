@@ -203,6 +203,29 @@ class Broker:
         return {k:v for k,v in self.state.items() if k in {'schema','source_sha256','binding','queries','restarts','windows'}}
 
 
+def partial_observations(job,raw,execution_finished_at=None):
+    """Keep individually valid snapshots without reconstructing an interval."""
+    from npu_conditions import sample
+    observations={};errors={};alerts=0
+    for side in ['before','after']:
+        if side not in raw:continue
+        observation=raw[side]
+        try:
+            if not isinstance(observation,dict):raise ValueError()
+            if observation.get('status')!='sampled':
+                observations[side]={'status':'not_applicable' if not job['allocation']['npu_ids'] else 'unavailable'}
+                continue
+            reading=sample({**observation,'status':'ok','policy_sha256':job.get('_npu_policy_sha256')},job)
+            instant=epoch(reading['sampled_at']);latest=time.time()+1
+            if execution_finished_at is not None:latest=min(latest,epoch(execution_finished_at)+1)
+            if not epoch(job['reserved_at'])-15<=instant<=latest:raise ValueError()
+            observations[side]=reading
+            alerts+=sum(card['health'] in {'Warning','Alarm'} for card in reading['devices'])
+        except (ValueError,TypeError,KeyError,AttributeError,OverflowError):errors[side]='invalid_or_outside_attempt'
+    return {'partial_observations':observations,'partial_observation_errors':errors,
+        'partial_observation_scope':'Independent attempt-related snapshots only; no closed interval, ordering or GPU timing claim.'},alerts
+
+
 def normalize(job,value,trace=None,execution_finished_at=None):
     """Validate authenticated Node metadata; never fail/rewrite workload results."""
     if not job.get('_measurement_contract'):return None
@@ -226,14 +249,22 @@ def normalize(job,value,trace=None,execution_finished_at=None):
             identifier=raw.get('id')
             if not isinstance(identifier,str) or not ID.fullmatch(identifier) or identifier in identifiers:raise ValueError()
             identifiers.add(identifier);row={'id':identifier,'status':'interrupted'};base['windows'].append(row)
-            if raw.get('state')!='closed':continue
-            start=epoch(raw['started_at']);end=epoch(raw['ended_at'])
-            if any(type(raw.get(k)) not in {float,int} or not math.isfinite(raw[k]) for k in ['started_monotonic','ended_monotonic']):raise ValueError()
-            duration=raw['ended_monotonic']-raw['started_monotonic']
-            if (type(duration) not in {float,int} or not math.isfinite(duration) or not 0<=duration<=job['timeout_seconds']+15
-                or not epoch(job['reserved_at'])-15<=start<=end<=time.time()+1 or abs(end-start-duration)>5
-                or execution_finished_at is not None and end>epoch(execution_finished_at)+1):
-                row['status']='clock_unconfirmed';continue
+            if raw.get('state') not in {'begin_pending','open','end_pending','interrupted','closed'}:raise ValueError()
+            closed=False
+            if raw['state']=='closed':
+                try:
+                    start=epoch(raw['started_at']);end=epoch(raw['ended_at'])
+                    if any(type(raw.get(k)) not in {float,int} or not math.isfinite(raw[k]) for k in ['started_monotonic','ended_monotonic']):raise ValueError()
+                    duration=raw['ended_monotonic']-raw['started_monotonic']
+                    if (not math.isfinite(duration) or not 0<=duration<=job['timeout_seconds']+15
+                        or not epoch(job['reserved_at'])-15<=start<=end<=time.time()+1 or abs(end-start-duration)>5
+                        or execution_finished_at is not None and end>epoch(execution_finished_at)+1):raise ValueError()
+                    closed=True
+                except (ValueError,TypeError,KeyError,OverflowError):row['status']='clock_unconfirmed'
+            if not closed:
+                partial,alerts=partial_observations(job,raw,execution_finished_at)
+                row.update(partial);base['observed_alerts']+=alerts
+                continue
             row.update(started_at=raw['started_at'],ended_at=raw['ended_at'],duration_seconds=duration,
                        status='boundary_observations_only',observations={},heartbeat_samples_in_window=0,frequency_samples_in_window=0,
                        heartbeat_retention_incomplete=bool((trace or {}).get('dropped_samples')))

@@ -1,5 +1,23 @@
 # 实施进度
 
+## 中断窗口保留独立告警及重启后真实设备准入（2026-11-02）
+
+**最终1189项/243.160秒/零跳过及JS语法通过，同机隔离Root42项、网页12项通过。** full `job-c8b299bb0df8`、Root `job-342affe1f003`、browser `job-477e0807876f`；105个非文档CORE、247个测试/辅助文件、4个网页资产及agent_runner冻结，Root/browser包CORE与网页逐项相同。文档和私有fixture扫描随后完善，不声称包文档一致；protected6及固定镜像APP4不变，没有镜像重建、模型或NPU kernel调用。
+
+[npu_measurement.py](NPU_MEASUREMENT.md)补齐原先中断窗口的观测缺口。认证Node合同/身份/源码/卡等仍整体核对；open/pending/interrupted或时钟不成立的窗口，把已保留且可独立核验的before/after管理快照归入partial_observations。每侧独立核对任务时间、结构与已分配设备，错误侧用固定原因标记，不抹掉另一侧；已知Warning/Alarm仍计入设备条件。不补造起止时间、duration、窗口内心跳或频率，不提供先后关系或GPU工作证明，不成为固定参考来源。查询预算、端点/身份保护、原任务监管和结果均不改变。
+
+6项新增专项包含真实本地socket打开→中断→恢复、已知Alarm、单侧无效、缺时钟/时钟跳变、超出任务时间、外来身份、隐私裁剪及原结果不改。专项25项 `job-3c1398952144`5.954秒通过，最终1189覆盖同一生产/单测版本。真实网页打包与HTTP验证原均值30.5和原通过状态保留，中断窗口有Alarm但仍未确认，drawer和CSV保留同一partial文档、没有补造区间，原闭合窗口频率、旧Node/权限/归档SHA/移动宽度及GET-only继续通过。设备窗口捕获仍为合成。
+
+Root42保持真实Controller999/Node0、Tasks23003/23004的BishengIR/EDQUOT/cache、两个CPU标记窗口、原容器重启、两次恢复与参考历史轮转。新增partial格式经原CPU中断窗口的动态快照及原归档/表格核对；没有NPU查询。原导出/裁剪的两次实际SIGKILL、服务UID999 journal、旧备份拒绝和恢复epoch失效仍通过。Primary独立核原/导出恢复SQLite、任务ID/attempt计数、两UID保留42IR、marker源码SHA/原结果/表格/私有journal、参考历史原字节及链头。3loop释放，五类自有fixture容器/卷空，backing证据私有留存。
+
+**真实设备准入另行取证，不是计算通过。** 当前只读采样 `job-417c604f805a`最初看到物理0 Alarm/2进程、物理1 OK/1进程。父任务 `job-954a4b82e619`经Main队列等待，健康且空闲后仅取得物理1，运行现有固定验收。其独立控制器的 `npu_access_probe` `job-eb0554b842c4`以UID23901、补充设备组1001、零capability、no-new-privileges、只读根/无网络运行，仅暴露davinci1及合同管理设备。打开davinci1返回errno16/EBUSY，protected receipt记录failure_stage=npu_device_access、workload_started=false，资格blocked。普通accuracy_v1 `job-f63ecc382bfb`保持0attempt后显式取消，后续CPU `job-a44eedf5c0fe`一次完成；未初始化ACL或启动kernel，资源归还，原两attempt清理/ACK及容器消失独立核对。
+
+此为宿主已重启且卡号改变后的新证据：原Oct30父任务与本次supervisor boot ID实际不同。Primary独立核原nested SQLite、归档protected receipt/真实Docker设备对象/UID、单probe attempt、普通0attempt、CPU成功及资格上下文，不因管理OK补绿，也不把旧EBUSY当永久状态。精确驱动/命名空间/容器原因尚未确认；raw设备文件访问失败本身不等于已经验证CANN运行时初始化失败，当前尚未进行固定运行时对照。没有再次重试这个探针、放宽privileged、修改daemon/驱动/其他容器或宿主账号。独立verifier首次把Docker device对象列表误作字符串列表断言失败，改按PathInContainer/PathOnHost/CgroupPermissions核原记录后通过，没有重跑实际设备任务。
+
+Main配置/19profiles/物理域/zdl运行和资源基线不变，0非终态/holds/日程/规则/参考，参考轮转检查点仍gen0/无回执。私有evidence/interrupted-observation-validation.json与runtime/interrupted-observations-20261102、runtime/npu-access-20261102，公开只精选摘要。扫描新增这次独立资格controller/node配置的明确路径，不读模型配置或其他用户目录。
+
+后续优先在健康空闲且明确队列预算内核对固定非root CANN初始化诊断是否能区分raw-open门槛与真实运行时，先准备工具链/身份/设备映射证据；不重提无变化探针、不让普通任务绕过资格。真实NPU精度/性能/仿真与Event窗口、管理员宿主用户/PID1、两物理机fencing、20人混合及长期运维仍待，整体目标active，PUBLIC-001继续延期。
+
 ## 固定参考历史的离线导出、确认轮转与中断恢复（2026-11-02）
 
 **最终1183项/255.453秒/零跳过及JS语法通过，同机隔离Root安装42项、重新打包网页10项通过。** full `job-59945b5047d5`、Root `job-340b37f5e1af`、browser `job-ac24e56663fe`；105个非文档CORE、247个测试/辅助文件、4个网页资产及agent_runner冻结，Root/browser包CORE与网页逐项一致。文档随后完成；protected6和固定镜像APP4未改，没有重建镜像、模型或NPU kernel调用。

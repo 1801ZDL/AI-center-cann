@@ -158,6 +158,56 @@ class MeasurementTests(unittest.TestCase):
         self.assertEqual(raw['summary']['measurement'],done['device_conditions']['measurement'])
         self.assertNotIn('token',json.dumps(done['device_conditions']['measurement']))
         with self.assertRaises(DeployError):require_features(fixture.daily.root,'controller',{'files':{n:{} for n in CORE if n!='npu_measurement.py'}})
+
+    def test_restart_retains_before_alarm_without_inventing_closed_window(self):
+        broker=self.broker(lambda:self.reading('Alarm'));self.call(broker);broker.close();recovered=self.broker()
+        row=measurement.normalize(self.job,recovered.document());window=row['windows'][0]
+        self.assertEqual(row['status'],'unconfirmed');self.assertEqual(row['observed_alerts'],1)
+        self.assertEqual(window['status'],'interrupted');self.assertEqual(window['partial_observations']['before']['devices'][0]['health'],'Alarm')
+        self.assertNotIn('duration_seconds',window);self.assertNotIn('frequency_in_window',window);self.assertEqual(self.calls,1)
+        self.assertNotIn('private',json.dumps(row));self.assertNotIn('pid',json.dumps(window['partial_observations']))
+
+    def test_invalid_partial_side_cannot_erase_independently_valid_other_side(self):
+        broker=self.broker(lambda:self.reading('Warning'));document=self.closed(broker)
+        raw=document['windows'][0];raw['state']='end_pending';raw['before']['sampled_at']='not-a-clock'
+        row=measurement.normalize(self.job,document);window=row['windows'][0]
+        self.assertEqual(row['observed_alerts'],1);self.assertEqual(set(window['partial_observations']),{'after'})
+        self.assertEqual(window['partial_observation_errors'],{'before':'invalid_or_outside_attempt'})
+
+    def test_missing_clock_and_clock_jump_keep_snapshots_without_interval(self):
+        broker=self.broker(lambda:self.reading('Alarm'));value=self.closed(broker)
+        for missing in [True,False]:
+            document=copy.deepcopy(value)
+            if missing:document['windows'][0].pop('started_monotonic')
+            else:document['windows'][0]['ended_monotonic']+=20
+            row=measurement.normalize(self.job,document);window=row['windows'][0]
+            self.assertEqual(window['status'],'clock_unconfirmed');self.assertEqual(row['observed_alerts'],2)
+            self.assertNotIn('heartbeat_observations_in_window',window);self.assertFalse(row['performance_qualified'])
+
+    def test_partial_snapshot_times_are_bound_to_attempt_and_execution_end(self):
+        broker=self.broker(lambda:self.reading('Alarm'));self.call(broker);broker.close();document=broker.document()
+        for when in ['1970-01-01T00:00:00+00:00',(dt.datetime.now(dt.timezone.utc)+dt.timedelta(days=1)).isoformat()]:
+            copy_value=copy.deepcopy(document);copy_value['windows'][0]['before']['sampled_at']=when
+            row=measurement.normalize(self.job,copy_value);self.assertEqual(row['observed_alerts'],0)
+            self.assertEqual(row['windows'][0]['partial_observations'],{})
+        row=measurement.normalize(self.job,document,execution_finished_at='1970-01-01T00:00:00+00:00')
+        self.assertEqual(row['observed_alerts'],0)
+
+    def test_foreign_identity_cannot_import_partial_alarm_or_process_fields(self):
+        broker=self.broker(lambda:self.reading('Alarm'));self.call(broker);broker.close();document=broker.document()
+        document['binding']['attempt_id']='foreign'
+        row=measurement.normalize(self.job,document);self.assertEqual(row['windows'],[]);self.assertEqual(row['observed_alerts'],0)
+
+    def test_interrupted_alarm_changes_condition_only_and_keeps_original_result(self):
+        broker=self.broker(lambda:self.reading('Alarm'));self.call(broker);broker.close()
+        store=Mock();store.directory.return_value=self.control
+        clear=self.reading();clear['devices'][0].update(health='OK',process_count=0,utilization_pct=0)
+        result={'status':'succeeded','exit_code':0,'metrics':{'mean_us':30.5},'measurement_evidence':broker.document(),
+            'npu_admission_observation':clear,'npu_release_observation':clear}
+        summary=npu_conditions.finalize(store,self.job,result)
+        self.assertEqual(result['status'],'succeeded');self.assertEqual(result['metrics']['mean_us'],30.5)
+        self.assertEqual(summary['status'],'adverse_observed');self.assertIn('measurement_window_unconfirmed',summary['reasons'])
+        self.assertEqual(summary['measurement']['observed_alerts'],1)
     def test_incompatible_optional_node_measurement_does_not_break_old_workflows(self):
         import test_device_evidence as cases
         fixture=cases.EvidenceTests('runTest');fixture.setUp();self.addCleanup(fixture.doCleanups)
