@@ -81,6 +81,8 @@ CORE.extend(['npu_measurement.py','NPU_MEASUREMENT.md'])
 OPTIONAL_ADMIN_FILES.update({'npu_measurement.py','NPU_MEASUREMENT.md'})
 CORE.extend(['performance_reference.py','PERFORMANCE_REFERENCE.md'])
 OPTIONAL_ADMIN_FILES.update({'performance_reference.py','PERFORMANCE_REFERENCE.md'})
+CORE.extend(['reference_maintenance.py','REFERENCE_MAINTENANCE.md'])
+OPTIONAL_ADMIN_FILES.update({'reference_maintenance.py','REFERENCE_MAINTENANCE.md'})
 
 
 class DeployError(ValueError):pass

@@ -1,15 +1,15 @@
 {
   "schema": "ai-center-cann-source-check/v1",
-  "recorded_at": "2026-11-02T11:20:47.749239+00:00",
+  "recorded_at": "2026-11-02T11:40:15.969811+00:00",
   "passed": true,
-  "python_unit_tests": 1171,
+  "python_unit_tests": 1183,
   "unit_skipped": 0,
-  "unit_seconds": 242.887,
-  "unit_log_sha256": "f15ad35116c79aeba4817a707fda2a483d2bdfe5a0fd9385191f2489bc751b76",
+  "unit_seconds": 255.453,
+  "unit_log_sha256": "60b4480eec4c9ffc1d224f0a71b7f727efe65b7578e0682d8fdde8d759350e55",
   "python": "Python3.12.3",
   "javascript_syntax_passed": true,
   "command": "bash scripts/check.sh /usr/bin/python3",
-  "scope": "Explicit administrator-approved empirical fixed NPU microcheck references, strict original sealed source/report/Node-window binding and finite Event-duration consistency, exact card/environment/identity context, prospective independent comparison, bounded history and restore protection. Fixed-reference ratio is separate from business means and original outcomes. Device captures are synthetic; actual installed CPU evidence rejected, original IR/UID/restart/restore exercised. No real NPU reference approved or compute launched; no full hardware, continuous clock, arbitrary operator speedup or production qualification.",
+  "scope": "Offline Root export and exact-SHA rotation of all unbound fixed-reference history, bounded persistent generation/hash checkpoint and latest receipt, original job/result/payload retention, epoch and code downgrade protection. Actual installed Root CLI and two SIGKILL/retry boundaries, old-backup refusal and latest restore accepted on one physical host. Reference history remains explicitly synthetic, no NPU workload or approval; not real host users/systemd PID1/two-host or long-term storage acceptance.",
   "production_source_sha256": {
     "auth.py": "6bd9b70566fc8dd9b43d3965df5e1fce4c1385e3192239a83052cc0e04778d5f",
     "owner_identity.py": "5a48cf78584b2f717ac45594a73da569589cde6d9441037a0aedffe423f1515b",
@@ -75,9 +75,9 @@
     "storage_files.py": "c2dfe4aec3a4dec6bf8802655eb9e72a414e307d5eb6f4725da99f0484642ebf",
     "storage_lifecycle.py": "af0607ef46221778177ee6533793e067c272457d04e453abb00e68b142666b6d",
     "node_storage.py": "185bdeb757c0644cf6319460d74ea15061cf6329b4707354696f8e156a16370c",
-    "deployment.py": "0a00dd6d06bc1dfd332a6022d1c7641983c4e18c80de862ba08bd61f0725f6ed",
-    "maintenance.py": "1fd7f088a56f50d230aea5294f2585625e3da2eed6b034c792d8c47efb4ed4d8",
-    "servicectl": "51c83cff183dbe45a9f33bbf0f15850aca8c26a501f0dce2462abee2d694a2fd",
+    "deployment.py": "55a2dce1e3170b2c8609c9cd3a2bc0a0539a315fed3b85e42a4e9117bae83654",
+    "maintenance.py": "996babe045a8474f213ce51d425e8c3d3c14527e20f51de517f4bd9ee8b930af",
+    "servicectl": "b57cf10845c694ad45bc8c0fac1641f1ea173e96687cf9c4efae2df8d95cb5e1",
     "accessctl": "c0d0a86c7a027036e202aff0795eae0001beec676c393d13e73a763d685ccdc9",
     "workerctl": "7a202bc88db938eaf5ddd21d6c248342e951423b7dba9220dd308f8f6a809c8f",
     "spool_storage.py": "c8a579146e0b24077ebf504050dd5344505f8023f6e33be1c1cb6e9ff312fea4",
@@ -114,7 +114,8 @@
     "npu_frequency.py": "df3c3211343c030370181c5ac0af7bbdae3ba82a9c239c14508fa858c2abc37f",
     "device_evidence.py": "8b2fd10d18c09679a443ddb6718410823efa9b75189f2dbb1565aacdb10849d4",
     "npu_measurement.py": "888e0e0ff87bdb262338ddcc2d958b1865614464e1a498a30582928afe5598e3",
-    "performance_reference.py": "5774e56a8c48885b20d2ce5498e1fb89b2bce157a3b4b8a6a0de5809dab5bfe9"
+    "performance_reference.py": "b2daeacc38ee6a3075dca0e35573e3e0655f51b45927c875da1633127c60c454",
+    "reference_maintenance.py": "4121508034090beb72413d1f4e40e6a443594bb708faa93962f3042b8b08447c"
   },
   "cpu": 2,
   "memory_mib": 2048,
@@ -8448,5 +8449,38 @@
     "main_policy_count": 0,
     "main_plan_count": 0,
     "max_references": 32
+  },
+  "reference_rotation": {
+    "passed": true,
+    "scope": "Offline Root export and exact-SHA rotation of all unbound fixed-reference history, bounded persistent generation/hash checkpoint and latest receipt, original job/result/payload retention, epoch and code downgrade protection. Actual installed Root CLI and two SIGKILL/retry boundaries, old-backup refusal and latest restore accepted on one physical host. Reference history remains explicitly synthetic, no NPU workload or approval; not real host users/systemd PID1/two-host or long-term storage acceptance.",
+    "job_ids": {
+      "focused-r1": "job-bf4afed2c0c4",
+      "full-r1": "job-59945b5047d5",
+      "root-r1": "job-340b37f5e1af",
+      "browser-r1": "job-ac24e56663fe",
+      "live-r1": "job-8762afcdb370"
+    },
+    "unit_tests": 1183,
+    "unit_seconds": 255.453,
+    "root_checks": 42,
+    "installed_source_manifest_matches": true,
+    "model_invocations": 0,
+    "npu_kernel_launches": 0,
+    "host_accounts_modified": false,
+    "global_services_or_driver_modified": false,
+    "performance_qualified": false,
+    "production_ready": false,
+    "overall_goal_complete": false,
+    "source_scope_note": "Final105 non-documentation CORE,247 test/helpers,4 web and agent_runner frozen. Final Root/browser packages match CORE/web; documentation subsequently completed, not claimed byte-identical.",
+    "known_limitations": [
+      "External archive availability/durability not certified by SHA",
+      "General daily-plan/policy history rotation not implemented",
+      "Real NPU/Event correspondence, host users/PID1, two-host fencing,20-user mixed and long-term capacity remain unverified"
+    ],
+    "browser_checks": 10,
+    "actual_process_kill_recovery_boundaries": 2,
+    "synthetic_reference_history_only": true,
+    "main_rotation_generation": 0,
+    "main_reference_count": 0
   }
 }

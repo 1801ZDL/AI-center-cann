@@ -125,8 +125,18 @@ def main():
     p.add_argument('--max-rows',type=int,default=10000);p.add_argument('--max-bytes',type=int,default=16*1024**2)
     p=commands.add_parser('audit-prune',help='Prune only a verified committed export with exact SHA confirmation')
     p.add_argument('--prefix',required=True);p.add_argument('--archive',required=True);p.add_argument('--confirm-sha256',required=True)
+    p=commands.add_parser('reference-export',help='Export all unbound fixed-reference history from a stopped quiescent controller')
+    p.add_argument('--prefix',required=True);p.add_argument('--output',required=True)
+    p=commands.add_parser('reference-prune',help='Rotate SHA-confirmed unbound history and revoke its reference approvals; retain jobs and payloads')
+    p.add_argument('--prefix',required=True);p.add_argument('--archive',required=True);p.add_argument('--confirm-sha256',required=True)
     args=parser.parse_args()
     if args.action=='bundle':result=deploy.bundle(args.output)
+    elif args.action=='reference-export':
+        from reference_maintenance import export
+        result=export(args.prefix,args.output)
+    elif args.action=='reference-prune':
+        from reference_maintenance import prune
+        result=prune(args.prefix,args.archive,args.confirm_sha256)
     elif args.action=='audit-export':
         from audit_retention import export
         result=export(args.prefix,args.output,args.max_rows,args.max_bytes)

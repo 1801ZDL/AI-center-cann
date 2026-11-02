@@ -409,6 +409,11 @@ def require_control_storage(config,role,manifest):
 def require_features(state,role,manifest,installation=None):
     config=read_json(Path(state)/'config.json') or {}
     require_control_storage(config,role,manifest)
+    if role=='controller' and 'reference_maintenance.py' not in manifest.get('files',{}):
+        from reference_maintenance import read_ledger
+        checkpoint=read_ledger(Path(state)/'jobs.sqlite3')
+        if checkpoint and (checkpoint['generation'] or checkpoint['receipt'] is not None):
+            raise DeployError('Retained reference rotation checkpoint requires compatible code; refusing downgrade')
     if role=='controller' and 'performance_reference.py' not in manifest.get('files',{}):
         path=Path(state)/'jobs.sqlite3'
         if path.exists():

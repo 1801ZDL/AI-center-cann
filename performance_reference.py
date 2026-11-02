@@ -56,6 +56,8 @@ def specification(value):
 
 def invalidate_restored(path):
     with sqlite3.connect(path) as db:
+        from reference_maintenance import rebind
+        rebind(db)
         if not db.execute("SELECT 1 FROM sqlite_master WHERE name='performance_references'").fetchone():return
         for identifier,raw in db.execute('SELECT id,record FROM performance_references').fetchall():
             value=json.loads(raw)
@@ -67,6 +69,8 @@ def invalidate_restored(path):
 
 def require_restore_history(current,staged,role):
     if role!='controller':return
+    from reference_maintenance import require_history
+    require_history(current,staged)
     from deployment import DeployError
     def read(directory):
         path=Path(directory)/'jobs.sqlite3'
@@ -88,6 +92,8 @@ class References:
         with jobs.connect() as db:
             db.execute('CREATE TABLE IF NOT EXISTS performance_references(id TEXT PRIMARY KEY,name TEXT UNIQUE NOT NULL,record TEXT NOT NULL)')
             db.execute('CREATE TABLE IF NOT EXISTS performance_reference_events(id INTEGER PRIMARY KEY,record TEXT NOT NULL)')
+            from reference_maintenance import initialize
+            initialize(db)
 
     def get(self,identifier,db):
         row=db.execute('SELECT record FROM performance_references WHERE id=?',(identifier,)).fetchone()

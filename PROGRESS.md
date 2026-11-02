@@ -1,5 +1,23 @@
 # 实施进度
 
+## 固定参考历史的离线导出、确认轮转与中断恢复（2026-11-02）
+
+**最终1183项/255.453秒/零跳过及JS语法通过，同机隔离Root安装42项、重新打包网页10项通过。** full `job-59945b5047d5`、Root `job-340b37f5e1af`、browser `job-ac24e56663fe`；105个非文档CORE、247个测试/辅助文件、4个网页资产及agent_runner冻结，Root/browser包CORE与网页逐项一致。文档随后完成；protected6和固定镜像APP4未改，没有重建镜像、模型或NPU kernel调用。
+
+新增[reference_maintenance.py与REFERENCE_MAINTENANCE.md](REFERENCE_MAINTENANCE.md)，仅本地Root可对停止且静默的中央执行reference-export/reference-prune。导出完整有界参考及事件，不删除记录；目标Root私有、非状态树/独立控制盘，先fsync并不覆盖发布文件，再提交服务UID数据库回执。只允许一个待确认导出，丢响应重复原文件。清理须原SHA、原数据库inode/路径/恢复epoch、原全部行及无策略引用；任何未退休策略（含paused/draft）仍引用就拒绝，不能维护绕过require。确认清理撤销参考批准，但不删除job/attempt、策略、输入或归档、不释放租约。
+
+一个SQLite事务删除参考/事件并递增generation、保存前链头与原文件SHA及最近回执，空间不会积累每轮完整历史。同一最近回执重复确认幂等，新导出替换旧回执后旧文件仅历史。恢复必须与当前保留检查点及回执完全匹配，不接受不同generation或未证明分叉；恢复变更epoch、使旧回执失效。即使参考表已空，旧快照不能复活丢弃批准，缺模块旧代码不能激活。程序不能证明档案已有异地副本，档案丢失不可由链头恢复；一般日程/策略历史轮转、数据库压缩与异地持久性仍待。
+
+12项专项 `job-bf4afed2c0c4`0.210秒通过，覆盖原件/回执、边界/引用/权限、失败回滚、原任务保留、循环generation、恢复epoch与降级。专项之后把服务UID的SQLite打开/事务恢复放在只读静默检查之前，最终1183覆盖该顺序。没有为了通过测试放宽静默或引用要求。
+
+Root42继续Controller999/Node0、Tasks23003/23004的真实BishengIR/EDQUOT/cache/原CPU窗口/恢复。新增真实安装命令拒绝运行中的中央及明确注入的暂停策略引用。用实际SIGKILL在文件发布后、裁剪删除后提交前各中断一次；沿原文件/确认SHA重试均恢复，journal实际属主999，无Root属主journal。错误SHA拒绝、重复确认幂等、原备份拒绝且目标目录不存在；最新快照第二次恢复后generation1、原文件失效、参考/事件为空。全程是明确合成参考历史，无实际NPU批准。
+
+Primary独立核原/第一次恢复导出/最终恢复SQLite完整性、私有归档原字节SHA与canonical主体、逐行参考/事件、原phantom来源ID不存在、检查点链头计算、两次恢复epoch与回执状态、所有原任务ID/终态/attempt计数保持、两UID保留42IR、两个CPU marker的原结果/表格/IR与端点清退。原绑定DB仍保留故障注入历史，最终恢复DB保存轮转结果。3个loop关联释放、五类自有fixture容器/卷空，backing与私有档案留存；不是宿主账号/PID1或两机验收。
+
+队列只读采样 `job-8762afcdb370`于上海约19:40记录物理0 Alarm、2进程、当前100/额定1650MHz；物理1 OK、0进程、100/1650MHz。与上轮占用不同，不能沿用旧占用或把空闲降频认定故障；这不证明数值健康或非root访问。没有启动NPU计算、改频/reset或终止进程。首次提交时Main处于原安装演练的明确停止阶段，连接不可用；检查原账本无对应请求，待其恢复后用原幂等键提交，没有另造替代任务。Main配置/19profiles/物理域/zdl基线不变，0非终态/holds/计划/规则/参考；只初始化generation0/无回执的新检查点，没有在Main裁剪历史。
+
+私有证据evidence/reference-rotation-validation.json与runtime/reference-rotation-20261102；公开只整理摘要。后续先重新核设备当前健康/空闲和原授权，再验证真实非root访问/精度/性能/仿真及Event窗口；同时继续一般历史留存、外部档案和管理员真机多用户/PID1、两物理机fencing、20人混合与长期容量。整体目标active，PUBLIC-001继续延期。
+
 ## 固定微用例的显式经验性能参考（2026-11-02）
 
 **最终1171项/242.887秒/零跳过及JS语法通过，同机隔离Root安装41项、网页10项通过。** full `job-7b9e14455a55`、Root `job-94bf13b5560e`、browser `job-605d363ddbe5`。104个非文档CORE、243个测试/辅助文件、4个网页资产和agent_runner按final-frozen-r2冻结；最终Root/browser包生产与网页逐项一致，文档随后完善。protected6及固定镜像APP4不变，没有镜像重建、模型调用或新的NPU kernel。
