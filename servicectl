@@ -408,5 +408,7 @@ if __name__=='__main__':
     try:main()
     except (deploy.DeployError,RuntimeError,OSError,ValueError,subprocess.SubprocessError) as error:
         # No config contents, tokens, environment or captured subprocess output.
-        print(str(error) if isinstance(error,(deploy.DeployError,RuntimeError,ListenerError)) else 'Deployment operation failed; inspect the installation state before retrying',file=sys.stderr)
+        category=type(error).__name__
+        suffix=(' errno='+str(error.errno)) if isinstance(error,OSError) and type(error.errno) is int else ''
+        print(str(error) if isinstance(error,(deploy.DeployError,RuntimeError,ListenerError)) else 'Deployment operation failed ('+category+suffix+'); inspect the installation state before retrying',file=sys.stderr)
         raise SystemExit(1)

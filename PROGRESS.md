@@ -1,5 +1,23 @@
 # 实施进度
 
+## 2026-11-03 原生 systemd PID1 与启动中断恢复（最终1329项/安装47项通过）
+
+已在单物理机的自有无设备容器中启动真正的 systemd249.11-0ubuntu3.23、D-Bus1.12.20。最终公开夹具 **job-f37cd245563f** 成功：原始 controller unit 使用容器内UID999、零能力、NoNewPrivileges、ProtectSystem=strict、PrivateTmp；完成发布包安装、原计划manager加载/属性核对、启动ready/准入和实际属主API。启动调用方在StartUnit响应后被SIGKILL，持久状态issued，原服务先就绪，再沿原计划恢复；所有apply均计数，累计只有一次StartUnit。再次杀死控制器自身后，原生Restart=on-failure恢复新PID/invocation，NRestarts=1，旧回执保持原身份，新服务的属主API再次通过。
+
+真实管理器暴露并修复生产兼容问题：停止unit在短连接LoadUnit后会被GC，现Root属性快照使用固定原生RefUnit连接暂时保留元数据，断开释放；ControlGroup从Service接口读取，完整严格属性合同保留。服务UID不能RefUnit，因此按OS身份预先选择只读active unit路径，不授予管理权限、不在拒绝后回落。前置检查新增受保护libsystemd文件核验，不加载库；CLI一般错误只打印类型/errno，不泄露私有路径或消息。
+
+镜像准备 **job-a813063220eb** 在自有有界容器下载11个官方签名验证包并固定本地镜像，记录4个原生文件及安装脚本摘要。公开install_image.py与已执行脚本字节一致；公开参数化prepare_image.py外层未重新做完整网络构建。默认AppArmor拒绝私有挂载的边界检查保留，成功夹具仅对自身设置unconfined，使用private cgroup namespace、隔离挂载传播和自有leaf核对，前后资源限制及宿主cgroup挂载清单不变。没有privileged、完整宿主可写cgroup、宿主账号/unit/驱动改动、NPU设备或Docker socket。固定最小启动targets的限制及复现见[NATIVE_SYSTEMD.md](NATIVE_SYSTEMD.md)。
+
+中间失败全部保留并已清退原容器：最初原生总线夹具缺socket activation；随后发现GC、属性接口和服务UID的RefUnit限制。Root读取另一UID的个人profile被原权限检查拒绝，夹具改为实际属主调用API，没有放宽客户端检查。中间 **job-402e92fcc4ce** 基本启动/重放通过，**job-ffd36931ca14** 中断/重启通过但未覆盖所有apply计数及重启后API，不能代替最终证据。首个公开夹具 **job-ba9a369b9454** 因缩进错误未进入验收并到观测期限；终态/原容器清理后修正，增加create前语法检查，再运行最终原handle。没有因轮询超时换key重提。
+
+最终完整回归 **job-db9229b53b7e：1329项/242.956秒/零跳过及JS语法通过**，新增14项原生引用/权限/CLI检查、1项库前置检查、4项私有档案发布扫描边界。冻结111个非文档CORE、274个递归测试/辅助Python和发布脚本；生产相对上一发布仅deployment.py、servicectl、systemd_preflight.py、unit_manager.py变化，新增unit_bus_pin.py。保护6文件、领域/agent及web未变。
+
+同一源码的实际旧process-mode安装回归 **job-ef1bcd55ec81：47项/0清理错误**，包含两任务UID23003/23004实际BishengIR、字节/inode配额、缓存、CPU窗口恢复、备份恢复、参考轮转和原任务图。两种验收包的111个非文档CORE均独立核对，原与恢复后的图SQLite行一致，3个loop标记released且sysfs关联消失。全部本阶段native夹具及Root角色/卷/helper清退；私有原盘及native档案保留。原生档案含新生成凭据，不公开；扫描器有界仅读固定control/config.json排查泄露，不解包其他成员。
+
+私有evidence/native-systemd-validation.json及runtime/native-systemd-20261103保存原请求、失败、冻结、原始属性/故障边界/累计RPC计数、原盘和独立核验；公开摘要reports/public-source-check.json.native_systemd。Main配置SHA、19Node profiles、物理域与原CPU/内存/SHM/并发预算、zdl启动/内存/SHM及4网页HTTP内容均不变，0非终态/库存hold；未启用实际日程、规则、参考或任务图。此前Demo历史计数1100的单字段维护继续保留，新安装默认仍1000。
+
+整体仍未生产就绪：容器内controller原生PID1已验，真实宿主开机/挂载、native Node unit、两名真实登录用户、非root NPU访问/数值/性能/仿真、两物理机fencing及混合长期容量仍需目标环境验收。历史冷存仅设计，PUBLIC-001夜间PR归因继续延期。此阶段0NPU kernel/0模型调用，不将旧设备管理读数当作当前硬件资格。
+
 ## 2026-11-03 历史引用只读审计与迁移合同（设计）
 
 容量调整前完成本项目Main的只读SQLite元数据及公开source引用审计：1000任务全部终止（617成功/211失败/165取消/7超时）、38逻辑owner、0活动/未知/库存hold/有效source grant；2个任务为已启用Node环境认证来源，291个被455个公开源码/报告文件中的至少一处引用，二者无交集。剩余707个只表示未命中这两类引用，不是可清理证明；没有遍历或导出任务载荷，没有读取会话或模型配置。初次脚本误把defaults返回tuple作为dict，修正解包后取得上述结果；生产代码及门禁未改。

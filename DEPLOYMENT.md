@@ -1,5 +1,13 @@
 # 多用户/多服务器扩展边界与交付顺序
 
+## 原生服务管理器的当前范围（2026-11-03）
+
+自有无设备容器已完成真实 systemd PID1 的 controller unit 启动、精确属性读取、非 root 属主 API、启动响应后调用方 SIGKILL/原计划恢复，以及控制器崩溃后的自动重启。所有启动 apply 合计一次 StartUnit，旧回执未绑定新 invocation。维护者复现与限制见源码仓库的 [NATIVE_SYSTEMD.md](https://github.com/1801ZDL/AI-center-cann/blob/main/NATIVE_SYSTEMD.md)，夹具不随个人客户端安装。
+
+停止 unit 的 Root 快照使用受保护原生 libsystemd/固定 RefUnit helper 保留元数据，断开释放；ControlGroup 从 Service 接口读取。快照可暂时加载元数据，但不启动服务或重载。服务身份只读已经 active 的自身 unit，不授予管理器变更权限。systemd-doctor 新增原生库文件检查，前置通过仍不代表启动通过。旧 process-mode 兼容性另做回归。
+
+真实宿主开机、Node unit、两个登录账号、NPU 和双物理机仍需目标机验收。夹具的私有 cgroup/AppArmor 条件仅用于自有测试容器，不改变生产 unit 或普通任务权限；未访问宿主完整可写 cgroup 或其他人的容器。
+
 新增[固定非root CANN诊断](NPU_RUNTIME_DIAGNOSTIC.md)供维护者经队列定位环境准入。当前实际受限容器仍在aclInit返回500000，错误消息指向初始化SoC信息阶段，不能据此判卡损坏或具体驱动根因。没有进入映射/Context或普通算子，不撤销既有资格门槛。该工具在仓库测试目录，非当前服务器包的新后端。
 
 当前共享服务器的重启后准入负例：健康空闲的1号卡在受限非root容器中打开仍返回EBUSY，固定访问资格为blocked；普通精度任务没有执行。这里只证明访问门槛有效和当前路径未通过，不证明设备损坏或确切容器根因。Docker元数据只列出runc相关运行时；官方也提供[手动挂载方案](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/83RC1alpha001/softwareinst/instg/instg_0059.html)，不能仅以没有注册Ascend运行时归因本次错误。目标A5/驱动组合还须单独核对。未更改Docker daemon、驱动、宿主账号或既有容器。

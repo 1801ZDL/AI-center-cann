@@ -29,8 +29,8 @@ JOURNAL='unit-manager-change.json'
 HISTORY='unit-manager-history'
 FORMAT='ascend-lab-unit-manager-plan/v1'
 UNIT={'Id':'s','Names':'as','LoadState':'s','ActiveState':'s','SubState':'s','FragmentPath':'s','SourcePath':'s',
-      'DropInPaths':'as','NeedDaemonReload':'b','Job':'(uo)','RequiresMountsFor':'as','Transient':'b','ControlGroup':'s','InvocationID':'ay'}
-SERVICE={'MainPID':'u','ControlPID':'u','Type':'s','User':'s','Group':'s','SupplementaryGroups':'as','WorkingDirectory':'s',
+      'DropInPaths':'as','NeedDaemonReload':'b','Job':'(uo)','RequiresMountsFor':'as','Transient':'b','InvocationID':'ay'}
+SERVICE={'ControlGroup':'s','MainPID':'u','ControlPID':'u','Type':'s','User':'s','Group':'s','SupplementaryGroups':'as','WorkingDirectory':'s',
     'Environment':'as','EnvironmentFiles':'a(sb)','PassEnvironment':'as','UnsetEnvironment':'as',
     'ExecStart':'a(sasbttttuii)','ExecStartPre':'a(sasbttttuii)','ExecStartPost':'a(sasbttttuii)',
     'ExecStop':'a(sasbttttuii)','ExecStopPost':'a(sasbttttuii)','ExecReload':'a(sasbttttuii)',
@@ -128,12 +128,34 @@ class Bus:
         return {'bus_id':guid,'owner':owner,'pid1':{k:process[k] for k in ['pid','uid','start_ticks','boot_id']},'version':version}
 
     def unit(self,name,missing=False):
-        try:path=self.call(self.owner or BUS,MANAGER,INTERFACE,'GetUnit','s',[name],'o')
-        except MissingUnit:
-            if missing:return None
-            raise
-        if not isinstance(path,str) or not re.fullmatch('/org/freedesktop/systemd1/unit/[A-Za-z0-9_]+',path):raise DeployError('Unexpected selected-unit object path')
-        return {**self.properties(path,BUS+'.Unit',UNIT),**self.properties(path,BUS+'.Service',SERVICE)}
+        if missing:
+            try:self.call(self.owner or BUS,MANAGER,INTERFACE,'GetUnit','s',[name],'o')
+            except MissingUnit:return None
+        # Inactive units can be collected between short-lived busctl calls.
+        # RefUnit loads metadata only and the separate native connection holds
+        # it until both typed property sets have been read; never starts a job.
+        from unit_bus_pin import Hold,PinMissing,PinError
+        anchor=self.anchor()
+        if os.geteuid()!=0:
+            # Service identities need only inspect their already-active unit.
+            # RefUnit is privileged on real systemd; never grant manage-unit
+            # rights or fall back after a denied Root operation.
+            path=self.call(self.owner or BUS,MANAGER,INTERFACE,'GetUnit','s',[name],'o')
+            if not isinstance(path,str) or not re.fullmatch('/org/freedesktop/systemd1/unit/[A-Za-z0-9_]+',path):raise DeployError('Unexpected selected-unit object path')
+            common=self.properties(path,BUS+'.Unit',UNIT)
+            if common.get('ActiveState')!='active':raise DeployError('Service identity can inspect only its already-active unit; stopped-unit retention requires Root')
+            result={**common,**self.properties(path,BUS+'.Service',SERVICE)}
+            if self.anchor()!=anchor:raise DeployError('Manager changed during active unit readback')
+            return result
+        try:
+            with Hold(name,anchor):
+                path=self.call(self.owner or BUS,MANAGER,INTERFACE,'GetUnit','s',[name],'o')
+                if not isinstance(path,str) or not re.fullmatch('/org/freedesktop/systemd1/unit/[A-Za-z0-9_]+',path):raise DeployError('Unexpected selected-unit object path')
+                result={**self.properties(path,BUS+'.Unit',UNIT),**self.properties(path,BUS+'.Service',SERVICE)}
+                if self.anchor()!=anchor:raise DeployError('Manager changed during retained unit readback')
+                return result
+        except PinMissing:raise MissingUnit('Selected unit is not loaded in this manager') from None
+        except PinError as error:raise DeployError(str(error)) from None
 
     def reload(self):self.call(self.owner or BUS,MANAGER,INTERFACE,'Reload')
 

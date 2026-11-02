@@ -7,11 +7,15 @@ This prepares files; it never commits, publishes or changes running services.
 import argparse
 import base64
 import hashlib
+import gzip
+import io
 import json
+import os
 from pathlib import Path
 import re
 import stat
 import sys
+import tarfile
 
 ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT))
@@ -32,6 +36,24 @@ def source_paths():
                  if (ROOT/'reports'/n).is_file())
     assert set(CORE)<={str(p.relative_to(ROOT)) for p in paths}
     return sorted(paths)
+
+
+def native_fixture_config(path):
+    """Read one fixed private member, without extraction or unbounded inflate."""
+    fd=os.open(path,os.O_RDONLY|os.O_NOFOLLOW|os.O_NONBLOCK)
+    with os.fdopen(fd,'rb') as source:
+        info=os.fstat(source.fileno())
+        assert stat.S_ISREG(info.st_mode) and info.st_size<=16*1024**2,'Invalid native fixture archive'
+        with gzip.GzipFile(fileobj=source) as compressed:raw=compressed.read(16*1024**2+1)
+    assert len(raw)<=16*1024**2,'Native fixture archive exceeds inflated limit'
+    with tarfile.open(fileobj=io.BytesIO(raw),mode='r:') as archive:
+        selected=None
+        for count,member in enumerate(archive,1):
+            assert count<=1024,'Native fixture archive has too many members'
+            if member.name!='control/config.json':continue
+            assert selected is None and member.isfile() and member.size<=64*1024,'Invalid native fixture config member'
+            selected=json.loads(archive.extractfile(member).read(64*1024+1))
+    return selected # Early failures may precede controller installation.
 
 
 def private_values():
@@ -92,6 +114,9 @@ def private_values():
         files.update(r.glob(pattern))
     for p in files:
         if p.is_file() and not p.is_symlink():collect(read_json(p))
+    archives=set(r.glob('jobs/*/tmp/native-systemd/evidence/private-controller-evidence.tar.gz'))
+    for p in archives:collect(native_fixture_config(p))
+    files.update(archives)
     return values,len(files)
 
 

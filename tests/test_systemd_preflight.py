@@ -13,6 +13,16 @@ import preflight
 
 
 class SystemdPreflightTests(unittest.TestCase):
+    def test_native_library_is_required_without_loading_it_or_changing_manager(self):
+        import unit_bus_pin
+        with patch.object(pre,'pid1',return_value={}),patch.object(pre,'native_binary',return_value={}), \
+             patch.object(pre,'cgroups',return_value={}),patch.object(unit_bus_pin,'library_file',side_effect=ValueError('missing')), \
+             patch('unit_manager.Bus') as bus:
+            bus.return_value.anchor.return_value={'pid1':{'pid':1,'uid':0}}
+            value=pre.assess()
+        self.assertFalse(value['prerequisites_ready']);self.assertIn('native_libsystemd',value['blockers'])
+        self.assertEqual(bus.return_value.method_calls,[unittest.mock.call.anchor()])
+
     def test_retired_enable_is_rejected_before_verifying_or_creating_prefix(self):
         import tempfile
         with tempfile.TemporaryDirectory(dir=ROOT/'runtime') as temp:

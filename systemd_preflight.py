@@ -59,6 +59,10 @@ def assess():
             return False
     has_pid1=inspect('native_systemd_pid1',pid1)
     has_busctl=inspect('native_busctl',lambda:native_binary('/usr/bin/busctl'))
+    def native_library():
+        from unit_bus_pin import library_file
+        return {'path':str(library_file()),'root_owned':True,'native_elf':True,'loaded_or_connected':False}
+    inspect('native_libsystemd',native_library)
     if has_pid1 and has_busctl:
         inspect('system_manager_identity',lambda:unit_manager.Bus().anchor())
     else:

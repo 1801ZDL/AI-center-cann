@@ -6,6 +6,8 @@
 
 新机服务部署前可运行 `./servicectl systemd-doctor`，或给安装预检增加 `doctor --require-systemd`：只读核对原生 PID1/系统总线，避免把 `systemctl` 兼容脚本当作真实服务管理器。检查前置条件与实际服务启动分别报告，见 [部署说明](DEPLOYMENT.md)。
 
+新增[真实容器 PID1 验收](https://github.com/1801ZDL/AI-center-cann/blob/main/NATIVE_SYSTEMD.md)：原始 controller unit 以非 root、零能力启动；启动调用方 SIGKILL 后沿原计划恢复，重复 apply 合计一次 StartUnit；控制器被杀后由 systemd 恢复新身份。目标宿主开机/挂载、真实登录用户、Node unit、NPU 与双物理机仍需各自验收。
+
 新建固定环境/设备访问探针使用服务端小归档预算：2MiB产物加8MiB元数据，旧任务重放保留原额度。新探针会等待具备对应能力的Node升级，普通任务和设备资格不放宽，见[存储合同](STORAGE.md)。
 
 新增[整体任务图提交](JOB_GRAPHS.md)：一次校验并持久接收多阶段托管任务，任一阶段准入失败整批回滚；提交中断后保留原任务编号、预算和产物交接。已有个人CLI及绑定指定流程的MCP，当前实测为CPU IR链和同机Root恢复，NPU阶段仍执行原准入门槛。
