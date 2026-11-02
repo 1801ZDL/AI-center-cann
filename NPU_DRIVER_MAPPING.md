@@ -28,3 +28,15 @@
 辅助的 `tests/npu_namespace_mapping_check.py`不暴露 NPU，只在无设备的限额容器里有界读取驱动 namespace 表，输出计数和已授权 zdl 的匹配数量。既有 zdl 只查询必要身份/状态字段及自己的 namespace/PID，不读取完整 `Config.Env`。驱动表的 `udevid` 没有被当成已证明的物理 ID；注册记录也不证明独占或故障根因。读取器同样保存意图并清理本任务对象。
 
 真实结果、失败历史及最终源码/测试范围见 [PROGRESS.md](PROGRESS.md)。当前仍需非 root CANN 初始化和真实计算的正向验收；不能因驱动管理查询通过而放宽普通任务准入。
+
+## 固定子进程的系统调用观测
+
+可选 `--trace`只跟踪新建容器中的固定诊断子进程及其超时包装器，不接受PID、任意命令或跟踪参数，不附着既有进程。先以NPU=0的`--metadata --trace`验证工具可运行，再按原健康空闲/单卡队列条件作一次实际查询。默认seccomp、零capability、非Root身份及全部硬限制保持；若跟踪被拒，应保留原日志，不能自动改成privileged、增加SYS_PTRACE或关闭seccomp。
+
+该实现针对x86_64，显式选取宿主Root保护的strace、动态加载器及五个共享库，核对摘要并只读挂载在独立`/trace-runtime`目录。由加载器的`--library-path`仅为strace选择这些依赖，不把该目录加到被跟踪Python/驱动的LD_LIBRARY_PATH。没有下载工具、安装镜像或改变系统库；别的发行版若缺少这套固定依赖，应明确失败，而不是猜路径或改宿主安装。
+
+strace只记录open/openat/ioctl/close。诊断进程在输出结果前，有界读取自己仍存活时的trace前缀：私有regular/nlink=1、拒绝链接/FIFO、最多256KiB，原字节SHA、截断及并发变化标记保留。原始base64只在私有任务归档；公开摘要最多64个已分配卡及管理节点事件，仅包含操作、设备路径、整数返回值和errno，不包含PID、指针、ioctl载荷或其他文件路径。缺返回值/过长行明确为不完整，不猜成功；整个快照始终不是完整syscall历史，也不证明退出后的驱动清退。
+
+因此可以区分“设备节点open被拒”和“open成功但ioctl失败”，而不是仅据库返回87猜测其来源。跟踪本身会影响时序，结果不能用作性能测量；未观测到某事件也不能证明它从未发生。父进程即使在容器退出状态检查时失败，也会先保存本次原stdout/stderr，并核对原标签对象后清理，不创建替代尝试。
+
+[厂商故障案例](https://www.hiascend.com/document/caselibrary/detail/topic_0000002238354198)列举了设备namespace占用相关的几种容器冲突。该案例列出的产品范围不能直接覆盖本机A5，只能作为待验证线索；其停止进程/容器的建议不构成对共享服务器的操作授权。本工具不识别或退出其他holder，也不会借namespace表推导自动修复。

@@ -1,7 +1,12 @@
 """Driver ABI/mapping failures must not become device or workload qualification."""
 import ctypes
+import base64
+import json
+import os
+from pathlib import Path
+import tempfile
 import unittest
-from npu_driver_mapping_check import ABI,mapping,verify_header
+from npu_driver_mapping_check import ABI,mapping,verify_header,parse_trace,capture_trace
 
 
 class Function:
@@ -77,6 +82,65 @@ class DriverMappingTests(unittest.TestCase):
     def test_noninteger_return_is_not_success(self):
         lib=Library(codes={'dsmi_get_device_count':None})
         with self.assertRaises(ValueError):mapping(lib,1)
+
+
+class TraceBoundaryTests(unittest.TestCase):
+    def test_device_open_then_manager_ioctl_busy_is_distinct_and_private(self):
+        text=('876543 openat(AT_FDCWD, "/dev/davinci_manager", O_RDWR|O_CLOEXEC) = 3</dev/davinci_manager<char 236:0>>\n'
+              '876543 ioctl(3</dev/davinci_manager<char 236:0>>, 0xc01044fe, 0xdeadbeef) = -1 EBUSY (Device or resource busy)\n')
+        value=parse_trace(text,1)
+        self.assertEqual([(e['operation'],e['return_value'],e['errno']) for e in value['events']],[('openat',3,None),('ioctl',-1,'EBUSY')])
+        for forbidden in ['876543','0xdeadbeef','236:0','0xc01044fe']:self.assertNotIn(forbidden,json.dumps(value))
+        self.assertFalse(value['complete_history'])
+
+    def test_device_open_failure_is_not_reported_as_ioctl_failure(self):
+        value=parse_trace('openat(AT_FDCWD, "/dev/davinci1", O_RDWR) = -1 EACCES (Permission denied)',1)
+        self.assertEqual(value['events'],[{'operation':'openat','path':'/dev/davinci1','return_value':-1,'errno':'EACCES'}])
+
+    def test_successful_ioctl_and_close_do_not_create_a_failure(self):
+        value=parse_trace('11 ioctl(3</dev/davinci1>, 123, 0xabcdef) = 0\n11 close(3</dev/davinci1>) = 0',1)
+        self.assertEqual(len(value['events']),2)
+        self.assertTrue(all(e['return_value']==0 and e['errno'] is None for e in value['events']))
+
+    def test_other_paths_other_cards_and_unparsed_payload_do_not_leak(self):
+        text=('22 openat(AT_FDCWD, "/home/other/private-key", O_RDONLY) = 3\n'
+              '22 ioctl(3</dev/davinci0>, 1, "sensitive-payload") = -1 EBUSY\n'
+              '22 write(1, "/dev/davinci1 sensitive-payload", 40) = 40\n')
+        self.assertEqual(parse_trace(text,1)['events'],[])
+
+    def test_metadata_has_no_approved_physical_device(self):
+        self.assertEqual(parse_trace('open("/dev/davinci1", O_RDWR) = 3',None)['events'],[])
+
+    def test_truncated_relevant_line_is_not_treated_as_success(self):
+        value=parse_trace('23 ioctl(3</dev/davinci1>, 1, 0xabc <unfinished ...>',1)
+        self.assertTrue(value['parser_incomplete']);self.assertEqual(value['events'],[])
+
+    def test_trace_event_and_line_budgets_are_explicit(self):
+        text='ioctl(3</dev/davinci1>, 1, 0) = 0\n'*100+'x'*5000
+        value=parse_trace(text,1)
+        self.assertEqual(len(value['events']),64);self.assertTrue(value['parser_incomplete'])
+
+    def test_snapshot_bytes_are_hashed_and_bounded(self):
+        with tempfile.TemporaryDirectory() as folder:
+            path=Path(folder)/'syscalls.log';raw=b'x'*(300*1024);path.write_bytes(raw)
+            value=capture_trace(path,1)
+            self.assertEqual(value['captured_bytes'],256*1024)
+            self.assertEqual(base64.b64decode(value['raw_base64']),raw[:256*1024])
+            self.assertTrue(value['prefix_truncated']);self.assertFalse(value['summary']['complete_history'])
+
+    def test_links_fifo_and_multiple_link_file_are_rejected_without_blocking(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root=Path(folder);original=root/'trace';original.write_text('private')
+            link=root/'link';link.symlink_to(original)
+            with self.assertRaises(OSError):capture_trace(link,1)
+            os.link(original,root/'hardlink')
+            with self.assertRaises(ValueError):capture_trace(original,1)
+            fifo=root/'fifo';os.mkfifo(fifo)
+            with self.assertRaises(ValueError):capture_trace(fifo,1)
+
+    def test_bad_physical_types_are_rejected(self):
+        for value in [True,-1,256,'1']:
+            with self.assertRaises(ValueError):parse_trace('',value)
 
 
 if __name__=='__main__':unittest.main()

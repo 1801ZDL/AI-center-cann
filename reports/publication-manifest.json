@@ -1,6 +1,6 @@
 {
   "schema": "ai-center-cann-publication/v1",
-  "recorded_at": "2026-11-02T13:01:51.481083+00:00",
+  "recorded_at": "2026-11-02T13:20:22.261571+00:00",
   "files": {
     ".gitignore": {
       "sha256": "a6287d1d645bcba2ddfec87d1055724b00577eea69200b919302f4d46cf3680d",
@@ -23,8 +23,8 @@
       "mode": "100644"
     },
     "BACKLOG.md": {
-      "sha256": "835032d513e40e82f326daa6cce7dda17e7608034c3ecab0a3b322722784e41a",
-      "bytes": 12285,
+      "sha256": "3b3b9fbd1b69942294e527384581f28da430ccbf7102a4eede9ce0278712766b",
+      "bytes": 13244,
       "mode": "100644"
     },
     "CACHE.md": {
@@ -108,8 +108,8 @@
       "mode": "100644"
     },
     "NPU_DRIVER_MAPPING.md": {
-      "sha256": "aa31577c175d99e04f9df92684b32972c828c7c5048aaa9a521b5d5e6825285a",
-      "bytes": 4255,
+      "sha256": "5a9c3fa70099432544ef30cbe45daa76a1edf2b08f0757a20d6326d86a48e20e",
+      "bytes": 6603,
       "mode": "100644"
     },
     "NPU_FREQUENCY.md": {
@@ -148,13 +148,13 @@
       "mode": "100644"
     },
     "PROGRESS.md": {
-      "sha256": "e3d55b839bb71b2c60911ba830b02e2cd6e33b5eeab9a68a12754f05b2f04c12",
-      "bytes": 211515,
+      "sha256": "38fe6e644f4391ec6a2dc51b4461779b0450231a93b90ba1a4bef5b9d84b7a1e",
+      "bytes": 216140,
       "mode": "100644"
     },
     "README.md": {
-      "sha256": "f0fe1e185e401c6b14032c336f460136e73f7ff5ef640241564ae1dbd00fc399",
-      "bytes": 11961,
+      "sha256": "37c8214f3d900a21e88e433de17593557a655fb9153727826746a5929087827a",
+      "bytes": 12388,
       "mode": "100644"
     },
     "RECOVERY.md": {
@@ -728,8 +728,8 @@
       "mode": "100644"
     },
     "reports/public-source-check.json": {
-      "sha256": "b0085d33ff9dac68ac43f26a777e9130609238936cd2e72b9968c7ba10ebedb9",
-      "bytes": 411622,
+      "sha256": "b5f06fc89ddcad4de016cfdaae9cd8d11e8ea329348d18af4cd11203870df63f",
+      "bytes": 415837,
       "mode": "100644"
     },
     "reports/v036-public.json": {
@@ -1403,8 +1403,8 @@
       "mode": "100644"
     },
     "tests/npu_driver_mapping_check.py": {
-      "sha256": "e1f8abe5e3d5b202e4d6d448e1855251a2369205956e9055bb419ed1d6b07495",
-      "bytes": 13550,
+      "sha256": "6509f878fff9a803fc504d0b169c02a2cfe4dd31e603b248249e946893dcd728",
+      "bytes": 17429,
       "mode": "100644"
     },
     "tests/npu_fresh_identity_check.py": {
@@ -1788,8 +1788,8 @@
       "mode": "100644"
     },
     "tests/test_npu_driver_mapping.py": {
-      "sha256": "2cc47a671fa723866ab95a31f606490e009e32ab3160a7f5f61cc6834844d61c",
-      "bytes": 4283,
+      "sha256": "26b0ff458b57898b0b7d171bcc9264d1384643110dc4834a86bf73c8abac34f4",
+      "bytes": 7999,
       "mode": "100644"
     },
     "tests/test_npu_frequency.py": {
@@ -2154,7 +2154,7 @@
     }
   },
   "files_count": 430,
-  "total_bytes": 5487382,
+  "total_bytes": 5507551,
   "known_private_values_checked": 3113,
   "private_fixture_files_considered": 4685,
   "model_keys_read": false,

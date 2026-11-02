@@ -1,15 +1,15 @@
 {
   "schema": "ai-center-cann-source-check/v1",
-  "recorded_at": "2026-11-02T13:00:10.689738+00:00",
+  "recorded_at": "2026-11-02T13:18:47.207808+00:00",
   "passed": true,
-  "python_unit_tests": 1210,
+  "python_unit_tests": 1220,
   "unit_skipped": 0,
-  "unit_seconds": 248.475,
-  "unit_log_sha256": "3a1c4e1767b9065dc687c66e537e730198fbb82c7c1f8d1b743746d5b2bcbca1",
+  "unit_seconds": 241.164,
+  "unit_log_sha256": "9c93da3d2e5106bfe771bb19070b508d8e8035f713610decc8597c86dfe211d7",
   "python": "Python3.12.3",
   "javascript_syntax_passed": true,
   "command": "bash scripts/check.sh /usr/bin/python3",
-  "scope": "Fixed DSMI query-only host/nonroot-container comparison and bounded namespace metadata; no ACL, Context, application kernel, container-service setup or qualification. Production CORE/web unchanged; old Root/browser byte-matched acceptance reused, not re-run.",
+  "scope": "Fixed self-subprocess trace metadata verified under nonroot caps0/default seccomp; bounded private live trace and selected-device parser. Actual device request rejected before fixed payload because fresh health/occupancy changed; no actual device syscall trace, ACL or workload qualification. Production CORE/web unchanged; prior Root/browser actual package acceptance byte-matched and reused, not re-run.",
   "production_source_sha256": {
     "auth.py": "6bd9b70566fc8dd9b43d3965df5e1fce4c1385e3192239a83052cc0e04778d5f",
     "owner_identity.py": "5a48cf78584b2f717ac45594a73da569589cde6d9441037a0aedffe423f1515b",
@@ -8714,6 +8714,89 @@
       "disassembly_sha256": "99193e38ec8d5a8bb495f966246aab7be1c16a53c4be41075ce714fa5b686dc1",
       "root_cause_unproven": true,
       "does_not_prove_compute_occupancy_or_namespace_exhaustion": true
+    }
+  },
+  "driver_syscall": {
+    "passed": true,
+    "scope": "Fixed self-subprocess trace metadata verified under nonroot caps0/default seccomp; bounded private live trace and selected-device parser. Actual device request rejected before fixed payload because fresh health/occupancy changed; no actual device syscall trace, ACL or workload qualification. Production CORE/web unchanged; prior Root/browser actual package acceptance byte-matched and reused, not re-run.",
+    "job_ids": {
+      "live-r1": "job-8912fad2919a",
+      "metadata-r1": "job-6abf8f2af7da",
+      "full-r1": "job-47ae636e17dc",
+      "focused-r2": "job-1434f1f1631a",
+      "metadata-r2": "job-d7b4967cde44",
+      "live-r2": "job-09385ae3be70",
+      "focused-r1": "job-7727fae710e9",
+      "device-r1": "job-540ed891046f"
+    },
+    "unit_tests": 1220,
+    "unit_seconds": 241.164,
+    "diagnostic_source_sha256": "6509f878fff9a803fc504d0b169c02a2cfe4dd31e603b248249e946893dcd728",
+    "actual_diagnostic": {
+      "job_id": "job-540ed891046f",
+      "state": "failed",
+      "failure_stage": "cooperative_prelaunch_management_guard",
+      "physical_id": 1,
+      "fixed_payload_started": false,
+      "driver_query_container_created": false,
+      "device_syscall_trace_captured": false,
+      "metadata_job": "job-d7b4967cde44",
+      "metadata_trace_prefix_bytes": 50232,
+      "metadata_trace_sha256": "a9cf116933c85247cb65ca8eb8847df734a5846ebcbbf4299c52202e4d6ebe5a",
+      "metadata_selected_device_events": [],
+      "complete_syscall_history": false,
+      "qualification_granted": false,
+      "acl_initialized": false,
+      "root_cause_unproven": true,
+      "tracing_changes_timing": true
+    },
+    "reused_source_identical_acceptance": {
+      "source_commit": "0429877fb216b0f1f12156c16ebb2e110a60141e",
+      "root_job": "job-342affe1f003",
+      "root_checks": 42,
+      "browser_job": "job-477e0807876f",
+      "browser_checks": 12,
+      "new_root_or_browser_run": false,
+      "core_and_web_unchanged": true
+    },
+    "validation_history": [
+      {
+        "job": "job-7727fae710e9",
+        "result": "20 checks with1failure caught unfinished syscall PID misread as return; parser now requires explicit result separator. Final focused20/full1220 cover correction."
+      },
+      {
+        "job": "job-6abf8f2af7da",
+        "result": "Pre-parser-fix no-device trace metadata passed; final metadata-r2 rechecks final program SHA and same11 sources. Actual device trace did not run."
+      },
+      {
+        "job": "job-540ed891046f",
+        "result": "Original job definitively failed in prelaunch management guard before command process or diagnostic directory. Subsequent live-r2 still showed card1 occupied; no replacement device job submitted."
+      }
+    ],
+    "model_invocations": 0,
+    "application_kernel_api_calls": 0,
+    "device_reset_api_calls": 0,
+    "container_service_setup_calls": 0,
+    "qualification_granted": false,
+    "production_ready": false,
+    "overall_goal_complete": false,
+    "known_limitations": [
+      "Live trace prefix is not complete or postexit resource cleanup proof",
+      "Tracing changes timing and is not performance evidence",
+      "No actual device syscall captured; prior count87 cause or open/ioctl boundary remains unproven",
+      "Fixed x86_64 host tracer closure is not universal distribution support",
+      "No real nonroot CANN/numerical/performance/simulation success",
+      "Real host users/PID1,two physical hosts/fencing,20-user mixed and long-term capacity remain unverified"
+    ],
+    "static_driver_inspection": {
+      "static_only": true,
+      "library_sha256": "0e1dc429159276ed40b065bee6b94837981ae8268a6bc6debf8d5e855d12457f",
+      "disassembly_sha256": "5ba90875c7f48f41cf3fc7e17449c5c136b7c8a65674889be2e46da9bca3ab4e",
+      "device_count_uses_uda_lazy_initialization": true,
+      "one_static_device_probe_branch_maps_open_errno16_to87": true,
+      "actual_branch_observed": false,
+      "exact_namespace_or_holder_cause_proven": false,
+      "unverified_HAL_APIs_called": false
     }
   }
 }

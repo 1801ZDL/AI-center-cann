@@ -5,6 +5,7 @@ An explicit Root-protected ABI reference is verified before the three fixed APIs
 Neither mapping success nor management count grants workload qualification.
 """
 import argparse
+import base64
 import ctypes
 import hashlib
 import json
@@ -26,6 +27,48 @@ ABI={
     'dsmi_get_phyid_from_logicid':('unsigned int logicid, unsigned int *phyid',
                                 [ctypes.c_uint,ctypes.POINTER(ctypes.c_uint)]),
 }
+
+
+def trace_files():
+    """Fixed host tracer closure, mounted away from the tracee's loader paths."""
+    if os.uname().machine!='x86_64':raise ValueError('This tracer closure requires x86_64')
+    paths=['/usr/bin/strace','/lib64/ld-linux-x86-64.so.2']+[
+        '/lib/x86_64-linux-gnu/'+name for name in ['libunwind-ptrace.so.0','libunwind-x86_64.so.8',
+        'libc.so.6','liblzma.so.5','libunwind.so.8']]
+    values=[{'source':str(protected(path)),'destination':'/trace-runtime/'+Path(path).name} for path in paths]
+    if sum(Path(v['source']).stat().st_size for v in values)>64*1024**2:raise ValueError('Tracer runtime exceeds budget')
+    return values
+
+
+def parse_trace(text,physical):
+    """Selected device boundaries only; never return PIDs, addresses or payloads."""
+    if physical is not None and (type(physical) is not int or not 0<=physical<256):raise ValueError('Invalid physical ID')
+    allowed={'/dev/davinci_manager','/dev/hisi_hdc'}
+    if physical is not None:allowed.add('/dev/davinci'+str(physical))
+    events=[];incomplete=False
+    for line in text.splitlines():
+        if len(line)>4096:incomplete=True;continue
+        match=re.match(r'^(?:\d+\s+)?(openat|open|ioctl|close)\(',line)
+        path=re.search(r'["<](/dev/(?:davinci_manager|hisi_hdc|davinci[0-9]+))(?=["<>])',line)
+        if not match or not path or path[1] not in allowed:continue
+        if ' = ' not in line:incomplete=True;continue
+        returned=re.match(r'(-?\d+)(?:\s+([A-Z][A-Z0-9_]+)\b)?',line.rsplit(' = ',1)[-1])
+        if not returned:incomplete=True;continue
+        if len(events)>=64:incomplete=True;continue
+        events.append({'operation':match[1],'path':path[1],'return_value':int(returned[1]),'errno':returned[2]})
+    return {'events':events,'parser_incomplete':incomplete,'complete_history':False,
+            'scope':'Selected device syscalls in a bounded live prefix; no cause or qualification inference'}
+
+
+def capture_trace(path,physical):
+    fd=os.open(path,os.O_RDONLY|os.O_NOFOLLOW|os.O_NONBLOCK)
+    with os.fdopen(fd,'rb') as stream:
+        info=os.fstat(stream.fileno())
+        if not stat.S_ISREG(info.st_mode) or info.st_nlink!=1 or info.st_uid!=os.getuid():raise ValueError('Trace must be a private regular file')
+        raw=stream.read(256*1024);after=os.fstat(stream.fileno())
+    return {'captured_bytes':len(raw),'sha256':hashlib.sha256(raw).hexdigest(),
+            'prefix_truncated':len(raw)<info.st_size,'changed_during_read':after.st_size!=info.st_size,
+            'raw_base64':base64.b64encode(raw).decode(),'summary':parse_trace(raw.decode('utf-8',errors='replace'),physical)}
 
 
 def sha(path):
@@ -91,7 +134,8 @@ def actor(config_path):
         assert identity['CapEff']==identity['CapPrm']=='0000000000000000' and identity['NoNewPrivs']=='1'
     assert 'ASCEND_RT_VISIBLE_DEVICES' not in os.environ and 'LD_PRELOAD' not in os.environ
     assert sha(__file__)==config['program_sha256']
-    assert config['source_sha256']=={name:sha(name) for name in config['source_sha256']}
+    locations=config.get('source_locations',{}) if restricted else {}
+    assert config['source_sha256']=={name:sha(locations.get(name,name)) for name in config['source_sha256']}
     verify_header(Path(config['abi_header']).read_text())
     devices=sorted(int(p.name[7:]) for p in Path('/dev').glob('davinci[0-9]*')
                    if p.name[7:].isascii() and p.name[7:].isdigit())
@@ -105,7 +149,10 @@ def actor(config_path):
         try:report.update(mapping(ctypes.CDLL(str(LIBRARY),mode=os.RTLD_LOCAL|os.RTLD_NOW),config['physical_id']))
         except OSError as error:report.update(status='library_load_failed',error_type=type(error).__name__,
             error=str(error)[:512],calls=[],qualification_granted=False,acl_initialized=False)
-    assert config['source_sha256']=={name:sha(name) for name in config['source_sha256']}
+    if restricted and config.get('syscall_trace'):
+        try:report['syscall_trace']=capture_trace('/work/syscalls.log',config['physical_id'])
+        except (OSError,ValueError) as error:report['syscall_trace']={'status':'unavailable','error_type':type(error).__name__,'errno':getattr(error,'errno',None)}
+    assert config['source_sha256']=={name:sha(locations.get(name,name)) for name in config['source_sha256']}
     print('DSMI_MAPPING_RESULT '+json.dumps(report,sort_keys=True),flush=True)
 
 
@@ -124,10 +171,13 @@ def parent(args):
     header=protected(args.abi_header);verify_header(header.read_text())
     sources={str(protected(path)):sha(protected(path)) for path in [header,LIBRARY,
         DRIVER/'lib64/driver/libascend_hal.so',DRIVER/'version.info']}
+    tracer=trace_files() if args.trace else []
+    sources.update({item['source']:sha(item['source']) for item in tracer})
     base=directory/'tmp/driver-mapping';base.mkdir(mode=0o700)
     program=base/'probe.py';program.write_bytes(Path(__file__).read_bytes());program.chmod(0o444)
     config={'physical_id':physical,'metadata_only':args.metadata,'program_sha256':sha(program),
-            'source_sha256':sources,'abi_header':str(header)}
+            'source_sha256':sources,'abi_header':str(header),'syscall_trace':args.trace,
+            'source_locations':{item['source']:item['destination'] for item in tracer}}
     host_config=base/'host-config.json';atomic_json(host_config,{**config,'restricted_container':False})
     container_config=base/'container-config.json';atomic_json(container_config,{**config,'restricted_container':True});container_config.chmod(0o444)
     binding,_=discover();tag='driver-mapping-'+job['id'];name='ascend-lab-'+tag
@@ -162,15 +212,19 @@ def parent(args):
         '--mount','type=bind,src='+str(container_config)+',dst=/probe-config.json,readonly',
         '--mount','type=bind,src='+str(header)+',dst='+str(header)+',readonly',
         '--mount','type=bind,src='+str(protected(DRIVER))+',dst='+str(DRIVER)+',readonly']
+    for item in tracer:argv+=['--mount','type=bind,src='+item['source']+',dst='+item['destination']+',readonly']
     if physical is not None:
         for path in ['/dev/davinci'+str(physical),'/dev/davinci_manager','/dev/hisi_hdc']:
             assert stat.S_ISCHR(Path(path).stat().st_mode);argv+=['--device',path+':'+path+':rwm']
+    trace_command=['/trace-runtime/ld-linux-x86-64.so.2','--library-path','/trace-runtime','/trace-runtime/strace',
+        '-f','-qq','-yy','-s','128','-e','trace=openat,open,ioctl,close','-o','/work/syscalls.log'] if args.trace else []
     argv+=['--entrypoint','/usr/bin/env',args.image,'-i',*[key+'='+value for key,value in clean_env.items()],
-        'HOME=/work','TMPDIR=/work','/usr/bin/timeout','--kill-after=2s','15s','/usr/bin/python3','-I','-B','/probe.py',
+        'HOME=/work','TMPDIR=/work',*trace_command,'/usr/bin/timeout','--kill-after=2s','15s','/usr/bin/python3','-I','-B','/probe.py',
         '--actor','--config','/probe-config.json']
     atomic_json(base/'intent.json',{'container_name':name,'label':tag,'image':args.image,'binding':binding,'physical_id':physical})
     try:
         docker(argv);output=docker(['start','--attach',name],check=False,timeout=25)
+        (base/'container-stdout.log').write_text(output.stdout);(base/'container-stderr.log').write_text(output.stderr)
         info=json.loads(docker(['inspect',name]).stdout)[0]
         assert info['Image']==args.image and info['Config']['Labels']['io.ascend-lab.driver-mapping']==tag
         assert not info['State']['Running'] and info['State']['Pid']==0 and info['State']['ExitCode']==0
@@ -181,7 +235,7 @@ def parent(args):
         assert info['Config']['User']=='23901:23901' and all(not m['RW'] for m in info['Mounts'] if m['Destination']!='/work')
         container=result(output,'container');assert sources=={path:sha(path) for path in sources};after=idle()
         report={'recorded_at':now(),'job_id':job['id'],'diagnostic_completed':True,'metadata_only':args.metadata,
-            'physical_id':physical,'image':args.image,'host':host,'container':container,'before':before,'after':after,
+            'physical_id':physical,'image':args.image,'syscall_trace_requested':args.trace,'host':host,'container':container,'before':before,'after':after,
             'container_exit_confirmed':True,'device_nodes':limits.get('Devices') or [],
             'hard_limits':{k:limits[k] for k in ['Memory','MemorySwap','PidsLimit','NanoCpus','CpusetCpus','CapDrop','SecurityOpt']},
             'mounts':[{'destination':m['Destination'],'writable':m['RW']} for m in info['Mounts']],
@@ -202,6 +256,7 @@ def parent(args):
 
 if __name__=='__main__':
     parser=argparse.ArgumentParser();parser.add_argument('--actor',action='store_true');parser.add_argument('--config')
-    parser.add_argument('--metadata',action='store_true');parser.add_argument('--image');parser.add_argument('--abi-header');args=parser.parse_args()
+    parser.add_argument('--metadata',action='store_true');parser.add_argument('--trace',action='store_true')
+    parser.add_argument('--image');parser.add_argument('--abi-header');args=parser.parse_args()
     if args.actor:actor(args.config)
     else:parent(args)

@@ -1,5 +1,23 @@
 # 实施进度
 
+## 固定子进程syscall观测与启动占用竞争记录（2026-11-02）
+
+**最终1220项/241.164秒/零跳过及JS语法通过，最终专项20项通过。** full `job-47ae636e17dc`、focused `job-1434f1f1631a`。105个非文档CORE、4网页资产、agent_runner及protected6/APP4与上一发布完全相同，251个测试/辅助文件按final-frozen-r1核对。本轮扩展维护诊断，不修改中央/Node生产执行或普通设备门禁，无Root安装/浏览器重跑、模型或应用kernel。
+
+[驱动编号工具](NPU_DRIVER_MAPPING.md)新增可选`--trace`，仅跟踪新受限容器中的固定诊断子进程/超时包装器。原UID23901/设备组1001、零capability/default seccomp/NNP、硬256MiB内存交换/1CPU/32PID/16MiB工作tmpfs、只读根和无网络保持。不接受PID/任意命令、不附着其他进程、不加SYS_PTRACE或放宽seccomp。现有Root保护的strace/loader及五个依赖仅只读放到独立/trace-runtime；loader --library-path仅用于tracer，不改变被跟踪Python/驱动的库路径。没有安装工具、镜像构建或修改宿主库。
+
+NPU=0元数据 `job-6abf8f2af7da`证明默认权限能跟踪自己的固定子进程。初次20项专项 `job-7727fae710e9`有1失败，发现未完成的syscall行没有返回分隔符时，行首PID可被误当返回值；已改为必须存在明确结果分隔符，否则标为不完整。最终元数据 `job-d7b4967cde44`再次用最终源码通过，私有trace前缀50232字节、选中设备事件0、没有NPU设备或DSMI调用，11个选中源文件SHA与宿主记录一致。初次元数据是修复前版本，不冒充最终程序重跑。
+
+新增10项观测测试覆盖device open与ioctl的区分、错误码/成功返回、PID/地址/ioctl载荷和其他路径不外泄、未分配卡忽略、未完成行、64事件/长行预算、256KiB前缀，以及链接/硬链接/FIFO拒绝。最终20与完整1220覆盖相同冻结源码。私有原始trace有SHA/大小/截断与变化标记，公开仅操作/选中设备路径/整数返回/errno；活进程前缀不是完整syscall历史或退出清退证明，跟踪时序也不能用于性能结论。
+
+**本轮没有取得实际设备syscall。** `job-8912fad2919a`采样看到卡0Alarm、卡1有1进程后，固定设备请求 `job-540ed891046f`通过原队列等待；获物理1后，在执行器启动前的健康/占用复查明确failed。原stderr保留、command-process.json和诊断目录均不存在，没有启动固定程序或创建设备诊断容器；这是已确认的终态，不是观测超时。随后只读 `job-09385ae3be70`仍看到卡0Alarm/1进程、卡1OK/1进程，没有再提交替代设备任务。不能把元数据trace或合成parser测试写成真实87触发点取证，也没有第三次CANN初始化。
+
+静态只读检查继续确认drvGetDevNum进入uda_user_get_dev_num及其延迟UDA初始化路径，其中一个设备探测分支会把open的errno16映射为87；没有调用未核签名的HAL接口。尚未观察到本次失败实际走该分支，不能据静态代码认定是open而非ioctl、某一holder或namespace根因。[厂商案例](https://www.hiascend.com/document/caselibrary/detail/topic_0000002238354198)列出部分旧产品的容器namespace冲突，只作线索，不直接证明本机A5；其退出进程/容器建议不构成共享环境操作授权。
+
+此次也暴露协作入口的可用性缺口：cached空闲到启动前复查之间发生占用变化时，当前任务会终态失败，不自动回队。自动重试不能仅依赖错误文本、退出码或缺少心跳，须有可信的未启动证明、原job幂等/预算和恢复合同；记录于BACKLOG，当前没有擅自重开失败任务。受控新服务器仍须迁移旧全设备/特权容器，不能用瞬时空闲保证独占。
+
+Primary核全量/专项日志、两元数据原JSON与有界trace字节SHA、最终源SHA/11来源、0cap/NNP/默认seccomp/硬限制和只读挂载、原failed请求未启动与三组标签对象消失；既有Root42/网页12只按实际包CORE/web一致沿用，本轮未重新安装或网页运行。Main配置/19profiles/一物理域、zdl基线、0非终态/holds/日程/规则/参考及ledgergen0无回执不变，4资产HTTP回读一致。私有证据evidence/driver-syscall-validation.json及runtime/driver-syscall-20261102，公开不含原trace/驱动反汇编/进程数据。整体目标active：真实非rootNPU初始化/精度/性能/仿真、完整Agent实验、启动竞争恢复、真host用户/PID1、两机fencing与混合/长期容量仍待，PUBLIC-001继续延期。
+
 ## 驱动设备视图的宿主／非 root 容器对照（2026-11-02）
 
 **最终1210项/248.475秒/零跳过及JS语法通过，新增DSMI专项10项通过。** full `job-cbe6a8206c4d`、focused `job-c0288145a3ab`。105个非文档CORE、4个网页资产、agent_runner和protected6/APP4与上一发布完全相同；251个测试/辅助文件按final-frozen-r1核对。本轮只有维护诊断、测试和文档，没有生产门禁放宽、中央/Node重启、镜像构建、模型或应用NPU kernel。
