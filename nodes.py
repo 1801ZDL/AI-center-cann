@@ -724,6 +724,9 @@ class NodeRegistry:
                     for chunk in iter(lambda:source.read(1024*1024),b''):digest.update(chunk)
                 if entry.get('size')!=uploaded[entry['name']] or digest.hexdigest()!=entry.get('sha256'):raise JobError('Artifact checksum mismatch',409)
             if result['status']=='succeeded' and 'environment.json' not in uploaded:raise JobError('Missing execution environment evidence')
+            if job.get('template')=='accuracy_v1':
+                report=next((f for f in files if f['name']=='results/device-microcheck.json'),None)
+                if report:job['_fixed_microcheck_report_sha256']=report['sha256']
             allowed={'status','exit_code','started_at','finished_at','reason','termination_confirmed','execution_cleanup_confirmed','execution_finished_at','oom_killed','failure_stage','execution_status','npu_release_confirmed','npu_release_observation','npu_release_basis','npu_admission_observation','workspace_release_confirmed','cache_release_confirmed'}
             allowed.add('measurement_evidence')
             result={key:value for key,value in result.items() if key in allowed}

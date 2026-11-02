@@ -163,6 +163,8 @@ class JobStore:
         self.device_schedules=Schedules(self)
         from device_evidence import Evidence
         self.device_evidence=Evidence(self)
+        from performance_reference import References
+        self.performance_references=References(self)
 
     def connect(self):
         self.control_filesystem.check()

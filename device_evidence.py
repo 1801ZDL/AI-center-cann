@@ -46,7 +46,8 @@ def event(db,policy,action,restoring=False):
 
 def specification(value):
     from auth import IDENTIFIER
-    if not isinstance(value,dict) or set(value)!={'name','source_plan_id','target_node_ids','projects','max_age_seconds','mode'}:
+    required={'name','source_plan_id','target_node_ids','projects','max_age_seconds','mode'}
+    if not isinstance(value,dict) or not required<=set(value) or set(value)-required-{'performance_references'}:
         raise JobError('Provide the complete project self-check evidence policy')
     if not isinstance(value['name'],str) or not IDENTIFIER.fullmatch(value['name']):raise JobError('Invalid evidence policy name')
     if not re.fullmatch('schedule-[0-9a-f]{24}',str(value['source_plan_id'])):raise JobError('Choose one fixed daily source plan')
@@ -55,6 +56,12 @@ def specification(value):
     if not isinstance(projects,list) or not 1<=len(projects)<=16 or any(not isinstance(i,str) or not 1<=len(i)<=100 for i in projects) or len(set(projects))!=len(projects):raise JobError('Choose explicit consumer projects')
     if type(value['max_age_seconds']) is not int or not 60<=value['max_age_seconds']<=86400:raise JobError('Self-check lifetime must be 60..86400 seconds')
     if not isinstance(value['mode'],str) or value['mode'] not in {'annotate','require'}:raise JobError('Choose annotate or require')
+    if 'performance_references' in value:
+        refs=value['performance_references']
+        if (not isinstance(refs,dict) or not 1<=len(refs)<=256
+            or any(not isinstance(k,str) or not re.fullmatch('0|[1-9][0-9]{0,2}',k) or int(k)>255
+                   or not isinstance(v,str) or not re.fullmatch('perfref-[0-9a-f]{24}',v) for k,v in refs.items())):
+            raise JobError('Choose an explicit performance reference for every source physical card')
     return {**value,'target_node_ids':sorted(nodes),'projects':sorted(projects)}
 
 
@@ -145,8 +152,13 @@ class Evidence:
             personal=project.removeprefix('personal:') if project.startswith('personal:') else None
             if not exists and not (personal and (personal==self.jobs.owner or identities.execute('SELECT 1 FROM users WHERE id=?',(personal,)).fetchone())):
                 raise JobError('Create the explicit consumer projects first',409)
-        return {'source_authorization':plan['authorization'],'source_context_sha256':digest(plan['context']),
+        anchor={'source_authorization':plan['authorization'],'source_context_sha256':digest(plan['context']),
                 'source_generation':plan['generation'],'targets':targets}
+        if 'performance_references' in spec:
+            if set(spec['performance_references'])!={str(c) for c in plan['spec']['device_ids']}:raise JobError('Performance references must cover every source plan card',409)
+            anchor['performance_references']={card:self.jobs.performance_references.for_plan(identifier,plan,int(card),db,identities)
+                for card,identifier in spec['performance_references'].items()}
+        return anchor
 
     def create(self,value):
         spec=specification(value)
@@ -198,7 +210,7 @@ class Evidence:
             else:policy.update(state='paused' if action=='pause' else 'retired',approval=None)
             policy['revision']+=1;self.save(policy,db,action);return policy
 
-    def record(self,plan,run,db):
+    def record(self,plan,run,db,identities=None):
         if run['state'] not in FINAL_RUNS or db.execute('SELECT 1 FROM device_evidence_checks WHERE id=?',(run['id'],)).fetchone():return
         if db.execute('SELECT count(*) FROM device_evidence_checks').fetchone()[0]>=MAX_CHECKS:raise JobError('Self-check evidence history full',409)
         ut=next((a for a in run['actions'] if a['kind']=='ut' and a['job_id']),None)
@@ -217,6 +229,8 @@ class Evidence:
             'bounded_microchecks_passed':run['state']=='microchecks_passed' and source is not None and bool(source.get('_artifact_receipt')) and interval
                 and bool(re.fullmatch('[0-9a-f]{64}',str(source.get('_device_hardware_sha256')))),
             'full_hardware_certified':False,'performance_qualified':False}
+        if source and identities is not None:
+            record['performance_sample']=self.jobs.performance_references.capture(source,db,identities)
         db.execute('INSERT INTO device_evidence_checks VALUES(?,?,?,?)',(run['id'],plan['id'],run['device_id'],json.dumps(record)))
 
     def latest(self,plan_id,device,db):
@@ -275,6 +289,12 @@ class Evidence:
         except (JobError,ValueError,TypeError,OverflowError):result['status']='evidence_unavailable';return result
         result.update(source_finished_at=check['source_finished_at'],expires_at=expires)
         result['status']='expired' if at>=expires else 'insufficient_validity' if result['required'] and at+coverage>expires else 'recent_microchecks'
+        if str(device) in anchor.get('performance_references',{}):
+            ref=anchor['performance_references'][str(device)];key=('performance-reference',ref['id'],check['id'],at,coverage)
+            if key not in cache:cache[key]=self.jobs.performance_references.compare(ref,check,db,identities,at,coverage if result['required'] else 0)
+            result['performance_reference']=cache[key]
+            if result['performance_reference']['status']!='within_reference_envelope' and result['status']=='recent_microchecks':
+                result['status']='performance_reference_unconfirmed'
         return result
 
     def eligible(self,job):

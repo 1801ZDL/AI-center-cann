@@ -94,6 +94,8 @@ class Lifecycle:
             raise JobError('A retained daily microcheck plan still pins this sealed input',409)
         if self.record(kind,value,db)['state']=='available' and self.jobs.device_evidence.pins(kind,value,db):
             raise JobError('A retained self-check policy or active attempt pins this source archive',409)
+        if self.record(kind,value,db)['state']=='available' and self.jobs.performance_references.pins(kind,value,db):
+            raise JobError('A retained performance reference or bound attempt pins this source archive',409)
         return subject
 
     def event(self,db,record,actor,action,detail=None):

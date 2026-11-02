@@ -114,7 +114,8 @@
     "device_schedule.py",
     "npu_frequency.py",
     "device_evidence.py",
-    "npu_measurement.py"
+    "npu_measurement.py",
+    "performance_reference.py"
   ],
   "reproduced_by_public_ci": false,
   "raw_evidence_in_repository": false,

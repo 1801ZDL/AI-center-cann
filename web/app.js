@@ -243,7 +243,7 @@ async function refresh(manual=false) {
     identity=await api('/api/me');
     if(previousIdentity&&(previousIdentity.id!==identity.id||
        previousIdentity.scopes.includes('jobs:submit')&&!identity.scopes.includes('jobs:submit')))clearJobPreview();
-    if(previousIdentity&&previousIdentity.id!==identity.id)evidenceOffset=0;
+    if(previousIdentity&&previousIdentity.id!==identity.id){evidenceOffset=0;referenceOffset=0;}
     updateJobActions();
     const monitor=identity.scopes.includes('monitor:read');
     $('sidebar-user').textContent=identity.id;
@@ -255,13 +255,15 @@ async function refresh(manual=false) {
       ...['/api/snapshot','/api/history','/api/events','/api/experiments'].map(path=>monitor?api(path):Promise.resolve(null)),
       api('/api/jobs'),api('/api/activity'),api('/api/nodes'),api(workflowResultPath()),
       identity.device_schedule_capabilities?.includes('central-device-schedule-v1')?api('/api/device-schedules'):Promise.resolve({plans:[]}),
-      identity.npu_condition_capabilities?.includes('device-selfcheck-binding-v1')?api('/api/device-evidence?limit=4&offset='+evidenceOffset):Promise.resolve({policies:[],total:0,offset:0,limit:4})]);
+      identity.npu_condition_capabilities?.includes('device-selfcheck-binding-v1')?api('/api/device-evidence?limit=4&offset='+evidenceOffset):Promise.resolve({policies:[],total:0,offset:0,limit:4}),
+      identity.npu_condition_capabilities?.includes('fixed-performance-reference-v1')?api('/api/performance-references?limit=4&offset='+referenceOffset):Promise.resolve({references:[],total:0,offset:0,limit:4})]);
     if(responses[4].status==='fulfilled') renderManagedJobs(responses[4].value);
     if(responses[5].status==='fulfilled') renderActivity(responses[5].value);
     if(responses[6].status==='fulfilled') renderNodes(responses[6].value);
     if(responses[7].status==='fulfilled') renderWorkflowResults(responses[7].value);
     if(responses[8].status==='fulfilled') renderDeviceSchedules(responses[8].value);
     if(responses[9].status==='fulfilled') renderDeviceEvidence(responses[9].value);
+    if(responses[10].status==='fulfilled') renderPerformanceReferences(responses[10].value);
     if(responses[0].status==='rejected') throw responses[0].reason;
     const result=responses[0].value;
     if(monitor && result.snapshot) renderSnapshot(result.snapshot);
@@ -443,6 +445,8 @@ async function showJob(jobId) {
     if(j.placement)fields.push(['指定执行目标',j.placement.node_id+(j.placement.device_ids?' / 物理卡 '+j.placement.device_ids.join(', '):'')]);
     if(j.resources.npu) fields.push(['AI-core 频率快照',frequencySummaryLabel(j.device_conditions?.frequency)],['设备数值/性能自检',selfcheckLabel(j.device_conditions?.selfcheck?.status)+'；管理采样不能认证数值或性能'],['设备观测说明',j.device_conditions?.note||'此任务没有可信设备条件证据']);
     if(j.device_conditions?.selfcheck?.before)fields.push(['自检来源任务',j.device_conditions.selfcheck.before.source_job_id||'未测'],['自检规则',j.device_conditions.selfcheck.before.policy_id],['自检有效期',Number.isFinite(j.device_conditions.selfcheck.before.expires_at)?new Date(j.device_conditions.selfcheck.before.expires_at*1000).toLocaleString():'未取得有效期']);
+    const reference=j.device_conditions?.selfcheck?.before?.performance_reference;
+    if(reference)fields.push(['固定性能参考',reference.reference_id+' · '+performanceReferenceLabel(reference.status)],['参考轮比值',JSON.stringify(reference.round_ratios||[])+' · 批准界限 '+JSON.stringify(reference.ratio_bounds)],['参考说明',reference.scope]);
     const reportPanel=Object.values(reportKinds).some(v=>detail.artifacts.some(a=>a.name===v.name))?'<section id="diagnostic-panel" class="report-panel" aria-label="诊断报告"><h3>诊断报告</h3><div id="report-buttons" class="report-buttons"></div><p id="report-status" role="status" aria-live="polite">选择报告后读取摘要；不启动分析任务。</p><div id="report-content"></div></section>':'';
     openDrawer(j.name,reportPanel+'<dl>'+fields.map(([key,value])=>'<dt>'+esc(key)+'</dt><dd>'+esc(value)+'</dd>').join('')+'</dl><div class="job-detail-actions"><button class="copy-button" id="refresh-job-log">刷新状态与日志</button>'+(canCancel?'<button class="copy-button cancel-job" id="cancel-job">取消此作业</button>':'')+storageButton+'</div><h3 class="detail-subheading">'+(remote?'模板参数':'命令参数')+'</h3><pre>'+esc(JSON.stringify(remote?{template:j.template,parameters:j.parameters}:j.argv))+'</pre><h3 class="detail-subheading">stdout'+(stdout.truncated?' · 末尾 64 KiB':'')+'</h3><pre class="job-log">'+esc(stdout.text||'尚无输出')+'</pre><h3 class="detail-subheading">stderr</h3><pre class="job-log">'+esc(stderr.text||'尚无错误输出')+'</pre><h3 class="detail-subheading">产物</h3><div class="artifact-list">'+(detail.artifacts.length?detail.artifacts.map(f=>archiveReadable?`<a href="/api/jobs/${encodeURIComponent(jobId)}/artifact?name=${encodeURIComponent(f.name)}" download>${esc(f.name)} <small>${bytes(f.bytes)}</small> ↗</a>`:`<span class="muted">${esc(f.name)} · ${esc(archiveLabels[archiveState]||archiveState)}</span>`).join(''):'<span class="muted">作业完成后生成产物索引。</span>')+'</div>'+(j.result?'<h3 class="detail-subheading">结果</h3><pre>'+esc(JSON.stringify(j.result,null,2))+'</pre>':'')+'<div class="detail-note">只取消当前调度器创建的托管作业。取消需等待执行器确认；状态无法确认时不会释放资源。'+(remote?'本任务在受控容器中执行 CPU、内存和共享内存限制。':'此环境的内存仍按申报预算，尚未使用 cgroup 硬限制。')+'</div>');
     mountReportView(detail,archiveReadable);
@@ -709,11 +713,25 @@ function workflowResultPath() {
   return '/api/results?limit=50&offset='+resultOffset+(kind?'&kind='+encodeURIComponent(kind):'');
 }
 function selfcheckLabel(status) {
-  return ({linked_microchecks:'已关联有限微用例（非业务数值或性能资格）',recent_microchecks:'近期有限微用例一致（非完整硬件认证）',missing:'尚无已完成自检',expired:'自检已过期',insufficient_validity:'自检余量不足以覆盖申报时长',latest_check_unconfirmed:'最近自检未确认',unconfirmed_before_start:'启动前自检未确认',expired_during_execution:'运行期间自检到期',execution_interval_unconfirmed:'执行时间区间未确认',task_conditions_unconfirmed:'任务设备条件未确认',approval_or_context_changed:'批准或环境已变更',context_changed:'环境已变更',context_unavailable:'上下文不可核对',approval_required:'等待明确批准',not_captured_before_start:'没有启动前自检引用',evidence_unavailable:'自检归档不可读',invalid_check_time:'自检时间不可用'})[status]||'未关联每日 UT';
+  return ({performance_reference_unconfirmed:'性能参考未确认',linked_microchecks:'已关联有限微用例（非业务数值或性能资格）',recent_microchecks:'近期有限微用例一致（非完整硬件认证）',missing:'尚无已完成自检',expired:'自检已过期',insufficient_validity:'自检余量不足以覆盖申报时长',latest_check_unconfirmed:'最近自检未确认',unconfirmed_before_start:'启动前自检未确认',expired_during_execution:'运行期间自检到期',execution_interval_unconfirmed:'执行时间区间未确认',task_conditions_unconfirmed:'任务设备条件未确认',approval_or_context_changed:'批准或环境已变更',context_changed:'环境已变更',context_unavailable:'上下文不可核对',approval_required:'等待明确批准',not_captured_before_start:'没有启动前自检引用',evidence_unavailable:'自检归档不可读',invalid_check_time:'自检时间不可用'})[status]||'未关联每日 UT';
 }
 function measurementLabel(value) {
   return value?.status==='recorded'?`${value.windows?.length||0} 个任务请求窗口（非性能资格）`:value?.status==='not_requested'?'未请求测量窗口':'测量窗口未确认';
 }
+function performanceReferenceLabel(status) {
+  return ({within_reference_envelope:'在批准的经验参考内（非性能资格）',outside_reference_envelope:'偏离批准的经验参考',unstable_samples:'样本轮间不稳定',active:'批准及上下文有效',expired:'参考已过期',insufficient_validity:'参考有效期余量不足',approval_required:'等待明确批准',context_changed:'参考上下文已变更',context_unavailable:'参考上下文不可核对'})[status]||'性能参考未确认';
+}
+let referenceOffset=0;
+function renderPerformanceReferences(data) {
+  referenceOffset=data.offset||0;
+  $('performance-reference-prev').disabled=referenceOffset===0;
+  $('performance-reference-next').disabled=referenceOffset+(data.limit||4)>=(data.total||0);
+  $('performance-reference-page').textContent='共 '+(data.total||0)+' 条可见参考';
+  const states={draft:'草案',active:'已批准',paused:'已暂停',restore_paused:'恢复后冻结',retired:'已退休'};
+  $('performance-reference-body').innerHTML=data.references.length?data.references.map(value=>`<tr><td>${esc(value.name)}<div class="mono muted small">${esc(value.id)}</div></td><td>${esc(states[value.state]||value.state)} · ${esc(performanceReferenceLabel(value.validity))}</td><td class="mono">${esc(value.node_id)} / ${esc(value.device_id)}</td><td>${num(value.center_us,3)} µs · ${esc(value.ratio_bounds.join('–'))}×<div class="muted small">${esc(value.source_job_ids.length)} 个独立来源 · 不是通用阈值</div></td><td>${esc(new Date(value.expires_at*1000).toLocaleString())}</td></tr>`).join(''):'<tr><td colspan="5" class="empty-state">此账号可见范围内没有固定性能参考。</td></tr>';
+}
+$('performance-reference-prev').addEventListener('click',()=>{referenceOffset=Math.max(0,referenceOffset-4);refresh();});
+$('performance-reference-next').addEventListener('click',()=>{referenceOffset+=4;refresh();});
 let evidenceOffset=0;
 function renderDeviceEvidence(data) {
   const states={active:'已启用',paused:'已冻结 / 草案',restore_paused:'恢复后冻结',retired:'已退休'};
@@ -754,7 +772,7 @@ function renderWorkflowResults(data) {
   $('workflow-result-body').innerHTML=data.rows.length?data.rows.map(row=>{
     const m=row.metrics||{};
     const metric=row.kind==='performance'?`${m.samples??'—'} 次 · 均值 ${num(m.mean_us,3)} µs`:row.kind==='accuracy'?`${m.checks??'—'} 项 · 最大绝对误差 ${m.max_abs_error??'—'}`:m.artifacts!==undefined?`${m.artifacts} 个产物 · ${valid(m.artifact_bytes)&&m.artifact_bytes<1024?m.artifact_bytes+' B':bytes(m.artifact_bytes)}`:row.error||'执行未完成';
-    return `<tr><td><strong>${esc(row.name)}</strong><div class="mono muted small">${esc(row.job_id)}</div></td><td>${esc(labels[row.kind]||row.kind)}</td><td><span class="job-state ${row.passed?'succeeded':'failed'}">${row.failure_stage==='dependency'&&row.command_executed===false?'上游失败，未启动':row.passed?'报告核对通过':'失败'}</span></td><td>${esc(metric)}</td><td title="${esc(row.device_conditions?.note||'未记录设备观测证据')}">${esc(conditionLabel(row.device_conditions?.status))}${row.device_conditions?.frequency?'<div class="muted small">'+esc(frequencySummaryLabel(row.device_conditions.frequency))+'</div>':''}${row.device_conditions?.selfcheck?'<div class="muted small">'+esc(selfcheckLabel(row.device_conditions.selfcheck.status))+'</div>':''}${row.device_conditions?.measurement&&row.device_conditions.measurement.status!=='not_requested'?'<div class="muted small">'+esc(measurementLabel(row.device_conditions.measurement))+'</div>':''}</td><td>${row.environment_locked===true?'已匹配':row.environment_locked===false?'未匹配':'未记录'}</td><td>${date(row.recorded_at)} ${clock(row.recorded_at)}</td><td><button class="detail-button" data-result-job="${esc(row.job_id)}" aria-label="查看结果 ${esc(row.name)}">↗</button></td></tr>`;
+    return `<tr><td><strong>${esc(row.name)}</strong><div class="mono muted small">${esc(row.job_id)}</div></td><td>${esc(labels[row.kind]||row.kind)}</td><td><span class="job-state ${row.passed?'succeeded':'failed'}">${row.failure_stage==='dependency'&&row.command_executed===false?'上游失败，未启动':row.passed?'报告核对通过':'失败'}</span></td><td>${esc(metric)}</td><td title="${esc(row.device_conditions?.note||'未记录设备观测证据')}">${esc(conditionLabel(row.device_conditions?.status))}${row.device_conditions?.frequency?'<div class="muted small">'+esc(frequencySummaryLabel(row.device_conditions.frequency))+'</div>':''}${row.device_conditions?.selfcheck?'<div class="muted small">'+esc(selfcheckLabel(row.device_conditions.selfcheck.status))+'</div>':''}${row.device_conditions?.measurement&&row.device_conditions.measurement.status!=='not_requested'?'<div class="muted small">'+esc(measurementLabel(row.device_conditions.measurement))+'</div>':''}${row.device_conditions?.selfcheck?.before?.performance_reference?'<div class="muted small">'+esc(performanceReferenceLabel(row.device_conditions.selfcheck.before.performance_reference.status))+'</div>':''}</td><td>${row.environment_locked===true?'已匹配':row.environment_locked===false?'未匹配':'未记录'}</td><td>${date(row.recorded_at)} ${clock(row.recorded_at)}</td><td><button class="detail-button" data-result-job="${esc(row.job_id)}" aria-label="查看结果 ${esc(row.name)}">↗</button></td></tr>`;
   }).join(''):'<tr><td colspan="8" class="empty-state">此范围暂无工作流结果。</td></tr>';
   $('workflow-page').textContent=`${data.offset+1>data.total?0:data.offset+1}–${Math.min(data.offset+data.limit,data.total)} / ${data.total}`;
   $('workflow-prev').disabled=resultOffset===0;

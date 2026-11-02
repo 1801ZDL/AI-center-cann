@@ -313,6 +313,8 @@ def restore(prefix,archive_path,new_state,max_bytes=10*1024**3,payload_config=No
             require_schedule_history(old,stage,meta['role'])
             from device_evidence import require_restore_history as require_evidence_history
             require_evidence_history(old,stage,meta['role'])
+            from performance_reference import require_restore_history as require_performance_history
+            require_performance_history(old,stage,meta['role'])
             relocate(stage,manifest['original_state'],target,meta['role'],
                      original_payload['path'] if original_payload else manifest['original_state'],policy['path'] if policy else None)
             restored_config=read_json(stage/'config.json')
@@ -362,6 +364,8 @@ def restore(prefix,archive_path,new_state,max_bytes=10*1024**3,payload_config=No
                 freeze_device_schedules(stage/'jobs.sqlite3')
                 from device_evidence import invalidate_restored as freeze_device_evidence
                 freeze_device_evidence(stage/'jobs.sqlite3')
+                from performance_reference import invalidate_restored as freeze_performance_references
+                freeze_performance_references(stage/'jobs.sqlite3')
             stage.rename(target)
             if native:
                 from control_filesystem import initialize
@@ -405,6 +409,12 @@ def require_control_storage(config,role,manifest):
 def require_features(state,role,manifest,installation=None):
     config=read_json(Path(state)/'config.json') or {}
     require_control_storage(config,role,manifest)
+    if role=='controller' and 'performance_reference.py' not in manifest.get('files',{}):
+        path=Path(state)/'jobs.sqlite3'
+        if path.exists():
+            with sqlite3.connect(path.as_uri()+'?mode=ro',uri=True) as db:
+                if db.execute("SELECT 1 FROM sqlite_master WHERE name='performance_references'").fetchone() and db.execute('SELECT 1 FROM performance_references LIMIT 1').fetchone():
+                    raise DeployError('Retained performance reference history requires compatible code; refusing downgrade')
     if role=='controller' and 'npu_measurement.py' not in manifest.get('files',{}):
         path=Path(state)/'jobs.sqlite3'
         if path.exists():

@@ -79,6 +79,8 @@ CORE.extend(['device_evidence.py','DEVICE_EVIDENCE.md'])
 OPTIONAL_ADMIN_FILES.update({'device_evidence.py','DEVICE_EVIDENCE.md'})
 CORE.extend(['npu_measurement.py','NPU_MEASUREMENT.md'])
 OPTIONAL_ADMIN_FILES.update({'npu_measurement.py','NPU_MEASUREMENT.md'})
+CORE.extend(['performance_reference.py','PERFORMANCE_REFERENCE.md'])
+OPTIONAL_ADMIN_FILES.update({'performance_reference.py','PERFORMANCE_REFERENCE.md'})
 
 
 class DeployError(ValueError):pass
