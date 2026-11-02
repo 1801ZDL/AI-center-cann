@@ -1,5 +1,23 @@
 # 实施进度
 
+## 2026-11-03 原生 Node 文件权限修复与双原生角色验收（最终1357/原生48通过）
+
+实际原生 controller + Node 演练 **job-62e37ffa52e9：48项/0清理错误**。两个独立容器均以真实 systemd 249.11 PID1 管理原生成 unit；初装先验证进程模式兼容，再在业务执行前切到原生 unit。controller 仍UID999、CAPeff0、NoNewPrivileges，无Docker socket；受信Node为Root，保留原有Docker管理权限，普通任务使用UID23003/23004。不是宿主开机或真实登录用户验收。
+
+首个 **job-766df9df2b11** 在测量端点chown处返回EPERM，任务在node_preflight失败。原生成Node unit只有配额查询用SYS_ADMIN，未包含跨任务UID文件管理所需能力。现Node固定CHOWN/DAC_OVERRIDE/FOWNER，只有配额工作盘或缓存才增加SYS_ADMIN；controller与任务权限不变。unit_manager同步精确位图核对。offline unit-refresh仅额外接受安全属性、路径等其余字节完全一致的历史Node能力行；自定义/额外能力、错误配额模式仍拒绝，Root原像/CAS/日志和manager/startup流程保留。
+
+实际演练先放置精确旧Node unit，再成功执行刷新、管理器属性核对和原计划启动。7次Node进程快照实际UID0/CAPeff2097163/NoNewPrivs，12次controller快照UID999/CAPeff0；Node和中央在真实CPU任务存活期间分别停启，同一个container/StartedAt/attempt继续。两UID实际BishengIR、硬字节/inode配额、缓存冷暖复用/持有/挂载丢失/恢复、原任务图、备份/目录恢复/代码回滚均通过。controller两次绑定发布SIGKILL和Node恢复后的缓存保留继续通过；设备日程/规则/参考仍是合成历史，不授予真实设备资格。
+
+独立核对两安装包各113个非文档CORE摘要、原盘/restored-proof SQLite integrity、原graph行和attempt集合、测量任务单attempt。最终角色/卷/helper全部清退，成功与失败演练共6个loop均released且sysfs关联消失。私有原盘保留，不上传配置、凭据或raw报告。实际集成冻结source-frozen-r2；之后只修正夹具报告scope措辞，并更新既有quota单测的能力集断言；全部生产非文档源码与最终冻结r4相同。
+
+专项 **job-17c0043089c6：64项通过**。首次完整回归 **job-401789ed9a34：1357项/242.666秒/1失败**，为旧quota单测仍要求SYS_ADMIN-only；更新为当前Node能力集，并保留非配额无SYS_ADMIN、controller零能力检查。最终 **job-9c7523e228ae：1357项/251.311秒/零跳过及JS语法通过**；新增3个unit升级/能力合同测试，最终冻结113非mdCORE+280递归tests/helpers+scanner。没有把中间失败称为全绿。
+
+设备方面先完成无设备tracer元数据 **job-c1f6f56bdc8e**；首个新鲜检查窗口已忙，未提交。后续健康空闲窗口沿原队列执行一次 **job-052aad3b1e46**：宿主DSMI映射往返通过，受限UID23901/设备组1001/零cap/default seccomp容器设备计数返回87；实际有界trace显示manager open/ioctl成功、分配卡/dev/davinci1 open返回EBUSY。原始trace仅私有归档，公开仅有界设备事件；不是完整syscall历史或驱动holder/root cause证明。未初始化ACL、未运行应用kernel、未重置设备/停别人容器，也未提高任务权限。此证据将下一步收敛到管理员受控池设备访问验收，不能无变化重试。
+
+证据evidence/native-node-validation.json及runtime/native-node-20261103，公开摘要reports/public-source-check.json.native_node_systemd。Main配置、19Node profiles、物理域与原预算、zdl启动/内存/SHM、保护6/领域/agent/测量运行时/网页不变；实际日程/规则/参考/图未启用。0新镜像/0模型调用/0NPU应用kernel。
+
+下一步仍是首台管理员机的宿主开机/挂载、两个真实登录身份和旧Docker权限迁移、非root NPU数值/性能/仿真、第二物理机/fencing，以及混合长期容量和历史冷存。原生Node容器CPU路径不再列为全未验；旧pending存储跨丢失namespace的显式对账仍待。PUBLIC-001延期，整体production_ready/goal_complete均false。
+
 ## 2026-11-03 原生控制器业务、目录恢复与存储命名空间（最终1354/原生48/进程47通过）
 
 上一阶段只完成原生PID1空载部署/启动恢复。本轮将原始controller unit接上独立进程模式Node，真实运行两任务UID23003/23004的BishengIR、硬字节/inode配额、缓存及图工作流。最终 **job-3b169917cf53：48项、0清理错误**；中央在CPU任务仍运行时通过原unit停启，新PID恢复，同一任务容器/StartedAt/attempt继续，结果保持。12次运行进程快照实际UID999/CAPeff0/NoNewPrivs，控制器没有Docker socket。Node沿原受信Root角色，任务不获得其权限。

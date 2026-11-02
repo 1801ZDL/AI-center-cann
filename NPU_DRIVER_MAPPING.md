@@ -40,3 +40,9 @@ strace只记录open/openat/ioctl/close。诊断进程在输出结果前，有界
 因此可以区分“设备节点open被拒”和“open成功但ioctl失败”，而不是仅据库返回87猜测其来源。跟踪本身会影响时序，结果不能用作性能测量；未观测到某事件也不能证明它从未发生。父进程即使在容器退出状态检查时失败，也会先保存本次原stdout/stderr，并核对原标签对象后清理，不创建替代尝试。
 
 [厂商故障案例](https://www.hiascend.com/document/caselibrary/detail/topic_0000002238354198)列举了设备namespace占用相关的几种容器冲突。该案例列出的产品范围不能直接覆盖本机A5，只能作为待验证线索；其停止进程/容器的建议不构成对共享服务器的操作授权。本工具不识别或退出其他holder，也不会借namespace表推导自动修复。
+
+## 2026-11-03 实际受限容器 trace
+
+原队列任务`job-052aad3b1e46`在新鲜健康空闲窗口完成一次查询；此前`--metadata --trace`已验证依赖闭包。宿主DSMI计数/映射往返通过，受限UID23901/设备补充组1001/零cap/default seccomp容器计数返回87。有界存活前缀中`/dev/davinci_manager`的open与多个ioctl成功，而分配卡`/dev/davinci1`的open返回EBUSY。诊断完成不等于设备资格通过，未初始化ACL或运行应用kernel。
+
+这把失败位置落实到设备节点open边界；仍不能确定哪个namespace/holder或驱动条件造成EBUSY，也不能据此排除所有其他因素。原始trace私有保留，公开仅选中设备操作/返回值/errno，不附着他人进程、不放宽seccomp/能力、不重置设备或停既有容器。下一步在管理员准备的独立受控池验证非root访问，当前不重复无变化探针；同卡每日数值/性能自检仍须后续真机正向验收。

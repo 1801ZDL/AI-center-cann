@@ -8,7 +8,7 @@
 
 停止 unit 的 Root 快照使用受保护原生 libsystemd/固定 RefUnit helper 保留元数据，断开释放；ControlGroup 从 Service 接口读取。快照可暂时加载元数据，但不启动服务或重载。服务身份只读已经 active 的自身 unit，不授予管理器变更权限。systemd-doctor 新增原生库文件检查，前置通过仍不代表启动通过。旧 process-mode 兼容性另做回归。
 
-真实宿主开机、Node unit、两个登录账号、NPU 和双物理机仍需目标机验收。夹具的私有 cgroup/AppArmor 条件仅用于自有测试容器，不改变生产 unit 或普通任务权限；未访问宿主完整可写 cgroup 或其他人的容器。
+新增双原生角色48项验收已覆盖Node unit的CPU业务、两个数值任务UID、配额/缓存/重启/备份恢复，见PROGRESS.md。Node生成unit现需CHOWN/DAC_OVERRIDE/FOWNER，配额模式另加SYS_ADMIN；controller仍零能力。已有Node升级须先停止新准入、确认执行和上传清退，再停止unit，使用匹配发布代码的offline unit-refresh原计划，随后manager核对与startup原计划；不手改能力行、不在忙碌中刷新。历史生成unit仅接受精确旧能力行，其余自定义保持拒绝。真实宿主开机/挂载、两个登录账号、NPU计算和双物理机仍需目标机验收。夹具的私有 cgroup/AppArmor 条件仅用于自有测试容器，不改变生产 unit 或普通任务权限；未访问宿主完整可写 cgroup 或其他人的容器。
 
 新增[固定非root CANN诊断](NPU_RUNTIME_DIAGNOSTIC.md)供维护者经队列定位环境准入。当前实际受限容器仍在aclInit返回500000，错误消息指向初始化SoC信息阶段，不能据此判卡损坏或具体驱动根因。没有进入映射/Context或普通算子，不撤销既有资格门槛。该工具在仓库测试目录，非当前服务器包的新后端。
 

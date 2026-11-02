@@ -1,5 +1,11 @@
 # 后续任务
 
+## 2026-11-03 双原生角色验收后的下一优先
+
+native Node容器CPU路径已完成，不再作为全未验项：实际48项、最终1357项回归，旧生成unit升级、双UID/配额/缓存、活任务中Node/中央重启及恢复已通过。限定受信Node的文件能力修复见NATIVE_SYSTEMD.md/PROGRESS.md。真实受限设备trace进一步确认manager可打开而/dev/davinci1返回EBUSY，仍未取得设备访问或计算资格，不重复无变化探针、不处置其他holder。
+
+继续补首台管理员机宿主开机/挂载与两个真实登录账号、旧Docker权限迁移、非root NPU实际精度/性能/仿真；第二物理机/断网/fencing；20人混合长期运行与历史冷存；legacy pending存储显式对账。Main每日逐卡计划仍未启用，PUBLIC-001继续延期。下列已注明日期的记录为各历史阶段范围，以本节及PROGRESS.md最新证据为准。
+
 ## 2026-11-03 原生控制器业务集成后的剩余项
 
 原生 controller 已与独立进程 Node 完成两 UID 实际 CPU 工作流、运行任务中的中央重启、目录恢复/回滚及两次绑定发布 SIGKILL，修复 unit 旧目录刷新和跨命名空间存储指纹，详见[UNIT_RELOCATION.md](UNIT_RELOCATION.md)。接下来仍需 native Node unit、真实宿主启动/登录账号与权限迁移、非 root NPU 正向与数值/性能/仿真、两物理机/fencing、混合长期负载及历史冷存。旧 pending 存储操作若已失去原挂载视图，仍缺显式管理员对账工具，当前保持数据/计费而不自动重绑删除。Main每日计划未启用，PUBLIC-001继续延期。

@@ -25,6 +25,15 @@ def desired():
 
 
 class UnitManagerTests(unittest.TestCase):
+    def test_node_file_management_caps_and_quota_cap_are_separate_from_controller(self):
+        with tempfile.TemporaryDirectory(dir=ROOT/'runtime') as folder:
+            state=Path(folder);meta={'role':'node','uid':0,'gid':0,'state_dir':folder}
+            for quota in [False,True]:
+                atomic_json(state/'config.json',{'workspace':{'slots':[{'path':'/srv/work/slot','filesystem':'ext4-userquota'}] if quota else []}})
+                wanted=unit.expected('/opt/ascend-unit-fixture',meta,deploy.unit_text('/opt/ascend-unit-fixture',meta))
+                self.assertEqual(wanted['CapabilityBoundingSet'],11+((1<<21) if quota else 0))
+            _,controller=desired();self.assertEqual(controller['CapabilityBoundingSet'],0)
+
     def test_fixed_wire_fixture_matches_generated_contract(self):
         value,wanted=desired()
         self.assertEqual(unit.effective(value,wanted,value['Id'],value['FragmentPath']),fingerprint(wanted))

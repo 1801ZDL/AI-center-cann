@@ -94,13 +94,14 @@ class QuotaWorkspaceTests(unittest.TestCase):
         atomic_json(self.root/'config.json',{'workspace':self.profile['workspace']})
         meta={'uid':0,'gid':0,'role':'node','state_dir':str(self.root)}
         text=unit_text('/opt/lab',meta)
-        self.assertIn('CapabilityBoundingSet=CAP_SYS_ADMIN',text)
+        self.assertIn('CapabilityBoundingSet=CAP_CHOWN CAP_DAC_OVERRIDE CAP_FOWNER CAP_SYS_ADMIN\n',text)
         self.assertIn('RequiresMountsFor="/srv/quota"',text)
         self.assertIn('ReadWritePaths='+str(self.root)+' "/srv/quota"',text)
         plain={**self.slots[0],'filesystem':'ext4'}
         for key in ['quota_uid','filesystem_id','filesystem_bytes','filesystem_inodes']:plain.pop(key)
         atomic_json(self.root/'config.json',{'workspace':{'slots':[plain]}})
-        text=unit_text('/opt/lab',meta);self.assertIn('CapabilityBoundingSet=\n',text)
+        text=unit_text('/opt/lab',meta);self.assertIn('CapabilityBoundingSet=CAP_CHOWN CAP_DAC_OVERRIDE CAP_FOWNER\n',text)
+        self.assertNotIn('CAP_SYS_ADMIN',text)
         self.assertIn('"/srv/quota/slot1"',text)
         controller=unit_text('/opt/lab',{**meta,'role':'controller','uid':999})
         self.assertIn('CapabilityBoundingSet=\n',controller);self.assertNotIn('/srv/quota',controller)

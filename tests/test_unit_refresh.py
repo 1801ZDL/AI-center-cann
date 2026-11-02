@@ -59,6 +59,33 @@ class UnitRefreshTests(unittest.TestCase):
         m={**meta(),'role':'node','uid':0,'gid':0};desired=deploy.unit_text('/opt/ascend-unit-fixture',m)
         with self.assertRaises(DeployError):unit._managed(desired.replace('WorkingDirectory=','SupplementaryGroups=23831\nWorkingDirectory='),'x',m,desired)
 
+    def node_unit(self,quota):
+        state=self.root/'node';state.mkdir(exist_ok=True)
+        atomic_json(state/'config.json',{'workspace':{'slots':[{'path':'/srv/work/slot','filesystem':'ext4-userquota'}] if quota else []}})
+        m={'role':'node','uid':0,'gid':0,'state_dir':str(state)}
+        return m,deploy.unit_text('/opt/ascend-unit-fixture',m)
+
+    def test_exact_legacy_node_capability_unit_can_be_refreshed(self):
+        for quota in [False,True]:
+            m,desired=self.node_unit(quota)
+            current='CAP_CHOWN CAP_DAC_OVERRIDE CAP_FOWNER'+(' CAP_SYS_ADMIN' if quota else '')
+            previous='CAP_SYS_ADMIN' if quota else ''
+            self.assertIn('CapabilityBoundingSet='+current+'\n',desired)
+            unit._managed(desired.replace('CapabilityBoundingSet='+current+'\n','CapabilityBoundingSet='+previous+'\n'),
+                '/opt/ascend-unit-fixture',m,desired)
+
+    def test_legacy_node_recognition_does_not_adopt_custom_security_or_wrong_quota(self):
+        for quota in [False,True]:
+            m,desired=self.node_unit(quota)
+            current='CAP_CHOWN CAP_DAC_OVERRIDE CAP_FOWNER'+(' CAP_SYS_ADMIN' if quota else '')
+            previous='CAP_SYS_ADMIN' if quota else ''
+            old=desired.replace('CapabilityBoundingSet='+current+'\n','CapabilityBoundingSet='+previous+'\n')
+            for text in [old.replace('NoNewPrivileges=true','NoNewPrivileges=false'),old+'# customization\n',
+                         old.replace('CapabilityBoundingSet='+previous+'\n','CapabilityBoundingSet=CAP_SETUID\n'),
+                         old.replace('CapabilityBoundingSet='+previous+'\n','CapabilityBoundingSet='+('' if quota else 'CAP_SYS_ADMIN')+'\n'),
+                         old.replace('WorkingDirectory=','SupplementaryGroups=0\nWorkingDirectory=')]:
+                with self.subTest(quota=quota,text=text[-40:]),self.assertRaises(DeployError):unit._managed(text,'x',m,desired)
+
     def test_direct_prefix_and_type_wide_dropins_all_refuse(self):
         for name in ['ascend-lab-controller.service.d','ascend-.service.d','ascend-lab-.service.d','service.d']:
             path=self.root/name;path.mkdir()

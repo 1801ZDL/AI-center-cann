@@ -165,7 +165,7 @@ class Bus:
 def expected(prefix,meta,text):
     lines={line.split('=',1)[0]:line.split('=',1)[1] for line in text.splitlines() if '=' in line}
     env=[line.split('=',1)[1] for line in text.splitlines() if line.startswith('Environment=')]
-    cap_bits={'CAP_SYS_ADMIN':21,'CAP_SETUID':7,'CAP_SETGID':6,'CAP_DAC_OVERRIDE':1}
+    cap_bits={'CAP_CHOWN':0,'CAP_DAC_OVERRIDE':1,'CAP_FOWNER':3,'CAP_SYS_ADMIN':21,'CAP_SETUID':7,'CAP_SETGID':6}
     caps=sum(1<<cap_bits[name] for name in lines['CapabilityBoundingSet'].split())
     return {'Type':'simple','User':lines['User'],'Group':lines['Group'],
         'SupplementaryGroups':lines.get('SupplementaryGroups','').split(),'WorkingDirectory':meta['state_dir'],

@@ -80,6 +80,14 @@ def _overrides(directory,name):
 
 def _managed(text,prefix,meta,desired):
     if text==desired:return
+    if meta['role']=='node':
+        # Historical generated Nodes omitted file-management capabilities.
+        # Recognize only that exact predecessor, not reordered/extra caps,
+        # security customizations, or a unit for a different configuration.
+        match=re.search(r'^CapabilityBoundingSet=(CAP_CHOWN CAP_DAC_OVERRIDE CAP_FOWNER(?: CAP_SYS_ADMIN)?)\n',desired,re.M)
+        if match:
+            previous='CAP_SYS_ADMIN' if match[1].endswith(' CAP_SYS_ADMIN') else ''
+            if text==desired[:match.start(1)]+previous+desired[match.end(1):]:return
     if 'unit_relocation' in meta:
         from unit_relocation import accepts
         if accepts(text,prefix,meta,desired):return

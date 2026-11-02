@@ -352,7 +352,11 @@ def unit_text(prefix,meta):
     native=meta.get('control_filesystem')
     mounts=([payload] if payload else [])+([native['path']] if native else [])+sorted(set(workspace))
     native_rw=(' '+quoted(native['path'])+' '+quoted(prefix)) if native else ''
-    capabilities='CAP_SYS_ADMIN CAP_SETUID CAP_SETGID CAP_DAC_OVERRIDE' if native else 'CAP_SYS_ADMIN' if quota_enabled else ''
+    # The trusted Node transfers its measurement endpoint/cache to task UIDs
+    # and inspects private task-owned trees. UID 0 alone does not grant those
+    # operations when systemd removes the corresponding capabilities.
+    capabilities=('CAP_SYS_ADMIN CAP_SETUID CAP_SETGID CAP_DAC_OVERRIDE' if native else
+                  ('CAP_CHOWN CAP_DAC_OVERRIDE CAP_FOWNER'+(' CAP_SYS_ADMIN' if quota_enabled else '')) if role=='node' else '')
     mount_line='RequiresMountsFor='+' '.join(quoted(path) for path in mounts)+'\n' if mounts else ''
     return f'''[Unit]
 Description=Ascend Lab {role}

@@ -1,6 +1,6 @@
 # 原生 systemd 的开发验收
 
-新增 `--scenario storage` 实测原生服务与恢复器的不同挂载视图，经过真实隔离/备份/新目录恢复后由属主恢复输入并核对字节。完整 CPU 集成还可用 install_server_check.py 的 `--native-controller-image sha256:...`，连接原有独立进程模式 Node；原生控制器仍无 Docker socket，受信 Node 的容器管理权限与受限任务身份沿原合同。结果及限制见 [UNIT_RELOCATION.md](UNIT_RELOCATION.md) / [PROGRESS.md](PROGRESS.md)。
+新增 `--scenario storage` 实测原生服务与恢复器的不同挂载视图，经过真实隔离/备份/新目录恢复后由属主恢复输入并核对字节。完整 CPU 集成还可用 install_server_check.py 的 `--native-controller-image sha256:...`，默认连接原有独立进程模式Node；增加`--native-node-image sha256:...`可验证独立原生Node。原生控制器仍无Docker socket，受信Node的容器管理权限与受限任务身份沿原合同。结果及限制见 [UNIT_RELOCATION.md](UNIT_RELOCATION.md) / [PROGRESS.md](PROGRESS.md)。
 
 本说明面向源码维护者，验证同一发布包在原生 PID1 下的部署、启动和恢复。它不是空白宿主机安装器，不为普通任务或个人 agent 增加权限。最新结果和失败记录见 [PROGRESS.md](PROGRESS.md)。
 
@@ -31,6 +31,29 @@ LAB_JOB_DIR 由队列提供。镜像准备在独立有界容器中从 Ubuntu 官
 
 证据在原 job 的 tmp/native-systemd：原生报告、unit 属性、响应边界、累计 RPC 计数、重启身份及私有日志。private-controller-evidence.tar.gz 含新生成的凭据和状态，禁止上传。发布只导出选定布尔值、计数、版本和源码摘要；扫描器在有界档案中仅读取固定 control/config.json 检查泄露，不提取其他成员。观测超时保留原 job，不换 key 重跑；清退前确认原容器身份和终止。
 
+## 原生 Node 集成与旧 unit 升级
+
+`tests/install_server_check.py`在`--user-quota-workspace --persistent-cache`及上述原生controller镜像参数基础上，可加`--native-node-image`。它使用同一个已验证本地native镜像，不下载新包；两个角色分别为真实PID1。初始进程安装用于兼容检查，业务任务前切换原生unit，不能称全部安装阶段均native。
+
+本次48项实际使用完整参数如下，仍须从原中央以CPU2/内存2048MiB/NPU0及有限超时提交；两个镜像参数替换为同一个经过前置验收的本地immutable摘要。日程/规则/参考参数只演练隔离CPU夹具中的合成记录，不启用Main日程。
+
+```text
+/usr/bin/python3 tests/install_server_check.py
+  --user-quota-workspace --persistent-cache
+  --device-schedule --device-evidence --measurement-windows
+  --performance-reference --reference-rotation --job-graph
+  --native-controller-image sha256:已验收本地原生镜像摘要
+  --native-node-image sha256:同一本地原生镜像摘要
+```
+
+Node是原有受信容器管理者，夹具保留其Docker socket、配额SYS_ADMIN以及既有seccomp/AppArmor测试条件；controller、个人agent和任务不获得这些权限。Node bootstrap要求其固定socket存在而无NPU设备；controller bootstrap仍要求无socket。双方都只操作已核对完整CID的private cgroup leaf，核对父CPU/内存/PID限制；没有privileged、全宿主cgroup可写或superblock-wide remount。这不是普通任务容器的配置。
+
+Node生成unit固定CHOWN/DAC_OVERRIDE/FOWNER，分别用于端点/缓存属主转移、私有任务树访问和转移后的属主文件属性；只有UID-quota工作盘/缓存才另加SYS_ADMIN用于查询/核对。controller继续零能力。Node实际7次运行快照CAPeff2097163/UID0/NoNewPrivs，controller12次UID999/CAPeff0；没有修改任务运行时。
+
+旧包生成的Node unit只有SYS_ADMIN或空能力行。升级应排空执行/上传、停止unit，再由匹配发布代码生成并应用offline refresh原计划，核对manager后沿startup原计划启动；仅接受该精确历史能力行且其他字节与当前生成unit一致，不采纳自定义安全属性/能力/drop-in。实际夹具先放置精确旧unit，再走刷新/加载/启动，并完成CPU业务。停Node不证明其外部任务退出；实际运行中重启验证同一容器/StartedAt/attempt持续，未因心跳中断重跑。
+
+双原生角色48项含两个任务UID、真实BishengIR、硬配额、缓存、中央及Node运行中重启、目录恢复/回滚/任务图；设备日程/参考仍为合成协议。实际包非md源码与最终发布一致；集成后只修了夹具scope措辞和既有quota单测断言，最终完整回归单独冻结。原始私有报告/SQL/包/loop清退核对见PROGRESS.md。
+
 ## 目标机仍须验收
 
-这是单物理机内的真实容器 PID1，尚未证明宿主 PID1、完整开机/关机和挂载恢复。新服务器还需两个真实登录账号、目录/服务隔离、实际 Node unit、重启后盘/网络准备顺序、非 root NPU 访问与数值/性能/仿真、备份恢复。第二台物理机验证断网、重连和旧执行器隔离；没有 fencing 证据前保持单活中央，未知执行不重新分配。
+这是单物理机内的真实容器 PID1，尚未证明宿主 PID1、完整开机/关机和挂载恢复。新服务器还需两个真实登录账号、目录/服务隔离、宿主Node unit及重启后盘/网络准备顺序、非 root NPU 访问与数值/性能/仿真、备份恢复。第二台物理机验证断网、重连和旧执行器隔离；没有 fencing 证据前保持单活中央，未知执行不重新分配。
