@@ -1,5 +1,25 @@
 # 实施进度
 
+## 2026-11-02 预算内小IR候选：实际 Agent→MCP→受控CPU→归档
+
+**最终1260项/260.139秒/零跳过及JS语法通过，18项专项、最终同机隔离Root安装42项和网页12项通过。** full `job-53d9a7be6b3c`、focused `job-d6c64f7f249a`、final Root `job-0a3deefb6a50`、browser `job-9762fbcf2fa1`。107个非文档CORE、256个测试/辅助文件、4网页资产及agent_runner冻结；实际模型演练、最终Root与browser的三个包逐项匹配CORE/web，文档随后完善，不声称包中文档与最终checkout完全相同。protected6、APP4及jobs/executor/npu_admission/cooperative_start不变，未重建镜像或扩大设备资格。
+
+新增[compiler_experiment.py](COMPILER_EXPERIMENT.md)及便携客户端capability `compiler-experiment-client-v1`。普通个人先批准有限ir_v1实验预算，将已确认结束且清退的小IR失败放入预算，个人stdio MCP绑定owner/预算/中央、封存原文、已知驱动及受保护工具锁。模型只传稳定候选key、源SHA及一处old/new文字替换；固定1CPU/512MiB/NPU0/60秒、只读输入和有限工作/归档，不能改命令、编译器、镜像、资源或任意路径。每会话最多两候选，中央累计预算跨会话记费；提交先保存原请求/意图，同一来源与候选SHA全局幂等，未知提交/非终态阻止换key替代，不以观察超时重跑。
+
+实际模型安装演练 `job-9a5845000ba9` 使用源码匹配的既有固定工具镜像与真实LLVM22解析器。一次OpenCode调用（既有配置标签DeepSeek-V4.1-Flash 261017，run `agent-4c8561e61ec5`），只开放ascend_experiment前缀，Shell/文件/旧MCP/Skill/委派等禁用；独立XDG与pure模式，不改全局配置或外发个人仓库。模型没有预填答案，通过get_case、experiment_status、prepare_candidate、submit_candidate、wait_candidate、get_candidate_result六次实际工具调用，提出将函数返回类型i64改为i32。原任务 `job-3e78957f628e` 实际失败，候选 `job-abbb149fa49b` 实际成功；原IR与错误仍保留，各一attempt，中央申报2任务/120CPU秒/0NPU秒。这里只是自编小IR的parse/verify，不是源码补丁、完整lowering、语义等价、精度或性能验收。
+
+同机角色为Controller999/Node0/Task23003，候选硬512MiB、无设备/无网络/只读根及受保护环境记录。实际个人UID23642从独立安装的客户端初始化同预算会话，重复封存/提交取得原候选job及同input，预算不增加；命令/NPU覆盖和跨预算报告读取被拒。备份/恢复后预算restored_frozen、旧消费token401；本人重新批准只读profile替换原文件，同一会话和安装后stdio MCP可读原成功结果，提交403。没有第二次模型调用或恢复后新计算。Primary独立核原始及恢复后的SQLite、两份原IR字节SHA、实际编译退出码、受保护工具SHA、UID/硬限制与单attempt；原模型进程已结束。
+
+18项专项覆盖丢失上传/提交回执重连、原key/提案绑定、非终态/未知阻止替代、两候选与中央累计预算、跨key同候选复用、身份/预算/中央切换、宽凭据回退拒绝、路径/命令/资源覆盖、脱敏/截断/超时/未知清退拒绝和MCP有限错误。实际模型演练覆盖正常闭环、跨个人stdio重连与恢复撤销；没有宣称真实模型经历过未知执行或网络丢包。第二种harness及一般失败/卡死/精度/性能/仿真候选仍待。
+
+中间失败保留：首次Root `job-9cddb02fdd6f` 因验收仍使用旧便携文件清单而失败，未到模型或候选；同步清单后重新演练。Agent安装报告打印37项，其中一条历史大IR的PASS文案因插入位置错误误挂在新分支，实际未跑大IR，明确排除，有效36项；已修正文案位置，最终通用Root42使用修正脚本。没有为了修正文案重复模型或冒称历史大IR本轮通过。
+
+最终Root42再次验证两任务UID、真实BishengIR42、字节/inode EDQUOT、缓存、CPU测量窗口/原容器恢复、备份及两次参考历史SIGKILL；设备窗口/参考仍合成。Primary核两恢复数据库job/attempt集合及ledger代际、两UID实际42IR、参考档案SHA与实际包。网页12验证真实HTTP/权限/归档与CSV/移动宽度等。7份自有loop关联释放且对应sysfs关联消失，五类fixture标签容器/卷空；保留私有backing证据，不改宿主账号、全局服务或其他容器。
+
+Main配置SHA/19profiles/一物理域、CPU254255/2048MiB/SHM1024MiB/单任务预算及zdl启动/内存/SHM不变，0非终态/holds/日程/规则/真实参考，ledgergen0/无回执；4网页资产实际HTTP回读。此前本轮只读管理显示两卡均有占用，卡0Alarm，未重复设备探针或启动NPU。本次维护者CPU演练不等于宿主已完成真实账号/PID1、两物理机fencing、20人混合与长期容量验收。
+
+[SCALING.md](SCALING.md)补充当前账号、首台管理员机、第二物理机的交付约定和P0/P1/P2验收表，保持客户端协议连续，不承诺设备/账号/存储零配置迁移。整体目标继续active、production_ready=false；下一步为实际空闲卡上的受限驱动/运行时和精度性能仿真、较真实的领域候选及规模/运维。PUBLIC-001夜间PR归因仍暂缓。私有证据 `evidence/compiler-experiment-validation.json` 与 `runtime/agent-experiment-20261102`，公开只含摘要，不含模型密钥/对话、原部署/数据库或原始产物。
+
 ## 协作入口启动前竞争的原任务回队（2026-11-02）
 
 **最终1242项/264.700秒/零跳过及JS语法通过，最终专项20项、重新打包Root安装42项和网页12项通过。** full `job-f515f279f343`、focused `job-6172ec2e8b20`、Root `job-3f1aec86f969`、browser `job-bc9695da36fa`。106个非文档CORE、253个测试/辅助、4网页资产和agent_runner冻结；Root与browser实际包的CORE/web逐项一致。文档随后完善，不声称包中文档与最终checkout相同。protected6和领域镜像APP4不变，没有重建镜像或调用模型。

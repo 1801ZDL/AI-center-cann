@@ -30,7 +30,7 @@ CORE=['auth.py','owner_identity.py','owner_handoff.py','qualification_compatibil
       'environment_probe.py','environment_contract.py','device_qualification.py','attempt_inventory.py','executor.py','npu_admission.py','cooperative_start.py','npu_device.py','inputs.py','jobs.py','lab_client.py','client_archive.py','archive_api.py','nodes.py','server.py',
       'templates.py','worker.py','workflow_runner.py','workflow_spec.py','workflow_results.py',
       'state_lock.py','resources.py','queue_policy.py','docker_runtime.py','listener.py','preflight.py','workspace_slots.py','filesystem_quota.py','quota_workspace.py','workspace_quota_admin.py','node_owner_admin.py','group_quota.py','payload_groups.py','payload_quota_admin.py','payload_owner_admin.py','io_policy.py','storage_io.py','payload_storage.py','storage_budget.py','storage_files.py','storage_lifecycle.py','node_storage.py','deployment.py','maintenance.py','servicectl','accessctl','workerctl',
-      'spool_storage.py','spool_transfer.py','persistent_cache.py','dependencies.py','control_storage.py','control_filesystem.py','control_process.py','labctl','install-client','mcp_bridge.py','diagnostic_case.py','compiler_diagnostic.py','operator_profile.py','operator_node.py','operator_workflow.py','CLIENT.md','SERVER.md','API.md','WORKFLOWS.md','NPU.md','WORKSPACE.md','STORAGE.md','CACHE.md','DEPENDENCIES.md',
+      'spool_storage.py','spool_transfer.py','persistent_cache.py','dependencies.py','control_storage.py','control_filesystem.py','control_process.py','labctl','install-client','mcp_bridge.py','diagnostic_case.py','compiler_diagnostic.py','compiler_experiment.py','COMPILER_EXPERIMENT.md','operator_profile.py','operator_node.py','operator_workflow.py','CLIENT.md','SERVER.md','API.md','WORKFLOWS.md','NPU.md','WORKSPACE.md','STORAGE.md','CACHE.md','DEPENDENCIES.md',
       'README.md','DEPLOYMENT.md','SCALING.md','HARNESS.md','OPERATOR_ANALYSIS.md','COMPILER_DIAGNOSTICS.md','ENVIRONMENTS.md','RECOVERY.md','HTTPS.md','SPOOL.md','OWNER_PROVISION.md']
 SCHEMA=1
 EXECUTABLES={'servicectl','accessctl','workerctl','labctl','install-client'}
@@ -47,6 +47,7 @@ OPTIONAL_ADMIN_FILES.update({'operator_node.py','operator_workflow.py'})
 OPTIONAL_ADMIN_FILES.update({'compiler_diagnostic.py','COMPILER_DIAGNOSTICS.md','SCALING.md'})
 OPTIONAL_ADMIN_FILES.add('control_storage.py')
 OPTIONAL_ADMIN_FILES.add('cooperative_start.py')
+OPTIONAL_ADMIN_FILES.update({'compiler_experiment.py','COMPILER_EXPERIMENT.md'})
 OPTIONAL_ADMIN_FILES.update({'control_filesystem.py','control_process.py'})
 CORE.append('control_monitor.py')
 OPTIONAL_ADMIN_FILES.add('control_monitor.py')

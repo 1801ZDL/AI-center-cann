@@ -8905,5 +8905,38 @@
       "Real host users/PID1,two physical hosts/fencing,20-user mixed and long-term capacity remain unverified"
     ],
     "source_scope_note": "All106 non-document CORE files and4 web assets match the fresh actual installed Root/browser archives and final full/live source. Documentation updated afterward; protected6 and APP4 unchanged. Cooperative observations are explicitly simulated; fixed CPU payloads do not qualify NPU or Root multiuser isolation."
+  },
+  "compiler_experiment": {
+    "verified_at": "2026-11-02T14:43:57.042530+00:00",
+    "unit_tests": 1260,
+    "unit_seconds": 260.139,
+    "unit_skipped": 0,
+    "javascript_syntax_passed": true,
+    "focused_tests": 18,
+    "root_checks": 42,
+    "browser_checks": 12,
+    "production_core_files": 107,
+    "new_actual_harness_invocations": 1,
+    "actual_model_tool_events": 6,
+    "candidate_jobs": 1,
+    "original_failure_preserved": true,
+    "charged_jobs_including_source": 2,
+    "charged_cpu_seconds": 120,
+    "charged_npu_seconds": 0,
+    "installed_personal_uid": 23642,
+    "task_uid": 23003,
+    "restore_revokes_spending_and_keeps_readonly_history": true,
+    "core_and_web_match_actual_packages": true,
+    "docs_finished_after_packaging": true,
+    "excluded_unrelated_pass_label": true,
+    "model": "DeepSeek-V4.1-Flash (261017)",
+    "production_ready": false,
+    "overall_goal_complete": false,
+    "npu_compute_accepted": false,
+    "failures_retained": [
+      "First installation expected the old portable client file set; rejected before model/experiment execution.",
+      "Agent installation report printed one unrelated historical-full-IR PASS label; it is excluded. Corrected final generic installation and unit regression use current helper."
+    ],
+    "scope": "One actual bounded OpenCode/DeepSeek small authored IR candidate through installed CPU Node, second UID stdio replay and revoked spending after restore. New107 CORE generic Root42/browser12 regressions. No general repair, semantic/numerical correctness, NPU execution, actual host accounts/PID1 or two physical machines."
   }
 }

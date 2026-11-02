@@ -41,4 +41,21 @@ msagent 的 Operator 文档面向单算子性能分析和优化，并要求提�
 
 编译诊断另有compiler_diagnostic.py单任务getter；保留原通用/性能接口。模型草稿不得直接成为命令，已知字面候选仍需完整未脱敏源码、封存驱动、受保护工具锁和原尝试清理确认，再由主助手封存新输入、显式排队。当前只验最小实际MLIR版本接口案例，见COMPILER_DIAGNOSTICS.md。
 
+有限小IR候选现在另有[compiler_experiment.py](COMPILER_EXPERIMENT.md)。个人先批准单预算profile、提交原失败任务并初始化私有会话，再将下面的stdio MCP加入自己的harness。模型只能通过七个固定工具读取绑定案例、准备一处替换、排队、等待及读取归档；它不选择编译命令、工具路径或设备。只读诊断getter的权限保持不变。
+
+```json
+{
+  "mcp": {
+    "ascend_experiment": {
+      "type": "local",
+      "command": ["python3", "/YOUR_CLIENT/compiler_experiment.py", "mcp", "--session-dir", "/YOUR_PRIVATE/compiler-session"],
+      "enabled": true
+    }
+  },
+  "permission": {"*": "deny", "ascend_experiment_*": "allow"}
+}
+```
+
+这是OpenCode配置片段，需核对实际版本的最终有效权限；其他harness按其MCP配置格式适配，并验相同权限。模型及认证使用本人已有配置，不从中央获取。该MCP只约束自身工具，不隔离同UID进程；同一账号下另开的Shell仍具有账号原有权限。实际模型、安装包、任务UID及恢复验收范围见PROGRESS.md，不能从接口存在推导自动修复能力。
+
 精确执行目标由placement.bound_workflow适配到个人agent_runner和既有固定MCP会话；中央能力须声明exact-node-device-placement-v1，冻结工作流的placement在会话内不能覆盖。旧的无目标入口保留原客户端路径，lab_client与领域工具固定镜像APP4未改；当前新增适配仅验真实HTTP/固定请求合同，没有新增模型harness运行。主动微自检CLI和有限参考/非认证范围见NPU_SELFCHECK.md。

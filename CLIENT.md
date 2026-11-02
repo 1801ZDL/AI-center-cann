@@ -154,3 +154,5 @@ MCP启动可加`--archive --archive-root /本人/归档`，或`--archive --local
 ## 0.33 精确Node/卡与微自检
 
 便携包新增placement.py、npu_selfcheck.py、NPU_SELFCHECK.md，不包含Torch、模型配置、控制器或凭据；继续仅安装到新目录。labctl submit可加--node，单卡任务可加--device（必须同时指定Node）；工作流JSON内placement与CLI标记不能相互覆盖。固定微自检使用`python /YOUR_CLIENT/npu_selfcheck.py --profile /PRIVATE/robot.json submit --lock /PRIVATE/known-good-lock.json --node worker-0123456789ab --devices 0 1`，查询原任务后用inspect重算归档。详见NPU_SELFCHECK.md，当前不是自动每日服务或硬件/性能认证。
+
+同版便携包新增`compiler-experiment-client-v1`及[compiler_experiment.py](COMPILER_EXPERIMENT.md)。它是可选的单预算小IR候选stdio MCP，不改变现有CLI/只读诊断工具。安装到新目录后，由本人明确选择委托profile和原失败任务初始化会话；不自动安装harness、不读取模型凭据、不扩大中央或Node权限。候选CPU解析通过不表示语义、精度或NPU验证通过。

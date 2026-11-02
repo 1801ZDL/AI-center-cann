@@ -22,7 +22,7 @@ from jobs import atomic_json,now
 from deployment import bundle,unpack_release
 from backends import physical_identity
 
-arguments=argparse.ArgumentParser();arguments.add_argument('--large-wheel');arguments.add_argument('--https-network',action='store_true');arguments.add_argument('--disk-workspace',action='store_true');arguments.add_argument('--user-quota-workspace',action='store_true');arguments.add_argument('--storage-pressure',action='store_true');arguments.add_argument('--control-storage-pressure',action='store_true');arguments.add_argument('--central-payload',action='store_true');arguments.add_argument('--central-owner-quotas',action='store_true');arguments.add_argument('--node-spool-pressure',action='store_true');arguments.add_argument('--persistent-cache',action='store_true');arguments.add_argument('--dependencies',action='store_true');arguments.add_argument('--input-durability',action='store_true');arguments.add_argument('--native-toolchain',action='store_true');arguments.add_argument('--payload-quota-resize',action='store_true');arguments.add_argument('--node-quota-resize',action='store_true');arguments.add_argument('--deadline-limit',action='store_true');arguments.add_argument('--operator-analysis');arguments.add_argument('--operator-image');arguments.add_argument('--compiler-case');arguments.add_argument('--large-compiler-case');arguments.add_argument('--accuracy-case');arguments.add_argument('--terminal-handoff');arguments.add_argument('--source-grants');arguments.add_argument('--simulation-case');arguments.add_argument('--report-view');arguments.add_argument('--native-control',action='store_true');arguments.add_argument('--audit-retention',action='store_true');arguments.add_argument('--browser-workflow',action='store_true');arguments.add_argument('--experiment-budget',action='store_true');arguments.add_argument('--device-schedule',action='store_true');arguments.add_argument('--device-evidence',action='store_true');arguments.add_argument('--measurement-windows',action='store_true');arguments.add_argument('--performance-reference',action='store_true');arguments.add_argument('--reference-rotation',action='store_true');options=arguments.parse_args()
+arguments=argparse.ArgumentParser();arguments.add_argument('--large-wheel');arguments.add_argument('--https-network',action='store_true');arguments.add_argument('--disk-workspace',action='store_true');arguments.add_argument('--user-quota-workspace',action='store_true');arguments.add_argument('--storage-pressure',action='store_true');arguments.add_argument('--control-storage-pressure',action='store_true');arguments.add_argument('--central-payload',action='store_true');arguments.add_argument('--central-owner-quotas',action='store_true');arguments.add_argument('--node-spool-pressure',action='store_true');arguments.add_argument('--persistent-cache',action='store_true');arguments.add_argument('--dependencies',action='store_true');arguments.add_argument('--input-durability',action='store_true');arguments.add_argument('--native-toolchain',action='store_true');arguments.add_argument('--payload-quota-resize',action='store_true');arguments.add_argument('--node-quota-resize',action='store_true');arguments.add_argument('--deadline-limit',action='store_true');arguments.add_argument('--operator-analysis');arguments.add_argument('--operator-image');arguments.add_argument('--compiler-case');arguments.add_argument('--large-compiler-case');arguments.add_argument('--agent-experiment');arguments.add_argument('--accuracy-case');arguments.add_argument('--terminal-handoff');arguments.add_argument('--source-grants');arguments.add_argument('--simulation-case');arguments.add_argument('--report-view');arguments.add_argument('--native-control',action='store_true');arguments.add_argument('--audit-retention',action='store_true');arguments.add_argument('--browser-workflow',action='store_true');arguments.add_argument('--experiment-budget',action='store_true');arguments.add_argument('--device-schedule',action='store_true');arguments.add_argument('--device-evidence',action='store_true');arguments.add_argument('--measurement-windows',action='store_true');arguments.add_argument('--performance-reference',action='store_true');arguments.add_argument('--reference-rotation',action='store_true');options=arguments.parse_args()
 assert not options.device_evidence or (options.device_schedule and options.user_quota_workspace), 'Evidence guards use the separate CPU daily-history/UID fixture'
 assert not options.reference_rotation or (options.performance_reference and options.device_evidence), 'Rotation extends installed synthetic reference/evidence histories'
 assert not options.performance_reference or options.measurement_windows, 'Reference source rejection uses three actually completed CPU jobs from the marker fixture'
@@ -43,6 +43,7 @@ assert not options.native_toolchain or (user_quota and options.persistent_cache 
 assert not options.operator_analysis or (user_quota and options.operator_image and not options.native_toolchain and not options.persistent_cache and not https), 'Operator analysis uses its own quota/image fixture, without unrelated cache or TLS cases'
 assert not options.compiler_case or options.operator_analysis, 'Compiler case extends the qualified operator image fixture'
 assert not options.large_compiler_case or (options.operator_analysis and not options.compiler_case), 'Large IR has its own immutable-image fixture and no model draft'
+assert not options.agent_experiment or (options.operator_analysis and not any([options.compiler_case,options.large_compiler_case,options.report_view,options.native_control,options.accuracy_case,options.simulation_case])), 'Agent experiment extends only its qualified CPU operator-image fixture'
 assert not options.accuracy_case or (user_quota and not any([options.operator_analysis,options.native_control,options.native_toolchain,options.compiler_case,options.large_compiler_case])), 'Accuracy replay uses its own stdlib CPU quota fixture'
 assert not options.terminal_handoff or (user_quota and not any([options.accuracy_case,options.operator_analysis,options.native_control,options.native_toolchain])), 'Terminal handoff uses an independent CPU quota fixture'
 assert not options.source_grants or (user_quota and not any([options.accuracy_case,options.terminal_handoff,options.operator_analysis,options.native_control,options.native_toolchain,options.simulation_case,options.report_view])), 'Source grants use an independent stdlib CPU quota fixture'
@@ -82,7 +83,7 @@ containers=[];volumes=[];networks=[];stopped_main=False;checks=[];token=None;tls
 retention_proof={};mount_proof={};owned_disk=None;pressure_disk=None;pressure_volume=None;storage_pressure=None;control_storage_pressure=None;spool_disk=None
 central_disks=[];central_volumes=[];payload_args=[];payload_contracts=[];central_proof=None
 native_control_volumes=[];native_control_proof=None;browser_workflow_proof=None;experiment_budget_proof=None
-group_pressure={};quota_resize_proof=None;node_quota_proof=None;deadline_proof=None;operator_proof=None;compiler_proof=None;large_compiler_proof=None;accuracy_proof=None;terminal_handoff_proof=None;source_grant_proof=None;simulation_proof=None;report_view_proof=None;device_schedule_proof=None;device_evidence_proof=None;measurement_proof=None;performance_reference_proof=None;reference_rotation_proof=None
+group_pressure={};quota_resize_proof=None;node_quota_proof=None;deadline_proof=None;operator_proof=None;compiler_proof=None;compiler_experiment_proof=None;large_compiler_proof=None;accuracy_proof=None;terminal_handoff_proof=None;source_grant_proof=None;simulation_proof=None;report_view_proof=None;device_schedule_proof=None;device_evidence_proof=None;measurement_proof=None;performance_reference_proof=None;reference_rotation_proof=None
 node_spool_pressure=None;cache_disk=None;cache_volume=None;cache_policy=None;cache_proof=None;dependency_proof=None;input_durability=None;native_proof=None
 controller_url=('https://controller.lab:' if https else 'http://127.0.0.1:')+str(port)
 outer_url=('https' if https else 'http')+'://127.0.0.1:'+str(port)
@@ -202,7 +203,7 @@ try:
     if options.central_payload:
         sys.path.insert(0,str(ROOT/'tests'));from disk_workspace_fixture import OwnedDisk
         for label in ['central-payload','central-restore']:
-            fixture=OwnedDisk(base,prefix+'-'+label,image,cpus,docker,folder_name=label,image_mib=512,inodes=8192,quota_type='group' if central_groups else None,helper_seconds=1800 if options.deadline_limit else 1500 if options.node_quota_resize else 1200 if options.compiler_case or options.accuracy_case or options.terminal_handoff or options.source_grants or options.simulation_case or options.report_view else 720)
+            fixture=OwnedDisk(base,prefix+'-'+label,image,cpus,docker,folder_name=label,image_mib=512,inodes=8192,quota_type='group' if central_groups else None,helper_seconds=1800 if options.deadline_limit else 1500 if options.node_quota_resize else 1200 if options.compiler_case or options.agent_experiment or options.accuracy_case or options.terminal_handoff or options.source_grants or options.simulation_case or options.report_view else 720)
             central_disks.append(fixture);device=fixture.create();mounted=prefix+'-'+label
             docker(['volume','create','--label','io.ascend-lab.installproof='+prefix,'--driver','local',
                     '--opt','type=ext4','--opt','device='+device,'--opt','o=nosuid,nodev'+(',grpquota' if central_groups else ''),mounted])
@@ -216,13 +217,13 @@ try:
             docker(['volume','create','--label','io.ascend-lab.installproof='+prefix,'--driver','local','--opt','type=ext4','--opt','device='+device,'--opt','o=nosuid,nodev',mounted])
             volumes.append(mounted);native_control_volumes.append(mounted)
     sys.path.insert(0,str(ROOT/'tests'));from disk_workspace_fixture import OwnedDisk
-    spool_disk=OwnedDisk(base,prefix+'-spool',image,cpus,docker,folder_name='spool-workspace',image_mib=4096 if large_wheel else 1024,inodes=262144,helper_seconds=1800 if options.deadline_limit else 1500 if options.node_quota_resize else 1200 if options.compiler_case or options.accuracy_case or options.terminal_handoff or options.source_grants or options.simulation_case or options.report_view else 720)
+    spool_disk=OwnedDisk(base,prefix+'-spool',image,cpus,docker,folder_name='spool-workspace',image_mib=4096 if large_wheel else 1024,inodes=262144,helper_seconds=1800 if options.deadline_limit else 1500 if options.node_quota_resize else 1200 if options.compiler_case or options.agent_experiment or options.accuracy_case or options.terminal_handoff or options.source_grants or options.simulation_case or options.report_view else 720)
     device=spool_disk.create();spool_volume=prefix+'-spool'
     docker(['volume','create','--label','io.ascend-lab.installproof='+prefix,'--driver','local',
             '--opt','type=ext4','--opt','device='+device,'--opt','o=nosuid,nodev',spool_volume]);volumes.append(spool_volume)
     spool_path=json.loads(docker(['volume','inspect',spool_volume]).stdout)[0]['Mountpoint']
     if options.persistent_cache:
-        cache_disk=OwnedDisk(base,prefix+'-cache',image,cpus,docker,folder_name='cache-workspace',image_mib=128,inodes=8192 if options.native_toolchain else 4096,quota_type='user',helper_seconds=1800 if options.deadline_limit else 1500 if options.node_quota_resize else 1200 if options.compiler_case or options.accuracy_case or options.terminal_handoff or options.source_grants or options.simulation_case or options.report_view else 720)
+        cache_disk=OwnedDisk(base,prefix+'-cache',image,cpus,docker,folder_name='cache-workspace',image_mib=128,inodes=8192 if options.native_toolchain else 4096,quota_type='user',helper_seconds=1800 if options.deadline_limit else 1500 if options.node_quota_resize else 1200 if options.compiler_case or options.agent_experiment or options.accuracy_case or options.terminal_handoff or options.source_grants or options.simulation_case or options.report_view else 720)
         device=cache_disk.create();cache_volume=prefix+'-cache'
         docker(['volume','create','--label','io.ascend-lab.installproof='+prefix,'--driver','local',
             '--opt','type=ext4','--opt','device='+device,'--opt','o=nosuid,nodev,usrquota',cache_volume]);volumes.append(cache_volume)
@@ -231,7 +232,7 @@ try:
     if disk:
         sys.path.insert(0,str(ROOT/'tests'))
         from disk_workspace_fixture import OwnedDisk
-        owned_disk=OwnedDisk(base,prefix,image,cpus,docker,image_mib=1024 if options.simulation_case or options.report_view else 128 if user_quota else 32,inodes=8192 if options.native_toolchain else 4096 if user_quota else 512,quota_type='user' if user_quota else None,helper_seconds=1800 if options.deadline_limit else 1500 if options.node_quota_resize else 1200 if options.compiler_case or options.accuracy_case or options.terminal_handoff or options.source_grants or options.simulation_case or options.report_view else 720)
+        owned_disk=OwnedDisk(base,prefix,image,cpus,docker,image_mib=1024 if options.simulation_case or options.report_view else 128 if user_quota else 32,inodes=8192 if options.native_toolchain else 4096 if user_quota else 512,quota_type='user' if user_quota else None,helper_seconds=1800 if options.deadline_limit else 1500 if options.node_quota_resize else 1200 if options.compiler_case or options.agent_experiment or options.accuracy_case or options.terminal_handoff or options.source_grants or options.simulation_case or options.report_view else 720)
         loop_device=owned_disk.create()
         docker(['volume','create','--label','io.ascend-lab.installproof='+prefix,'--driver','local',
                 '--opt','type=ext4','--opt','device='+loop_device,'--opt','o=nosuid,nodev'+(',usrquota' if user_quota else ''),volume])
@@ -295,7 +296,7 @@ try:
             argv+=['--mount','type=volume,src='+spool_volume+',dst=/spool-proof-alias,volume-nocopy']
             for mounted,path in work_mounts:argv+=['--mount','type=volume,src='+mounted+',dst='+path+',volume-nocopy']
             if cache_volume:argv+=['--mount','type=volume,src='+cache_volume+',dst='+cache_path+',volume-nocopy','--mount','type=volume,src='+cache_volume+',dst=/cache-proof-alias,volume-nocopy']
-        lifetime=900 if options.device_schedule else 1500 if options.deadline_limit else 1200 if options.node_quota_resize else 900 if large_wheel or options.compiler_case or options.large_compiler_case or options.accuracy_case or options.terminal_handoff or options.source_grants or options.simulation_case or options.report_view else 900 if options.native_control else 600 if options.native_toolchain or options.operator_analysis or options.control_storage_pressure else 300
+        lifetime=900 if options.device_schedule else 1500 if options.deadline_limit else 1200 if options.node_quota_resize else 900 if large_wheel or options.compiler_case or options.agent_experiment or options.large_compiler_case or options.accuracy_case or options.terminal_handoff or options.source_grants or options.simulation_case or options.report_view else 900 if options.native_control else 600 if options.native_toolchain or options.operator_analysis or options.control_storage_pressure else 300
         argv+=['--entrypoint','/usr/bin/timeout',image,'--kill-after=5s',str(lifetime)+'s','/usr/bin/python3','-I','-c','import time;time.sleep('+str(lifetime-5)+')']
         docker(argv);containers.append(name)
         claim='import os,sys;os.chown(sys.argv[1],0,0);os.chmod(sys.argv[1],0o700)'
@@ -417,7 +418,7 @@ try:
     docker(['exec','--user',str(installed['uid'])+':'+str(installed['gid']),controller,
             '/opt/ascend-lab-controller/current/install-client','--prefix',client_target])
     published=secret_json(controller,Path(client_target)/'manifest.json')
-    assert published['version']=='0.33-client' and set(published['sha256'])=={'labctl','lab_client.py','io_policy.py','placement.py','npu_selfcheck.py','NPU_SELFCHECK.md','client_archive.py','diagnostic_case.py','accuracy_data.py','accuracy_diagnostic.py','ACCURACY.md','simulation_data.py','simulation_diagnostic.py','SIMULATION.md','compiler_diagnostic.py','compiler_compatibility.py','COMPILER_DIAGNOSTICS.md','operator_profile.py','operator_node.py','operator_workflow.py','OPERATOR_ANALYSIS.md','mcp_bridge.py','CLIENT.md','WORKFLOWS.md','WORKSPACE.md','DEPENDENCIES.md','STORAGE.md','EXPERIMENT_BUDGET.md','SOURCE_GRANTS.md'}
+    assert published['version']=='0.33-client' and set(published['sha256'])=={'labctl','lab_client.py','io_policy.py','placement.py','npu_selfcheck.py','NPU_SELFCHECK.md','client_archive.py','diagnostic_case.py','accuracy_data.py','accuracy_diagnostic.py','ACCURACY.md','simulation_data.py','simulation_diagnostic.py','SIMULATION.md','compiler_diagnostic.py','compiler_experiment.py','COMPILER_EXPERIMENT.md','compiler_compatibility.py','COMPILER_DIAGNOSTICS.md','operator_profile.py','operator_node.py','operator_workflow.py','OPERATOR_ANALYSIS.md','mcp_bridge.py','CLIENT.md','WORKFLOWS.md','WORKSPACE.md','DEPENDENCIES.md','STORAGE.md','EXPERIMENT_BUDGET.md','SOURCE_GRANTS.md'}
     check('Installed public code supplies a standalone personal CLI/MCP installer without controller credentials or model configuration')
     help_result=docker(['exec','--user',str(installed['uid'])+':'+str(installed['gid']),controller,
         '/usr/bin/python3',client_target+'/npu_selfcheck.py','--help'])
@@ -539,8 +540,8 @@ try:
     if options.operator_analysis:
         from operator_workflow import probe_queries
         probe_parameters=probe_queries(enrollment['node_id'])
-        if options.compiler_case or options.large_compiler_case:
-            compiler_reference=json.loads(Path(options.compiler_case or options.large_compiler_case).read_text())
+        if options.compiler_case or options.large_compiler_case or options.agent_experiment:
+            compiler_reference=json.loads(Path(options.compiler_case or options.large_compiler_case or options.agent_experiment).read_text())
             assert compiler_reference['image']==task_image
             probe_parameters['files'] += [tool['path'] for tool in compiler_reference['tools'].values()]
         if options.report_view:
@@ -677,6 +678,9 @@ try:
         from installed_large_compiler_check import run as large_compiler_check
         large_compiler_proof=large_compiler_check(globals())
         check('Two budget-scoped MCP conversations compile full sealed historical operator IR with pinned tools; bounded personal diagnosis verifies all source bytes without authorizing a preview patch')
+    if options.agent_experiment:
+        from installed_compiler_experiment_check import run as compiler_experiment_check
+        compiler_experiment_proof=compiler_experiment_check(globals())
     if options.accuracy_case:
         sys.path.insert(0,str(ROOT/'tests'));from installed_accuracy_check import run as accuracy_check
         accuracy_proof=accuracy_check(globals())
@@ -1025,6 +1029,10 @@ try:
         from installed_large_compiler_check import after_restore as large_compiler_after_restore
         large_compiler_proof['after_restore']=large_compiler_after_restore(globals(),large_compiler_proof)
         check('Controller/Node restore preserves the complete historical IR, original failed attempts and budget charges; old delegated spending authority is revoked')
+    if compiler_experiment_proof:
+        from installed_compiler_experiment_check import after_restore as compiler_experiment_after_restore
+        compiler_experiment_proof['after_restore']=compiler_experiment_after_restore(globals(),compiler_experiment_proof)
+        check('Restore preserves the actual model candidate and failed source, revokes spending authority, and lets the same installed personal MCP read original results with a new read-only profile')
     if accuracy_proof:
         from installed_accuracy_check import after_restore as accuracy_after_restore
         accuracy_proof['after_restore']=accuracy_after_restore(globals(),accuracy_proof)
@@ -1079,7 +1087,7 @@ try:
         check('Installed fixed-reference history rotation survives actual SIGKILL, blocks bound policies and stale backups, retains CPU results')
     ctl(node,'node','stop');ctl(controller,'controller','stop')
     check('Quiescent node state restores to a new control directory, rebinds the same empty spool and executes another actual IR task')
-    if options.device_schedule or options.dependencies or options.browser_workflow or options.experiment_budget or options.large_compiler_case or options.accuracy_case or options.terminal_handoff or options.source_grants or options.node_quota_resize or options.simulation_case or options.report_view:
+    if options.device_schedule or options.dependencies or options.browser_workflow or options.experiment_budget or options.large_compiler_case or options.agent_experiment or options.accuracy_case or options.terminal_handoff or options.source_grants or options.node_quota_resize or options.simulation_case or options.report_view:
         # Only the original controller state leaf is host-bound. Preserve an
         # explicit readonly SQLite export of the restored private directory
         # before its owned container is removed; never pretend it was mounted.
@@ -1197,6 +1205,7 @@ try:
             **({'operator_analysis':operator_proof} if operator_proof else {}),
             **({'compiler_case':compiler_proof} if compiler_proof else {}),
             **({'large_compiler_case':large_compiler_proof} if large_compiler_proof else {}),
+            **({'compiler_experiment':compiler_experiment_proof} if compiler_experiment_proof else {}),
             **({'accuracy_case':accuracy_proof} if accuracy_proof else {}),
             **({'terminal_handoff':terminal_handoff_proof} if terminal_handoff_proof else {}),
             **({'source_grants':source_grant_proof} if source_grant_proof else {}),
