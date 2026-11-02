@@ -8970,5 +8970,54 @@
       "First operator installation preflight rejected an independently queued browser check before creating fixture services; it was left intact, observed to completion, then installation was submitted alone.",
       "First successful operator installation lacked a retained restored SQLite export; the verification-only export condition was corrected and a new successful installation retained and independently checked both databases."
     ]
+  },
+  "team_cpu_burst": {
+    "verified_at": "2026-11-02T15:47:56.138146+00:00",
+    "logical_owners": 20,
+    "numeric_task_uids": 20,
+    "concurrent_http_clients": 20,
+    "workload_jobs": 60,
+    "acknowledged_submit_replay_operations": 120,
+    "each_job_created_once_and_reused_once_in_controller_audit": true,
+    "every_job_single_attempt": true,
+    "first_twenty_grants_distinct_owners": true,
+    "foreign_detail_reads_rejected": 20,
+    "ir_tasks": 20,
+    "cmake_cold_tasks": 20,
+    "cmake_warm_tasks": 20,
+    "warm_each_has_two_hits_and_zero_misses": true,
+    "peak_actual_compute_intervals": 2,
+    "per_task_memory_mib": 256,
+    "nested_domain_memory_mib": 1024,
+    "outer_queue_cpu": 2,
+    "outer_queue_memory_mib": 2048,
+    "npu": 0,
+    "model_calls": 0,
+    "queue_limit": 4,
+    "queue_overflow_http": 409,
+    "zero_attempt_cancellations": 5,
+    "http_reply_seconds": {
+      "p95": 1.6892049840244,
+      "max": 2.1942715629993472
+    },
+    "created_to_reserved_seconds": {
+      "p95": 66.69868,
+      "max": 71.296238
+    },
+    "latency_scope": "Same-host loopback tokens, two CPU slots; queue wait includes dependencies/quotas/storage/context. Descriptive sample, no production SLO. Transport attempts not separately counted.",
+    "read_only_detached_filesystem_audit": true,
+    "native_uid_quota_and_archive_gid_checks": true,
+    "eight_loop_associations_released": true,
+    "production_and_unit_sources_match_previous": true,
+    "prior_unit_tests": 1265,
+    "full_suite_reexecuted": false,
+    "prior_root35_and_report_browser11_not_reexecuted": true,
+    "actual_new_server_bundle_core_and_web_match": true,
+    "host_login_users_created": false,
+    "physical_hosts": 1,
+    "production_ready": false,
+    "overall_goal_complete": false,
+    "scope": "20 simultaneous token clients and20 numeric task UIDs on one server with two actual CPU slots; three queued workload waves, real IR/CMake cold-warm and private cache. Not20 simultaneously running jobs, full compiler rebuild, NPU, real login users, PID1 or two physical hosts.",
+    "first_fixture_failure_retained": "First small fixture omitted the fixed environment probe default128MiB artifact reservation and8MiB metadata overhead. It was denied403 before any probe/workload job; original budgets and cleanup preserved. Fixed only explicit test IO/user/group/disk envelope; runtime gates unchanged."
   }
 }

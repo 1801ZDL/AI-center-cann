@@ -1,5 +1,25 @@
 # 实施进度
 
+## 2026-11-02 当前包20账号突发、60个实际CPU任务与原盘审计
+
+**新增真实突发 parent `job-d04364775015` 和独立只读审计 `job-da0cecd6f8a0` 均通过。** 20个并发Bearer客户端、20个数值任务UID23900..23919，在两个执行槽内完成20个IR、20个CMake冷构建、20个CMake暖构建，60任务各一次attempt。三轮取得120次提交/原幂等键重放回执；独立控制器审计逐job核对created=1、reused=1，没有重复任务或执行。底层传输尝试数未另计，不能从回执数推导无连接重试。每账号max_running=1；前20次工作负载分配覆盖20个不同owner，20次外用户详情读取404。
+
+107个非文档CORE文件、4网页资产、agent_runner及全部test_*.py与09db7e9逐字节一致。本轮只新增维护者脚本 `tests/live_team_burst_check.py`、`tests/team_burst_audit.py`，并为旧完整编译fixture增加显式small模式。沿用同源码1265单元、Root35与报告网页11的原有范围，没有重新运行或冒称本轮新回归；旧完整Triton冷暖wheel仍按历史冻结证据，不称本轮重编。实际新服务包CORE/web与当前冻结源码核对一致，最终258测试/辅助文件另行冻结；文档随后完成，不声称包内MD与最终checkout相同。
+
+新small模式通过原Main队列2CPU/2048MiB/NPU0/1800秒运行，不改Main预算或节点配置。自有Controller/Node角色各硬256MiB，内层资源域CPU2/1024MiB/2槽，任务1CPU/硬256MiB/180秒/SHM0/NPU0；独立工作、缓存、暂存及中央载荷文件盘和原生UID/owner组配额。重用既有固定CPU工具链镜像，无模型、驱动或设备调用，无全局安装。角色使用Controller非root服务账号、受信任Node0、实际任务UID映射；20个认证账号不是20个宿主Linux登录账号。
+
+测试先暂停自有Node：owner0四个原请求排队，第五个409；owner1仍可提交。五个原任务全部在0attempt取消后重新启动原Node。正常突发先提交IR，再提交冷构建和依赖各自冷任务的暖构建；源码封存、环境锁与每owner私有缓存继续走原工作流。实际BishengIR把20+22化简为42；CMake编译运行两源C++答案42，20个冷任务各2miss，20个暖任务各2hit/0miss。每owner冷完成先于暖预留，缓存key一致；没有改生产调度策略、抢占其他工作或把模拟NPU当设备任务。
+
+本次回执耗时P95=1.689205秒、max=2.194272秒；创建到资源预留P95=66.698680秒、max=71.296238秒。后者包含依赖、配额、缓存/存储和环境等待。样本为同机loopback/Bearer及有限双槽CPU负载，不是跨机HTTPS/生产SLO或任意负载上界；也不表示20任务同时计算。
+
+Primary另经原队列以1CPU/512MiB进行独立只读审计：拒绝未成功或未清退parent，不重挂载，直接读取已解除loop关联的ext4文件和SQLite。核对60份实际报告、环境/保护回执、UID、归档GID24500..24519、256MiB硬限、无设备/无网络/只读根、实际IR42、缓存统计及各一个attempt；原认证审计每ID正好一次创建/一次重放。实际工作负载时间区间峰值2，工作盘全部slot及暂存attempts空，缓存原件保留。审计没有编译、运行模型或NPU。
+
+首轮 `job-383ffb6985bb` 失败保留：小fixture设IO总4MiB/归档32MiB，但固定environment_probe仍用默认128MiB产物+8MiB控制元数据，提交403，未创建探针/突发任务。修正明确的测试IO、资格账号/owner组及文件盘预算，再从已清退原状态开始第二轮；中央准入、固定探针或个人权限没有放宽。其他账号64MiB归档容纳三个4MiB产物+各8MiB元数据预留。暂存保留1GiB/524288inode，满足两个工作流的现有保守需求。更小的固定探针预算可作为后续独立合同改进，不能靠改fixture规避实际准入。
+
+两轮自有角色/卷/辅助容器均空，八份loop关联released且对应sysfs关联消失；保留私有backing/请求/审计证据。Main配置SHA/19profiles/一物理域、CPU254255/2048MiB/SHM1024MiB/单任务及zdl启动/内存/SHM不变；0非终态/holds/日程/规则/真实参考及ledgergen0无回执，4资产HTTP实际读回一致，没有重启Main或其他容器，也没有在宿主创建账号。
+
+维护者运行条件、预算、测量限制与原handle纪律见[TEAM_LOAD.md](TEAM_LOAD.md)；其脚本不分发给个人客户端。整体goal active、production_ready=false；当前CPU突发得到实测，不再笼统列为“20账号CPU完全未验”。真实NPU精度/性能/仿真混合、宿主登录用户/PID1、两物理机fencing、慢/断网及长期容量仍待；每日Main计划未启用，PUBLIC-001继续延期。私有证据 `evidence/team-burst-validation.json` 与 `runtime/team-burst-20261102`，公开仅摘要，不含原盘、数据库、配置、模型会话或凭据。
+
 ## 2026-11-02 历史性能报告的来源字段与比较结论一致性
 
 **最终1265项/270.034秒/零跳过及JS语法通过，专项27项、最终同机隔离Root安装35项和报告网页11项通过。** full `job-a6d839858679`、focused `job-f5b1dfe6c207`、final Root `job-5b110743b9dc`、browser `job-c87bbbde6674`。本轮生产源码只有operator_profile.py改变，CORE仍107；protected6、其余APP3、cooperative4、agent_runner及4网页资产不变，未调用模型或运行NPU。生产及单元测试源码在完整回归后未变；浏览器辅助及安装脚本的恢复数据库导出分支分别由最终网页/Root演练覆盖，final-frozen-r2保存最终256测试/辅助文件。文档随后完成，不声称包中文档与最终checkout相同。

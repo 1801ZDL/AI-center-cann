@@ -1,6 +1,6 @@
 {
   "schema": "ai-center-cann-publication/v1",
-  "recorded_at": "2026-11-02T15:14:31.766238+00:00",
+  "recorded_at": "2026-11-02T15:55:56.396588+00:00",
   "files": {
     ".gitignore": {
       "sha256": "a6287d1d645bcba2ddfec87d1055724b00577eea69200b919302f4d46cf3680d",
@@ -23,8 +23,8 @@
       "mode": "100644"
     },
     "BACKLOG.md": {
-      "sha256": "ce98b3f4ad699c7d11704a793dcecea39a2372fd1948a9e5f93b9eb7373f71f6",
-      "bytes": 14441,
+      "sha256": "3d03613113fa1d9c53080a2f292fcd95cc6c689fc7006790d5d8c5ad5322637f",
+      "bytes": 15147,
       "mode": "100644"
     },
     "CACHE.md": {
@@ -158,13 +158,13 @@
       "mode": "100644"
     },
     "PROGRESS.md": {
-      "sha256": "e75321f3d4701a324b4910457274e4f809950d8e21965b08062eb9db2c6b93d5",
-      "bytes": 232216,
+      "sha256": "fc8f8ec55ecd5319f2833f12ceb6615f2024ace39e7f086cf67f76b7014f4712",
+      "bytes": 237108,
       "mode": "100644"
     },
     "README.md": {
-      "sha256": "b57137d201d3dbb489c8e7e3578a1946be69c163c2d583611b17aee9f36fdfbf",
-      "bytes": 13719,
+      "sha256": "923c30892249ce5d1b871523037203739842545b14821efa182dbebdd36cb08d",
+      "bytes": 14073,
       "mode": "100644"
     },
     "RECOVERY.md": {
@@ -183,8 +183,8 @@
       "mode": "100644"
     },
     "SCALING.md": {
-      "sha256": "20c69138b974d7a562c4f6cbfb9b605728f1fedc637c0287e5c308e251823d99",
-      "bytes": 20580,
+      "sha256": "01c73b1d4d3bb88878338321c6bc848fba2f5d5d1ccf92495cf18981f6a1d634",
+      "bytes": 21091,
       "mode": "100644"
     },
     "SERVER.md": {
@@ -210,6 +210,11 @@
     "STORAGE.md": {
       "sha256": "ce0d95c5cdad6ed9d7b5a62aa29ac0c0a88a344082a63de607b8f8007bc260d1",
       "bytes": 33547,
+      "mode": "100644"
+    },
+    "TEAM_LOAD.md": {
+      "sha256": "4eb12823a8115d45d3d77aaa6e20632b50ee6acde7a0088dee1e3f6c798bc0a1",
+      "bytes": 5221,
       "mode": "100644"
     },
     "WORKFLOWS.md": {
@@ -748,8 +753,8 @@
       "mode": "100644"
     },
     "reports/public-source-check.json": {
-      "sha256": "a9800c74cf0b198437d7ad987b2f89f4b3289a3aeb698143c63c11c61e865b40",
-      "bytes": 423987,
+      "sha256": "776020f06dab3be231d0a7b39544d110de8c97f8e63edcab08368cf6de3a687c",
+      "bytes": 426389,
       "mode": "100644"
     },
     "reports/v036-public.json": {
@@ -1188,8 +1193,8 @@
       "mode": "100644"
     },
     "tests/large_mixed_compile_check.py": {
-      "sha256": "e4be1f4913ee6800610afc57c4454370aa0998088137bd5cea672e43aceeb230",
-      "bytes": 34630,
+      "sha256": "d40325fa2f86bbe2a8e54620afe81303f96d18d2f37cb25f1ef708f37c5bdb0c",
+      "bytes": 35799,
       "mode": "100644"
     },
     "tests/large_mixed_offline_check.py": {
@@ -1385,6 +1390,11 @@
     "tests/live_socket_path_check.py": {
       "sha256": "732ff04c18e38051071d38924a9156b4223be5f9900d57a62125b48822c4ebf3",
       "bytes": 4452,
+      "mode": "100644"
+    },
+    "tests/live_team_burst_check.py": {
+      "sha256": "93aefa121300041e2883e9e7abbb3e6eb24306b1c137bd11088f243a4e6681b6",
+      "bytes": 12410,
       "mode": "100644"
     },
     "tests/live_worker_check.py": {
@@ -1610,6 +1620,11 @@
     "tests/root_roles_check.py": {
       "sha256": "87fada630b3a138551a0dec5a4201d73910ae7120c8813cd89a89e55e6e5f05f",
       "bytes": 12381,
+      "mode": "100644"
+    },
+    "tests/team_burst_audit.py": {
+      "sha256": "621bbda0c2e665d77f574337e652bf32620ce1494ea32cce7a9b8c214f852aaa",
+      "bytes": 6585,
       "mode": "100644"
     },
     "tests/test_accuracy_data.py": {
@@ -2198,10 +2213,10 @@
       "mode": "100644"
     }
   },
-  "files_count": 439,
-  "total_bytes": 5652684,
-  "known_private_values_checked": 3324,
-  "private_fixture_files_considered": 5161,
+  "files_count": 442,
+  "total_bytes": 5686934,
+  "known_private_values_checked": 3450,
+  "private_fixture_files_considered": 5205,
   "model_keys_read": false,
   "raw_runtime_or_evidence_included": false,
   "passed": true

@@ -36,18 +36,19 @@ MIB=1024**2
 
 
 class Acceptance:
-    def __init__(self):
+    def __init__(self,small=False):
+        self.small=small
         self.outer=Path(os.environ['LAB_JOB_DIR']);assert self.outer.is_relative_to(ROOT/'runtime/jobs')
         self.cpus=sorted(os.sched_getaffinity(0));assert len(self.cpus)==2
         self.base=self.outer/'tmp/large-mixed';self.base.mkdir(mode=0o700)
-        self.end=time.monotonic()+10300;self.started=time.monotonic()
+        self.end=time.monotonic()+(1200 if small else 10300);self.started=time.monotonic()
         self.prefix='ascend-lab-mixed-'+uuid.uuid4().hex[:8]
         self.controller=self.prefix+'-controller';self.node=self.prefix+'-node'
         self.controller_state=self.base/'controller-state';self.node_parent=self.base/'node-control';self.node_state=self.node_parent/'state'
         self.controller_state.mkdir(mode=0o700);self.node_state.mkdir(parents=True,mode=0o700)
         self.binding,_=discover();self.roles=[];self.volumes=[];self.disks=[];self.paths={};self.policies={}
         self.clients=[];self.jobs=[];self.samples=[];self.results={};self.safe_cleanup=True
-        self.state={'prefix':self.prefix,'started_at':now(),'phase':'preparing','jobs':self.jobs,'disks':[],
+        self.state={'prefix':self.prefix,'started_at':now(),'phase':'preparing','small_cpu_burst':small,'jobs':self.jobs,'disks':[],
                     'outer_job':self.outer.name,'physical_id':physical_identity(),'controller_state':str(self.controller_state),
                     'node_state':str(self.node_state),'cpu_ids':self.cpus,'task_image':TASK_IMAGE}
         self.release=self.base/'server.tar.gz';self.release_info=bundle(self.release)
@@ -83,7 +84,7 @@ class Acceptance:
 
     def disk(self,label,folder,mib,inodes,quota=None):
         fixture=OwnedDisk(self.base,self.prefix+'-'+label,ROLE_IMAGE,self.cpus,self.docker,
-                          folder_name=folder,image_mib=mib,inodes=inodes,quota_type=quota,helper_seconds=10800)
+                          folder_name=folder,image_mib=mib,inodes=inodes,quota_type=quota,helper_seconds=1500 if self.small else 10800)
         self.disks.append(fixture);device=fixture.create();name=self.prefix+'-'+label
         self.docker(['volume','create','--label','io.ascend-lab.mixedproof='+self.prefix,'--driver','local',
                      '--opt','type=ext4','--opt','device='+device,'--opt','o=nosuid,nodev'+
@@ -98,7 +99,7 @@ class Acceptance:
             args=['run','--detach','--pull','never','--name',name,'--label','io.ascend-lab.mixedproof='+self.prefix,
                   '--network','host','--security-opt','no-new-privileges:true','--security-opt','seccomp=unconfined',
                   '--security-opt','apparmor=unconfined','--cap-drop','ALL',
-                  '--memory','512m','--memory-swap','512m','--cpus','0.25','--cpuset-cpus',','.join(map(str,self.cpus)),
+                  '--memory','256m' if self.small else '512m','--memory-swap','256m' if self.small else '512m','--cpus','0.25','--cpuset-cpus',','.join(map(str,self.cpus)),
                   '--pids-limit','256','--log-opt','max-size=1m','--log-opt','max-file=1']
             for cap in ['CHOWN','DAC_OVERRIDE','FOWNER','SETUID','SETGID','SYS_ADMIN']:args+=['--cap-add',cap]
             for source,target in [(self.bootstrap,'/bootstrap'),(self.release,'/provision/server.tar.gz'),('/etc/machine-id','/etc/machine-id')]:
@@ -110,7 +111,7 @@ class Acceptance:
                        '--mount','type=bind,src='+shutil.which('docker')+',dst=/usr/bin/docker,readonly']
                 for label in ['work','cache','spool']:args+=['--mount','type=volume,src='+mounts[label]+',dst='+self.paths[label]+',volume-nocopy']
             else:args+=['--mount','type=volume,src='+mounts['payload']+',dst=/srv/lab-payload,volume-nocopy']
-            args+=['--entrypoint','/usr/bin/timeout',ROLE_IMAGE,'--kill-after=5s','10680s','/usr/bin/python3','-I','-c','import time;time.sleep(10670)']
+            args+=['--entrypoint','/usr/bin/timeout',ROLE_IMAGE,'--kill-after=5s','1450s' if self.small else '10680s','/usr/bin/python3','-I','-c','import time;time.sleep('+('1440' if self.small else '10670')+')']
             self.docker(args)
             for path in ([parent,state] if role=='node' else [state]):
                 self.py(name,'import os,sys;os.chown(sys.argv[1],0,0);os.chmod(sys.argv[1],0o700)',str(path))
@@ -136,17 +137,20 @@ print(json.dumps({'path':str(p),'filesystem':'ext4','storage_id':uuid.uuid4().he
 
     def prepare(self):
         self.phase('allocate-separate-finite-disks')
-        assert shutil.disk_usage(self.base).free>64*1024**3
+        assert shutil.disk_usage(self.base).free>(4 if self.small else 64)*1024**3
         mounts={}
-        for label,folder,mib,inodes,quota in [('work','quota-workspace',32768,524288,'user'),
+        specifications=([('work','quota-workspace',1024,65536,'user'),('cache','cache-workspace',512,65536,'user'),
+             ('spool','spool-workspace',1024,524288,None),('payload','central-payload',2048,65536,'group')]
+            if self.small else [('work','quota-workspace',32768,524288,'user'),
              ('cache','cache-workspace',8192,262144,'user'),('spool','spool-workspace',4096,524288,None),
-             ('payload','central-payload',8192,262144,'group')]:
+             ('payload','central-payload',8192,262144,'group')])
+        for label,folder,mib,inodes,quota in specifications:
             mounts[label]=self.disk(label,folder,mib,inodes,quota)
         self.roles_start(mounts)
         self.phase('install-controller-and-provision-twenty-owners')
         payload=self.filesystem(self.controller,'/srv/lab-payload')
-        payload['owner_groups']={'load_'+str(i).zfill(2):{'gid':24500+i,'bytes':(4096 if i==0 else 128)*MIB,
-                                   'inodes':50000 if i==0 else 2048} for i in range(20)}
+        payload['owner_groups']={'load_'+str(i).zfill(2):{'gid':24500+i,'bytes':((256 if i==0 else 64) if self.small else 4096 if i==0 else 128)*MIB,
+                                   'inodes':1024 if self.small else 50000 if i==0 else 2048} for i in range(20)}
         self.write(self.controller,'/provision/payload.json',payload)
         self.docker(['exec',self.controller,'/usr/bin/python3','-B','/bootstrap/servicectl','payload-groups-prepare','--contract','/provision/payload.json'])
         installed=json.loads(self.docker(['exec',self.controller,'/usr/bin/python3','-B','/bootstrap/servicectl','install',
@@ -155,8 +159,12 @@ print(json.dumps({'path':str(p),'filesystem':'ext4','storage_id':uuid.uuid4().he
             '--payload-config','/provision/payload.json']).stdout)
         assert installed['uid']>0
         config=self.read(self.controller,self.controller_state/'config.json')
-        config['scheduler'].update(cpu_ids=self.cpus,memory_mib=10496,shm_mib=0,max_running=2,max_timeout_seconds=7200,
-                                   io_limits={'file_mib':2048,'input_mib':2048,'artifact_mib':2048})
+        # The fixed qualification probe retains the normal128MiB declaration;
+        # ordinary burst jobs request1/4MiB explicitly. Include META separately
+        # in the personal/native-group budgets below, never lower the gate.
+        io_limits={'file_mib':64,'input_mib':128,'artifact_mib':128} if self.small else {'file_mib':2048,'input_mib':2048,'artifact_mib':2048}
+        config['scheduler'].update(cpu_ids=self.cpus,memory_mib=1024 if self.small else 10496,shm_mib=0,max_running=2,max_timeout_seconds=180 if self.small else 7200,
+                                   io_limits=io_limits)
         self.write(self.controller,self.controller_state/'config.json',config)
         atomic_json(self.base/'controller-private-config.json',config)
         assert self.ctl('controller','start')['ready']
@@ -165,17 +173,17 @@ print(json.dumps({'path':str(p),'filesystem':'ext4','storage_id':uuid.uuid4().he
             owner='load_'+str(i).zfill(2)
             self.admin('accessctl','user-add',owner);self.admin('accessctl','environment-grant',owner,'worker-python')
             self.admin('accessctl','quota',owner,'--max-running','1','--max-queued','4','--cpu','1',
-                '--memory-mib','8192' if i==0 else '512','--shm-mib','0','--npu','0',
-                '--input-storage-mib','256' if i==0 else '64','--archive-storage-mib','4096' if i==0 else '128')
+                '--memory-mib','256' if self.small else '8192' if i==0 else '512','--shm-mib','0','--npu','0',
+                '--input-storage-mib','8' if self.small else '256' if i==0 else '64','--archive-storage-mib',('256' if i==0 else '64') if self.small else '4096' if i==0 else '128')
             personal=self.read(self.controller,self.controller_state/'personas'/owner/'client.json')
             atomic_json(self.base/('client-'+str(i)+'.json'),personal);self.clients.append(Client(personal))
         self.phase('prepare-node-work-cache-and-spool')
-        self.policies['work']=self.quota_policy('work',28672,128,200000)
-        self.policies['cache']=self.quota_policy('cache',6144,32,100000)
+        self.policies['work']=self.quota_policy('work',32,32,2048) if self.small else self.quota_policy('work',28672,128,200000)
+        self.policies['cache']=self.quota_policy('cache',16,16,2048) if self.small else self.quota_policy('cache',6144,32,100000)
         self.policies['spool']=self.filesystem(self.node,self.paths['spool'])
         from node_storage import requirement
         assert self.policies['spool']['inodes']>=2*requirement({'template':'build_v1'})['inodes']+1024, 'Two workflow slots need two conservative spool inode reservations'
-        for key,value in {**self.policies,'io':{'file_mib':2048,'input_mib':2048,'artifact_mib':2048}}.items():
+        for key,value in {**self.policies,'io':io_limits}.items():
             path=self.controller_state/(key+'.json');self.write(self.controller,path,value)
             # Administrative CLI runs as the installed controller identity,
             # not as the enclosing trusted Root provisioning process.
@@ -184,7 +192,7 @@ print(json.dumps({'path':str(p),'filesystem':'ext4','storage_id':uuid.uuid4().he
         mapping=[]
         for i in range(20):mapping+=['--user-map','load_'+str(i).zfill(2)+':'+str(23900+i)+':'+str(23900+i)]
         args=['workerctl','enroll','--name','full-compiler-mixed','--cpus',','.join(map(str,self.cpus)),
-              '--memory-mib','10496','--shm-mib','0','--max-running','2','--max-timeout-seconds','7200',
+              '--memory-mib','1024' if self.small else '10496','--shm-mib','0','--max-running','2','--max-timeout-seconds','180' if self.small else '7200',
               '--image',TASK_IMAGE,'--physical-id',physical_identity(),'--controller-url',self.url,
               '--node-state-dir',str(self.node_state),*mapping]
         for key,flag in [('work','workspace'),('cache','cache'),('spool','spool'),('io','io')]:

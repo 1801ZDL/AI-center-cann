@@ -12,6 +12,8 @@
 
 增加服务器继续使用相同任务 API、客户端及结果格式，由管理员准备身份、设备、存储和服务后登记 Node。当前旧容器属于协作接入，不能拦截用户自行运行；真实宿主多用户、systemd PID1、两物理机故障/fencing 与百人规模负载仍待目标环境验收，见 [SCALING.md](SCALING.md) 与 [DEPLOYMENT.md](DEPLOYMENT.md)。
 
+当前包已有[20账号CPU突发](TEAM_LOAD.md)的新实测：20个并发提交客户端及20个数值任务UID，在两个槽内完成60个IR/CMake冷暖任务，重放不重复执行，独立原盘/控制器审计通过。这是一次有限CPU场景，不能代替20个同时运行任务、真实宿主登录用户或NPU/两机/长期负载验收。
+
 ```mermaid
 flowchart LR
     H[个人 Agent / CLI / 网页] --> A[统一 API 与身份权限]
