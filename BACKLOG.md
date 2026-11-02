@@ -1,5 +1,9 @@
 # 后续任务
 
+## 2026-11-03 原生控制器业务集成后的剩余项
+
+原生 controller 已与独立进程 Node 完成两 UID 实际 CPU 工作流、运行任务中的中央重启、目录恢复/回滚及两次绑定发布 SIGKILL，修复 unit 旧目录刷新和跨命名空间存储指纹，详见[UNIT_RELOCATION.md](UNIT_RELOCATION.md)。接下来仍需 native Node unit、真实宿主启动/登录账号与权限迁移、非 root NPU 正向与数值/性能/仿真、两物理机/fencing、混合长期负载及历史冷存。旧 pending 存储操作若已失去原挂载视图，仍缺显式管理员对账工具，当前保持数据/计费而不自动重绑删除。Main每日计划未启用，PUBLIC-001继续延期。
+
 ## 2026-11-03 原生 PID1 验收后的剩余门槛
 
 真实容器 PID1 的 controller 部署、非 root/零能力、启动响应 SIGKILL 恢复及自动重启已通过，见[NATIVE_SYSTEMD.md](NATIVE_SYSTEMD.md)。不再把这一容器路径列为全未验；真实宿主开机/挂载、Node unit、两个登录账号、非 root NPU 正向与数值/性能/仿真、双物理机/fencing、混合长期负载仍待。历史冷存仍只有设计，PUBLIC-001夜间PR归因继续延期，Main未启用全卡每日计划。

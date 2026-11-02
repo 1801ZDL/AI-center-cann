@@ -51,6 +51,10 @@ CORE.append('systemd_preflight.py')
 OPTIONAL_ADMIN_FILES.add('systemd_preflight.py')
 CORE.append('unit_bus_pin.py')
 OPTIONAL_ADMIN_FILES.add('unit_bus_pin.py')
+CORE.append('unit_relocation.py')
+OPTIONAL_ADMIN_FILES.add('unit_relocation.py')
+CORE.append('storage_inventory.py')
+OPTIONAL_ADMIN_FILES.add('storage_inventory.py')
 CORE.extend(['job_graphs.py','graph_client.py','JOB_GRAPHS.md'])
 OPTIONAL_ADMIN_FILES.update({'job_graphs.py','graph_client.py','JOB_GRAPHS.md'})
 OPTIONAL_ADMIN_FILES.update({'compiler_experiment.py','COMPILER_EXPERIMENT.md'})
@@ -267,6 +271,10 @@ def load_installation(prefix):
 def verify_code(prefix):
     prefix,meta,release=load_installation(prefix);manifest=regular_json(release/'release.json')
     checked_manifest(manifest)
+    if 'unit_relocation' in meta:
+        if 'unit_relocation.py' not in manifest.get('files',{}):raise DeployError('Restored unit binding requires compatible relocation code')
+        from unit_relocation import validate
+        validate(meta['unit_relocation'])
     if manifest.get('id')!=meta['release_id'] or manifest.get('state_schema')!=meta['state_schema']:raise DeployError('Installed release identity differs')
     for name,record in manifest['files'].items():
         if not safe_relative(name):raise DeployError('Unsafe installed path')

@@ -139,7 +139,7 @@ class Lifecycle:
                 else:
                     if (action=='trash' and state!='available') or (action in {'restore','purge'} and state!='trash'):
                         raise JobError('Storage state changed; inspect it before choosing an action',409)
-                    snapshot=fs.scan(source if action=='trash' else trash);fingerprint=fs.digest(snapshot)
+                    snapshot=fs.scan_like(source if action=='trash' else trash,None if action=='trash' else record.get('inventory'));fingerprint=fs.inventory_digest(snapshot)
                     if action!='trash' and fingerprint!=record['fingerprint']:raise JobError('Quarantine content changed; preserve it for reconciliation',409)
                 eligible=action!='purge' or time.time()>=record['purge_after']
                 return {'plan':{'kind':kind,'id':value,'action':action,'revision':record['revision'],'fingerprint':fingerprint},
@@ -174,8 +174,8 @@ class Lifecycle:
                     state=record['state']
                     if record['revision']!=plan['revision'] or action=='trash' and state!='available' or action in {'restore','purge'} and state!='trash':
                         raise JobError('Storage revision or state changed; create a fresh plan',409)
-                    source,trash=self.paths(kind,value);snapshot=fs.scan(source if action=='trash' else trash)
-                    if fs.digest(snapshot)!=plan['fingerprint']:raise JobError('Storage content changed after preview; create a fresh plan',409)
+                    source,trash=self.paths(kind,value);snapshot=fs.scan_like(source if action=='trash' else trash,None if action=='trash' else record.get('inventory'))
+                    if fs.inventory_digest(snapshot)!=plan['fingerprint']:raise JobError('Storage content changed after preview; create a fresh plan',409)
                     if action!='trash' and plan['fingerprint']!=record.get('fingerprint'):raise JobError('Quarantine changed after retirement',409)
                     if action=='purge' and time.time()<record['purge_after']:raise JobError('Trash grace period has not expired',409)
                     index=record.get('manifest')
@@ -213,11 +213,11 @@ class Lifecycle:
             origin,target=(source,trash) if action=='trash' else (trash,source)
             if fs.exists(origin):
                 if fs.exists(target):raise JobError('Storage destination already exists; no data was overwritten',409)
-                if fs.digest(fs.scan(origin))!=record['fingerprint']:raise JobError('Pending storage payload changed; preserve both state and data',409)
+                if fs.inventory_digest(fs.scan_like(origin,record['inventory']))!=record['fingerprint']:raise JobError('Pending storage payload changed; preserve both state and data',409)
                 fs.move(origin,target)
             elif not fs.exists(target):raise JobError('Storage payload location is unconfirmed; quota remains charged',409)
-            snapshot=fs.scan(target)
-            if fs.digest(snapshot)!=record['fingerprint']:raise JobError('Moved payload identity/content differs; quota remains charged',409)
+            snapshot=fs.scan_like(target,record['inventory'])
+            if fs.inventory_digest(snapshot)!=record['fingerprint']:raise JobError('Moved payload identity/content differs; quota remains charged',409)
             state='trash' if action=='trash' else 'available'
         else:
             if fs.exists(source):raise JobError('Unexpected original payload exists; purge is blocked',409)
@@ -281,7 +281,7 @@ def rebind_restored(state,payload_base=None):
             record=json.loads(raw)
             if record['state'] in PENDING:raise fs.error('Finish pending storage maintenance before restoring state')
             if record['state']=='trash':
-                snapshot=fs.scan(Path(payload_base or state)/'storage-trash'/kind/value);record.update(inventory=snapshot,fingerprint=fs.digest(snapshot))
+                snapshot=fs.scan(Path(payload_base or state)/'storage-trash'/kind/value);record.update(inventory=snapshot,fingerprint=fs.inventory_digest(snapshot))
                 record['revision']+=1
             elif record['state']=='available':record['inventory']=None;record['revision']+=1
             db.execute('UPDATE storage_lifecycle SET revision=?,record=? WHERE kind=? AND id=?',(record['revision'],json.dumps(record,sort_keys=True),kind,value))

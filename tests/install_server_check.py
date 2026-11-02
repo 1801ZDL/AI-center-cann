@@ -22,13 +22,17 @@ from jobs import atomic_json,now
 from deployment import bundle,unpack_release
 from backends import physical_identity
 
-arguments=argparse.ArgumentParser();arguments.add_argument('--large-wheel');arguments.add_argument('--https-network',action='store_true');arguments.add_argument('--disk-workspace',action='store_true');arguments.add_argument('--user-quota-workspace',action='store_true');arguments.add_argument('--storage-pressure',action='store_true');arguments.add_argument('--control-storage-pressure',action='store_true');arguments.add_argument('--central-payload',action='store_true');arguments.add_argument('--central-owner-quotas',action='store_true');arguments.add_argument('--node-spool-pressure',action='store_true');arguments.add_argument('--persistent-cache',action='store_true');arguments.add_argument('--dependencies',action='store_true');arguments.add_argument('--input-durability',action='store_true');arguments.add_argument('--native-toolchain',action='store_true');arguments.add_argument('--payload-quota-resize',action='store_true');arguments.add_argument('--node-quota-resize',action='store_true');arguments.add_argument('--deadline-limit',action='store_true');arguments.add_argument('--operator-analysis');arguments.add_argument('--operator-image');arguments.add_argument('--compiler-case');arguments.add_argument('--large-compiler-case');arguments.add_argument('--agent-experiment');arguments.add_argument('--accuracy-case');arguments.add_argument('--terminal-handoff');arguments.add_argument('--source-grants');arguments.add_argument('--simulation-case');arguments.add_argument('--report-view');arguments.add_argument('--native-control',action='store_true');arguments.add_argument('--audit-retention',action='store_true');arguments.add_argument('--browser-workflow',action='store_true');arguments.add_argument('--experiment-budget',action='store_true');arguments.add_argument('--device-schedule',action='store_true');arguments.add_argument('--device-evidence',action='store_true');arguments.add_argument('--measurement-windows',action='store_true');arguments.add_argument('--performance-reference',action='store_true');arguments.add_argument('--reference-rotation',action='store_true');arguments.add_argument('--job-graph',action='store_true');options=arguments.parse_args()
+arguments=argparse.ArgumentParser();arguments.add_argument('--large-wheel');arguments.add_argument('--https-network',action='store_true');arguments.add_argument('--disk-workspace',action='store_true');arguments.add_argument('--user-quota-workspace',action='store_true');arguments.add_argument('--storage-pressure',action='store_true');arguments.add_argument('--control-storage-pressure',action='store_true');arguments.add_argument('--central-payload',action='store_true');arguments.add_argument('--central-owner-quotas',action='store_true');arguments.add_argument('--node-spool-pressure',action='store_true');arguments.add_argument('--persistent-cache',action='store_true');arguments.add_argument('--dependencies',action='store_true');arguments.add_argument('--input-durability',action='store_true');arguments.add_argument('--native-toolchain',action='store_true');arguments.add_argument('--payload-quota-resize',action='store_true');arguments.add_argument('--node-quota-resize',action='store_true');arguments.add_argument('--deadline-limit',action='store_true');arguments.add_argument('--operator-analysis');arguments.add_argument('--operator-image');arguments.add_argument('--compiler-case');arguments.add_argument('--large-compiler-case');arguments.add_argument('--agent-experiment');arguments.add_argument('--accuracy-case');arguments.add_argument('--terminal-handoff');arguments.add_argument('--source-grants');arguments.add_argument('--simulation-case');arguments.add_argument('--report-view');arguments.add_argument('--native-control',action='store_true');arguments.add_argument('--audit-retention',action='store_true');arguments.add_argument('--browser-workflow',action='store_true');arguments.add_argument('--experiment-budget',action='store_true');arguments.add_argument('--device-schedule',action='store_true');arguments.add_argument('--device-evidence',action='store_true');arguments.add_argument('--measurement-windows',action='store_true');arguments.add_argument('--performance-reference',action='store_true');arguments.add_argument('--reference-rotation',action='store_true');arguments.add_argument('--job-graph',action='store_true');arguments.add_argument('--native-controller-image');options=arguments.parse_args()
 assert not options.device_evidence or (options.device_schedule and options.user_quota_workspace), 'Evidence guards use the separate CPU daily-history/UID fixture'
 assert not options.reference_rotation or (options.performance_reference and options.device_evidence), 'Rotation extends installed synthetic reference/evidence histories'
 assert not options.performance_reference or options.measurement_windows, 'Reference source rejection uses three actually completed CPU jobs from the marker fixture'
 assert not options.native_control or not any([options.control_storage_pressure,options.central_payload,options.operator_analysis,options.https_network,options.large_wheel]), 'Native control uses its independent own disks and CPU fixture'
 assert not options.audit_retention or options.native_control, 'Audit crash/restore proof uses the isolated native control fixture'
 assert not options.job_graph or (options.user_quota_workspace and not options.central_payload and not options.operator_analysis),'Graph restore uses the ordinary CPU UID fixture'
+if options.native_controller_image:
+    assert re.fullmatch('sha256:[0-9a-f]{64}',options.native_controller_image)
+    assert not any([options.https_network,options.native_control,options.central_payload,options.storage_pressure,
+        options.control_storage_pressure,options.operator_analysis,options.large_wheel,options.native_toolchain]), 'Native controller extends the ordinary CPU role fixture only'
 https=options.https_network
 user_quota=options.user_quota_workspace
 central_groups=options.central_owner_quotas
@@ -97,10 +101,30 @@ def docker(args,check=True,input=None,timeout=30):
     return result
 
 
+native_controller=None
+if options.native_controller_image:
+    from native_controller_fixture import Controller
+    native_controller=Controller(docker,options.native_controller_image,ROOT/'tests/native_systemd/controller_boot.py')
+
+
 def ctl(container,role,action,*arguments,check=True,timeout=35):
+    if native_controller and container==controller and check:
+        if action=='start':return native_controller.start()
+        if action=='stop' and native_controller.managed:return native_controller.stop()
+        if action=='restore':return native_controller.restore(arguments)
     result=docker(['exec',container,'/usr/bin/python3','-B','/bootstrap/servicectl',action,'--prefix','/opt/ascend-lab-'+role,*arguments],check=check,timeout=timeout)
     if check and result.stdout.strip():
-        try:return json.loads(result.stdout)
+        try:
+            parsed=json.loads(result.stdout)
+            if native_controller and container==node and action=='start' and native_controller.managed:
+                until=time.monotonic()+15
+                while True:
+                    receipt=native_controller.reconcile()
+                    if receipt is None or receipt['state']=='ready':break
+                    if time.monotonic()>until:raise RuntimeError('Original native startup waits for Node inventory')
+                    time.sleep(.2)
+                native_controller.cli('unit-manager-check','--running')
+            return parsed
         except ValueError:
             if action=='admin':return {'output':result.stdout}
             raise
@@ -299,8 +323,16 @@ try:
             for mounted,path in work_mounts:argv+=['--mount','type=volume,src='+mounted+',dst='+path+',volume-nocopy']
             if cache_volume:argv+=['--mount','type=volume,src='+cache_volume+',dst='+cache_path+',volume-nocopy','--mount','type=volume,src='+cache_volume+',dst=/cache-proof-alias,volume-nocopy']
         lifetime=900 if options.device_schedule else 1500 if options.deadline_limit else 1200 if options.node_quota_resize else 900 if large_wheel or options.compiler_case or options.agent_experiment or options.large_compiler_case or options.accuracy_case or options.terminal_handoff or options.source_grants or options.simulation_case or options.report_view else 900 if options.native_control else 600 if options.native_toolchain or options.operator_analysis or options.control_storage_pressure else 300
-        argv+=['--entrypoint','/usr/bin/timeout',image,'--kill-after=5s',str(lifetime)+'s','/usr/bin/python3','-I','-c','import time;time.sleep('+str(lifetime-5)+')']
+        if native_controller and role=='controller':
+            for capability in ['SYS_ADMIN','FSETID','KILL','SETFCAP','SETPCAP','MKNOD','SYS_CHROOT']:
+                argv+=['--cap-add',capability]
+            argv+=['--cgroupns','private','--security-opt','apparmor=unconfined','--stop-signal','SIGRTMIN+3',
+                '--tmpfs','/run:rw,nosuid,nodev,size=64m,mode=755','--tmpfs','/tmp:rw,nosuid,nodev,size=32m,mode=1777',
+                '--mount','type=bind,src='+str(native_controller.boot)+',dst=/boot-native-controller.py,readonly',
+                '--entrypoint','/usr/bin/python3',native_controller.image,'-I','-B','/boot-native-controller.py']
+        else:argv+=['--entrypoint','/usr/bin/timeout',image,'--kill-after=5s',str(lifetime)+'s','/usr/bin/python3','-I','-c','import time;time.sleep('+str(lifetime-5)+')']
         docker(argv);containers.append(name)
+        if native_controller and role=='controller':native_controller.prepare(name)
         claim='import os,sys;os.chown(sys.argv[1],0,0);os.chmod(sys.argv[1],0o700)'
         docker(['exec',name,'/usr/bin/python3','-I','-c',claim,str(state)])
         if role=='node':docker(['exec',name,'/usr/bin/python3','-I','-c',claim,str(node_parent)])
@@ -374,10 +406,14 @@ try:
         '--archive','/provision/server-v1.tar.gz','--role','controller','--prefix','/opt/ascend-lab-controller',
         '--state-dir',str(controller_state),'--create-service-user','labsvc','--port',str(port),*listener_args,*payload_args],check=False)
     systemd_report=json.loads(systemd_plan.stdout)
-    assert systemd_plan.returncode==2 and 'systemd_prerequisites' in systemd_report['blockers']
-    assert not systemd_report['systemd']['prerequisites_ready'] and not systemd_report['systemd']['service_start_verified']
+    if native_controller:
+        assert systemd_plan.returncode==0 and systemd_report['systemd']['prerequisites_ready']
+    else:
+        assert systemd_plan.returncode==2 and 'systemd_prerequisites' in systemd_report['blockers']
+        assert not systemd_report['systemd']['prerequisites_ready']
+    assert not systemd_report['systemd']['service_start_verified']
     assert json.loads(docker(['exec',controller,'/usr/bin/python3','-I','-c',plan_probe,'/opt/ascend-lab-controller',str(controller_state)]).stdout)==controller_before
-    check('Explicit systemd prerequisite failure preserves the uninstalled prefix, state and account')
+    check('Native systemd prerequisites pass without installation changes' if native_controller else 'Explicit systemd prerequisite failure preserves the uninstalled prefix, state and account')
     installed=json.loads(docker(['exec',controller,'/usr/bin/python3','-B','/bootstrap/servicectl','install',
         '--archive','/provision/server-v1.tar.gz','--role','controller','--prefix','/opt/ascend-lab-controller',
         '--state-dir',str(controller_state),'--create-service-user','labsvc','--port',str(port),*listener_args,*payload_args,'--start']).stdout)
@@ -386,10 +422,10 @@ try:
     assert installed['service']['ready']
     systemd_installed=docker(['exec',controller,'/usr/bin/python3','-I','-B','/opt/ascend-lab-controller/current/servicectl','systemd-doctor'],check=False)
     systemd_installed_report=json.loads(systemd_installed.stdout)
-    assert systemd_installed.returncode==2 and systemd_installed_report['read_only'] and not systemd_installed_report['service_start_verified']
+    assert systemd_installed.returncode==(0 if native_controller else 2) and systemd_installed_report['read_only'] and not systemd_installed_report['service_start_verified']
     shim_check='import sys;sys.path.insert(0,"/opt/ascend-lab-controller/current");from systemd_preflight import native_binary\ntry:native_binary("/usr/bin/systemctl")\nexcept ValueError:print("native-script-refused")\nelse:raise SystemExit(1)'
-    assert docker(['exec',controller,'/usr/bin/python3','-I','-B','-c',shim_check]).stdout.strip()=='native-script-refused'
-    check('Installed read-only systemd doctor rejects the actual systemctl compatibility script without stopping the process service')
+    if not native_controller:assert docker(['exec',controller,'/usr/bin/python3','-I','-B','-c',shim_check]).stdout.strip()=='native-script-refused'
+    check('Installed doctor confirms native PID1 without starting a unit' if native_controller else 'Installed read-only systemd doctor rejects the actual systemctl compatibility script without stopping the process service')
     retired_enable=docker(['exec',controller,'/usr/bin/python3','-I','-B','/opt/ascend-lab-controller/current/servicectl',
         'unit-install','--prefix','/opt/ascend-lab-controller','--unit-dir','/opt/retired-enable-must-not-exist','--enable'],check=False)
     assert retired_enable.returncode==1 and 'retired before any write' in retired_enable.stderr
@@ -631,6 +667,7 @@ try:
         sys.path.insert(0,str(ROOT/'tests'));from installed_measurement_check import run as measurement_run
         measurement_proof=measurement_run(globals())
         check('Actual CPU marker socket binds task UID; idempotent begin and Worker restart preserve original container and unconfirmed window')
+        if native_controller:check('Native controller restarts while the same live CPU task container continues and preserves its original result')
     if options.device_schedule:
         sys.path.insert(0,str(ROOT/'tests'));from installed_device_schedule_check import run as device_schedule_run
         device_schedule_proof=device_schedule_run(globals())
@@ -999,15 +1036,19 @@ try:
             assert api('/api/me')[1]['storage']['filesystem_quota']['enforced']
             check('Restored owner data retains SGID inheritance and hard quotas under newly assigned storage GIDs; original tokens still work')
     request['idempotency_key']='installed-ir-after-restore'
+    if native_controller:
+        status,blocked=api('/api/jobs',request);assert status==503,blocked
+        assert ctl(node,'node','start')['ready']
     status,response=api('/api/jobs',request);assert status==201,response
     waiting_id=response['job']['id']
     time.sleep(1)
     waiting=api('/api/jobs/'+waiting_id)[1]
-    assert waiting['job']['state']=='queued' and not waiting['attempts']
-    domains=api('/api/jobs')[1]['resource_domains']
-    assert any(domain['admission']['blocked'] and domain['admission']['inventory_required'] for domain in domains)
+    if not native_controller:
+        assert waiting['job']['state']=='queued' and not waiting['attempts']
+        domains=api('/api/jobs')[1]['resource_domains']
+        assert any(domain['admission']['blocked'] and domain['admission']['inventory_required'] for domain in domains)
     assert ctl(node,'node','start')['ready']
-    check('Restored controller blocks new work until its enrolled node confirms inventory to the new instance; original queued job is retained')
+    check('Native startup holds new submissions until the same Node confirms inventory; the original key is admitted once' if native_controller else 'Restored controller blocks new work until its enrolled node confirms inventory to the new instance; original queued job is retained')
     second=wait(response['job']['id']);assert second['state']=='succeeded',second
     check('Restore to a new private directory relocates workspace/archive and accepts a new real workflow')
     ctl(controller,'controller','stop')
@@ -1194,8 +1235,9 @@ try:
             'controller_install_uid':installed['uid'],'controller_install_gid':installed['gid'],'node_uid':0,'task_uid':23003,
             'systemd_prerequisites':{'required_plan':systemd_report['systemd'],'installed_cli':systemd_installed_report,
                 'required_plan_exit':systemd_plan.returncode,'installed_cli_exit':systemd_installed.returncode,
-                'uninstalled_prefix_state_account_unchanged':True,'actual_systemctl_script_refused_without_execution':True,
-                'process_service_ready_after_check':True,'actual_systemd_pid1_start_tested':False},
+                'uninstalled_prefix_state_account_unchanged':True,'actual_systemctl_script_refused_without_execution':not bool(native_controller),
+                'process_service_ready_after_check':True,'actual_systemd_pid1_start_tested':bool(native_controller)},
+            **({'native_controller':native_controller.proof()} if native_controller else {}),
             'legacy_unit_enable_refused_before_write':True,
             **({'device_schedule':device_schedule_proof} if device_schedule_proof else {}),
             **({'device_evidence':device_evidence_proof} if device_evidence_proof else {}),
@@ -1219,7 +1261,7 @@ try:
                 'actual_initial_controller_process':central_initial_identity,'actual_restored_controller_process':central_restored_identity,
                 'restored_storage_groups':rebound_groups}} if central_groups else {}),
             'backup_quiescent':True,'restore_to_new_state':True,'rollback_preserved_state':True,
-            'service_mode':'Actual UID-separated processes; generated systemd syntax verified separately, no systemd PID1 in fixture',
+            'service_mode':'Actual native PID1 controller and separate process-mode Node' if native_controller else 'Actual UID-separated processes; generated systemd syntax verified separately, no systemd PID1 in fixture',
             'host_accounts_modified':False,'global_services_installed':False,'npu_kernel_launches':0,
             'native_https':https,'separate_network_namespaces':https,'isolated_docker_network':https,
             'network_namespaces':net_namespaces if https else None,
@@ -1300,7 +1342,14 @@ print(json.dumps(sorted(set(items))))
             code='import sys;from pathlib import Path;p=Path(sys.argv[1]);print(p.read_text()[-12000:] if p.exists() else "no bootstrap log")'
             log=docker(['exec',name,'/usr/bin/python3','-I','-c',code,str(state/'bootstrap.log')],check=False)
             (base/(role+'-bootstrap.log')).write_text(log.stdout+log.stderr)
-            docker(['rm','-f',name],check=False)
+            if native_controller and name==controller:
+                (base/'native-controller-boot.log').write_text(docker(['logs','--tail','100',name],check=False).stdout)
+                snapshot='import json;from pathlib import Path;p=Path("/opt/ascend-lab-controller");print(json.dumps({x.name:json.loads(x.read_text()) for x in p.glob("unit-*-change.json")}))'
+                (base/'native-controller-pending.json').write_text(docker(['exec',name,'/usr/bin/python3','-I','-B','-c',snapshot],check=False).stdout)
+                docker(['stop','--time','8',name],timeout=20)
+                ended=json.loads(docker(['inspect',name]).stdout)[0]['State'];assert not ended['Running'] and ended['Pid']==0
+                docker(['rm',name])
+            else:docker(['rm','-f',name],check=False)
     for attempt in owned_attempts:
         assert re.fullmatch('attempt-[0-9a-f]{32}',attempt)
         result=docker(['ps','-a','--filter','label=io.ascend-lab.attempt='+attempt,'--format','{{.ID}}'],check=False)

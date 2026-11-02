@@ -80,6 +80,9 @@ def _overrides(directory,name):
 
 def _managed(text,prefix,meta,desired):
     if text==desired:return
+    if 'unit_relocation' in meta:
+        from unit_relocation import accepts
+        if accepts(text,prefix,meta,desired):return
     # Initial versions kept an old group list after appending owner storage.
     # Accept only this one historical variation; every other byte must match
     # the current generated unit, including all security settings and ExecStart.

@@ -42,7 +42,7 @@ Path('/work/results/window-client.json').write_text(json.dumps({'begin':first,'e
     journal=ctx['secret_json'](node,control/'measurement.json')
     assert journal['connections']==3 and journal['queries']==0 and journal['windows'][0]['state']=='closed'
     assert b'arith.constant 42' in api('/api/jobs/'+first['id']+'/artifact?name=ir%2Fcanonical.mlir',raw=True)[1]
-    second_id=submit(18);deadline=time.monotonic()+20
+    second_id=submit(30 if ctx.get('native_controller') else 18);deadline=time.monotonic()+20
     while time.monotonic()<deadline:
         second=api('/api/jobs/'+second_id)[1]['job']
         if second.get('attempt_id'):
@@ -75,6 +75,13 @@ print('Foreign UID refused')
     before=ctx['secret_json'](node,control/'measurement.json');assert len(before['windows'])==1 and before['queries']==0
     ctl(node,'node','stop');ctl(node,'node','start')
     assert docker(['exec',node,'docker','inspect','--format','{{.Id}} {{.State.StartedAt}} {{index .Config.Labels "io.ascend-lab.attempt"}}',name]).stdout.strip()==identity
+    if ctx.get('native_controller'):
+        assert docker(['exec',node,'docker','inspect','--format','{{.State.Running}}',name]).stdout.strip()=='true'
+        controller_before=ctl(ctx['controller'],'controller','status')
+        ctl(ctx['controller'],'controller','stop');controller_after=ctl(ctx['controller'],'controller','start')
+        assert controller_after['ready'] and controller_after['pid']!=controller_before['pid']
+        assert docker(['exec',node,'docker','inspect','--format','{{.Id}} {{.State.StartedAt}} {{index .Config.Labels "io.ascend-lab.attempt"}}',name]).stdout.strip()==identity
+        assert docker(['exec',node,'docker','inspect','--format','{{.State.Running}}',name]).stdout.strip()=='true'
     second=wait(second_id);assert second['state']=='succeeded',second
     normalized_second=second['device_conditions']['measurement']
     assert normalized_second['status']=='unconfirmed' and normalized_second['windows'][0]['status']=='interrupted'
@@ -84,6 +91,7 @@ print('Foreign UID refused')
     return {'passed':True,'job_ids':[first['id'],second_id],'actual_cpu_ir_constant':42,'task_uid':23003,
         'foreign_uid':23004,'foreign_peer_credentials_rejected':True,'idempotent_begin_no_extra_query':True,
         'same_container_started_at_after_node_restart':True,'original_task_result_preserved':True,
+        'actual_native_controller_restart_during_task':bool(ctx.get('native_controller')),
         'npu_queries':0,'npu_kernel_launches':0,'performance_qualified':False,
         'snapshots':{first['id']:normalized,second_id:normalized_second}}
 

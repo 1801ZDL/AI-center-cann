@@ -111,13 +111,13 @@ def prune(root,attempt,config=None):
                 with open_artifact(source,item['name'],item['size']) as stream:
                     for block in iter(lambda:stream.read(1024*1024),b''):digest.update(block)
                 if digest.hexdigest()!=item['sha256']:raise ValueError('Node archive checksum changed after upload')
-            if fs.digest(fs.scan(source))!=fs.digest(snapshot):raise ValueError('Node archive changed during checksum validation')
-            gc={'state':'pending','inventory':snapshot,'fingerprint':fs.digest(snapshot),'payload_bytes':snapshot['bytes'],
+            if fs.inventory_digest(fs.scan_like(source,snapshot))!=fs.inventory_digest(snapshot):raise ValueError('Node archive changed during checksum validation')
+            gc={'state':'pending','inventory':snapshot,'fingerprint':fs.inventory_digest(snapshot),'payload_bytes':snapshot['bytes'],
                 'manifest_sha256':manifest_sha256(manifest),'started_at':now()}
             state['artifact_gc']=gc;atomic_json(state_path,state)
         if gc.get('state')!='pending' or gc.get('manifest_sha256')!=manifest_sha256(manifest):raise ValueError('Node spool journal changed')
         if fs.exists(source):
-            if fs.exists(retired) or fs.digest(fs.scan(source))!=gc['fingerprint']:raise ValueError('Node spool locations or identity changed')
+            if fs.exists(retired) or fs.inventory_digest(fs.scan_like(source,gc['inventory']))!=gc['fingerprint']:raise ValueError('Node spool locations or identity changed')
             fs.move(source,retired)
         # Missing retired root is permitted after a crash following its final unlink.
         complete,_=fs.purge(retired,gc['inventory'])

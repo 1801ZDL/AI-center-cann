@@ -1,5 +1,23 @@
 # 实施进度
 
+## 2026-11-03 原生控制器业务、目录恢复与存储命名空间（最终1354/原生48/进程47通过）
+
+上一阶段只完成原生PID1空载部署/启动恢复。本轮将原始controller unit接上独立进程模式Node，真实运行两任务UID23003/23004的BishengIR、硬字节/inode配额、缓存及图工作流。最终 **job-3b169917cf53：48项、0清理错误**；中央在CPU任务仍运行时通过原unit停启，新PID恢复，同一任务容器/StartedAt/attempt继续，结果保持。12次运行进程快照实际UID999/CAPeff0/NoNewPrivs，控制器没有Docker socket。Node沿原受信Root角色，任务不获得其权限。
+
+集成暴露两个真实部署问题并修复。第一，恢复到新目录后系统unit仍指向旧目录，原刷新工具拒绝；新增unit_relocation.py在Root元数据保存精确原模板及新安装绑定，元数据/目录fsync后原子替换模板，严格offline刷新可接续。第二，恢复器与systemd服务的mount ID不同，旧持久指纹把未变文件判作改变；新增storage_inventory.py的v2库存，持久身份保留设备/inode/路径/权限/长度/时间戳，实时FD与父目录/嵌套挂载检查仍在。旧格式保持原严格指纹，不在读时自动重绑；新库存和新unit合同阻止不兼容回滚。
+
+本轮两次controller目录恢复均在新绑定已发布、模板未更新处真实SIGKILL，Docker子进程exit137；没有重跑restore，沿实际新绑定观察、原文件证据、unit刷新/加载/启动与Node库存确认继续。首次marker在原状态目录独立核对，第二次通过保留的观察、两次exit137事件及顺序模板SHA链核对。恢复期间新提交503且未建job，Node确认后沿原键首次准入。最终还保留原参考轮转的两处独立SIGKILL；设备参考及日程数据仍是合成协议，不是真实NPU批准。
+
+独立原生存储重现 **job-a0f98fb9fdbd** 使用旧指纹，原始库存证明Root与服务只差mount ID，属主恢复计划HTTP409；当前源码 **job-4b2b69afa9ef** 相同离线恢复场景HTTP200，恢复原payload字节。主助手从两份私有tar独立读回固定输入并核对，未提取配置。普通重启的一次数值ID相同不能证明此回归，故改为实际离线恢复；一次nsenter被拒后未加权限，改由实际服务UID读取其已核验自身PID的挂载视图。专用probe初次备份父目录不私有，按原门槛修正；各失败原handle/容器清理均保留。
+
+中间 **job-3d294a753ee4** 已接通实际IR，但夹具复用了已完成计划输出，被正确拒绝；新操作使用新输出，pending只重放原计划，普通重启用已核验unit。**job-18c46d0bd0bb** 定位旧unit目录刷新拒绝；修复后的 **job-e7c5ad5259de** 继续暴露存储指纹误判。中间1339项 **job-3238a2a5a2b1** 是存储修复前快照，不能当作最终全量。最终 **job-4149c869541e：1354项/243.864秒/零跳过及JS语法通过**，包含11项恢复绑定、14项库存/挂载/删除保护新case，覆盖完整ID变更、旧格式严格性、扫描后替换、同设备嵌套挂载、分批删除及降级拒绝。
+
+同一最终源码的原进程模式 **job-07626a8ddf76：47项、0清理错误**，保留双UID实际IR、硬配额/缓存、窗口、快照恢复、参考轮转及图合同。113非文档CORE、279递归测试/辅助与发布脚本冻结在source-frozen-r4；原生48、普通47和专用存储场景三个实际包逐SHA匹配。两套原盘/恢复SQLite integrity通过，原图行一致、原attempt集合保留、测量任务均一次尝试。最终6个loop标记released且sysfs关联消失，角色/卷/helper及原生专用容器清退；私有backing与故障证据保留。保护6文件、领域/agent与web不变，无新任务镜像/模型调用/NPU kernel。
+
+私有evidence/native-workflow-validation.json、runtime/native-workflow-20261103保存请求、冻结、失败、原始字段、独立审计；公开摘要reports/public-source-check.json.native_restore_and_storage。Main配置SHA、19profiles、物理域/计算与存储预算、zdl启动/内存/SHM及4个网页HTTP内容不变，0非终态/hold，没有实际日程/规则/参考/图。只读检查仍见告警或占用，因此0新NPU请求；不能将此状态描述为永久健康结论。
+
+整体仍非生产就绪：native Node unit、真实宿主开机/挂载/登录账号、非root NPU数值/性能/仿真、两物理机及fencing、20人混合长期负载、旧pending存储跨视图显式对账与历史冷存仍待。每日UT控制合同已有但Main未启用，PUBLIC-001夜间PR归因继续延期。安装/恢复操作说明见[UNIT_RELOCATION.md](UNIT_RELOCATION.md)；Root容器模拟不等于宿主管理员试点通过。
+
 ## 2026-11-03 原生 systemd PID1 与启动中断恢复（最终1329项/安装47项通过）
 
 已在单物理机的自有无设备容器中启动真正的 systemd249.11-0ubuntu3.23、D-Bus1.12.20。最终公开夹具 **job-f37cd245563f** 成功：原始 controller unit 使用容器内UID999、零能力、NoNewPrivileges、ProtectSystem=strict、PrivateTmp；完成发布包安装、原计划manager加载/属性核对、启动ready/准入和实际属主API。启动调用方在StartUnit响应后被SIGKILL，持久状态issued，原服务先就绪，再沿原计划恢复；所有apply均计数，累计只有一次StartUnit。再次杀死控制器自身后，原生Restart=on-failure恢复新PID/invocation，NRestarts=1，旧回执保持原身份，新服务的属主API再次通过。

@@ -25,6 +25,11 @@ def encode(value):return json.dumps(value,sort_keys=True,separators=(',',':'),al
 def digest(value):return hashlib.sha256(encode(value)).hexdigest()
 
 
+def inventory_digest(value):
+    from storage_inventory import digest as inventory_hash
+    return inventory_hash(value)
+
+
 def directory(path):return os.open(path,os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW)
 
 
@@ -94,10 +99,19 @@ def scan(path):
             after=os.fstat(fd)
             if any(getattr(before,key)!=getattr(after,key) for key in ['st_ino','st_mtime_ns','st_ctime_ns']):raise error('Storage tree changed during scan')
         visit(root,'',0)
-        value={'root':root_identity,'entries':entries,'bytes':total}
+        from storage_inventory import FORMAT
+        value={'format':FORMAT,'root':root_identity,'entries':entries,'bytes':total}
         if len(encode(value))>MAX_RECORD:raise error('Storage maintenance record exceeds limit')
         return value
     finally:os.close(root)
+
+
+def scan_like(path,original=None):
+    value=scan(path)
+    if original is not None:
+        from storage_inventory import version
+        if version(original)==1:value.pop('format')
+    return value
 
 
 def exists(path):
@@ -140,16 +154,21 @@ def move(source,target):
 def purge(path,original,budget=256):
     """Delete at most budget approved entries. Pending state retains full billing."""
     if not exists(path):return True,0
-    current=scan(path)
-    if current['root']!=original['root']:raise error('Quarantine identity differs; preserve it for reconciliation')
+    from storage_inventory import version,persistent
+    portable=version(original)==2
+    persistent(original) # Validate retained v2 before ignoring any ephemeral IDs.
+    current=scan_like(path,original);live_root=current['root']
+    root_keys=['dev','ino'] if portable else ['dev','ino','mount']
+    if any(current['root'][k]!=original['root'][k] for k in root_keys):raise error('Quarantine identity differs; preserve it for reconciliation')
     approved={item['name']:item for item in original['entries']}
     for item in current['entries']:
         expected=approved.get(item['name'])
         keys=['dev','ino','mount','mode'] if stat.S_ISDIR(item['mode']) else ['dev','ino','mount','mode','size','mtime','ctime']
+        if portable:keys.remove('mount')
         if not expected or any(item[key]!=expected[key] for key in keys):raise error('Quarantine content changed; purge was stopped')
     remaining=[budget];removed=[0];root=directory(path)
     try:
-        if identity(root)!=original['root']:raise error('Quarantine changed before purge')
+        if identity(root)!=live_root:raise error('Quarantine changed before purge')
         def visit(fd,prefix):
             for name in sorted(os.listdir(fd)):
                 if remaining[0]<=0:return False
@@ -158,7 +177,9 @@ def purge(path,original,budget=256):
                 try:
                     actual=metadata(child)
                     keys=['dev','ino','mount','mode'] if expected and stat.S_ISDIR(expected['mode']) else ['dev','ino','mount','mode','size','mtime','ctime']
-                    if not expected or any(actual[key]!=expected[key] for key in keys):raise error('Storage entry changed before removal')
+                    if portable:keys.remove('mount')
+                    if (not expected or actual['mount']!=live_root['mount']
+                        or any(actual[key]!=expected[key] for key in keys)):raise error('Storage entry changed before removal')
                     if stat.S_ISDIR(actual['mode']):
                         nested=os.open(name,os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW,dir_fd=fd)
                         try:
@@ -175,9 +196,11 @@ def purge(path,original,budget=256):
         if empty and remaining[0]>0:
             parent=directory(path.parent)
             try:
+                if identity(parent)['dev']!=live_root['dev'] or mount(parent)!=live_root['mount']:
+                    raise error('Quarantine parent mount changed before removal')
                 check=os.open(path.name,os.O_PATH|os.O_NOFOLLOW,dir_fd=parent)
                 try:
-                    if identity(check)!=original['root']:raise error('Quarantine root changed before removal')
+                    if identity(check)!=live_root:raise error('Quarantine root changed before removal')
                 finally:os.close(check)
                 os.rmdir(path.name,dir_fd=parent);os.fsync(parent);removed[0]+=1
                 return True,removed[0]

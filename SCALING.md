@@ -2,6 +2,8 @@
 
 本项目选择程序化中央调度器。个人 agent、CLI 和网页是同一 API 的客户端；分析能力可以更换，身份、资源账本、执行许可、日志和归档合同保持稳定。目标规模约100名可访问用户、峰值20名使用者，不等于已经完成该规模的负载验收。
 
+最新补齐的是原生 controller 与独立进程模式 Node 的实际 CPU 集成：两任务 UID、硬配额/缓存、中央重启时同容器/attempt继续、两次恢复绑定 SIGKILL 与后续 unit/库存交接。跨隔离挂载视图的存储恢复已从409修为200并核对原字节，见[恢复合同](https://github.com/1801ZDL/AI-center-cann/blob/main/UNIT_RELOCATION.md)。整体1354项、原生48项和进程47项通过；宿主开机、native Node、真实登录账号、两机和 NPU 仍独立列为门槛。
+
 服务管理层已补[真实容器 PID1 验收](https://github.com/1801ZDL/AI-center-cann/blob/main/NATIVE_SYSTEMD.md)：controller 以非 root/零能力启动，启动响应处调用方 SIGKILL 后原计划恢复、合计一次 StartUnit；自动重启后的新身份通过 API，历史回执保持原身份。宿主开机、实际 Node 服务、真实账号和设备由首台管理员试点继续验收。
 
 已有[2026-11-02冻结的20账号CPU突发验收](TEAM_LOAD.md)：20个同时提交的Bearer客户端、20个数值任务UID、两个真实CPU槽，60个IR/CMake冷暖任务及120次取得回执的提交/重放，独立原盘/SQLite审计通过。前20次分配覆盖20个不同账号，个人配额、私有缓存及详情权限分别核对。这不等于20个任务同时运行、20名宿主登录用户或NPU混合/两机/长期负载通过；TEAM_LOAD.md为源码维护者说明，不随个人客户端分发。

@@ -18,6 +18,9 @@ EXCLUDE={'.state.lock','.service-run.lock','scheduler.lock','worker.lock','servi
          'server-ready.json','worker-process.json','heartbeat-receipt.json','bootstrap.log','server.log','server.log.1','server.log.2','worker.log'}
 
 
+def _restore_checkpoint(stage):pass
+
+
 def tree(root):
     """An explicitly registered root is allowed; nested mounts/links are not."""
     from storage_files import mount
@@ -221,7 +224,12 @@ def relocate(state,old_state,new_state,role,old_payload=None,new_payload=None):
 
 
 def restore(prefix,archive_path,new_state,max_bytes=10*1024**3,payload_config=None,spool_config=None,cache_config=None,control_config=None):
-    require_root();prefix,meta,_=verify(prefix);old=Path(meta['state_dir']);target=secure_parent(new_state)
+    require_root();prefix,meta,release=verify(prefix)
+    import unit_relocation
+    helper=release/'unit_relocation.py'
+    if not helper.is_file() or digest(helper)!=digest(Path(unit_relocation.__file__)):
+        raise DeployError('Activate matching unit relocation code before restoring state')
+    old=Path(meta['state_dir']);target=secure_parent(new_state)
     if target.exists() or target.is_symlink() or target.is_relative_to(prefix) or prefix.is_relative_to(target):raise DeployError('Restore requires a new separate state directory')
     archive_info=Path(archive_path).lstat()
     if not stat.S_ISREG(archive_info.st_mode) or archive_info.st_mode&0o077 or archive_info.st_nlink!=1:raise DeployError('Restore requires a private regular snapshot file')
@@ -238,6 +246,8 @@ def restore(prefix,archive_path,new_state,max_bytes=10*1024**3,payload_config=No
     from control_process import offline
     with state_lock(old,exclusive=True),offline(prefix,meta):
         assert_quiescent(old,meta['role'])
+        from unit_relocation import capture,prepare
+        unit_before=capture(prefix,meta);installation_before=json.loads(json.dumps(meta))
         stage=Path(tempfile.mkdtemp(prefix='.restore-',dir=target.parent));seen=set();total=0;payload_stage=None;policy=None
         try:
             with tarfile.open(archive_path,'r:gz') as archive:
@@ -376,8 +386,19 @@ def restore(prefix,archive_path,new_state,max_bytes=10*1024**3,payload_config=No
             meta['previous_state_dir']=str(old);meta['state_dir']=str(target)
             if quota_revision is not None:meta['node_quota_revision']=quota_revision
             if policy:meta['payload_storage']=policy
+            meta.pop('unit_relocation',None)
+            meta['unit_relocation']=prepare(prefix,installation_before,meta,unit_before)
             atomic_json(prefix/'installation.json',meta);(prefix/'installation.json').chmod(0o444)
-            unit=prefix/'units'/('ascend-lab-'+meta['role']+'.service');unit.chmod(0o644);unit.write_text(unit_text(prefix,meta));unit.chmod(0o444)
+            from payload_quota_admin import sync
+            metadata_fd=os.open(prefix/'installation.json',os.O_RDONLY|os.O_NOFOLLOW)
+            try:os.fsync(metadata_fd)
+            finally:os.close(metadata_fd)
+            sync(prefix)
+            _restore_checkpoint('unit_binding')
+            from unit_refresh import _file,_publish
+            unit=prefix/'units'/('ascend-lab-'+meta['role']+'.service')
+            if _file(unit,0o444)!=unit_before:raise DeployError('Unit template changed after restore binding; reconcile the offline unit plan')
+            _publish(unit,unit_text(prefix,meta),0o444)
             if native:
                 from control_process import initialize as process_initialize
                 process_initialize(prefix,meta)
@@ -409,6 +430,10 @@ def require_control_storage(config,role,manifest):
 
 
 def require_features(state,role,manifest,installation=None):
+    from storage_inventory import require_compatible as require_inventory
+    require_inventory(state,role,manifest)
+    if 'unit_relocation' in (installation or {}) and 'unit_relocation.py' not in manifest.get('files',{}):
+        raise DeployError('Retained unit relocation proof requires compatible code; refusing downgrade')
     config=read_json(Path(state)/'config.json') or {}
     require_control_storage(config,role,manifest)
     if role=='controller' and 'job_graphs.py' not in manifest.get('files',{}):

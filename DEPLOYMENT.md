@@ -1,5 +1,7 @@
 # 多用户/多服务器扩展边界与交付顺序
 
+恢复后目录与 systemd unit 的严格交接，以及跨挂载命名空间的存储指纹合同，见源码仓库的 [UNIT_RELOCATION.md](https://github.com/1801ZDL/AI-center-cann/blob/main/UNIT_RELOCATION.md)。新绑定保留 Root 原模板证据；刷新、管理器加载与启动分别确认。旧库存不自动忽略 mount ID，新库存仍在每次操作内检查 FD 和挂载边界。
+
 ## 原生服务管理器的当前范围（2026-11-03）
 
 自有无设备容器已完成真实 systemd PID1 的 controller unit 启动、精确属性读取、非 root 属主 API、启动响应后调用方 SIGKILL/原计划恢复，以及控制器崩溃后的自动重启。所有启动 apply 合计一次 StartUnit，旧回执未绑定新 invocation。维护者复现与限制见源码仓库的 [NATIVE_SYSTEMD.md](https://github.com/1801ZDL/AI-center-cann/blob/main/NATIVE_SYSTEMD.md)，夹具不随个人客户端安装。

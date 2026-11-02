@@ -4,6 +4,8 @@
 
 **当前为 v0.36 基线加后续扩展，尚非生产就绪。** 已有个人身份/项目授权、持久资源账本、受控 Node、五类工作流、环境版本锁、日志归档、独立 CLI/MCP、分角色安装及备份恢复。同机隔离环境已验证真实 CPU 工作流、两任务 UID、硬配额和缓存；完整证据、失败记录与源码范围见 [PROGRESS.md](PROGRESS.md)。
 
+新增[原生服务恢复与存储交接](UNIT_RELOCATION.md)：真实 systemd 控制器已接通独立 Node 和两任务 UID 的 CPU 工作流，中央重启保持原任务容器/attempt；目录恢复中断可沿 Root 原模板证据继续。修复隔离挂载视图导致的存储误判，仍保留实时 FD/嵌套挂载检查。1354项回归、原生集成48项及原进程模式47项通过；native Node、宿主与 NPU 仍需验收。
+
 新机服务部署前可运行 `./servicectl systemd-doctor`，或给安装预检增加 `doctor --require-systemd`：只读核对原生 PID1/系统总线，避免把 `systemctl` 兼容脚本当作真实服务管理器。检查前置条件与实际服务启动分别报告，见 [部署说明](DEPLOYMENT.md)。
 
 新增[真实容器 PID1 验收](https://github.com/1801ZDL/AI-center-cann/blob/main/NATIVE_SYSTEMD.md)：原始 controller unit 以非 root、零能力启动；启动调用方 SIGKILL 后沿原计划恢复，重复 apply 合计一次 StartUnit；控制器被杀后由 systemd 恢复新身份。目标宿主开机/挂载、真实登录用户、Node unit、NPU 与双物理机仍需各自验收。

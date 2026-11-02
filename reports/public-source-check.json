@@ -9211,5 +9211,67 @@
       "Intermediate restart test did not count all apply calls or recheck API after restart; final public fixture does both.",
       "First public fixture had indentation error before acceptance and reached observation deadline; original container removed. Corrected syntax and added pre-create compile check."
     ]
+  },
+  "native_restore_and_storage": {
+    "passed": true,
+    "verified_at": "2026-11-02T21:36:15.732881+00:00",
+    "unit_tests": 1354,
+    "unit_seconds": 243.864,
+    "unit_skipped": 0,
+    "javascript_syntax_passed": true,
+    "new_cases": 25,
+    "non_md_core_files": 113,
+    "recursive_test_helpers": 279,
+    "native_controller_install_checks": 48,
+    "ordinary_process_install_checks": 47,
+    "cleanup_errors": 0,
+    "actual_native_controller_with_independent_process_node": true,
+    "native_controller_uid": 999,
+    "task_uids": [
+      23003,
+      23004
+    ],
+    "running_native_process_snapshots_verified": 12,
+    "effective_capabilities_zero": true,
+    "no_new_privileges_verified": true,
+    "actual_native_controller_restart_during_live_cpu_task": true,
+    "same_task_container_and_original_attempt_preserved": true,
+    "actual_restore_binding_sigkill_count": 2,
+    "original_retained_marker_and_sequential_template_chain_verified": true,
+    "restored_unit_template_exact_before_image_verified": true,
+    "native_restored_node_inventory_gate_verified": true,
+    "raw_namespace_only_mount_ids_differ": true,
+    "before_after_restore_plan_http_status": [
+      409,
+      200
+    ],
+    "raw_input_bytes_verified": true,
+    "legacy_inventory_not_silently_rebound": true,
+    "live_fd_mount_and_nested_bind_checks_preserved": true,
+    "installed_packages_non_md_core_match_final_source": true,
+    "released_loops_verified": 6,
+    "original_and_restored_graphs_and_attempts_verified": true,
+    "owned_native_containers_removed": true,
+    "parent_limits_and_host_cgroup_mounts_preserved": true,
+    "main_config_profiles_domain_zdl_protected_and_web_unchanged": true,
+    "real_host_pid1_tested": false,
+    "actual_native_node_unit_tested": false,
+    "real_host_accounts_created": false,
+    "physical_hosts_tested": 1,
+    "npu_kernel_launches": 0,
+    "model_calls": 0,
+    "images_built": 0,
+    "production_ready": false,
+    "overall_goal_complete": false,
+    "scope": "Actual owned native systemd controller with a separate process-mode Node, two task UIDs, live CPU-task continuity, backup/relocation/rollback and two restore-boundary SIGKILLs. Namespace storage regression reproduced from original bytes and fixed. Not host boot, native Node, host users, NPU or two physical machines.",
+    "failures_retained": [
+      "First integration fixture reused a completed plan output; explicit new lifecycle plans now use new files and original pending plans are reconciled.",
+      "Actual native state-directory restore could not refresh the old unit; exact Root predecessor provenance added.",
+      "Following restore, persisted mount IDs caused quarantine content rejection; original raw inventories proved only mount IDs differed.",
+      "A direct own-unit nsenter read was refused; no privilege relaxation, readback uses the actual service UID and its verified own process root.",
+      "A normal restart yielded the same numerical mount IDs and did not reproduce the intended mismatch; the dedicated probe now tests actual offline restore.",
+      "Dedicated probe initially used a non-private backup parent; fixed to a new Root-private directory.",
+      "Independent audit initially compared first and last restore markers as one; actual integration has two markers, verified through retained original marker, reported second observation, two exit137 events and sequential template hashes."
+    ]
   }
 }

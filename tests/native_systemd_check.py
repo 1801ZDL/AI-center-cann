@@ -7,7 +7,8 @@ from docker_runtime import discover,command
 from lab_client import atomic_json,now
 assert os.environ.get('LAB_JOB_DIR')
 import argparse
-parser=argparse.ArgumentParser();parser.add_argument('--image-metadata',required=True);args=parser.parse_args()
+parser=argparse.ArgumentParser();parser.add_argument('--image-metadata',required=True)
+parser.add_argument('--scenario',choices=['controller','storage'],default='controller');args=parser.parse_args()
 fixtures=ROOT/'tests/native_systemd'
 for source in fixtures.glob('*.py'):compile(source.read_bytes(),str(source),'exec')
 job=Path(os.environ['LAB_JOB_DIR']);base=job/'tmp/native-systemd';base.mkdir(mode=0o700,parents=True)
@@ -35,7 +36,7 @@ try:
   '--mount','type=bind,src='+str(provision)+',dst=/provision,readonly',
   '--mount','type=bind,src='+str(evidence)+',dst=/evidence',
   '--mount','type=bind,src='+str(fixtures/'boot.py')+',dst=/boot-native.py,readonly',
-  '--mount','type=bind,src='+str(fixtures/'inside.py')+',dst=/native-inside.py,readonly',
+  '--mount','type=bind,src='+str(fixtures/('storage_inside.py' if args.scenario=='storage' else 'inside.py'))+',dst=/native-inside.py,readonly',
   '--entrypoint','/usr/bin/python3',image,'-I','-B','/boot-native.py'])
  created=r.stdout.strip();assert re.fullmatch('[0-9a-f]{64}',created)
  docker(['start',created]);info=json.loads(docker(['inspect',created]).stdout)[0]
@@ -70,7 +71,7 @@ finally:
 assert cleaned
 host_after=[x for x in Path('/proc/self/mountinfo').read_text().splitlines() if ' - cgroup2 ' in x]
 assert host_before==host_after
-result={'recorded_at':now(),'passed':bool(report and report.get('passed') and report.get('original_container_pid1_handle_preserved')),
+result={'recorded_at':now(),'scenario':args.scenario,'passed':bool(report and report.get('passed') and report.get('original_container_pid1_handle_preserved')),
  'image':image,'release_id':release['release_id'],'report':report,'acceptance_deadline_reached':timed_out,
  'original_container_stopped_and_removed':cleaned,'host_cgroup_mounts_unchanged':True,
  'fixture_apparmor_unconfined':True,'minimal_fixture_targets':True,'host_units_changed':False,'npu_launches':0,
