@@ -197,7 +197,7 @@ class Schedules:
             if plan['state']=='retired':
                 if action=='retire':return plan
                 raise JobError('Retired schedule cannot be reactivated',409)
-            owned=[j for j in self.jobs.all(db) if j.get('_device_schedule',{}).get('plan_id')==identifier]
+            owned=[j for j in self.jobs.working(db) if j.get('_device_schedule',{}).get('plan_id')==identifier]
             if action=='enable':
                 if plan['state']=='active':return plan
                 if plan['state']=='restore_paused':raise JobError('Restored plans are historical only; explicitly create a new plan and budget',409)
@@ -218,7 +218,7 @@ class Schedules:
         return plan
 
     def cancel_queued(self,identifier):
-        for job in self.jobs.all():
+        for job in self.jobs.working():
             if job['state']=='queued' and job.get('_device_schedule',{}).get('plan_id')==identifier:self.jobs.cancel(job['id'],_queued_only=True)
 
     def load_action(self,marker,db):
@@ -266,7 +266,7 @@ class Schedules:
         for node_id,raw,seen,disabled in db.execute('SELECT id,profile,last_seen,disabled FROM worker_nodes'):
             if not disabled and json.loads(raw)['physical_id']==physical and 0<=time.time()-seen<=30:
                 candidates.append(self.jobs.nodes.node(node_id,db))
-        for other in self.jobs.all(db):
+        for other in self.jobs.working(db):
             if other['state']!='queued' or other.get('_device_schedule') or other['_environment']['type']!='worker':continue
             for node in candidates:
                 if other['owner'] not in node['profile']['users'] or other.get('template') not in node['profile']['templates']:continue

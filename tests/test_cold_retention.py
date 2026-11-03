@@ -147,6 +147,22 @@ class RetentionTests(unittest.TestCase):
     def test_job_semantics_must_preserve_result_owner_and_original_execution(self):
         self.activate();self.env.job['state']='succeeded'
         with self.assertRaisesRegex(JobError,'identity or result'):self.directory()
+    def test_explicit_capacity_slot_releases_only_with_confirmed_cold_retirement_credit(self):
+        import history_capacity as h
+        h.initialize(self.db)
+        policy={'format':h.FORMAT,'revision':1,'approval_id':'f'*64,'max_control_jobs':2,'max_online_archives':1}
+        self.db.execute('INSERT INTO history_capacity_policy VALUES(1,?)',(h.encode(policy).decode(),))
+        proof={'kind':'online','job_id':self.env.jobid,'owner':'alice'}
+        self.db.execute('INSERT INTO history_capacity_slots VALUES(?,1,?)',(self.env.jobid,h.encode(proof).decode()));self.db.commit()
+        self.activate();plan=self.plan('retire');value=self.apply(plan,1);self.assertTrue(value['pending'])
+        self.assertEqual(self.db.execute('SELECT online FROM history_capacity_slots').fetchone()[0],1)
+        for _ in range(10):
+            value=self.apply(plan,1)
+            if not value.get('pending'):break
+        self.assertFalse(value['pending']);self.assertEqual(self.db.execute('SELECT online FROM history_capacity_slots').fetchone()[0],0)
+        self.assertEqual(self.db.execute('SELECT count(*) FROM jobs').fetchone()[0],1)
+        proof=json.loads(self.db.execute('SELECT proof FROM history_capacity_slots').fetchone()[0]);self.assertEqual(proof['kind'],'cold_retired')
+        self.assertEqual(proof,h.online_proof(self.db,self.env.job));self.assertTrue(self.apply(plan)['reused'])
 
 
 if __name__=='__main__':unittest.main()

@@ -134,7 +134,7 @@ class Dependencies:
 
     def pinned(self,parent,db):
         return (self.jobs.source_grants.pinned(parent,db) or
-            any(j['state'] not in TERMINAL and parent in j.get('depends_on',[]) for j in self.jobs.all(db)))
+            any(j['state'] not in TERMINAL and parent in j.get('depends_on',[]) for j in self.jobs.working(db)))
 
     def upstream(self,job):
         parents=[self.jobs.get(p) for p in job['depends_on']]
@@ -290,7 +290,7 @@ class Dependencies:
                     atomic_json(self.jobs.directory(identifier)/'dependency-inputs.json',proof);self.jobs.write(db,actual)
 
     def tick(self):
-        pending=[j['id'] for j in self.jobs.all() if j['state']=='queued' and j.get('depends_on')
+        pending=[j['id'] for j in self.jobs.working() if j['state']=='queued' and j.get('depends_on')
             and j.get('dependency_state',{}).get('status') not in {'ready','blocked'}]
         # Every item copies at most1MiB; rotate so a large artifact cannot starve
         # later ready stages. No compute allocation is held by this transfer.

@@ -268,3 +268,10 @@ compiler-case是对原任务/日志/artifact-chunk读取接口的固定路径组
 - `POST /api/job-graphs/GRAPH_ID/resume`：请求体只能`{}`，按原记录继续准备归档；不生成替代图或新的阶段。
 
 图内after与artifact_inputs.node引用局部节点，job内部的普通depends_on/artifact_inputs仍可引用已有任务。全图同一实验预算或都不指定；每阶段正常环境锁/资源/配额/审批与版本协议继续适用。图state=submitted表示全部准入和归档准备完成；执行进展以各节点状态为准。个人CLI/MCP、恢复语义、明确限额与验收边界见[JOB_GRAPHS.md](JOB_GRAPHS.md)。
+# 历史容量与分页补充
+
+`GET /api/jobs/history?limit=100&offset=0&state=cancelled` 需要 `jobs:read`，按原owner/项目/实验权限返回 `{jobs,total,limit,offset}`；limit为1..200，offset非负，state可省略。不会暴露私有请求重放回执。旧模式同样支持该接口；新模式按SQL授权分页，不把全部历史加载至客户端。
+
+`GET /api/jobs` 新增 `history_capacity`：legacy模式返回原max_jobs；管理员显式启用separate模式后返回limits、聚合usage、blocks_new_jobs以及history_deletion_enabled=false。未启用的部署不自动改配置。控制历史和在线归档任一满时，新任务返回409；原幂等请求仍可返回原job，不重复计费。查询/结果页与已有任务恢复继续可用。
+
+新模式的 `/api/results` 使用相同分页合同；CSV过大时明确409，分页接口保留完整数据访问。操作、原请求跨workspace恢复重放的有限范围、备份/降级门禁及后续边界见[历史容量合同](https://github.com/1801ZDL/AI-center-cann/blob/main/HISTORY_CAPACITY.md)。

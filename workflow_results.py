@@ -10,6 +10,8 @@ from workflow_spec import WORKFLOWS
 from workflow_runner import validate_result
 from environment_probe import compare,access_confirmed
 
+MAX_CSV_BYTES=32*1024**2
+
 
 def load(path,limit=2*1024**2):
     if path.is_symlink() or path.stat().st_size>limit:raise ValueError('Result evidence path or size is invalid')
@@ -111,6 +113,23 @@ class ResultStore:
         principal.require('jobs:read')
         if kind is not None and kind not in set(WORKFLOWS.values()):raise JobError('Unknown workflow result kind')
         if type(limit) is not int or not 1<=limit<=200 or type(offset) is not int or offset<0:raise JobError('Invalid result page')
+        if self.jobs.history.policy:
+            from history_capacity import decode
+            where,args=self.jobs.history.acl(principal)
+            if kind is not None:where+=" AND json_extract(r.record,'$.kind')=?";args.append(kind)
+            with self.jobs.connect() as db:
+                query=' FROM workflow_results r JOIN jobs j ON j.id=r.job_id WHERE '+where
+                total=db.execute('SELECT count(*)'+query,args).fetchone()[0]
+                page=db.execute('SELECT j.id,j.owner,j.state,j.data,r.record'+query+' ORDER BY r.rowid DESC LIMIT ? OFFSET ?',args+[limit,offset])
+                records=[]
+                from npu_conditions import fallback
+                for item in page:
+                    job=decode(item[:4]);row=json.loads(item[4])
+                    if (row.get('job_id'),row.get('owner'),row.get('project'))!=(job['id'],job['owner'],job.get('project','personal:'+job['owner'])):
+                        raise JobError('Result identity differs from its retained job',409)
+                    row['archive_state']=job.get('archive_status',{}).get('state','available')
+                    row.setdefault('device_conditions',fallback(job));records.append(row)
+            return {'rows':records,'total':total,'limit':limit,'offset':offset}
         visible={job['id']:job for job in self.jobs.access.readable_jobs(principal,self.jobs.all())}
         with self.jobs.connect() as db:records=[json.loads(row[0]) for row in db.execute('SELECT record FROM workflow_results ORDER BY rowid DESC')]
         records=[row for row in records if row['job_id'] in visible and (kind is None or row['kind']==kind)]
@@ -122,20 +141,22 @@ class ResultStore:
 
     def csv(self,principal,kind=None):
         from jobs import JobError
-        # Current controller is bounded to 1000 jobs; export only visible rows.
-        rows=[];offset=0
-        while True:
-            page=self.rows(principal,kind,200,offset);rows.extend(page['rows']);offset+=len(page['rows'])
-            if offset>=page['total']:break
         out=io.StringIO(newline='');writer=csv.writer(out)
         keys=['job_id','owner','project','kind','name','state','passed','environment_locked','input_id','metrics','recorded_at','archive_state','failure_stage','depends_on','dependency_provenance_sha256','device_conditions']
         writer.writerow(keys)
-        for row in rows:
-            values=[]
-            for key in keys:
-                value=row.get(key,'')
-                if isinstance(value,(dict,list)):value=json.dumps(value,ensure_ascii=False,allow_nan=False)
-                if isinstance(value,str) and value.lstrip().startswith(('=','+','-','@')):value="'"+value
-                values.append(value)
-            writer.writerow(values)
+        offset=0;size=3+len(out.getvalue().encode())
+        while True:
+            page=self.rows(principal,kind,200,offset);offset+=len(page['rows'])
+            for row in page['rows']:
+                values=[]
+                for key in keys:
+                    value=row.get(key,'')
+                    if isinstance(value,(dict,list)):value=json.dumps(value,ensure_ascii=False,allow_nan=False)
+                    if isinstance(value,str) and value.lstrip().startswith(('=','+','-','@')):value="'"+value
+                    values.append(value)
+                line=io.StringIO(newline='');csv.writer(line).writerow(values);text=line.getvalue()
+                size+=len(text.encode())
+                if self.jobs.history.policy and size>MAX_CSV_BYTES:raise JobError('CSV export exceeds32MiB; use the paginated result API',409)
+                out.write(text)
+            if offset>=page['total'] or not page['rows']:break
         return ('\ufeff'+out.getvalue()).encode('utf-8')

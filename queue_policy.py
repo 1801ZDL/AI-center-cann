@@ -29,8 +29,8 @@ def age(job,epoch=None):
     except (KeyError,TypeError,ValueError,OverflowError):return 0
 
 
-def ordered(rows,policy,epoch=None):
-    epoch=time.time() if epoch is None else epoch;limit=threshold(policy);last={}
+def ordered(rows,policy,epoch=None,last_dispatch=None):
+    epoch=time.time() if epoch is None else epoch;limit=threshold(policy);last=dict(last_dispatch or {})
     for job in rows:
         if job.get('reserved_at'):last[job['owner']]=max(last.get(job['owner'],''),job['reserved_at'])
     def key(job):

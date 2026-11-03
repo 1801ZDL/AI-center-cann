@@ -12,6 +12,7 @@ prefix=Path('/opt/ascend-lab-controller');state=Path('/state/controller');pool_p
 events=[];stage='bus';report={'passed':False};faults=[]
 READ=Path('/provision/cold-reader').exists();reader_evidence={}
 RETAINED=Path('/provision/retained-restore').exists();retained_resume=None;initial_before=None
+CAPACITY=Path('/provision/history-capacity').exists();capacity_evidence={}
 def write(name,value):
  p=E/name
  with p.open('x') as f:json.dump(value,f,indent=2);f.flush();os.fsync(f.fileno())
@@ -54,7 +55,7 @@ def recover():
  r=subprocess.run(['/usr/bin/python3','-I','-B','-c','import sqlite3,sys\nc=sqlite3.connect(sys.argv[1]);c.execute("BEGIN IMMEDIATE");c.rollback();c.close()',str(state/'jobs.sqlite3')],
   preexec_fn=drop,capture_output=True,text=True,timeout=10)
  assert r.returncode==0
-def fault(boundary,method,plan,retention=False,maximum_entries=256):
+def fault(boundary,method,plan,retention=False,maximum_entries=256,capacity=False):
  code='''import json,os,signal,sys
 from pathlib import Path
 sys.path.insert(0,"/opt/ascend-lab-controller/current")
@@ -66,7 +67,7 @@ c._checkpoint=kill
 v=json.loads(Path(sys.argv[3]).read_text())
 getattr(c,sys.argv[2])("/opt/ascend-lab-controller",v,maximum_entries=int(sys.argv[5])) if sys.argv[4]=="cold_retention" else getattr(c,sys.argv[2])("/opt/ascend-lab-controller",v)
 '''
- r=subprocess.run(['/usr/bin/python3','-I','-B','-c',code,boundary,method,plan,'cold_retention' if retention else 'cold_exports',str(maximum_entries)],capture_output=True,text=True,timeout=25)
+ r=subprocess.run(['/usr/bin/python3','-I','-B','-c',code,boundary,method,plan,'history_capacity' if capacity else 'cold_retention' if retention else 'cold_exports',str(maximum_entries)],capture_output=True,text=True,timeout=25)
  if r.returncode!=-signal.SIGKILL:write('failure-fault.json',{'boundary':boundary,'code':r.returncode,'stderr':r.stderr[-4096:]})
  assert r.returncode==-signal.SIGKILL;recover();faults.append({'boundary':boundary,'exit_code':r.returncode})
 def accounting():
@@ -90,6 +91,14 @@ try:
  assert handle['uid']==installed['uid'] and identity_alive(handle)
  status={k:v.strip() for k,sep,v in (line.partition(':') for line in Path('/proc/'+str(handle['pid'])+'/status').read_text().splitlines()) if sep}
  assert int(status['CapEff'],16)==0 and status['NoNewPrivs']=='1'
+ if CAPACITY:
+  stop();stage='history-capacity-policy'
+  policy_plan='/root/history-capacity.json'
+  ctl('history-capacity-plan','--prefix',str(prefix),'--max-control-jobs','2','--max-online-archives','1','--output',policy_plan)
+  for boundary in ['before_commit','committed']:fault(boundary,'apply',policy_plan,capacity=True)
+  result=ctl('history-capacity-apply','--prefix',str(prefix),'--plan',policy_plan);assert result['reused']
+  capacity_evidence['policy']=result['policy'];capacity_evidence['actual_policy_sigkills']=2
+  restart()
  stage='actual-job'
  submitted=run_owner('''import base64,hashlib,json,sys
 from pathlib import Path
@@ -103,6 +112,20 @@ j=c.request("/api/jobs",request)["job"]["id"]
 c.request("/api/jobs/"+j+"/cancel",{});job=c.request("/api/jobs/"+j)["job"];assert job["state"]=="cancelled"
 print(json.dumps({"id":j,"owner":job["owner"]}))
 ''');job_id=submitted['id'];job_owner=submitted['owner'];stop()
+ if CAPACITY:
+  restart()
+  capacity_evidence['warm_capacity']=run_owner('''import json,sys
+from pathlib import Path
+sys.path.insert(0,sys.argv[1]);from lab_client import Client,ClientHTTPError
+c=Client.from_profile(sys.argv[2]);body=json.loads(Path(sys.argv[2]).with_name("fixture-replay-request.json").read_text())
+v=c.request("/api/jobs",body);assert v["job"]["id"]==sys.argv[3] and v["reused"]
+assert c.request("/api/jobs")["history_capacity"]["usage"]=={"control_jobs":1,"online_archives":1}
+body["idempotency_key"]="must-wait-for-online-retirement"
+try:c.request("/api/jobs",body)
+except ClientHTTPError as e:assert e.status==409
+else:raise AssertionError("Warm terminal archive released an online slot")
+print(json.dumps({"terminal_warm_blocks_new_job":True,"original_replay_at_full_is_free":True}))
+''',job_id);stop()
  archive=state/'jobs'/job_id
  # Explicit test-only data; controller is stopped, no real result is replaced.
  run_owner('''import json,sys
@@ -226,10 +249,51 @@ print(json.dumps({"same_original_idempotent_job":True}))
     assert rejected.returncode and 'retirement' in rejected.stderr
   retired=ctl('cold-retention-apply','--prefix',str(prefix),'--plan',retire_plan)
   assert retired['reused'] and retired['quota_released'] and retired['online_payload_removed']
+  assert retired['online_archive_slot_released']==CAPACITY
   assert not archive.exists() and not (state/'storage-trash/cold'/plan['id']).exists()
   expected_before_restore=accounting();assert expected_before_restore['allocation'][1]<before['allocation'][1]
+  if CAPACITY:
+   stage='online-slot-release-and-control-bound'
+   restart()
+   second=run_owner('''import json,sys
+from pathlib import Path
+sys.path.insert(0,sys.argv[1]);from lab_client import Client
+c=Client.from_profile(sys.argv[2]);body=json.loads(Path(sys.argv[2]).with_name("fixture-replay-request.json").read_text())
+# This is a new job and must use the current workspace; only exact old requests
+# can resolve their original receipt before path validation.
+body["cwd"]=json.loads(Path(sys.argv[2]).read_text())["scheduler"]["workspace_root"]
+body["idempotency_key"]="second-after-confirmed-retirement"
+job=c.request("/api/jobs",body)["job"];c.request("/api/jobs/"+job["id"]+"/cancel",{})
+import hashlib
+directory=Path(job["archive_dir"])
+files={str(p.relative_to(directory)):{"size":p.stat().st_size,"sha256":hashlib.sha256(p.read_bytes()).hexdigest()} for p in directory.rglob("*") if p.is_file()}
+print(json.dumps({"id":job["id"],"owner":job["owner"],"warm_files":files}))
+''');stop()
+   # The restored pool intentionally retains frozen write authority. Keep this
+   # second archive warm and exercise an explicit policy revision, so the next
+   # rejection proves control capacity independently of online capacity.
+   expansion='/root/history-online-expand.json'
+   ctl('history-capacity-plan','--prefix',str(prefix),'--max-control-jobs','2','--max-online-archives','2','--output',expansion)
+   revised=ctl('history-capacity-apply','--prefix',str(prefix),'--plan',expansion)
+   assert revised['policy']['revision']==2 and revised['usage']=={'control_jobs':2,'online_archives':1}
+   capacity_evidence.update(initial_policy=capacity_evidence['policy'],policy=revised['policy'],second_warm_files=second['warm_files'])
+   restart()
+   capacity_evidence['confirmed_retirement']=run_owner('''import json,sys
+from pathlib import Path
+sys.path.insert(0,sys.argv[1]);from lab_client import Client,ClientHTTPError
+c=Client.from_profile(sys.argv[2]);body=json.loads(Path(sys.argv[2]).with_name("fixture-replay-request.json").read_text())
+assert c.request("/api/jobs",body)["job"]["id"]==sys.argv[3]
+body["cwd"]=json.loads(Path(sys.argv[2]).read_text())["scheduler"]["workspace_root"];body["idempotency_key"]="control-capacity-must-stop"
+try:c.request("/api/jobs",body)
+except ClientHTTPError as e:assert e.status==409
+else:raise AssertionError("Control history was unlimited after payload retirement")
+page=c.request("/api/jobs/history?limit=1&offset=1");assert page["total"]==2 and len(page["jobs"])==1
+s=c.request("/api/jobs")["history_capacity"];assert s["usage"]=={"control_jobs":2,"online_archives":1} and s["limits"]=={"max_control_jobs":2,"max_online_archives":2} and s["blocks_new_jobs"]
+print(json.dumps({"second_original_job":sys.argv[4],"online_slot_reused_after_confirmed_removal":True,"both_control_jobs_retained":True,"control_full_blocks_new_admission":True,"usage":s["usage"],"paginated_history_http_verified":True,"restored_exact_old_request_replay":True}))
+''',job_id,second['id']);stop()
+   expected_before_restore=accounting()
   rejected=ctl('activate','--prefix',str(prefix),'--archive','/provision/legacy.tar.gz',check=False)
-  assert rejected.returncode and 'cold read authority' in rejected.stderr
+  assert rejected.returncode and ('capacity/replay' if CAPACITY else 'cold read authority') in rejected.stderr
   rejected=ctl('restore','--prefix',str(prefix),'--archive','/root/backups/copy-only.tar.gz','--new-state-dir','/state/rejected-reader',check=False)
   assert rejected.returncode and 'cold read authority' in rejected.stderr and not Path('/state/rejected-reader').exists()
   restart()
@@ -259,12 +323,13 @@ for path,body,code in [("/artifact-chunk?name=private-evidence.bin",None,404),("
 loader='import runpy,sys;sys.path.insert(0,sys.argv[1]);sys.argv=sys.argv[2:];runpy.run_path(sys.argv[0],run_name="__main__")'
 r=subprocess.run(["/usr/bin/python3","-I","-B","-c",loader,sys.argv[1],sys.argv[1]+"/accessctl","--state-dir",str(Path(sys.argv[2]).parent),"user-add","cold-peer"],capture_output=True,text=True);assert r.returncode==0
 peer=Client.from_profile(Path(sys.argv[2]).parent/"personas/cold-peer/client.json")
+assert peer.request("/api/jobs/history?limit=1")["total"]==0
 for path in ["","/archive-manifest","/artifact-chunk?name=transport-fixture.bin","/log"]:
  try:peer.request("/api/jobs/"+j+path)
  except ClientHTTPError as e:assert e.status==404
  else:raise AssertionError("Cross-owner cold read was allowed")
 print(json.dumps({"manifest":m,"range_and_chunks_verified":True,"idempotent_replay_same_job":sys.argv[4]!="restored","cross_owner_reads_denied":True}))
-''',job_id,'restored' if RETAINED else 'original')
+''',job_id,'restored' if RETAINED and not CAPACITY else 'original')
   assert verified_reads['manifest']==checked['original_manifest'];stop();assert accounting()==expected_before_restore
   reader_evidence={'original_allocation':before['allocation'],'retired_allocation':expected_before_restore['allocation'],'service_mount_view':mount_view,
    'activation_plan':json.loads(Path(read_plan).read_text()),'retirement_plan':json.loads(Path(retire_plan).read_text()),
@@ -308,6 +373,17 @@ c=Client.from_profile(sys.argv[2]);print(json.dumps(c.request("/api/jobs/"+sys.a
   reader_evidence.update(restored_metadata_available_but_reader_frozen=frozen,explicit_root_revalidation_resumed_same_manifest=True,
    resume_plan=json.loads(Path(resumed_plan).read_text()))
   write('cold-reader-records.json',reader_evidence)
+  if CAPACITY:
+   restart()
+   capacity_evidence['latest_restore']=run_owner('''import json,sys
+from pathlib import Path
+sys.path.insert(0,sys.argv[1]);from lab_client import Client,ClientHTTPError
+c=Client.from_profile(sys.argv[2]);body=json.loads(Path(sys.argv[2]).with_name("fixture-replay-request.json").read_text())
+assert c.request("/api/jobs",body)["job"]["id"]==sys.argv[3]
+s=c.request("/api/jobs")["history_capacity"];assert s["usage"]=={"control_jobs":2,"online_archives":1}
+assert c.request("/api/jobs/history?limit=1")["total"]==2
+print(json.dumps({"same_original_job_after_second_restore":True,"capacity_and_history_preserved":True}))
+''',job_id);stop();write('history-capacity-records.json',capacity_evidence)
  import cold_exports as cold
  write('cold-records.json',{'plan':plan,'pool_plan':json.loads(Path(pool_plan).read_text()),'before':before,'after':accounting(),'initial_before':initial_before or before,
   'source_inventory':original,'manifest':checked['original_manifest'],'historical':historical})
@@ -329,6 +405,9 @@ c=Client.from_profile(sys.argv[2]);print(json.dumps(c.request("/api/jobs/"+sys.a
    original_api_still_authoritative=False,original_job_api_and_acl_retained=True,
    latest_backup_restores_original_and_freezes_cold_authority=False,latest_backup_restores_control_history_with_external_cold_bytes=True,
    retained_original_restore_then_retirement_tested=RETAINED)
+ if CAPACITY:report.update(history_capacity=capacity_evidence,original_control_jobs=2,actual_policy_sigkills=2,
+  finite_online_and_control_limits_verified=True,restored_exact_request_replay_verified=True,
+  one_transfer_and_reservation=True,second_archive_remains_warm=True,explicit_nonempty_policy_revision_preserved=True)
 except BaseException as error:
  report={'passed':False,'stage':stage,'error_type':type(error).__name__,'error':str(error)[:1024],'actual_sigkill_boundaries':faults,'events':events}
 finally:
@@ -336,7 +415,7 @@ finally:
  with tarfile.open(E/'private-controller-evidence.tar.gz','x:gz') as out:
   if prefix.exists():out.add(prefix,arcname='installation')
   if state.exists():out.add(state,arcname='control')
-  for p in [Path('/root/cold-register.json'),Path('/root/cold-copy.json'),Path('/root/cold-read.json'),Path('/root/cold-retire.json'),Path('/root/cold-read-resume.json'),Path('/root/cold-read-retained-resume.json')]:
+  for p in [Path('/root/cold-register.json'),Path('/root/cold-copy.json'),Path('/root/cold-read.json'),Path('/root/cold-retire.json'),Path('/root/cold-read-resume.json'),Path('/root/cold-read-retained-resume.json'),Path('/root/history-capacity.json'),Path('/root/history-online-expand.json')]:
    if p.exists():out.add(p,arcname='plans/'+p.name)
  archive=E/'private-controller-evidence.tar.gz';archive.chmod(0o600);os.chown(archive,owner,group)
  limits=Path('/run/native-fixture/cgroup.json');root=Path('/sys/fs/cgroup')

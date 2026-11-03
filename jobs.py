@@ -167,6 +167,8 @@ class JobStore:
         self.performance_references=References(self)
         from job_graphs import Graphs
         self.graphs=Graphs(self)
+        from history_capacity import Capacity
+        self.history=Capacity(self)
 
     def connect(self):
         self.control_filesystem.check()
@@ -204,6 +206,14 @@ class JobStore:
             return [json.loads(r[0]) for r in db.execute('SELECT data FROM jobs ORDER BY rowid')]
         with self.connect() as connection:
             return self.all(connection)
+
+    def working(self,db=None,states=None):
+        states=ACTIVE|{'queued'} if states is None else set(states)
+        if db is None:
+            with self.connect() as connection:return self.working(connection,states)
+        history=getattr(self,'history',None)
+        if history and history.policy:return history.working(db,states)
+        return [job for job in self.all(db) if job['state'] in states]
 
     def get(self, job_id, db=None, principal=None):
         if db is None:
@@ -391,7 +401,7 @@ class JobStore:
             db.execute('BEGIN')
             self.experiment_budgets.check(db,job,principal)
             self.nodes.probe_submission(job,principal,db)
-            rows=self.all(db);active=[item for item in rows if item['state'] in ACTIVE]
+            rows=self.working(db);active=[item for item in rows if item['state'] in ACTIVE]
             input_reason=None
             if job.get('input') and self.lifecycle.record('input',job['input']['id'])['state']!='available':
                 input_reason='输入当前不可用，需恢复封存输入后再执行'
@@ -451,6 +461,16 @@ class JobStore:
         if reason:raise JobError(reason,503)
         principal = principal or self.access.local
         principal.require('jobs:submit')
+        raw_request=None
+        if self.history.policy and _staged_probe is None and _scheduled is None:
+            from history_capacity import sha
+            # The exact accepted request can resolve its original receipt even
+            # after an offline restore relocates the user's workspace. Changed
+            # requests still pass through all normal validation below.
+            with self.connect() as connection:replayed=self.history.replay(connection,request,principal)
+            if replayed is not None:return replayed
+            try:raw_request=sha(request)
+            except (ValueError,TypeError):raise JobError('Request must be finite JSON') from None
         if _scheduled is not None:
             if _staged_probe is not None:raise JobError('Distinct fixed authorities cannot be combined',403)
             with self.connect() as connection:plan,run,action=self.device_schedules.load_action(_scheduled,connection)
@@ -464,9 +484,12 @@ class JobStore:
         if _staged_probe is not None:spec['_staged_device_probe']=_staged_probe
         if _scheduled is not None:spec['_device_schedule']=dict(_scheduled)
         with self.submission_transaction(_staged_probe is not None or _scheduled is not None) as (db,identities):
-            return self._submit_record(db,identities,spec,principal,_staged_probe=_staged_probe,_scheduled=_scheduled)
+            if raw_request is not None:
+                replayed=self.history.replay(db,request,principal)
+                if replayed is not None:return replayed
+            return self._submit_record(db,identities,spec,principal,_staged_probe=_staged_probe,_scheduled=_scheduled,_raw_request_sha256=raw_request)
 
-    def _submit_record(self,db,identities,spec,principal,*,_staged_probe=None,_scheduled=None,_defer_archive=False,_job_id=None):
+    def _submit_record(self,db,identities,spec,principal,*,_staged_probe=None,_scheduled=None,_defer_archive=False,_job_id=None,_raw_request_sha256=None):
         from unit_start import admission_reason
         fingerprint = hashlib.sha256(json.dumps({k: v for k, v in spec.items() if k != 'idempotency_key'}, sort_keys=True).encode()).hexdigest()
         reason=admission_reason(self.runtime,submit=True)
@@ -486,8 +509,9 @@ class JobStore:
         if spec.get('input'):
             self.lifecycle.available('input',spec['input']['id'],db)
         self.dependencies.available({**spec,'owner':principal.id},db)
-        rows = self.all(db)
-        if sum(j['state'] == 'queued' for j in rows) >= self.policy['max_queued'] or sum(j.get('archive_status',{}).get('state')!='purged' for j in rows) >= self.policy['max_jobs']:
+        rows = self.working(db) if self.history.policy else self.all(db)
+        if self.history.policy:self.history.admit(db)
+        if sum(j['state'] == 'queued' for j in rows) >= self.policy['max_queued'] or not self.history.policy and sum(j.get('archive_status',{}).get('state')!='purged' for j in rows) >= self.policy['max_jobs']:
             raise JobError('本 Demo 的作业数量已达到上限。', 409)
         if sum(j['owner']==principal.id and j['state']=='queued' for j in rows)>=principal.quota.get('max_queued', self.policy['max_queued']):
             raise JobError('当前用户等待队列已满。', 409)
@@ -524,6 +548,9 @@ class JobStore:
                'finished_at': None, 'allocation': {}, 'source': source,
                'archive_dir': str(directory), 'result': None, '_token': secrets.token_hex(24),
                '_max_log_bytes': self.policy['max_log_bytes'],'artifact_limits':artifact_limits}
+        if _raw_request_sha256 is not None:
+            from history_capacity import FORMAT
+            job['_request_identity']={'format':FORMAT,'request_sha256':_raw_request_sha256,'fingerprint':fingerprint}
         from workflow_spec import WORKFLOWS,runtime_manifest
         if job.get('template') in WORKFLOWS or job.get('template') in {'environment_probe','npu_access_probe'}:job['runtime_files']=runtime_manifest()
         if job.get('depends_on'):
@@ -543,6 +570,7 @@ class JobStore:
                 'base64':base64.b64encode(source_content[1]).decode()} if source_content else None)}
         else:atomic_json(directory / 'request.json', public(job))
         db.execute('INSERT INTO jobs VALUES (?,?,?,?,?,?)', (job_id, principal.id, spec['idempotency_key'], fingerprint, job['state'], json.dumps(job, ensure_ascii=False)))
+        self.history.add(db,job)
         return public(job), False
 
     def cancel(self, job_id, principal=None, *, _queued_only=False):
@@ -578,7 +606,11 @@ class JobStore:
     def summary(self, principal=None):
         principal = principal or self.access.local
         principal.require('jobs:read')
-        rows = self.all()
+        history_counts=None
+        if self.history.policy:
+            with self.connect() as db:
+                rows,history_counts=self.history.dashboard(db,principal)
+        else:rows = self.all()
         active = [j for j in rows if j['state'] in ACTIVE]
         readable = self.access.readable_jobs(principal,rows)
         visible = {j['id'] for j in readable[-100:]} | {j['id'] for j in readable if j['state'] in ACTIVE|{'queued'}}
@@ -605,12 +637,13 @@ class JobStore:
             policy['cpu_ids'] = policy['cpu_ids'][:principal.quota['cpu']]
         return {'enabled': True, 'backend': 'sqlite-single-node',
                 'policy':policy,'identity':self.access.public_profile(principal),'storage':self.storage.summary(principal),
+                'history_capacity':self.history.status(),
                 'control_storage':self.control_storage(),
                 'audit_retention':self.access.audit_status(),
                 'experiment_budget':self.experiment_budgets.summary(principal),
                 'default_cwd': str(ROOT) if principal.legacy else principal.workspace,
                 'environments': [{'id': k, 'label': v['label'], 'type': v['type']} for k, v in environments.items()],
-                'counts': {s: sum(j['state'] == s for j in readable) for s in ['queued', 'reserved', 'running', 'cancelling', 'needs_attention', *sorted(TERMINAL)]},
+                'counts': history_counts or {s: sum(j['state'] == s for j in readable) for s in ['queued', 'reserved', 'running', 'cancelling', 'needs_attention', *sorted(TERMINAL)]},
                 'reserved': {'cpu': sum(j['resources']['cpu'] for j in active),
                              'memory_mib': sum(j['resources']['memory_mib'] for j in active),
                              'shm_mib': sum(j['resources'].get('shm_mib', 0) for j in active),
@@ -623,7 +656,17 @@ class JobStore:
 
     def activity(self):
         return {'jobs':[{k:j.get(k) for k in ['id','owner','kind','state','resources','allocation','created_at','started_at']}
-                        for j in self.all() if j['state'] in ACTIVE | {'queued'}]}
+                        for j in self.working()]}
+
+    def history_page(self,principal,limit=100,offset=0,state=None):
+        principal.require('jobs:read')
+        if type(limit) is not int or not 1<=limit<=200 or type(offset) is not int or offset<0 or state is not None and state not in ACTIVE|TERMINAL|{'queued'}:
+            raise JobError('Invalid job history page')
+        if self.history.policy:
+            with self.connect() as db:return self.history.page(db,principal,limit,offset,state)
+        rows=list(reversed(self.access.readable_jobs(principal,self.all())))
+        if state is not None:rows=[j for j in rows if j['state']==state]
+        return {'jobs':[public(j) for j in rows[offset:offset+limit]],'total':len(rows),'limit':limit,'offset':offset}
 
     def log(self, job_id, stream='stdout', principal=None):
         self.get(job_id, principal=principal)
@@ -692,7 +735,7 @@ class Scheduler:
 
     def reconcile(self):
         with self.jobs.transaction() as db:
-            for job in self.jobs.all(db):
+            for job in self.jobs.working(db,ACTIVE):
                 if job['state'] not in ACTIVE:
                     continue
                 if job.get('_remote'):
@@ -792,13 +835,13 @@ class Scheduler:
         self.jobs.device_schedules.tick()
         snapshot = self.observations.latest()
         with self.jobs.transaction() as db:
-            rows = self.jobs.all(db)
+            rows = self.jobs.working(db) if self.jobs.history.policy else self.jobs.all(db)
             active = [j for j in rows if j['state'] in ACTIVE]
             all_active=list(active)
             active=[j for j in active if j.get('_physical_id',self.jobs.backend.physical_id)==self.jobs.backend.physical_id]
             domain=self.jobs.resources.get(self.jobs.backend.physical_id,db)
             from queue_policy import ordered
-            queued=ordered(rows,self.jobs.policy)
+            queued=ordered(rows,self.jobs.policy,last_dispatch=self.jobs.history.last_dispatch(db) if self.jobs.history.policy else None)
             for job in queued:
                 if job['_environment']['type']=='worker':continue
                 from queue_policy import protected,note_wait,WAIT_REASON

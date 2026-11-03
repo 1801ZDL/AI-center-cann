@@ -350,6 +350,8 @@ def restore(prefix,archive_path,new_state,max_bytes=10*1024**3,payload_config=No
                 require_cold_history(old,stage)
                 from cold_retention import require_history as require_cold_reader_history
                 require_cold_reader_history(old,stage)
+                from history_capacity import require_history as require_capacity_history
+                require_capacity_history(old,stage)
             relocate(stage,manifest['original_state'],target,meta['role'],
                      original_payload['path'] if original_payload else manifest['original_state'],policy['path'] if policy else None)
             restored_config=read_json(stage/'config.json')
@@ -458,6 +460,8 @@ def require_control_storage(config,role,manifest):
 
 
 def require_features(state,role,manifest,installation=None):
+    from history_capacity import require_compatible as require_capacity
+    require_capacity(state,role,manifest)
     from cold_retention import require_compatible as require_cold_reader
     require_cold_reader(state,role,manifest)
     from cold_exports import require_compatible as require_cold

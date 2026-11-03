@@ -91,7 +91,7 @@ class Lifecycle:
                 if json.loads(raw).get('environment_manifest',{}).get('source',{}).get('job_id')==value:
                     raise JobError('Enabled node environment certification still pins this probe evidence',409)
         elif any(job['state'] not in TERMINAL and (job.get('input',{}).get('id')==value
-                 or job.get('_dependency_base_input')==value or job.get('dependency_state',{}).get('input_id')==value) for job in self.jobs.all(db)):
+                 or job.get('_dependency_base_input')==value or job.get('dependency_state',{}).get('input_id')==value) for job in self.jobs.working(db)):
             raise JobError('A queued, running or unknown task still references this input',409)
         if kind=='input' and any(json.loads(raw).get('input_id')==value and json.loads(raw)['state']!='retired'
             for raw, in db.execute('SELECT record FROM device_schedule_plans')):
@@ -239,6 +239,9 @@ class Lifecycle:
             billed=record['metadata_bytes'] if state=='purged' else max(old,record['payload_bytes']+record['metadata_bytes']+len(fs.encode(record.get('inventory'))))
             db.execute('UPDATE storage_allocations SET bytes=?,settled=1 WHERE kind=? AND id=?',(billed,kind,value))
             self.save(db,record,subject);self.event(db,record,principal.id,'complete-'+action,{'charged_bytes':billed,'previous_charged_bytes':old})
+            if kind=='archive' and state=='purged':
+                from history_capacity import release
+                release(db,subject)
             return {'object':self.public(kind,value,db),'pending':False,'removed_entries':removed,
                     'released_reserved_bytes':max(0,old-billed),'quota_released':state=='purged' and billed<old}
 

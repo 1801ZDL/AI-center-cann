@@ -1,5 +1,7 @@
 # 从个人 Demo 扩展到多用户、多服务器
 
+新增[在线归档与控制历史双容量](https://github.com/1801ZDL/AI-center-cann/blob/main/HISTORY_CAPACITY.md)：管理员停止态显式启用，确认原件回收后复用在线名额，所有原ID/结果/幂等及尝试继续计入有限历史。调度工作集和结果分页避免每次加载全部历史，启用后新普通任务可在workspace恢复迁移后沿原请求重连。现有Main没有启用该策略或删除数据；最终历史轮转/异地迁移、真实团队长期容量仍是独立后续项，验收见PROGRESS.md。
+
 新增[权威冷存读取与原件回收](https://github.com/1801ZDL/AI-center-cann/blob/main/COLD_RETENTION.md)：沿原任务ACL的日志/下载/报告/交接读取、确认原件删除后一次额度提交及恢复后显式读核验已贯通。最新1410项回归、两恢复路径各17个真实SIGKILL和卸载盘字节审计通过；历史数量计数和完整异地存储迁移仍待，未对Main执行数据迁移。
 
 新增[旧pending库存管理员对账](https://github.com/1801ZDL/AI-center-cann/blob/main/STORAGE_RECONCILIATION.md)：停止态精确计划、同计划中断恢复、原计费/批准清单保留及缺helper的显式修复升级。输入和取消任务归档已做实际原生服务验收；它不执行冷存或自动清理，部署边界见PROGRESS.md。

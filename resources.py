@@ -94,7 +94,7 @@ class ResourceDomains:
         with self.jobs.transaction() as db:
             row=db.execute('SELECT revision FROM resource_domains WHERE physical_id=?',(physical_id,)).fetchone()
             if (row[0] if row else 0)!=expected_revision:raise JobError('Resource domain revision changed; inspect it before retrying',409)
-            active=self.active(physical_id,self.jobs.all(db))
+            active=self.active(physical_id,self.jobs.working(db))
             if (len(active)>policy['max_running']
                 or not {cpu for job in active for cpu in job['allocation'].get('cpu_ids',[])}<=set(policy['cpu_ids'])
                 or sum(memory_cost(job) for job in active)>policy['memory_mib']
@@ -112,7 +112,7 @@ class ResourceDomains:
     def summary(self,db=None,rows=None):
         if db is None:
             with self.jobs.connect() as connection:return self.summary(connection,rows)
-        rows=self.jobs.all(db) if rows is None else rows
+        rows=self.jobs.working(db) if rows is None else rows
         result=[]
         for row in db.execute('SELECT physical_id FROM resource_domains ORDER BY physical_id'):
             domain=self.get(row[0],db);active=self.active(row[0],rows)

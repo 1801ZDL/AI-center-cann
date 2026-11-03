@@ -8,13 +8,13 @@ from lab_client import atomic_json,now
 assert os.environ.get('LAB_JOB_DIR')
 import argparse
 parser=argparse.ArgumentParser();parser.add_argument('--image-metadata',required=True)
-parser.add_argument('--scenario',choices=['controller','storage','reconcile','cold','cold-read','cold-retained'],default='controller');parser.add_argument('--legacy-archive');args=parser.parse_args()
+parser.add_argument('--scenario',choices=['controller','storage','reconcile','cold','cold-read','cold-retained','cold-capacity'],default='controller');parser.add_argument('--legacy-archive');args=parser.parse_args()
 fixtures=ROOT/'tests/native_systemd'
 for source in fixtures.glob('*.py'):compile(source.read_bytes(),str(source),'exec')
 job=Path(os.environ['LAB_JOB_DIR']);base=job/'tmp/native-systemd';base.mkdir(mode=0o700,parents=True)
 provision=base/'provision';provision.mkdir(mode=0o700);evidence=base/'evidence';evidence.mkdir(mode=0o700)
 release=bundle(provision/'server.tar.gz');bootstrap,_=unpack_release(provision/'server.tar.gz',provision);bootstrap.rename(provision/'bootstrap')
-if args.scenario in {'reconcile','cold-read','cold-retained'}:
+if args.scenario in {'reconcile','cold-read','cold-retained','cold-capacity'}:
  from deployment import inspect_release
  import shutil
  assert args.legacy_archive
@@ -22,8 +22,9 @@ if args.scenario in {'reconcile','cold-read','cold-retained'}:
  old=inspect_release(legacy);assert ('storage_reconciliation.py' if args.scenario=='reconcile' else 'cold_reads.py') not in old['manifest']['files']
  shutil.copyfile(legacy,provision/'legacy.tar.gz')
 else:assert not args.legacy_archive
-if args.scenario in {'cold-read','cold-retained'}:(provision/'cold-reader').write_text('Explicit read activation and bounded original retirement acceptance\n')
-if args.scenario=='cold-retained':(provision/'retained-restore').write_text('Verify fresh warm inventory before deletion after restore\n')
+if args.scenario in {'cold-read','cold-retained','cold-capacity'}:(provision/'cold-reader').write_text('Explicit read activation and bounded original retirement acceptance\n')
+if args.scenario in {'cold-retained','cold-capacity'}:(provision/'retained-restore').write_text('Verify fresh warm inventory before deletion after restore\n')
+if args.scenario=='cold-capacity':(provision/'history-capacity').write_text('Explicit finite history/online limits and restored exact request replay\n')
 metadata=Path(args.image_metadata);assert metadata.is_file() and not metadata.is_symlink() and metadata.stat().st_size<=128*1024
 native=json.loads(metadata.read_text());image=native['image'];assert native['passed'] and re.fullmatch('sha256:[0-9a-f]{64}',image)
 binding,_=discover();name='ascend-lab-nativepid1-run-'+uuid.uuid4().hex[:12];created=None;cleaned=False;report=None;timed_out=False;disk=None;volume=None;volume_created=False
@@ -35,7 +36,7 @@ host_before=[x for x in Path('/proc/self/mountinfo').read_text().splitlines() if
 atomic_json(job/'results/native-intent.json',{'name':name,'label':name,'image':image,'release_id':release['release_id'],'max_acceptance_seconds':250,'recorded_at':now()})
 try:
  mounts=[]
- if args.scenario in {'cold','cold-read','cold-retained'}:
+ if args.scenario in {'cold','cold-read','cold-retained','cold-capacity'}:
   from disk_workspace_fixture import OwnedDisk
   disk=OwnedDisk(base,name,image,sorted(os.sched_getaffinity(0)),docker,image_mib=128,inodes=2048)
   device=disk.create();volume=name+'-cold'
@@ -54,7 +55,7 @@ try:
   '--mount','type=bind,src='+str(provision)+',dst=/provision,readonly',
   '--mount','type=bind,src='+str(evidence)+',dst=/evidence',
   '--mount','type=bind,src='+str(fixtures/'boot.py')+',dst=/boot-native.py,readonly',
-  '--mount','type=bind,src='+str(fixtures/({'storage':'storage_inside.py','reconcile':'reconcile_inside.py','cold':'cold_inside.py','cold-read':'cold_inside.py','cold-retained':'cold_inside.py'}.get(args.scenario,'inside.py')))+',dst=/native-inside.py,readonly',*mounts,
+  '--mount','type=bind,src='+str(fixtures/({'storage':'storage_inside.py','reconcile':'reconcile_inside.py','cold':'cold_inside.py','cold-read':'cold_inside.py','cold-retained':'cold_inside.py','cold-capacity':'cold_inside.py'}.get(args.scenario,'inside.py')))+',dst=/native-inside.py,readonly',*mounts,
   '--entrypoint','/usr/bin/python3',image,'-I','-B','/boot-native.py'])
  created=r.stdout.strip();assert re.fullmatch('[0-9a-f]{64}',created)
  docker(['start',created]);info=json.loads(docker(['inspect',created]).stdout)[0]

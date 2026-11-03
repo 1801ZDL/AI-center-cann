@@ -101,7 +101,7 @@ class NodeRegistry:
         node_id='worker-'+uuid.uuid4().hex[:12];key=secrets.token_urlsafe(36)
         with self.jobs.transaction() as db:
             self.jobs.resources.validate_node(profile,db)
-            held={j.get('node_id') for j in self.jobs.all(db) if j['state'] in ACTIVE}|self.handoff.held_nodes(db)
+            held={j.get('node_id') for j in self.jobs.working(db) if j['state'] in ACTIVE}|self.handoff.held_nodes(db)
             for old_id,raw,disabled in db.execute('SELECT id,profile,disabled FROM worker_nodes'):
                 old=self.handoff.reserved_profile(old_id,json.loads(raw),db)
                 if old['physical_id']!=profile['physical_id'] or disabled and old_id not in held:continue
@@ -119,7 +119,7 @@ class NodeRegistry:
             if profile.get('workspace'):
                 from quota_workspace import sharing,capacity
                 combined=list(profile['workspace']['slots'])
-                held={j.get('node_id') for j in self.jobs.all(db) if j['state'] in ACTIVE}|self.handoff.held_nodes(db)
+                held={j.get('node_id') for j in self.jobs.working(db) if j['state'] in ACTIVE}|self.handoff.held_nodes(db)
                 for old_id,raw,disabled in db.execute('SELECT id,profile,disabled FROM worker_nodes'):
                     old=self.handoff.reserved_profile(old_id,json.loads(raw),db)
                     if old['physical_id']!=profile['physical_id'] or disabled and old_id not in held:continue
@@ -143,7 +143,7 @@ class NodeRegistry:
             self.handoff.mutable(node_id,db)
             revision=profile.get('policy_revision',1)
             if type(expected_revision) is not int or expected_revision!=revision:raise JobError('Node policy revision changed; inspect before retrying',409)
-            if any(job['state'] in ACTIVE and job.get('node_id')==node_id for job in self.jobs.all(db)):
+            if any(job['state'] in ACTIVE and job.get('node_id')==node_id for job in self.jobs.working(db)):
                 raise JobError('Stop admissions and finish or reconcile every node attempt before changing policy',409)
             profile={**profile,'policy':policy,'policy_revision':revision+1}
             if profile.get('workspace') and policy['max_running']>len(profile['workspace']['slots']):raise JobError('Node concurrency exceeds workspace slots')
@@ -165,7 +165,7 @@ class NodeRegistry:
             node=self.node(node_id,db);profile=node['profile'];revision=profile.get('policy_revision',1)
             self.handoff.mutable(node_id,db)
             if type(expected_revision) is not int or expected_revision!=revision:raise JobError('Node revision changed',409)
-            if any(job['state'] in ACTIVE and job.get('node_id')==node_id for job in self.jobs.all(db)):
+            if any(job['state'] in ACTIVE and job.get('node_id')==node_id for job in self.jobs.working(db)):
                 raise JobError('Finish or reconcile every node attempt before certifying its environment',409)
             job=self.jobs.get(job_id,db)
             self.jobs.lifecycle.available('archive',job_id,db)
@@ -330,7 +330,7 @@ class NodeRegistry:
             self.handoff.observe(node_id,profile,report,db,identities)
             if profile.get('npu'):
                 from npu_conditions import capture
-                for job in self.jobs.all(db):
+                for job in self.jobs.working(db):
                     if job.get('node_id')==node_id and job['state'] in ACTIVE and job['resources']['npu']:
                         capture(job,report['npu']);self.jobs.write(db,job)
         return {'node_id':node_id,'accepted':True}
@@ -515,7 +515,7 @@ class NodeRegistry:
             if time.time()-node['last_seen']>30:raise JobError('Node heartbeat is stale',409)
             if not REQUIRED_CAPABILITIES<=set(node['report'].get('capabilities',[])):raise JobError('Node capabilities require an upgrade',409)
             if profile['policy']['max_running']>1 and MULTI_SLOT not in node['report'].get('capabilities',[]):raise JobError('Concurrent node capabilities require an upgrade',409)
-            rows=self.jobs.all(db)
+            rows=self.jobs.working(db) if self.jobs.history.policy else self.jobs.all(db)
             active=[job for job in rows if job['state'] in ACTIVE]
             assigned=[job for job in active if job.get('_remote') and job.get('node_id')==node_id]
             recovery=next((job for job in assigned if job['attempt_id'] not in excluded),None)
@@ -532,7 +532,7 @@ class NodeRegistry:
                 raise JobError('Node needs an enrolled immutable image and environment-admission-v1 before new work',409)
             domain=self.jobs.resources.get(profile['physical_id'],db)
             from queue_policy import ordered
-            queued=[j for j in ordered(rows,self.jobs.policy) if j['_environment']['type']=='worker']
+            queued=[j for j in ordered(rows,self.jobs.policy,last_dispatch=self.jobs.history.last_dispatch(db) if self.jobs.history.policy else None) if j['_environment']['type']=='worker']
             for job in queued:
                 if job['owner'] not in profile['users'] or job.get('template') not in profile['templates']:continue
                 from queue_policy import protected,note_wait,WAIT_REASON
@@ -617,7 +617,7 @@ class NodeRegistry:
             if dependency_reason:
                 job['reason']=dependency_reason;job['_worker_seen']=time.time();self.jobs.write(db,job)
                 return {'start_permitted':False,'already_authorized':False,'wait':True,'reason':dependency_reason}
-            reason=self.jobs.dispatch_permission(job,[j for j in self.jobs.all(db) if j['state'] in ACTIVE and j['id']!=job['id']],db,identities)
+            reason=self.jobs.dispatch_permission(job,[j for j in self.jobs.working(db) if j['state'] in ACTIVE and j['id']!=job['id']],db,identities)
             if reason:
                 from unit_start import HOLD,OWNER_HOLD
                 from control_storage import HOLD as CONTROL_HOLD

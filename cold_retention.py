@@ -205,11 +205,13 @@ def save_change(db,value):
         (value['plan']['id'],value['plan']['job_id'],json.dumps(value,sort_keys=True)))
 
 
-def response(value,record,reused=False):
+def response(value,record,reused=False,db=None):
+    from history_capacity import current
     return {'id':value['id'],'job_id':value['job_id'],'action':value['action'],'reused':reused,'read_pointer_changed':value['action']=='activate',
         'reader_enabled':True,'original_state':record['hot_state'],'original_job_retained':True,
         'online_payload_removed':record['hot_state']=='retired','quota_released':record.get('released_bytes',0)>0,
-        'released_reserved_bytes':record.get('released_bytes',0),'history_capacity_released':False}
+        'released_reserved_bytes':record.get('released_bytes',0),'history_capacity_released':False,
+        'online_archive_slot_released':db is not None and current(db) is not None and record['hot_state']=='retired'}
 
 
 def apply(prefix,value,maximum_entries=256):
@@ -220,7 +222,7 @@ def apply(prefix,value,maximum_entries=256):
         all_changes=changes(db);change=all_changes.get(value['id']);found=reads.record(db,value['job_id'])
         if change:
             if change['plan']!=value or found is None:raise DeployError('Cold original retention plan differs')
-            if change['phase']=='applied':return response(value,found[1],True)
+            if change['phase']=='applied':return response(value,found[1],True,db)
         elif len(all_changes)>=MAX_CHANGES:raise DeployError('Cold reader change history is full')
         pool,transfer=reads.selected(db,value);path,original=reads.documents(pool,value)
         signature=exports.verify_object(pool,original)
@@ -259,7 +261,7 @@ def apply(prefix,value,maximum_entries=256):
                 record.update(hot_state='retiring',retire_operation=value['id'])
             phase='retiring' if value['action']=='retire' else ('retired' if record['hot_state']=='retired' else 'active')
             save_reader(db,record,phase);save_change(db,change);exports.commit(db,meta);_checkpoint('reader_committed' if value['action']!='retire' else 'retire_prepared')
-            if value['action']!='retire':return response(value,record)
+            if value['action']!='retire':return response(value,record,db=db)
         else:
             record=found[1]
             if value['action']!='retire' or found[0]!='retiring' or record.get('retire_operation')!=value['id']:raise DeployError('Resume only the original pending cold retirement')
@@ -272,7 +274,7 @@ def apply(prefix,value,maximum_entries=256):
             source_present(payload,original,job['owner'],value['source_inventory_sha256']);fs.move(source,trash);_checkpoint('original_renamed')
         complete,removed=fs.purge(trash,approved,budget=maximum_entries)
         _checkpoint('original_purged_step')
-        if not complete:return {**response(value,record),'pending':True,'removed_entries':removed}
+        if not complete:return {**response(value,record,db=db),'pending':True,'removed_entries':removed}
         if fs.exists(source) or fs.exists(trash):raise DeployError('Original removal is unconfirmed; allocation remains charged')
         _checkpoint('original_removed')
         retained=65536+len(fs.encode(job))+len(fs.encode(record))
@@ -282,8 +284,11 @@ def apply(prefix,value,maximum_entries=256):
         retained=min(allocation[1],retained)
         record.update(hot_state='retired',retained_control_bytes=retained,released_bytes=allocation[1]-retained,retired_at=time.time())
         db.execute('UPDATE storage_allocations SET bytes=?,settled=1 WHERE kind="archive" AND id=?',(retained,job['id']))
-        change['phase']='applied';save_reader(db,record,'retired');save_change(db,change);exports.commit(db,meta);_checkpoint('retirement_credited')
-        return {**response(value,record),'pending':False,'removed_entries':removed}
+        change['phase']='applied';save_reader(db,record,'retired');save_change(db,change)
+        from history_capacity import release
+        release(db,job)
+        exports.commit(db,meta);_checkpoint('retirement_credited')
+        return {**response(value,record,db=db),'pending':False,'removed_entries':removed}
 
 
 def require_history(current,staged):

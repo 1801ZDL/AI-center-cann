@@ -9493,5 +9493,73 @@
     "main_config_profiles_domain_zdl_protected_and_web_unchanged": true,
     "main_live_daily_plans_rules_references_graphs": 0,
     "scope": "Root-approved authoritative cold reads and original retirement on owned native PID1 plus finite ext4; seventeen actual SIGKILLs per normal/retained-restore path (34 total), owner/peer HTTP and restored read revalidation. Restored retained originals receive byte-verified fresh deletion inventory persisted privately before unlink. Protocol fixtures separately cover reports/dependencies/source grants. Not history capacity release, new NPU compute, real host users or two physical machines."
+  },
+  "history_capacity": {
+    "schema": "ai-center-cann-history-capacity/v1",
+    "passed": true,
+    "verified_at": "2026-11-03T02:17:14.476715+00:00",
+    "full_regression": {
+      "job_id": "job-138c4b50a6fc",
+      "tests": 1437,
+      "seconds": 339.032,
+      "skipped": 0,
+      "javascript_syntax": true
+    },
+    "capacity_test_cases": 26,
+    "new_cases_total": 27,
+    "production_files": 119,
+    "frozen_paths": 409,
+    "installed_native": {
+      "job_id": "job-57d6b680a10a",
+      "image": "sha256:7bee8247227afccaab505379c4ed34f68e60fbfcc5462e9c7e276876917308da",
+      "actual_sigkills": 19,
+      "control_jobs": 2,
+      "online_archives": 1,
+      "real_systemd_pid1": true,
+      "controller_nonroot_zero_capabilities": true,
+      "finite_ext4_pool": true,
+      "source_execution_attempts": 0,
+      "retained_original_restore_then_gc_then_latest_restore": true,
+      "actual_http_same_job_replay_after_both_restores": true,
+      "fixture_containers_removed_and_disk_released": true
+    },
+    "checks": {
+      "explicit_root_offline_policy_and_atomic_approval": true,
+      "legacy_main_1100_and_compute_budget_unchanged": true,
+      "online_slot_reused_only_after_confirmed_cold_original_removal": true,
+      "control_history_stays_finite_and_original_records_retained": true,
+      "same_original_request_replayed_after_both_workspace_restores": true,
+      "indexed_working_set_preserves_owner_rotation_and_unknown_holds": true,
+      "job_and_result_pages_keep_owner_project_experiment_acl": true,
+      "csv_actual_encoded_output_bound_without_silent_truncation": true,
+      "graph_late_capacity_failure_rolls_back_all_admission": true,
+      "old_snapshot_and_incompatible_code_refused": true,
+      "policy_sigkill_before_and_after_commit_resumes_original_plan": true,
+      "cold_retention_six_plus_reader_and_ten_copy_faults_retained": true,
+      "root_service_identity_sqlite_cursor_adapter_verified": true,
+      "unmounted_cold_manifest_and_restored_warm_files_all_bytes_verified": true,
+      "source_job_attempts_zero": true,
+      "native_same_uid_peer_is_not_two_host_login_users": true
+    },
+    "scope": "One physical host, installed owned native controller and finite cold fixture; cancelled IR submissions plus explicit transport samples, not NPU or compiler computation.",
+    "main_new_policy_enabled": false,
+    "main_old_records_deleted": false,
+    "model_calls": 0,
+    "npu_kernel_launches": 0,
+    "production_ready": false,
+    "overall_goal_complete": false,
+    "retained_failures": [
+      "Initial graph unit fixture supplied forbidden stage idempotency keys; corrected to server-owned keys.",
+      "Initial full regression found owner round-robin history loss; scalar history index now preserves it.",
+      "Initial native run completed two actual policy SIGKILLs, then found unsupported fetchall on service-identity Cursor; switched to its iterable interface.",
+      "Second native run received the expected409; its fixture incorrectly expected error text from the status-only client, then corrected to check status and capacity counters.",
+      "Third native run completed19 SIGKILL boundaries and reused the released slot; its attempt to copy into a restored write-frozen cold pool was correctly refused. Final fixture keeps the second archive warm and exercises an explicit finite online-policy revision."
+    ],
+    "remaining": [
+      "Final control-history rotation and cold identity/path/device migration.",
+      "Two real host users, boot and administrator-controlled NPU numerical/performance/simulation qualification.",
+      "Two physical nodes, old-authority fencing and long-term mixed load.",
+      "No real daily card plans/rules/references enabled; PUBLIC-001 nightly PR attribution deferred."
+    ]
   }
 }

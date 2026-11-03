@@ -1,5 +1,26 @@
 # 实施进度
 
+## 2026-11-03 在线归档与有限控制历史分离（最终1437项/原生19中断边界）
+
+新增history_capacity.py及Root history-capacity-plan/apply。停止态明确启用SQLite权威策略，分别限制在线归档和所有保留任务；默认旧max_jobs不变。运行/等待/未知和保留原件计在线；已确认purge或cold原件删除的回执、账单及任务对应后，同一提交更新名额。copy、read activation、trash、部分删除及目录意外缺失不释放名额；原ID/键/结果/attempt/引用/撤销继续占有限控制历史。1<=online<=control<=10000、256MiB总任务元数据审计和128次策略批准有界；本轮不删除控制历史或启用自动维护。
+
+新模式索引选取工作集并核JSON/标量一致性；用户最近预留时间用单独标量索引保留原轮转，避免将终态排除后改变公平性。授权历史API分页、SQL授权结果连接和实际UTF8/CSV引号后32MiB输出上限已接通，过大明确拒绝，分页仍完整。未改网页布局；容量状态新增于原summary/API，历史分页未新增网页翻页控件。
+
+新普通任务只在私有job保存规范原请求SHA和标准化指纹。原鉴权/全局维护门禁后，同owner/key和完全相同原JSON请求可返回原回执，跨workspace恢复仍保ID、免费、不再执行；改变请求继续标准化。旧任务不猜测补回执，固定日程/开户探针和任务图沿原协议。实验绑定、跨owner、scope、图整批回滚和撤权读取保持。启用后的恢复要求原任务语义、key/fingerprint/结果/attempt、名额及策略批准全部保留，缺helper旧包拒降级。
+
+最终全量 **job-138c4b50a6fc：1437项/339.032秒/零跳过，check.sh随后JS语法通过**；新增26项容量/重放/ACL/CSV/索引及1项cold额度与名额原子提交，共27项。专项 **job-4cd869396a05** 为前三新增前23项通过，不冒充26项专项运行。非mdCORE119+递归tests/helpers287+scanner/check.sh/webapp共409路径source-frozen-r6；最终full/native同冻结。
+
+实际原生 **job-57d6b680a10a**：同一7bee systemd249.11镜像、UID999/零能力中央、独立128MiB ext4池，无socket/NPU，原IR提交后取消、0attempt，P/Q仍为明确传输样本。初始control2/online1；原件warm阻止新key、原key返回原ID。策略before_commit/committed两处加原17处cold/reader/retire实际SIGKILL共19处，同计划恢复。先保留原件restore并完整字节/新inventory批准，再GC释放唯一在线名额，第二job在原online1下实际准入后取消。恢复池写权仍冻结；第二归档保留warm，Root再显式将online改为2（control仍2），在在线尚有余量时第三job仍因控制历史满拒绝。此修改只在隔离fixture，不是Main上调或绕过留存。
+
+最新备份再restore保留原两个job/回执/策略revision2、control2/online1；原原始请求在第一次和第二次workspace迁移后均实际HTTP解析同ID。第一个cold reader仍先冻结、显式Root恢复读，池/复制写权不复活；另一个逻辑owner四种读取和历史列表拒绝/空。这两名逻辑owner共享服务UID，不等于两个宿主Linux登录用户。
+
+独立队列审计读取私有tar/SQLite/Root完整删除库存和已卸载ext4：两个原任务/0attempt、两个策略批准、私有原请求SHA、一次cold信用/名额、原件与隔离消失、完整cold字节原SHA及P/Q、第二warm文件逐SHA和恢复后原读权威核对。容器/volume/helper清退，loop释放且sysfs不关联，parent/host cgroup不变。原始私有材料不公开，摘要在reports/public-source-check.json.history_capacity。
+
+失败全部保留：focus-r1图fixture误给阶段key；full-r1=1434/1fail暴露轮转历史丢失；native-r1两实际策略SIGKILL后Cursor无fetchall，修为迭代；native-r2预期409已正确返回但测试误读无错误正文的客户端；native-r3走完19fault并复用名额后尝试向恢复冻结池写入，被正确拒绝。full-r2=1437/254.046s通过，之后只修native fixture与冻结脚本范围，最终full以本节为准。没有因观察超时重提或重启原任务。
+
+Main仍原1100计数、2CPU/2048MiB/max1与原SHM/存储/19profiles/资源域/zdl/保护6/领域agent/web；未启用新策略，未删记录，未新增实际日程/规则/参考/图、模型调用或NPU计算。本轮仅增加安装包/源码功能，未为此重启现有Main。整体goal active/production_ready=false：最终控制历史轮转、cold身份/盘迁移及pending取消、真实宿主开机/两登录用户、管理员受控NPU正向/数值/性能/仿真、两物理机fencing、20混合长期及PUBLIC-001继续待。操作见HISTORY_CAPACITY.md，旧设计完整另存HISTORY_CAPACITY_DESIGN.md。
+
+
 ## 2026-11-03 权威冷存读取与原件回收（最终1410项/两恢复路径各17边界通过）
 
 新增cold_reads.py/cold_retention.py和Root `cold-read-plan`、`cold-retire-plan`、`cold-read-resume-plan`、`cold-retention-apply`。以原copy plan/回执为基础，独立批准读权威，再以绑定原reader、任务语义、账单和引用快照的计划分步回收原件。原任务/attempt/幂等键/结果/授权不变，source grants、图、自检/参考及设备资格记录保留。普通属主不再用旧trash/purge删除已接管归档；复制/读取/原件维护是独立动作。

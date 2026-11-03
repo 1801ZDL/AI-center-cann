@@ -250,6 +250,11 @@ def handler_class(store, config, jobs=None):
                         if len(parts)!=3:raise JobError('Experiment budget not found',404)
                         with jobs.connect() as db:value=jobs.experiment_budgets.get(db,parts[2],self.principal)
                         return self.reply({'budget':value})
+                    if path=='/api/jobs/history':
+                        query=parse_qs(parsed.query)
+                        try:limit=int(query.get('limit',['100'])[0]);offset=int(query.get('offset',['0'])[0])
+                        except ValueError:raise JobError('Invalid job history page')
+                        return self.reply(jobs.history_page(self.principal,limit,offset,query.get('state',[None])[0]))
                     if path in {'/api/results','/api/results.csv'}:
                         query=parse_qs(parsed.query);kind=query.get('kind',[None])[0]
                         if path.endswith('.csv'):
