@@ -277,3 +277,5 @@ compiler-case是对原任务/日志/artifact-chunk读取接口的固定路径组
 `GET /api/jobs` 新增 `history_capacity`：legacy模式返回原max_jobs；管理员显式启用separate模式后返回limits、聚合usage、blocks_new_jobs以及history_deletion_enabled=false。未启用的部署不自动改配置。控制历史和在线归档任一满时，新任务返回409；原幂等请求仍可返回原job，不重复计费。查询/结果页与已有任务恢复继续可用。
 
 新模式的 `/api/results` 使用相同分页合同；CSV过大时明确409，分页接口保留完整数据访问。操作、原请求跨workspace恢复重放的有限范围、备份/降级门禁及后续边界见[历史容量合同](https://github.com/1801ZDL/AI-center-cann/blob/main/HISTORY_CAPACITY.md)。
+
+控制历史启用显式JSON迁出后，`history_capacity.usage.control_jobs`计完整在线任务体，`compact_history`提供紧凑索引数量/4096上限。原详情、尝试和历史分页仍沿当前ACL返回原事实；外部私有副本不可用明确失败，不补任务。迁出只有停机Root `servicectl control-rotate-plan/apply`，无普通用户写API，详见[CONTROL_ROTATION.md](CONTROL_ROTATION.md)。

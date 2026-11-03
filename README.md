@@ -158,3 +158,5 @@ bash scripts/check.sh /usr/bin/python3
 [公开验收摘要](reports/v036-public.json) 整理了历史检查范围；原始本机报告和测试盘不公开，见 [evidence/README.md](evidence/README.md)。本仓库不包含个人模型密钥、运行数据库、聊天记录、第三方工具二进制、CANN/LLVM 镜像或已有实验产物。
 
 编译诊断的完整小IR、封存驱动及受保护工具锁绑定，见 [COMPILER_DIAGNOSTICS.md](COMPILER_DIAGNOSTICS.md)。当前只验最小实际解析/验证案例，不代表一般bug自动修复、完整lowering或数值验收。
+
+终态任务元数据可由管理员沿[控制JSON迁出](CONTROL_ROTATION.md)显式迁至已核对的私有副本，保留原ID、幂等、当前ACL和正常历史查询；Main未启用，全部关联表和最终长期留存仍待。

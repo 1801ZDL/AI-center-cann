@@ -49,12 +49,15 @@ def current(db):
     limits(value['max_control_jobs'],value['max_online_archives']);return value
 
 
-def decode(row):
+def decode(row,db=None,cache=None):
     identifier,owner,state,raw=row
     if len(raw.encode())>32*1024**2:raise error('Job metadata exceeds history audit bound')
     value=json.loads(raw)
     if not isinstance(value,dict) or (value.get('id'),value.get('owner'),value.get('state'))!=(identifier,owner,state) or state not in STATES:
         raise error('Job columns and retained metadata disagree; reconcile before continuing')
+    if db is not None:
+        from control_rotation import read
+        return read(db,raw,cache=cache)
     return value
 
 
@@ -113,14 +116,16 @@ def initialize(db):
 
 
 def snapshot(db,*,validate_slots=True):
-    policy=current(db);values=[];total=0
-    for row in db.execute('SELECT id,owner,state,data FROM jobs ORDER BY rowid LIMIT ?',(MAX_JOBS+1,)):
+    policy=current(db);values=[];total=0;cache={}
+    from control_rotation import count,MAX_INDEX
+    migrated=count(db);bound=MAX_JOBS+MAX_INDEX if migrated else MAX_JOBS
+    for row in db.execute('SELECT id,owner,state,data FROM jobs ORDER BY rowid LIMIT ?',(bound+1,)):
         total+=len(row[3].encode())
-        if len(values)>=MAX_JOBS or total>256*1024**2:raise error('Control history audit exceeds finite metadata budget')
-        job=decode(row);proof=online_proof(db,job)
+        if len(values)>=bound or total>256*1024**2:raise error('Control history audit exceeds finite metadata budget')
+        job=decode(row,db,cache);proof=online_proof(db,job)
         values.append((job['id'],int(proof['kind']=='online'),encode(proof).decode()))
     if policy and validate_slots:
-        saved=list(db.execute('SELECT job_id,online,proof FROM history_capacity_slots ORDER BY rowid LIMIT ?',(MAX_JOBS+1,)))
+        saved=list(db.execute('SELECT job_id,online,proof FROM history_capacity_slots ORDER BY rowid LIMIT ?',(bound+1,)))
         if sorted(saved)!=sorted(values):raise error('Online archive projection differs from confirmed retained history')
     history_sha=hashlib.sha256()
     for row in db.execute('SELECT id,owner,idem_key,fingerprint,state,data FROM jobs ORDER BY rowid'):
@@ -130,7 +135,7 @@ def snapshot(db,*,validate_slots=True):
         approvals=list(db.execute('SELECT id,record FROM history_capacity_changes ORDER BY rowid LIMIT ?',(MAX_CHANGES+1,)))
         if len(approvals)>MAX_CHANGES:raise error('History capacity approval history is full')
     return {'policy':policy,'jobs_sha256':history_sha.hexdigest(),'slots_sha256':sha(sorted(values)),
-        'approvals_sha256':sha(approvals),'control_jobs':len(values),'online_archives':sum(v[1] for v in values)},values
+        'approvals_sha256':sha(approvals),'control_jobs':len(values)-migrated,'online_archives':sum(v[1] for v in values)},values
 
 
 def release(db,job):
@@ -150,13 +155,18 @@ class Capacity:
         with jobs.connect() as db:
             self.policy=current(db)
             if self.policy:snapshot(db)
+            from control_rotation import validate
+            validate(db)
 
     def counts(self,db):
         count=db.execute('SELECT count(*) FROM jobs').fetchone()[0]
         slots,online=db.execute('SELECT count(*),coalesce(sum(online),0) FROM history_capacity_slots').fetchone()
         if slots!=count or db.execute('SELECT 1 FROM history_capacity_slots s LEFT JOIN jobs j ON j.id=s.job_id WHERE j.id IS NULL LIMIT 1').fetchone():
             raise error('Original history slot projection is incomplete')
-        return {'control_jobs':count,'online_archives':online}
+        from control_rotation import count as migrated_count
+        migrated=migrated_count(db)
+        if migrated>count:raise error('Compact history count exceeds retained identities')
+        return {'control_jobs':count-migrated,'online_archives':online}
 
     def admit(self,db):
         values=self.counts(db)
@@ -165,10 +175,14 @@ class Capacity:
 
     def status(self):
         if self.policy is None:return {'mode':'legacy','max_jobs':self.jobs.policy['max_jobs'],'separate_limits_enabled':False}
-        with self.jobs.connect() as db:usage=self.counts(db)
+        with self.jobs.connect() as db:
+            usage=self.counts(db)
+            from control_rotation import count,MAX_INDEX
+            compact_jobs=count(db)
         return {'mode':'separate','separate_limits_enabled':True,'limits':{k:self.policy[k] for k in ['max_control_jobs','max_online_archives']},
             'usage':usage,'blocks_new_jobs':usage['control_jobs']>=self.policy['max_control_jobs'] or usage['online_archives']>=self.policy['max_online_archives'],
-            'history_deletion_enabled':False,'automatic_retirement_enabled':False}
+            'history_deletion_enabled':False,'automatic_retirement_enabled':False,
+            'compact_history':{'jobs':compact_jobs,'max_jobs':MAX_INDEX,'external_verified_copy_required':compact_jobs>0,'automatic_migration_enabled':False}}
 
     def add(self,db,job):
         if self.policy:
@@ -177,7 +191,7 @@ class Capacity:
 
     def working(self,db,states):
         states=tuple(sorted(set(states)))+('__invalid__',)
-        return [decode(r) for r in db.execute('SELECT id,owner,state,data FROM jobs WHERE '+EXPR+' IN ('+','.join('?' for _ in states)+') ORDER BY rowid',states)]
+        return [decode(r,db) for r in db.execute('SELECT id,owner,state,data FROM jobs WHERE '+EXPR+' IN ('+','.join('?' for _ in states)+') ORDER BY rowid',states)]
 
     def last_dispatch(self,db):
         # Preserve the original owner rotation, including terminal jobs, using
@@ -195,11 +209,11 @@ class Capacity:
         return ' AND '.join(predicates) or '1',args
 
     def dashboard(self,db,principal):
-        where,args=self.acl(principal)
+        where,args=self.acl(principal);cache={}
         active=self.working(db,{'queued','reserved','running','cancelling','needs_attention'})
         pairs={j['id']:(db.execute('SELECT rowid FROM jobs WHERE id=?',(j['id'],)).fetchone()[0],j) for j in active}
         for row in db.execute('SELECT rowid,id,owner,state,data FROM jobs j WHERE '+where+' ORDER BY rowid DESC LIMIT 100',args):
-            pairs[row[1]]=(row[0],decode(row[1:]))
+            pairs[row[1]]=(row[0],decode(row[1:],db,cache))
         counts=dict.fromkeys(STATES,0)
         counts.update(dict(db.execute('SELECT state,count(*) FROM jobs j WHERE '+where+' GROUP BY state',args)))
         return [job for _,job in sorted(pairs.values(),key=lambda pair:pair[0])],counts
@@ -208,8 +222,8 @@ class Capacity:
         from jobs import public
         where,args=self.acl(principal)
         if state is not None:where+=' AND j.state=?';args.append(state)
-        total=db.execute('SELECT count(*) FROM jobs j WHERE '+where,args).fetchone()[0]
-        rows=[decode(r) for r in db.execute('SELECT id,owner,state,data FROM jobs j WHERE '+where+' ORDER BY rowid DESC LIMIT ? OFFSET ?',args+[limit,offset])]
+        total=db.execute('SELECT count(*) FROM jobs j WHERE '+where,args).fetchone()[0];cache={}
+        rows=[decode(r,db,cache) for r in db.execute('SELECT id,owner,state,data FROM jobs j WHERE '+where+' ORDER BY rowid DESC LIMIT ? OFFSET ?',args+[limit,offset])]
         return {'jobs':[public(j) for j in rows],'total':total,'limit':limit,'offset':offset}
 
     def replay(self,db,request,principal):
@@ -217,7 +231,11 @@ class Capacity:
         if not isinstance(key,str) or not 1<=len(key)<=128:return None
         row=db.execute('SELECT id,owner,state,data,fingerprint FROM jobs WHERE owner=? AND idem_key=?',(principal.id,key)).fetchone()
         if not row:return None
-        job=decode(row[:4]);receipt=job.get('_request_identity')
+        job=decode(row[:4])
+        if '_control_history_ref' in job and not self.jobs.access.can_read(principal,job):
+            from jobs import JobError
+            raise JobError('Job not found',404)
+        job=decode(row[:4],db);receipt=job.get('_request_identity')
         if receipt is None:return None
         if (not isinstance(receipt,dict) or set(receipt)!={'format','request_sha256','fingerprint'}
             or receipt['format']!=FORMAT or receipt['fingerprint']!=row[4]):raise error('Original request replay receipt differs')
@@ -317,7 +335,8 @@ def require_history(current_state,staged):
             from cold_reads import semantic
             for row in old.execute('SELECT id,owner,idem_key,fingerprint,data FROM jobs'):
                 saved=new.execute('SELECT owner,idem_key,fingerprint,data FROM jobs WHERE id=?',(row[0],)).fetchone()
-                job=json.loads(row[4]);restored=json.loads(saved[3]) if saved else {}
+                from control_rotation import read
+                job=read(old,row[4]);restored=read(new,saved[3]) if saved else {}
                 if not saved or tuple(saved[:3])!=tuple(row[1:4]) or semantic(job)!=semantic(restored):
                     raise DeployError('Restore would lose original job admission, replay identity, result or attempt')
             if table(old,'execution_attempts'):

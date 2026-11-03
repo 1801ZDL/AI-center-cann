@@ -124,7 +124,8 @@ def require_restore_history(current,staged,role):
                 for ident in value['jobs'].values():
                     row=db.execute('SELECT fingerprint,data FROM jobs WHERE id=?',(ident,)).fetchone()
                     if not row:raise DeployError('Retained graph task is missing')
-                    job=json.loads(row[1]);jobs[ident]=(row[0],job['owner'],job['state'],job.get('attempt_id'),job.get('_graph_id'))
+                    from control_rotation import read as read_job
+                    job=read_job(db,row[1]);jobs[ident]=(row[0],job['owner'],job['state'],job.get('attempt_id'),job.get('_graph_id'))
                     attempts[ident]=list(db.execute('SELECT id,node_id,state,created_at FROM execution_attempts WHERE job_id=? ORDER BY id',(ident,)))
             return graphs,jobs,attempts
     old,jobs,attempts=read(current);new,other,other_attempts=read(staged)

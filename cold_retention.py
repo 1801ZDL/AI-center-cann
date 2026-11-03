@@ -59,7 +59,8 @@ def subject(db,job_id):
     identifier('archive',job_id)
     row=db.execute('SELECT owner,state,data FROM jobs WHERE id=?',(job_id,)).fetchone()
     if not row:raise DeployError('Original cold job is unavailable')
-    job=json.loads(row[2])
+    from control_rotation import read
+    job=read(db,row[2])
     if (job.get('id'),job.get('owner'),job.get('state'))!=(job_id,row[0],row[1]) or row[1] not in TERMINAL:raise DeployError('Cold retention needs an intact confirmed terminal job')
     life=db.execute('SELECT state FROM storage_lifecycle WHERE kind="archive" AND id=?',(job_id,)).fetchone()
     if life and life[0]!='available':raise DeployError('Original logical archive is unavailable')

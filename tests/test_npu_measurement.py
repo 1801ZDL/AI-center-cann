@@ -49,7 +49,7 @@ class MeasurementTests(unittest.TestCase):
         broker=self.broker();first=self.call(broker);self.assertEqual(self.call(broker),first)
         last=self.call(broker,'end');self.assertEqual(self.call(broker,'end'),last)
         self.assertEqual(self.calls,2);document=broker.document()
-        self.assertNotIn('token',document);self.assertNotIn('private',json.dumps(document));self.assertNotIn('99',json.dumps(document['windows'][0]['before']['devices']))
+        self.assertNotIn('token',document);self.assertNotIn('private',json.dumps(document));self.assertEqual([device['id'] for device in document['windows'][0]['before']['devices']],[0])
         row=measurement.normalize(self.job,document);self.assertEqual(row['status'],'recorded');self.assertFalse(row['performance_qualified'])
         self.assertEqual(row['windows'][0]['frequency_samples_in_window'],0)
     def test_peer_uid_token_job_and_attempt_are_all_bound(self):

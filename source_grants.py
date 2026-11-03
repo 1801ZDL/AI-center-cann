@@ -221,8 +221,9 @@ def require_compatible(state):
     with sqlite3.connect(path.as_uri()+'?mode=ro',uri=True) as db:
         if db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='source_grants'").fetchone() and db.execute('SELECT 1 FROM source_grants LIMIT 1').fetchone():
             raise DeployError('Historical source grants require matching code; refusing downgrade')
-        for raw, in db.execute('SELECT data FROM jobs'):
-            if any('source_grant' in x for x in json.loads(raw).get('artifact_inputs',[])):
+        from control_rotation import all_jobs
+        for job in all_jobs(db):
+            if any('source_grant' in x for x in job.get('artifact_inputs',[])):
                 raise DeployError('Source grant workflow history requires matching code; refusing downgrade')
 
 

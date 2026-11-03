@@ -81,6 +81,8 @@ class Lifecycle:
         subject=self.subject(kind,value,principal,db)
         if self.jobs.inventory.holds(db=db):raise JobError('Reconcile outstanding node execution inventories before storage maintenance',409)
         if kind=='archive':
+            from control_rotation import guard_write
+            guard_write(db,value)
             if subject['state'] not in TERMINAL:raise JobError('Running, queued or unknown tasks cannot be retired',409)
             from cold_reads import record as cold_reader
             if cold_reader(db,value):raise JobError('Authoritative cold archive requires its explicit administrator retention workflow',409)

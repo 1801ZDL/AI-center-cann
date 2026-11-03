@@ -358,6 +358,8 @@ def restore(prefix,archive_path,new_state,max_bytes=10*1024**3,payload_config=No
                 require_capacity_history(old,stage)
                 from control_history import require_history as require_export_history
                 require_export_history(old,stage)
+                from control_rotation import require_history as require_rotation_history
+                require_rotation_history(old,stage)
             relocate(stage,manifest['original_state'],target,meta['role'],
                      original_payload['path'] if original_payload else manifest['original_state'],policy['path'] if policy else None)
             restored_config=read_json(stage/'config.json')
@@ -468,6 +470,9 @@ def require_control_storage(config,role,manifest):
 
 
 def require_features(state,role,manifest,installation=None):
+    from control_rotation import all_jobs as retained_jobs
+    from control_rotation import require_compatible as require_rotation
+    require_rotation(state,role,manifest)
     from control_history import require_compatible as require_history_export
     require_history_export(state,role,manifest)
     from history_capacity import require_compatible as require_capacity
@@ -494,7 +499,7 @@ def require_features(state,role,manifest,installation=None):
         path=Path(state)/'jobs.sqlite3'
         if path.exists():
             with sqlite3.connect(path.as_uri()+'?mode=ro',uri=True) as db:
-                if any(json.loads(raw).get('_cooperative_start') or json.loads(raw).get('_cooperative_deferral_count') for raw, in db.execute('SELECT data FROM jobs')):
+                if any(job.get('_cooperative_start') or job.get('_cooperative_deferral_count') for job in retained_jobs(db)):
                     raise DeployError('Retained cooperative prestart contracts require compatible code; refusing downgrade')
     if role=='controller' and 'reference_maintenance.py' not in manifest.get('files',{}):
         from reference_maintenance import read_ledger
@@ -511,7 +516,7 @@ def require_features(state,role,manifest,installation=None):
         path=Path(state)/'jobs.sqlite3'
         if path.exists():
             with sqlite3.connect(path.as_uri()+'?mode=ro',uri=True) as db:
-                if any(json.loads(raw).get('_measurement_contract') for raw, in db.execute('SELECT data FROM jobs')):
+                if any(job.get('_measurement_contract') for job in retained_jobs(db)):
                     raise DeployError('Retained measurement attempt evidence requires compatible code; refusing downgrade')
     if role=='controller' and 'device_evidence.py' not in manifest.get('files',{}):
         path=Path(state)/'jobs.sqlite3'
@@ -530,7 +535,7 @@ def require_features(state,role,manifest,installation=None):
         path=Path(state)/'jobs.sqlite3'
         if path.exists():
             with sqlite3.connect(path.as_uri()+'?mode=ro',uri=True) as db:
-                if any(json.loads(row[0]).get('placement') for row in db.execute('SELECT data FROM jobs')):
+                if any(job.get('placement') for job in retained_jobs(db)):
                     raise DeployError('Exact placement jobs require matching Node/device constraints; refusing downgrade')
     if not {'node_quota_admin.py','node_quota_change.py'}<=set(manifest.get('files',{})):
         if role=='node' and (installation or {}).get('node_quota_revision',0)>0:
@@ -603,7 +608,7 @@ def require_features(state,role,manifest,installation=None):
         path=Path(state)/'jobs.sqlite3'
         if path.exists():
             with sqlite3.connect('file:'+str(path)+'?mode=ro',uri=True) as db:
-                if any(json.loads(row[0]).get('depends_on') for row in db.execute('SELECT data FROM jobs')):
+                if any(job.get('depends_on') for job in retained_jobs(db)):
                     raise DeployError('Dependency jobs require matching stage admission support; refusing downgrade')
     if role=='controller' and 'source_grants.py' not in manifest.get('files',{}):
         from source_grants import require_compatible
@@ -613,7 +618,7 @@ def require_features(state,role,manifest,installation=None):
         if path.exists():
             from dependency_conditions import uses_terminal
             with sqlite3.connect(path.as_uri()+'?mode=ro',uri=True) as db:
-                if any(uses_terminal(json.loads(row[0])) for row in db.execute('SELECT data FROM jobs')):
+                if any(uses_terminal(job) for job in retained_jobs(db)):
                     raise DeployError('Terminal artifact conditions require matching handoff admission support; refusing downgrade')
     if role=='node' and config.get('persistent_cache') and 'persistent_cache.py' not in manifest.get('files',{}):
         raise DeployError('Persistent cache leases require matching cache lifecycle support; refusing downgrade')

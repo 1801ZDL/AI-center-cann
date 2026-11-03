@@ -67,6 +67,7 @@ def source(db,identifiers):
         row=db.execute('SELECT id,owner,state,data,idem_key,fingerprint FROM jobs WHERE id=?',(ident,)).fetchone()
         if row is None:raise DeployError('Selected original job is unavailable')
         job=decode(row[:4])
+        if '_control_history_ref' in job:raise DeployError('Use the original migrated snapshot; chained history copies are not supported')
         if job['state'] not in TERMINAL:raise DeployError('Only confirmed terminal control history can be copied')
         descriptors.append({'id':ident,'owner':job['owner'],'state':job['state'],'fingerprint':row[5],'semantic_sha256':semantic(job)})
         if job.get('experiment_id'):keys.add(job['experiment_id'])
@@ -329,14 +330,17 @@ def verify_copy(prefix,value):
 def status(jobs,principal,identifier):
     from jobs import JobError
     if not principal.admin or not re.fullmatch('[0-9a-f]{64}',identifier):raise JobError('Control export not found',404)
-    with jobs.connect() as db:found=rows(db).get(identifier)
+    with jobs.connect() as db:
+        found=rows(db).get(identifier)
+        migrated=db.execute('SELECT count(*) FROM control_rotation_jobs WHERE export_id=?',(identifier,)).fetchone()[0] if exists(db,'control_rotation_jobs') else 0
     if found is None:raise JobError('Control export not found',404)
     state,record=found;verified=False;proof={}
     if state in {'verified','restore_frozen'}:
         try:body,proof=checked(record['plan']['binding']['prefix'],record);verified=True
         except (DeployError,OSError,ValueError):raise JobError('Historical control snapshot is unavailable',409) from None
     return {**response(record,state,verified=verified),'readonly_mount':proof.get('readonly_mount'),
-        'selected_job_count':len(record['plan']['selection'])}
+        'selected_job_count':len(record['plan']['selection']),'normal_read_authority':migrated>0,
+        'control_capacity_released':migrated>0,'migrated_job_count':migrated}
 
 
 def require_stable_code(state):

@@ -188,6 +188,8 @@ class JobStore:
             db.close()
 
     def write(self, db, job):
+        from control_rotation import guard_write
+        guard_write(db,job['id'])
         if job['state'] in TERMINAL:self.storage.settle(db,job)
         db.execute('UPDATE jobs SET state=?,data=? WHERE id=?',
                    (job['state'], json.dumps(job, ensure_ascii=False), job['id']))
@@ -203,7 +205,9 @@ class JobStore:
 
     def all(self, db=None):
         if db is not None:
-            return [json.loads(r[0]) for r in db.execute('SELECT data FROM jobs ORDER BY rowid')]
+            from control_rotation import read
+            cache={}
+            return [read(db,r[0],cache=cache) for r in db.execute('SELECT data FROM jobs ORDER BY rowid')]
         with self.connect() as connection:
             return self.all(connection)
 
@@ -225,7 +229,8 @@ class JobStore:
         job = json.loads(row[0])
         if principal and not self.access.can_read(principal, job):
             raise JobError('找不到此作业。', 404)
-        return job
+        from control_rotation import read
+        return read(db,row[0])
 
     def directory(self, job_id, owner=None):
         # IDs never become arbitrary file paths.
@@ -502,7 +507,8 @@ class JobStore:
         if existing:
             if existing[1] != fingerprint:
                 raise JobError('该幂等键已经用于不同的任务。', 409)
-            existing_job=json.loads(existing[0])
+            from control_rotation import read
+            existing_job=read(db,existing[0])
             if _staged_probe is not None:validate(self,_staged_probe,db,identities,existing_job)
             return public(existing_job), True
         self.nodes.probe_submission(spec,principal,db)

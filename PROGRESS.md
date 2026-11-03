@@ -1,5 +1,26 @@
 # 实施进度
 
+## 2026-11-03 终态任务JSON迁出、原历史读与完整记录名额复用（1470项/原生2中断）
+
+新增control_rotation.py及Root control-rotate-plan/apply，沿原停止态锁/服务UID SQLite VFS，要求已显式启用双容量、原任务终态且在线slot已由原purge或cold retire证明释放。选择先前verified副本中明确selection的1..32原job；当前原六列与副本逐字节一致、代码/安装/配置/DB/策略/全体历史摘要绑定。普通目录丢失、trash、复制完成都不能迁出。首次事务写紧凑索引及原批准，替换同一jobs行data，原五标量列/rowid/unique(owner,key)保持，事务提交后才把完整control计数减去已批准索引，原online slot不另释放。提交前rollback/提交后原plan重放，不重复credit。
+
+紧凑JSON最多16KiB，保身份/state/ACL/experiment/顺序/archive覆盖字段及私有原文件引用，不含完整_token/result/argv。原任务get/all/分页/首页/幂等、cold subject和恢复图读取经完整SHA/规范JSON/Root权限/devino核验从原文件取得完整事实；原ACL先行，实验绑定raw replay也先验当前ACL，文件丢坏不回退或造新job。page与批量操作至多缓存一份文件且每次请求重验；未启用迁出的旧部署不新增SQL JSON启动依赖。旧功能接管检查也读取完整迁出事实，不因紧凑JSON缺字段漏掉measurement等downgrade保护。原attempt/result/grant/撤销/账单/图仍是SQL权威，没有从快照恢复权限。
+
+这是有界第二层，不是全部控制表轮转：最多4096索引，原副本仍1..128份/有限字节，达到上限保留原件并拒；审批、attempt/result等仍增长，最终轮转/异地副本迁移/反向迁回/pending取消仍待。只保证job JSON主体变小，附加索引和批准也占SQL，不声称SQLite物理文件已缩小、VACUUM或安全擦除。GET容量新增compact_history计数/上限，副本admin status现在准确标明是否已供正常读取。操作见CONTROL_ROTATION.md。
+
+最终原Main单lease **job-5f06f0c4b7e7**（2CPU/2048MiB/max1/SHM0/NPU0）中，focus case15为70项含新增16；full case17为1470/374.808秒/0skip，固定check.sh整条exit0且JS语法通过。最终source-frozen-r8=121非mdCORE+291递归tests/helpers+scanner/check.sh/webapp=415；full/native/audit同冻结。期间原case7通过1467项，是补最终feature guard/page cache前候选；case14=1469/299.931s是补最后legacy启动兼容前候选，不冒充最终。
+
+实际native case16：原7bee/systemd249.11、无socket/NPU/新disk/image。两阶段IR图真实提交后cancel，0Node执行；仅自有fixture配置显式1秒trash宽限后，经真实API完成第一归档purge，原双容量2/2变control2 online1。Root副本核验后，在before_commit/committed两处真实SIGKILL各-9，原计划恢复；同一原任务body由2914字节变619字节紧凑索引，原_token/完整JSON仍在Root0/服务组0440文件。原service实际RO视图下详情/历史页/attempt/图原请求同ID重放及当前peer404通过；UID/GID23901/groups[]读私有文件EACCES。完整control降到1/online仍1，在原limit2/2下接收并cancel第三job，control2 online2后新key继续409。源不是编译或NPU正确性样本。
+
+最新state restore保紧凑身份、一次credit和外部原JSON，archive_dir可按既有流程重定位；旧snapshot/缺helper包拒，旧写plan因binding stale拒，副本restore_frozen仍允许历史RO。不能恢复旧来源/消费/冷写权。副本仍在Rootprefix普通state备份外、同安装FS，未证明独立故障域或异地UID/路径迁移。
+
+独立audit case18仅读私有tar/SQL/原文件：完整原行与RootSHA/规范字节、紧凑索引/plan hash/原key/FP/state、3原身份行与1迁出索引/一次审批、slot(3,2)及原limit2/2、所有旧result/attempt/billing/graph逐项保留、原第一warm目录不存在、旧计划和原文件继续保留；原生各轮容器清退、parent/cgroup不变。公开只curated reports.public-source-check.control_rotation；原SQL/计划/私有文件/tar不上传。
+
+保留失败：native case2在两kill已完成后请求不存在的attempts独立URL而404，改用原详情中的attempts；case3完成读/原名额新准入后错误期待CLI暴露JobError stale-binding文本，CLI正确脱敏，保原脱敏并用Root直接helper验证409 binding原因，未松guard。case4旧候选通过；case6旧r5通过；case9中间r6通过，case13中间r7通过，case16最终r8通过。full case10=1469/1fail是原measurement测试把普通sampled_at中的99当成设备99，改为精确device.id列表[0]断言，未放宽设备过滤。新变体均原case终态后发，观察timeout不换原Main job。
+
+Main仍1100/全部旧记录/原计算和存储预算，未重启、未加载新策略、未对Main迁出或purge；真实daily plans/rules/references/graphs仍不启。真实宿主/两登录账号/非root NPU正向数值性能仿真、两物理机fencing、20混合长期与PUBLIC-001仍欠，整体goal active/production_ready=false。
+
+
 ## 2026-11-03 控制记录Root私有副本前置（1454项/原生7中断边界）
 
 新增control_history.py与Root control-history-plan/step/verify。停止态选择1..32终态job，复制原完整SQL行（owner/key/FP/私有JSON）、attempt/result/账单及直接相关图、预算、来源与设备证据；身份/凭据仍由原备份管理，副本不成为当前授权。每份<=32MiB，总应用预算1MiB..1GiB/1..128份固定；每表10000/扫描256MiB有界，Rootprefix外置于state目录但未证明独立物理故障域。

@@ -114,6 +114,7 @@
     "cold_retention.py",
     "history_capacity.py",
     "control_history.py",
+    "control_rotation.py",
     "job_graphs.py",
     "graph_client.py",
     "control_monitor.py",
