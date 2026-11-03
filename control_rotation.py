@@ -102,6 +102,27 @@ def read(db,raw,*,cache=None):
     return restored
 
 
+def read_many(db,raws):
+    """Group a caller-filtered finite batch by copy, restoring input order.
+
+    Interleaved SQL rows must not repeatedly evict/reparse the same copy. Keep
+    only one parsed private snapshot at a time, with no cross-request cache.
+    The grouping key is merely a hint: read() still validates every original
+    SQL row, approval, reference, source checksum and retained ACL projection.
+    Callers must apply current authorization before supplying private rows.
+    """
+    groups={};count=0
+    for index,raw in enumerate(raws):
+        value=json.loads(raw);reference=value.get(REF)
+        key=reference.get('export_id') if isinstance(reference,dict) else None
+        if not isinstance(key,str):key=None
+        groups.setdefault(key,[]).append((index,raw));count+=1
+    result=[None]*count;cache={}
+    for members in groups.values():
+        for index,raw in members:result[index]=read(db,raw,cache=cache)
+    return result
+
+
 def all_jobs(db):
     cache={}
     for raw, in db.execute('SELECT data FROM jobs ORDER BY rowid'):

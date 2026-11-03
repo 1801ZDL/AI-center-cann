@@ -205,9 +205,8 @@ class JobStore:
 
     def all(self, db=None):
         if db is not None:
-            from control_rotation import read
-            cache={}
-            return [read(db,r[0],cache=cache) for r in db.execute('SELECT data FROM jobs ORDER BY rowid')]
+            from control_rotation import read_many
+            return read_many(db,(r[0] for r in db.execute('SELECT data FROM jobs ORDER BY rowid')))
         with self.connect() as connection:
             return self.all(connection)
 

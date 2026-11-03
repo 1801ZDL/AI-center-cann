@@ -9752,5 +9752,75 @@
       "Real host accounts/boot, controlled nonroot NPU numerical/performance/simulation, two physical hosts and mixed long-term load.",
       "Real daily card plans remain disabled; PUBLIC-001 nightly PR attribution stays deferred."
     ]
+  },
+  "history_batch": {
+    "schema": "ai-center-cann-history-batch/v1",
+    "passed": true,
+    "verified_at": "2026-11-03T11:00:52.226819+00:00",
+    "outer_job": "job-9200f364db86",
+    "full_regression": {
+      "case": 4,
+      "tests": 1482,
+      "seconds": 271.409,
+      "skipped": 0,
+      "javascript_syntax": true
+    },
+    "focused_checks": 4,
+    "native_case": 5,
+    "frozen_paths": 418,
+    "production_files": 121,
+    "batch_scope": [
+      "finite authenticated history pages",
+      "dashboard recent rows",
+      "JobStore.all original order"
+    ],
+    "current_acl_filtered_before_copy_read": true,
+    "scalar_projection_checked_before_page_files": true,
+    "one_parsed_private_copy_per_operation": true,
+    "every_distinct_copy_fully_reverified_each_request": true,
+    "same_original_return_order": true,
+    "cross_request_cache": false,
+    "file_integrity_checks_relaxed": false,
+    "concurrent_readers": 20,
+    "load_requests": 40,
+    "peer_requests": 20,
+    "peer_file_reads": 0,
+    "copy_sizes": [
+      4201957,
+      4201976
+    ],
+    "baseline": {
+      "verified_files": 160,
+      "verified_bytes": 672314640,
+      "seconds": 2.934574462007731,
+      "request_median_seconds": 1.2705858514818829,
+      "request_p95_seconds": 1.4480723399901763,
+      "process_peak_rss_kib": 698180
+    },
+    "grouped": {
+      "verified_files": 80,
+      "verified_bytes": 336157320,
+      "seconds": 1.5467443920206279,
+      "request_median_seconds": 0.5877272194920806,
+      "request_p95_seconds": 0.7327583720034454,
+      "process_peak_rss_kib": 523788
+    },
+    "verified_bytes_reduction": 0.5,
+    "load_scope": "Two rounds of20 actual concurrent same-owner JobStore calls, two interleaved ~4MiB snapshots with explicit synthetic result-context padding and unit Root/context stand-ins. Shared host/Linux cache; not HTTP,20 distinct accounts,cold-disk throughput or hardware performance qualification.",
+    "native_scope": "Existing owned native systemd control-rotation scenario: real Root/service/task UID separation, original archive purge, two transaction SIGKILL boundaries, API reads/replay and restore. This scenario is a separate small-history acceptance, not the20-reader load fixture.",
+    "max_size_32mib_by_20_load_proven": false,
+    "main_restarted": false,
+    "main_capacity_policy_enabled": false,
+    "old_main_records_deleted": false,
+    "model_calls": 0,
+    "npu_launches": 0,
+    "production_ready": false,
+    "overall_goal_complete": false,
+    "remaining": [
+      "20 distinct authenticated HTTP users with mixed workloads and 32MiB snapshots; stable latency/memory/admission at scale.",
+      "Related SQL/catalog finite retention, independent archive failure-domain migration and cross-UID/prefix recovery.",
+      "Real host boot/accounts, nonroot NPU numerical/performance/simulation and daily-card UT, two physical hosts/fencing.",
+      "PUBLIC-001 nightly PR attribution remains deferred."
+    ]
   }
 }

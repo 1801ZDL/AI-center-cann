@@ -61,6 +61,15 @@ def decode(row,db=None,cache=None):
     return value
 
 
+def decode_many(rows,db):
+    rows=list(rows)
+    # Validate the SQL projection for the entire authorized batch before opening
+    # any external private file. Hydration rechecks the archived ACL fields.
+    for row in rows:decode(row)
+    from control_rotation import read_many
+    return read_many(db,(row[3] for row in rows))
+
+
 def online_proof(db,job):
     """No cold filesystem read: the atomic confirmed removal receipt is proof.
 
@@ -209,11 +218,12 @@ class Capacity:
         return ' AND '.join(predicates) or '1',args
 
     def dashboard(self,db,principal):
-        where,args=self.acl(principal);cache={}
+        where,args=self.acl(principal)
         active=self.working(db,{'queued','reserved','running','cancelling','needs_attention'})
         pairs={j['id']:(db.execute('SELECT rowid FROM jobs WHERE id=?',(j['id'],)).fetchone()[0],j) for j in active}
-        for row in db.execute('SELECT rowid,id,owner,state,data FROM jobs j WHERE '+where+' ORDER BY rowid DESC LIMIT 100',args):
-            pairs[row[1]]=(row[0],decode(row[1:],db,cache))
+        rows=list(db.execute('SELECT rowid,id,owner,state,data FROM jobs j WHERE '+where+' ORDER BY rowid DESC LIMIT 100',args))
+        for row,job in zip(rows,decode_many((row[1:] for row in rows),db)):
+            pairs[row[1]]=(row[0],job)
         counts=dict.fromkeys(STATES,0)
         counts.update(dict(db.execute('SELECT state,count(*) FROM jobs j WHERE '+where+' GROUP BY state',args)))
         return [job for _,job in sorted(pairs.values(),key=lambda pair:pair[0])],counts
@@ -222,8 +232,8 @@ class Capacity:
         from jobs import public
         where,args=self.acl(principal)
         if state is not None:where+=' AND j.state=?';args.append(state)
-        total=db.execute('SELECT count(*) FROM jobs j WHERE '+where,args).fetchone()[0];cache={}
-        rows=[decode(r,db,cache) for r in db.execute('SELECT id,owner,state,data FROM jobs j WHERE '+where+' ORDER BY rowid DESC LIMIT ? OFFSET ?',args+[limit,offset])]
+        total=db.execute('SELECT count(*) FROM jobs j WHERE '+where,args).fetchone()[0]
+        rows=decode_many(db.execute('SELECT id,owner,state,data FROM jobs j WHERE '+where+' ORDER BY rowid DESC LIMIT ? OFFSET ?',args+[limit,offset]),db)
         return {'jobs':[public(j) for j in rows],'total':total,'limit':limit,'offset':offset}
 
     def replay(self,db,request,principal):

@@ -1,5 +1,18 @@
 # 实施进度
 
+## 2026-11-03 交错历史副本按请求分组读取（1482项/20并发程序读取）
+
+历史页原来仅缓存一个已解析副本；A/B/A/B交错任务会在同一次请求重复校验、解析A和B。control_rotation.read_many现先把调用方已过滤的有限原行按副本引用分组，逐组调用原read验证，结果写回原下标；只保留一个已解析副本，无跨请求cache、无按mtime放行或跳过全SHA。分组键仅是读取顺序提示，原每行receipt/approval/原六列SHA/当前紧凑ACL投影仍验证。history_capacity.decode_many先核全批SQL id/owner/state投影，再开文件；page继续当前ACL+状态过滤+limit/offset，dashboard近期100条继续原顺序和活动资源，JobStore.all保原rowid顺序。单任务及原幂等、执行、授权/账单合同不变。
+
+原Main单lease **job-9200f364db86**，2CPU/2048MiB/max1/SHM0/NPU0。baseline case1为修改前源码；最终focus case24项：交错页每副本一次及下一请求重验、dashboard/all顺序、缺文件时peer不打开副本、后续请求损坏和标量投影错误拒绝。full case4 **1482/271.409秒/0skip**与JS通过；最终418路径=121非mdCORE+294递归tests/helpers及scanner/check.sh/webapp，同focus/native/full/benchmark/audit冻结。
+
+修改前后各两轮20并发JobStore page调用、共40owner+20peer请求；实际两个交错副本分别4201957和4201976字节，使用明确synthetic的历史result上下文padding、单元Root/context替身，未伪造设备测量或attempt。完整副本校验 **160→80次**、**672314640→336157320字节**，原返回顺序、状态投影与peer0文件读取保持。总观测2.9346→1.5467秒、请求p95 1.4481→0.7328秒、进程峰值RSS 698180→523788KiB，仅共享宿主/Linux缓存下本次程序级测量；不能推导20个真实账号HTTP、冷盘、32MiB最大副本或长期SLO。audit case6独立核原记录/字节计数与结果投影，未将随机ID跨fixture等同。
+
+native case5另跑原生control-rotation安装流程，使用既有7bee/systemd，Root/service/task UID权限、真实purge、before_commit/committed两处真实SIGKILL、原API/原图重放、恢复与旧包/旧snapshot拒绝通过，清退自有容器；该小历史角色验收不冒充20并发负载。公开仅curated history_batch报告；源SQL/Root副本/计划/tar仍本地。Main未重启、未启新capacity/migration策略、旧记录全留，不增加计算预算。
+
+仍需20真实HTTP账号混合长期负载、最大32MiB副本下的内存/准入与延迟、全部关联SQL与索引/副本有限留存、独立故障域迁移和真实宿主/NPU/两物理机。当前整份副本校验成本仍与文件大小相关，分组减少同请求重复，不等于随机访问索引。真实逐卡日检与PUBLIC-001按原门槛不启，整体goal active/production_ready=false。
+
+
 ## 2026-11-03 冷产物、迁出元数据与当前来源授权组合验收（1478项/真实CPU）
 
 在原Main单lease **job-11cc08c4b26b** 内复用2CPU/2048MiB/max1/SHM0/NPU0，实际安装Controller/Node两个原生systemd PID1角色，使用原7bee与任务镜像，无新镜像或模型。新增固定QA入口--cold-history及--preserve-main，必须核对原Main任务及其资源租约；本轮没有重启Main、增加计算预算或删除历史。生产CORE实现未改，新增组合验收和安装夹具修正。
