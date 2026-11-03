@@ -46,9 +46,13 @@ def tree(root):
     finally:os.close(fd)
 
 
-def assert_quiescent(state,role,check_spool=True,*,storage_reconcile=None,cold_export=False):
+def assert_quiescent(state,role,check_spool=True,*,storage_reconcile=None,cold_export=False,metadata_export=False):
     state=Path(state)
     if type(cold_export) is not bool or cold_export and role!='controller':raise DeployError('Cold export is controller-only maintenance')
+    if type(metadata_export) is not bool or metadata_export and role!='controller':raise DeployError('Control history export is controller-only maintenance')
+    if role=='controller' and not metadata_export:
+        from control_history import require_stable_code as require_stable_history
+        require_stable_history(state)
     if storage_reconcile is not None:
         from storage_reconciliation import selection
         if role!='controller' or not isinstance(storage_reconcile,tuple) or len(storage_reconcile)!=2:
@@ -352,6 +356,8 @@ def restore(prefix,archive_path,new_state,max_bytes=10*1024**3,payload_config=No
                 require_cold_reader_history(old,stage)
                 from history_capacity import require_history as require_capacity_history
                 require_capacity_history(old,stage)
+                from control_history import require_history as require_export_history
+                require_export_history(old,stage)
             relocate(stage,manifest['original_state'],target,meta['role'],
                      original_payload['path'] if original_payload else manifest['original_state'],policy['path'] if policy else None)
             restored_config=read_json(stage/'config.json')
@@ -360,6 +366,8 @@ def restore(prefix,archive_path,new_state,max_bytes=10*1024**3,payload_config=No
                 freeze_restored(stage)
                 from cold_retention import freeze_restored as freeze_cold_readers
                 freeze_cold_readers(stage)
+                from control_history import freeze_restored as freeze_history_exports
+                freeze_history_exports(stage)
             if restored_config.get('scheduler',{}).get('control_filesystem')!=original_control:
                 raise DeployError('Snapshot configuration and control manifest differ')
             if native:
@@ -460,6 +468,8 @@ def require_control_storage(config,role,manifest):
 
 
 def require_features(state,role,manifest,installation=None):
+    from control_history import require_compatible as require_history_export
+    require_history_export(state,role,manifest)
     from history_capacity import require_compatible as require_capacity
     require_capacity(state,role,manifest)
     from cold_retention import require_compatible as require_cold_reader
@@ -637,6 +647,8 @@ def activate(prefix,archive_path=None,release_id=None,*,storage_reconcile=None):
         if meta['role']=='controller':
             from cold_retention import require_stable_code
             require_stable_code(state)
+            from control_history import require_stable_code as require_stable_history
+            require_stable_history(state)
         if storage_reconcile is not None:
             from storage_reconciliation import require_legacy_selection
             if meta['role']!='controller':raise DeployError('Storage repair activation belongs to a controller')

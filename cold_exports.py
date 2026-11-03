@@ -81,7 +81,7 @@ def one(db,table,key):
 
 
 @contextmanager
-def context(prefix):
+def context(prefix,*,metadata_export=False):
     from audit_retention import Database,service_identity
     from state_lock import state_lock
     from control_process import offline
@@ -113,7 +113,7 @@ def context(prefix):
         with service_identity(meta):connection=sqlite3.connect(state/'jobs.sqlite3',timeout=5)
         db=Database(connection,meta)
         try:
-            db.execute('BEGIN IMMEDIATE');assert_quiescent(state,'controller',cold_export=True)
+            db.execute('BEGIN IMMEDIATE');assert_quiescent(state,'controller',cold_export=True,metadata_export=metadata_export)
             binding={'prefix':str(prefix),'state_dir':str(state),'release_id':meta['release_id'],
                 'installation_sha256':deploy.digest(prefix/'installation.json'),'configuration_sha256':deploy.digest(state/'config.json'),
                 'database_device':info.st_dev,'database_inode':info.st_ino,'uid':meta['uid'],'gid':meta['gid']}

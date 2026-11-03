@@ -228,6 +228,11 @@ def handler_class(store, config, jobs=None):
                         return self.reply({'events':access.audit(self.principal)})
                     if path == '/api/jobs':
                         return self.reply(jobs.summary(self.principal))
+                    if path.startswith('/api/control-history-exports/'):
+                        from control_history import status
+                        parts=path.strip('/').split('/')
+                        if len(parts)!=3:raise JobError('Control export not found',404)
+                        return self.reply(status(jobs,self.principal,parts[2]))
                     if path.startswith('/api/job-graphs/'):
                         parts=path.strip('/').split('/')
                         if len(parts)!=3:raise JobError('Task graph not found',404)

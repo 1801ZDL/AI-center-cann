@@ -9561,5 +9561,61 @@
       "Two physical nodes, old-authority fencing and long-term mixed load.",
       "No real daily card plans/rules/references enabled; PUBLIC-001 nightly PR attribution deferred."
     ]
+  },
+  "control_history_copy": {
+    "schema": "ai-center-cann-control-history-copy/v1",
+    "passed": true,
+    "verified_at": "2026-11-03T08:54:09.786944+00:00",
+    "outer_job": "job-3b52742a1fe9",
+    "full_regression": {
+      "case": 8,
+      "tests": 1454,
+      "seconds": 372.67,
+      "skipped": 0,
+      "javascript_syntax": true
+    },
+    "focused_case": 6,
+    "focused_checks": 15,
+    "new_cases": 17,
+    "native_case": 7,
+    "actual_sigkills": 7,
+    "copied_control_bytes": 7801,
+    "original_control_jobs": 2,
+    "source_execution_attempts": 0,
+    "service_private_file_read_in_readonly_mount": true,
+    "numeric_task_uid_denied": 23901,
+    "peer_admin_status_denied": true,
+    "source_job_key_fingerprint_result_attempt_billing_preserved": true,
+    "pending_blocks_backup_and_all_activation": true,
+    "frozen_source_column_cleared_after_verified_file": true,
+    "original_plan_replay_and_old_snapshot_rejection": true,
+    "latest_restore_preserves_copy_and_freezes_old_write": true,
+    "private_control_tokens_not_exposed_as_user_artifacts": true,
+    "all_owned_native_containers_removed": true,
+    "protected_runtime_unchanged": true,
+    "production_files": 120,
+    "frozen_paths": 412,
+    "scope": "Selected cancelled IR graph control rows plus directly related metadata; no compiler/NPU computation, same-host owned native fixture and numeric task identity, not two host login users.",
+    "metadata_rotation_implemented": false,
+    "normal_read_authority": false,
+    "control_capacity_released": false,
+    "independent_failure_domain_proven": false,
+    "main_migrated": false,
+    "old_records_deleted": false,
+    "new_images": 0,
+    "model_calls": 0,
+    "npu_launches": 0,
+    "production_ready": false,
+    "overall_goal_complete": false,
+    "retained_failures": [
+      "Initial two unit binding tests shared and mutated their original plan dictionary; context stand-in changed to yield fresh bindings.",
+      "Two initial native graph requests returned400 with incomplete handoff/implicit cwd unsuitable for installed context; explicit artifact import and authorized cwd corrected without relaxing production validation."
+    ],
+    "remaining": [
+      "Control-history index/read authority, original SQL migration and finite quota recovery.",
+      "Pending-copy cancel/rebind, archive retention and prefix/UID/GID/storage migration.",
+      "Real host users/boot, controlled nonroot NPU numerical/performance/simulation, two physical hosts/fencing and mixed long-term load.",
+      "Real daily card plans remain disabled; PUBLIC-001 nightly PR attribution remains deferred."
+    ]
   }
 }

@@ -113,6 +113,7 @@
     "cold_reads.py",
     "cold_retention.py",
     "history_capacity.py",
+    "control_history.py",
     "job_graphs.py",
     "graph_client.py",
     "control_monitor.py",

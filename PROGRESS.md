@@ -1,5 +1,24 @@
 # 实施进度
 
+## 2026-11-03 控制记录Root私有副本前置（1454项/原生7中断边界）
+
+新增control_history.py与Root control-history-plan/step/verify。停止态选择1..32终态job，复制原完整SQL行（owner/key/FP/私有JSON）、attempt/result/账单及直接相关图、预算、来源与设备证据；身份/凭据仍由原备份管理，副本不成为当前授权。每份<=32MiB，总应用预算1MiB..1GiB/1..128份固定；每表10000/扫描256MiB有界，Rootprefix外置于state目录但未证明独立物理故障域。
+
+计划绑定代码/安装/配置/DB与源SHA，首次重新核对后将原源字节持久冻结在暂存列，再按256KiB/fsync/SQL进度写、每步<=4MiB。前缀一致才丢未确认尾；完整封存Root0/服务组0440、目录0750，无覆盖发布，原SHA/身份/规范JSON核对后才清空暂存列并verified，不承诺物理擦除空闲页。Root服务组必须专用。pending阻断普通backup/所有activate（含code-only）；同原plan恢复，Source副本仅代表冻结时刻，不反向授权。
+
+平台管理员GET /api/control-history-exports/id有界状态，实际服务只读视图校验字节，不暴露原JSON/令牌/路径。普通账号404，数值任务UID23901/GID23901/groups[]在内核层读Root文件EACCES。原用户产物清单仍原样。当前不删除/迁出SQL、不切换正常读、不释放任何历史或在线名额；只交付最终轮转所需的证据副本，不能把它表述为已完成长期容量。
+
+同一原Main **job-3b52742a1fe9** 的固定CPU验证程序按显式源码版本保留子检查；原2CPU/2048MiB/max1/NPU0预算、一个attempt/3600秒上限，内部3000秒期限，固定focus/full/native/audit/scan指令，不是另起调度器或任意命令接口。最终focus case6=15项；full case8=1454/372.67秒/0skip及JS语法；新增15控制副本+2隐私边界=17。source-frozen-r4=120非mdCORE+289递归tests/helpers+scanner/check.sh/webapp=412，最终full/native同冻结。
+
+实际native case7：原7bee systemd249.11镜像、无socket/NPU/新盘，实际提交2阶段IR图后cancel、0Node attempt。reserved/file_created/data_synced/progress_committed/sealed/published/verified七处真实SIGKILL各-9，原计划收敛、原SQL/结果/尝试/账单保持；源列只在verified后NULL。原图/幂等/完整私有token保留在7801字节Root文件，未变成用户下载。实际daemon只读mount校验、数值任务拒绝、peer状态404、旧包拒降级、丢导出记录的旧备份拒恢复均通过。最新restore保原两job和历史副本，旧写plan binding stale；Root只读核验和实际API仍成功，状态restore_frozen。该副本文件不在普通state备份内，Rootprefix需独立保管；未验异地prefix/UID/GID/磁盘迁移。
+
+独立audit case9仅读私有tar/SQL/文件：Root0/组/0440及目录0750、原SHA/规范JSON、复制的原控制行与图引用、两原key/FP/state/result/attempt/billing（仅archive_dir按restore变）逐项核对，源暂存NULL、原写权frozen、全部三轮native容器清退。没有新loop/image/模型/NPU计算。公开仅reports.public-source-check.control_history_copy，原副本/Root计划/SQL/tar私有。
+
+保留失败：case1两unit fake context复用了binding字典，修改当前binding连带改了原plan，因此被计划hash检查正确拒；改为新context对象后通过。native case3/5是未完整声明handoff及默认cwd不适用于安装态的fixture HTTP400，补明确产物导入与授权cwd后case7通过，未改生产校验。一次检查完成后才发新variant；观察超时不当作停止/不更换Main job。隐私扫描仅增加本项目固定验证子目录内native tar、固定Root控制文件/peer profile和已知JSON列，不读取模型会话/配置。
+
+Main仍1100、原预算/profiles/domain/zdl/保护6/领域agent/web，未迁移、未删记录、未重启主服务，真实daily plans/rules/references/graphs不启。下一步仍是控制历史读取索引/权威切换/SQL迁出及名额提交、最终留存/轮转和pending取消重绑；Root宿主/两个真实登录用户/真实NPU/两物理机fencing/20混合长期及PUBLIC-001保持未完成。操作见CONTROL_HISTORY.md，goal active/production_ready=false。
+
+
 ## 2026-11-03 在线归档与有限控制历史分离（最终1437项/原生19中断边界）
 
 新增history_capacity.py及Root history-capacity-plan/apply。停止态明确启用SQLite权威策略，分别限制在线归档和所有保留任务；默认旧max_jobs不变。运行/等待/未知和保留原件计在线；已确认purge或cold原件删除的回执、账单及任务对应后，同一提交更新名额。copy、read activation、trash、部分删除及目录意外缺失不释放名额；原ID/键/结果/attempt/引用/撤销继续占有限控制历史。1<=online<=control<=10000、256MiB总任务元数据审计和128次策略批准有界；本轮不删除控制历史或启用自动维护。

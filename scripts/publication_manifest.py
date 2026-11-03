@@ -38,8 +38,8 @@ def source_paths():
     return sorted(paths)
 
 
-def native_fixture_config(path):
-    """Read one fixed private member, without extraction or unbounded inflate."""
+def native_fixture_config(path,include_control=False):
+    """Read fixed project-fixture config/control members; never model files."""
     fd=os.open(path,os.O_RDONLY|os.O_NOFOLLOW|os.O_NONBLOCK)
     with os.fdopen(fd,'rb') as source:
         info=os.fstat(source.fileno())
@@ -47,13 +47,30 @@ def native_fixture_config(path):
         with gzip.GzipFile(fileobj=source) as compressed:raw=compressed.read(16*1024**2+1)
     assert len(raw)<=16*1024**2,'Native fixture archive exceeds inflated limit'
     with tarfile.open(fileobj=io.BytesIO(raw),mode='r:') as archive:
-        selected=None
+        selected=None;control=[];control_members=set()
         for count,member in enumerate(archive,1):
             assert count<=1024,'Native fixture archive has too many members'
-            if member.name!='control/config.json':continue
-            assert selected is None and member.isfile() and member.size<=64*1024,'Invalid native fixture config member'
-            selected=json.loads(archive.extractfile(member).read(64*1024+1))
-    return selected # Early failures may precede controller installation.
+            if member.name=='control/config.json':
+                assert selected is None and member.isfile() and member.size<=64*1024,'Invalid native fixture config member'
+                selected=json.loads(archive.extractfile(member).read(64*1024+1))
+            elif include_control and member.name=='control/personas/history-peer/client.json':
+                assert member.isfile() and member.size<=64*1024,'Invalid control peer fixture profile'
+                control.append(json.loads(archive.extractfile(member).read(64*1024+1)))
+            elif include_control and re.fullmatch(r'installation/control-history/[0-9a-f]{64}\.json',member.name):
+                assert member.isfile() and member.size<=16*1024**2 and len(control_members)<128 and member.name not in control_members,'Invalid private control fixture member'
+                control_members.add(member.name)
+                body=json.loads(archive.extractfile(member).read(16*1024**2+1))
+                assert body.get('format')=='ascend-lab-control-history-export/v1','Unknown control fixture schema'
+                control.append(body)
+                for table in body.get('tables',{}).values():
+                    for row in table.get('rows',[]):
+                        assert len(row)==len(table['columns']),'Control fixture row differs from its columns'
+                        for column,value in zip(table['columns'],row):
+                            if column in {'data','record','profile','proof','report'} and isinstance(value,str) and value.startswith(('{','[')):
+                                control.append(json.loads(value))
+    # Early failures may precede controller installation. The ordinary helper
+    # remains config-only for compatibility with its existing callers/tests.
+    return {'config':selected,'control_history':control} if include_control else selected
 
 
 def private_values():
@@ -115,7 +132,8 @@ def private_values():
     for p in files:
         if p.is_file() and not p.is_symlink():collect(read_json(p))
     archives=set(r.glob('jobs/*/tmp/native-systemd/evidence/private-controller-evidence.tar.gz'))
-    for p in archives:collect(native_fixture_config(p))
+    archives.update(r.glob('jobs/*/tmp/validation-session/case-*/tmp/native-systemd/evidence/private-controller-evidence.tar.gz'))
+    for p in archives:collect(native_fixture_config(p,include_control=True))
     files.update(archives)
     return values,len(files)
 

@@ -6,6 +6,8 @@
 
 面向 Triton-Ascend / AscendNPU-IR 开发服务器的 AI 任务调度与实验管理原型。程序化中央服务负责资源分配和可靠执行，个人 Agent、CLI 与网页通过同一 API 提交任务、读取日志和分析结果。
 
+新增[控制记录的Root私有副本](https://github.com/1801ZDL/AI-center-cann/blob/main/CONTROL_HISTORY.md)：在迁出历史前，先冻结并校验原任务/幂等/尝试/结果/账单及相关引用，分块续写、封存后只读验证。当前不迁出SQL、不切换读取或释放名额；真实中断、服务只读视图和任务UID访问边界的范围见PROGRESS.md。
+
 新增可显式启用的[在线归档/控制历史双容量](https://github.com/1801ZDL/AI-center-cann/blob/main/HISTORY_CAPACITY.md)：确认原件回收才释放在线名额，原任务和结果继续受有限历史上限约束；提供授权历史分页，以及启用后新普通任务在workspace恢复迁移后的原请求重连。现有个人Main保持原1100上限和计算预算，未执行迁移或删除；验收范围见PROGRESS.md。
 
 **当前为 v0.36 基线加后续扩展，尚非生产就绪。** 已有个人身份/项目授权、持久资源账本、受控 Node、五类工作流、环境版本锁、日志归档、独立 CLI/MCP、分角色安装及备份恢复。同机隔离环境已验证真实 CPU 工作流、两任务 UID、硬配额和缓存；完整证据、失败记录与源码范围见 [PROGRESS.md](PROGRESS.md)。

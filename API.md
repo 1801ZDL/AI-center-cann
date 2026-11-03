@@ -270,6 +270,8 @@ compiler-case是对原任务/日志/artifact-chunk读取接口的固定路径组
 图内after与artifact_inputs.node引用局部节点，job内部的普通depends_on/artifact_inputs仍可引用已有任务。全图同一实验预算或都不指定；每阶段正常环境锁/资源/配额/审批与版本协议继续适用。图state=submitted表示全部准入和归档准备完成；执行进展以各节点状态为准。个人CLI/MCP、恢复语义、明确限额与验收边界见[JOB_GRAPHS.md](JOB_GRAPHS.md)。
 # 历史容量与分页补充
 
+平台管理员可读取`GET /api/control-history-exports/<64位id>`，需要`jobs:read`及管理员身份；只返回有界状态和完整字节校验结果，不返回Root路径、原始控制记录或内部令牌。普通账号/未知ID为404，已确认副本不可读为409。副本不成为正常任务读取权威，也不释放历史名额。维护及恢复范围见[CONTROL_HISTORY](https://github.com/1801ZDL/AI-center-cann/blob/main/CONTROL_HISTORY.md)。
+
 `GET /api/jobs/history?limit=100&offset=0&state=cancelled` 需要 `jobs:read`，按原owner/项目/实验权限返回 `{jobs,total,limit,offset}`；limit为1..200，offset非负，state可省略。不会暴露私有请求重放回执。旧模式同样支持该接口；新模式按SQL授权分页，不把全部历史加载至客户端。
 
 `GET /api/jobs` 新增 `history_capacity`：legacy模式返回原max_jobs；管理员显式启用separate模式后返回limits、聚合usage、blocks_new_jobs以及history_deletion_enabled=false。未启用的部署不自动改配置。控制历史和在线归档任一满时，新任务返回409；原幂等请求仍可返回原job，不重复计费。查询/结果页与已有任务恢复继续可用。
