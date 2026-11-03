@@ -15,15 +15,16 @@ from jobs import JobError
 
 
 class HistoryFixture:
-    def __init__(self,padding=0):
+    def __init__(self,padding=0,project=None,max_copy_bytes=None):
         self.env=fixture.ExportTests();self.env.setUp();self.jobs=self.env.jobs;self.base=self.env.base;self.prefix=self.env.prefix
         self.patches=[patch.object(r,'context',h.context),patch.object(c,'context',h.context)]
         for p in self.patches:p.start()
-        self.keys=[self.env.job['id']]
-        for i in range(3):
-            job,_=self.jobs.submit(self.base.request(idempotency_key='batch-history-'+str(i)),self.base.alice)
+        if project:self.jobs.access.add_member(project,'alice','manager')
+        self.keys=[] if project else [self.env.job['id']]
+        for i in range(4 if project else 3):
+            job,_=self.jobs.submit(self.base.request(idempotency_key='batch-history-'+str(i),**({'project':project} if project else {})),self.base.alice)
             self.keys.append(self.jobs.cancel(job['id'],self.base.alice)['id'])
-        c.apply(self.prefix,c.plan(self.prefix,4,4));self.jobs.history=c.Capacity(self.jobs)
+        c.apply(self.prefix,c.plan(self.prefix,5 if project else 4,5 if project else 4));self.jobs.history=c.Capacity(self.jobs)
         self.jobs.policy['storage_trash_grace_seconds']=1
         for ident in self.keys:
             for action in ['trash','purge']:
@@ -36,9 +37,15 @@ class HistoryFixture:
                 for ident in self.keys:
                     value={'job_id':ident,'owner':'alice','kind':'ir','passed':False,'metrics':{},'explicit_load_fixture':'x'*padding}
                     db.execute('INSERT INTO workflow_results VALUES(?,?)',(ident,json.dumps(value)))
+                if max_copy_bytes is not None:
+                    for keys in [self.keys[::2],self.keys[1::2]]:
+                        raw,_=h.source(db,keys);extra=max_copy_bytes-len(raw);assert 0<=extra<64*1024
+                        value=json.loads(db.execute('SELECT record FROM workflow_results WHERE job_id=?',(keys[0],)).fetchone()[0])
+                        value['explicit_load_fixture']+='x'*extra
+                        db.execute('UPDATE workflow_results SET record=? WHERE job_id=?',(json.dumps(value),keys[0]))
         self.originals=[self.jobs.get(k) for k in self.keys];self.copies=[]
         for keys in [self.keys[::2],self.keys[1::2]]:
-            plan=h.plan(self.prefix,keys,{'bytes':64*1024**2,'exports':8})
+            plan=h.plan(self.prefix,keys,{'bytes':128*1024**2 if max_copy_bytes else 64*1024**2,'exports':8})
             for _ in range(40):
                 if h.step(self.prefix,plan,1024**2)['state']=='verified':break
             else:raise AssertionError('Bounded load fixture copy did not complete')

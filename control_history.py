@@ -212,6 +212,11 @@ def save(db,record,state,blob=None):
 
 
 def checked(path,record):
+    from control_rotation import read_admission
+    with read_admission():return _checked(path,record)
+
+
+def _checked(path,record):
     value=record['plan'];check(value)
     base,identity=directory(path,value['binding']['gid'],record['directory'])
     filename=base/(value['id']+'.json');parent=fs.directory(base)

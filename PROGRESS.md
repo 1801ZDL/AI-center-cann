@@ -1,5 +1,20 @@
 # 实施进度
 
+## 2026-11-03 私有历史读取准入与20应用账号的32MiB HTTP验收（1487项）
+
+新增进程内私有历史读取准入：最多2个操作、等待2秒，繁忙返回503/Retry-After:1及数值retry_after_seconds。每线程嵌套调用复用原permit，成功/错误均finally释放；分组批读取在释放前清空解析副本。单任务迁出读、read_many、校验/全历史迭代、容量snapshot和原copies.checked共用门禁，避免只限page而由详情/管理员验证旁路并发解析。无迁出任务的普通读取、工作集与普通新任务不消耗此permit，任务CPU/NPU调度预算不变。原当前ACL先于历史准入，原全SHA/devino/权限/规范JSON/row/approval核验不变，无跨请求cache。/api/me公布进程内读限制；仅原GET错误响应携带有限重试提示，不自动提交或重跑计算。
+
+原Main单lease **job-5fdac6d96c02**，2CPU/2048MiB/max1/SHM0/NPU0，最终419路径冻结=121非mdCORE+295递归tests/helpers+scanner/check.sh/webapp3。focus case45项：繁忙有限等待/peer404、普通新提交与非迁出读取、异常释放和嵌套batch/validate/snapshot、直接文件验证同门禁、真实HTTP503/Retry-After与healthz/peer空页。full case6 **1487/280.39秒/0skip**与JS通过。
+
+HTTP case5创建20个独立应用账号和仅jobs:read的凭据，经实际loopback HTTP读取共享项目的4个原取消任务。两个原h.source/copy/rotation生成的封存副本均精确 **33554432字节**；额外大小来自明确synthetic的workflow_results上下文padding，不伪造设备测量或执行attempt。20个原查询全部200完成，期间16次503均有Retry-After:1，客户端仅重试同一GET；原任务数/状态/顺序保持，无新计算。完整副本核验40次/1342177280字节，最大同时解析 **2**，整测试进程峰值RSS **1087064KiB**（含构造/SQLite上下文），低于原2048MiB预算；观测总8.6098秒、请求p95 7.6188秒。healthz采样37次均200，最大0.2262秒。这是共享宿主/Linux缓存下本次实测，不是冷盘或长期SLO。
+
+撤销reader-0当前项目成员后，历史页0项/详情404且不打开私有文件；恢复viewer后可读。reader-1禁用后旧token401，重新启用也不复活旧token，新token按当前成员读。最后不调用运行时解析器，以分块SHA独立重读两份32MiB原文件，与Root计划SHA一致。明确仍是应用身份，Root/物理文件系统采用unit替身，未建立20个宿主登录UID。native case7另跑既有7bee/systemd小历史流程，Root/service/task UID、两次真实SIGKILL、原API/图重放/恢复和角色清退通过；不能把它算成最大副本的原生service cgroup压力验收。audit case8核原HTTP成功日志/报告、40次全字节计数、20身份、2解析器、RSS边界及原生包121源码hash/清退。
+
+保留失败：focus1错误访问不存在的/api/health得到正确401，改fixture为原/healthz，未放宽认证；HTTP3构造阶段将workflow_results的record误写为data，修正原schema后才运行最大负载，原失败保留。未因观察超时重提Main。公开仅curated history_admission；原SQL/副本/计划/私有tar不上传。
+
+普通CLI/MCP继续只返回脱敏HTTP503，不自动退避或重提交；调用者须保原job ID，查询稍后重试，不能把繁忙当成任务失败。Main原进程未重启/热加载新门禁，未启capacity/migration新策略，旧记录全留；当前1100上限已到，资源预算未变。仍需目标原生service cgroup内最大副本和混合读写/其他接口、长期公平/按字节解析预算、关联SQL留存/独立故障域迁移、真实宿主/NPU/两物理机；真实逐卡日检和PUBLIC-001仍按原门槛不启。整体goal active/production_ready=false。
+
+
 ## 2026-11-03 交错历史副本按请求分组读取（1482项/20并发程序读取）
 
 历史页原来仅缓存一个已解析副本；A/B/A/B交错任务会在同一次请求重复校验、解析A和B。control_rotation.read_many现先把调用方已过滤的有限原行按副本引用分组，逐组调用原read验证，结果写回原下标；只保留一个已解析副本，无跨请求cache、无按mtime放行或跳过全SHA。分组键仅是读取顺序提示，原每行receipt/approval/原六列SHA/当前紧凑ACL投影仍验证。history_capacity.decode_many先核全批SQL id/owner/state投影，再开文件；page继续当前ACL+状态过滤+limit/offset，dashboard近期100条继续原顺序和活动资源，JobStore.all保原rowid顺序。单任务及原幂等、执行、授权/账单合同不变。

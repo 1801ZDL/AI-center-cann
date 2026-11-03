@@ -9822,5 +9822,81 @@
       "Real host boot/accounts, nonroot NPU numerical/performance/simulation and daily-card UT, two physical hosts/fencing.",
       "PUBLIC-001 nightly PR attribution remains deferred."
     ]
+  },
+  "history_admission": {
+    "schema": "ai-center-cann-history-admission/v1",
+    "passed": true,
+    "verified_at": "2026-11-03T11:24:23.811028+00:00",
+    "outer_job": "job-5fdac6d96c02",
+    "full_regression": {
+      "case": 6,
+      "tests": 1487,
+      "seconds": 280.39,
+      "skipped": 0,
+      "javascript_syntax": true
+    },
+    "focused_checks": 5,
+    "native_case": 7,
+    "http_case": 5,
+    "frozen_paths": 419,
+    "production_files": 121,
+    "max_private_read_operations_per_process": 2,
+    "read_wait_seconds": 2,
+    "busy_http_status": 503,
+    "retry_after_seconds": 1,
+    "nested_readers_reuse_permit": true,
+    "parsed_batch_copies_cleared_before_permit_release": true,
+    "read_errors_release_permits": true,
+    "current_acl_before_admission": true,
+    "unmigrated_reads_and_new_submission_do_not_consume_read_slots": true,
+    "http": {
+      "http_identities": 20,
+      "host_login_identities": 0,
+      "copy_bytes": [
+        33554432,
+        33554432
+      ],
+      "file_hashes_independently_verified": true,
+      "load_file_checks": 40,
+      "load_verified_bytes": 1342177280,
+      "peak_simultaneous_parsers": 2,
+      "successful_original_reads": 20,
+      "busy_read_responses": 16,
+      "all_busy_responses_advertise_same_read_retry": true,
+      "seconds": 8.609843038022518,
+      "median_seconds": 4.056754623481538,
+      "p95_seconds": 7.618762616999447,
+      "process_peak_rss_kib": 1087064,
+      "health_samples": 37,
+      "max_health_seconds": 0.22624634503154084,
+      "current_member_revocation_precedes_private_read": true,
+      "disabled_and_reenabled_old_token_stays_revoked": true,
+      "fresh_token_uses_current_membership": true
+    },
+    "scope": "20 distinct real application credentials over loopback HTTP, two exactly32MiB sealed snapshots, original current project ACL and token lifecycle. Synthetic historical result-context padding and explicit unit Root/filesystem stand-ins. Whole test-process RSS includes fixture setup. Separate small-history native PID1 regression does not establish OS login isolation or maximum-copy memory under a production service cgroup.",
+    "same_original_jobs_order_and_full_copy_sha": true,
+    "cross_request_cache": false,
+    "read_retry_submits_calculation": false,
+    "native_two_actual_sigkill_boundaries": true,
+    "owned_native_roles_removed": true,
+    "main_restarted": false,
+    "main_read_admission_hot_reloaded": false,
+    "main_capacity_policy_enabled": false,
+    "old_main_records_deleted": false,
+    "model_calls": 0,
+    "npu_launches": 0,
+    "production_ready": false,
+    "overall_goal_complete": false,
+    "retained_failures": [
+      "Focus1 requested nonexistent /api/health and got correct401; changed fixture to original /healthz, preserving authentication.",
+      "HTTP3 preparation used nonexistent workflow_results.data; corrected fixture calibration to original record column. No load or new role was started by that failed preparation."
+    ],
+    "remaining": [
+      "Maximum-copy mixed reads/writes and other endpoints under target native service cgroups; sustained load, fairness and byte-weighted parsing limits for arbitrary JSON shapes.",
+      "Personal CLI/MCP still returns sanitized HTTP503 without automatic retries; preserve original job IDs and request keys.",
+      "Related SQL/catalog finite retention and independent archive failure-domain migration; cross-UID/prefix recovery and latest-state-loss fencing.",
+      "Real host boot/login isolation, controlled nonroot NPU numerical/performance/simulation, daily-card UT and two physical hosts.",
+      "PUBLIC-001 nightly PR attribution remains deferred."
+    ]
   }
 }

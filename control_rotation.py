@@ -9,6 +9,7 @@ import json
 from pathlib import Path
 import re
 import sqlite3
+import threading
 import time
 
 import control_history as copies
@@ -19,6 +20,31 @@ FORMAT='ascend-lab-control-rotation/v1'
 REF='_control_history_ref'
 MAX_INDEX=4096
 FIELDS={'id','owner','state','project','experiment_id','reserved_at','archive_dir','archive_status'}
+READ_CONCURRENCY=2
+READ_WAIT_SECONDS=2
+_read_slots=threading.BoundedSemaphore(READ_CONCURRENCY)
+_read_local=threading.local()
+
+
+@contextmanager
+def read_admission(needed=True):
+    """Bound whole private-copy read operations within this controller process.
+
+    Nested readers share the current thread's permit. No database permission or
+    compute allocation is issued, and a busy read never resubmits a job.
+    """
+    if not needed or getattr(_read_local,'active',False):
+        yield;return
+    if not _read_slots.acquire(timeout=READ_WAIT_SECONDS):
+        from jobs import JobError
+        error=JobError('Private control history readers are busy; retry the same read request',503)
+        error.retry_after_seconds=1
+        raise error
+    _read_local.active=True
+    try:yield
+    finally:
+        _read_local.active=False
+        _read_slots.release()
 
 
 def fail(message):return capacity.error(message)
@@ -66,6 +92,11 @@ def row_record(db,identifier):
 
 
 def read(db,raw,*,cache=None):
+    with read_admission(REF in json.loads(raw)):
+        return _read(db,raw,cache=cache)
+
+
+def _read(db,raw,*,cache=None):
     """Hydrate only after the caller's current ACL check/filter where possible.
 
     cache is local to one bounded read, never shared between requests. Each file
@@ -117,16 +148,23 @@ def read_many(db,raws):
         key=reference.get('export_id') if isinstance(reference,dict) else None
         if not isinstance(key,str):key=None
         groups.setdefault(key,[]).append((index,raw));count+=1
-    result=[None]*count;cache={}
-    for members in groups.values():
-        for index,raw in members:result[index]=read(db,raw,cache=cache)
+    result=[None]*count
+    with read_admission(any(key is not None for key in groups)):
+        cache={}
+        try:
+            for members in groups.values():
+                for index,raw in members:result[index]=read(db,raw,cache=cache)
+        finally:cache.clear()  # Release parsed copies before returning the permit.
     return result
 
 
 def all_jobs(db):
-    cache={}
-    for raw, in db.execute('SELECT data FROM jobs ORDER BY rowid'):
-        yield read(db,raw,cache=cache)
+    with read_admission(exists(db) and count(db)>0):
+        cache={}
+        try:
+            for raw, in db.execute('SELECT data FROM jobs ORDER BY rowid'):
+                yield read(db,raw,cache=cache)
+        finally:cache.clear()
 
 
 def guard_write(db,identifier):
@@ -149,9 +187,12 @@ def validate(db):
         return
     if capacity.current(db) is None:raise fail('Migrated history requires explicit separate capacity limits')
     if db.execute('SELECT 1 FROM control_rotation_jobs c LEFT JOIN jobs j ON j.id=c.job_id WHERE j.id IS NULL LIMIT 1').fetchone():raise fail('Migrated task identity was removed')
-    cache={}
-    for raw, in db.execute('SELECT j.data FROM jobs j JOIN control_rotation_jobs c ON c.job_id=j.id'):
-        read(db,raw,cache=cache)
+    with read_admission():
+        cache={}
+        try:
+            for raw, in db.execute('SELECT j.data FROM jobs j JOIN control_rotation_jobs c ON c.job_id=j.id'):
+                read(db,raw,cache=cache)
+        finally:cache.clear()
 
 
 def matching(prefix):

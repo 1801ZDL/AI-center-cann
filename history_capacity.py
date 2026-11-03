@@ -125,6 +125,11 @@ def initialize(db):
 
 
 def snapshot(db,*,validate_slots=True):
+    from control_rotation import read_admission,count
+    with read_admission(count(db)>0):return _snapshot(db,validate_slots=validate_slots)
+
+
+def _snapshot(db,*,validate_slots=True):
     policy=current(db);values=[];total=0;cache={}
     from control_rotation import count,MAX_INDEX
     migrated=count(db);bound=MAX_JOBS+MAX_INDEX if migrated else MAX_JOBS

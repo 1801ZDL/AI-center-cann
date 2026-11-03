@@ -120,13 +120,14 @@ def handler_class(store, config, jobs=None):
             # Do not log Authorization, URLs, payloads, or query strings.
             pass
 
-        def reply(self, body, content_type='application/json; charset=utf-8', status=200, filename=None):
+        def reply(self, body, content_type='application/json; charset=utf-8', status=200, filename=None,retry_after=None):
             if not isinstance(body, bytes):
                 body = json.dumps(body, ensure_ascii=False).encode()
             self.send_response(status)
             self.send_header('Content-Type', content_type)
             self.send_header('Content-Length', str(len(body)))
             self.send_header('Cache-Control', 'no-store')
+            if retry_after is not None:self.send_header('Retry-After',str(retry_after))
             self.send_header('X-Content-Type-Options', 'nosniff')
             self.send_header('X-Frame-Options', 'DENY')
             self.send_header('Referrer-Policy', 'no-referrer')
@@ -180,8 +181,12 @@ def handler_class(store, config, jobs=None):
                     value['dependency_capabilities'].append(SOURCE_GRANTS)
                     from report_view import CAPABILITY as REPORT_VIEW
                     value['report_view_capabilities']=[REPORT_VIEW]
-                if jobs is not None:value.update(io_limits=jobs.policy['io_limits'],transfer_chunk_bytes=256*1024,
-                                               storage=jobs.storage.summary(self.principal))
+                if jobs is not None:
+                    from control_rotation import READ_CONCURRENCY,READ_WAIT_SECONDS
+                    value.update(io_limits=jobs.policy['io_limits'],transfer_chunk_bytes=256*1024,
+                      storage=jobs.storage.summary(self.principal),control_history_reading={
+                      'max_active_per_process':READ_CONCURRENCY,'wait_seconds':READ_WAIT_SECONDS,
+                      'busy_http_status':503,'retry_after_seconds':1,'cross_request_cache':False})
                 return self.reply(value)
             if path=='/api/device-schedules':
                 try:
@@ -361,7 +366,8 @@ def handler_class(store, config, jobs=None):
                         target=path.split('/')[3]
                         if len(target)!=16 or any(c not in '0123456789abcdef' for c in target[4:]):target='invalid-id'
                         access.record(self.principal,'job.read',target, 'denied')
-                    return self.reply({'error': str(exc)}, status=exc.status)
+                    retry=getattr(exc,'retry_after_seconds',None)
+                    return self.reply({'error': str(exc),**({'retry_after_seconds':retry} if retry is not None else {})},status=exc.status,retry_after=retry)
             if path == '/api/export':
                 if 'monitor:read' not in self.principal.scopes:
                     return self.reply({'exported_at':now(),'scheduler':jobs.summary(self.principal) if jobs else None}, filename='ascend-lab-jobs.json')
