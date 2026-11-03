@@ -172,7 +172,7 @@ class NodeRegistry:
             if (job['state']!='succeeded' or job.get('template')!=PROBE or job.get('node_id')!=node_id
                 or job.get('node_policy_revision')!=revision):raise JobError('A current successful fixed probe from this node is required',409)
             def evidence(name):
-                with open_artifact(self.jobs.directory(job_id),name,max_file=256*1024) as source:return json.load(source)
+                with open_artifact(self.jobs.archive_directory(job_id,db),name,max_file=256*1024) as source:return json.load(source)
             try:manifest=from_receipt(evidence('results/_lab/environment.json'),evidence('environment.json'),job,revision)
             except (OSError,ValueError,KeyError,TypeError):raise JobError('Protected probe evidence is incomplete or invalid',409) from None
             if (time.time()-node['last_seen']>30 or manifest['image_sha256']!=node['report'].get('image_sha256')

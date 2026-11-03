@@ -61,6 +61,9 @@ class StorageBudget:
 
     def actual(self,job):
         from jobs import read_json
+        from cold_reads import record
+        with self.jobs.connect() as db:reader=record(db,job['id'])
+        if reader and reader[1]['hot_state']=='retired':return reader[1]['retained_control_bytes']
         if job.get('archive_status',{}).get('state')=='purged':return job['archive_status']['metadata_bytes']
         directory=self.jobs.directory(job['id']);total=META
         entries=(read_json(directory/'artifacts.json') or {}).get('files',[])

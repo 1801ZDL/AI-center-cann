@@ -88,7 +88,7 @@ class SourceGrants:
         try:
             proof,reason=confirmation(parent)
             if reason:raise ValueError(reason)
-            directory=self.jobs.directory(key)
+            directory=self.jobs.archive_directory(key,db)
             hashes=parse(raw_file(directory,'artifact-hashes.json',2*1024**2))
             if (not isinstance(hashes,dict) or hashes.get('version')!=1 or not isinstance(hashes.get('files'),list)
                 or len(hashes['files'])>2000 or manifest_sha256(hashes['files'])!=proof['artifact_manifest_sha256']):

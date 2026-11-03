@@ -29,7 +29,8 @@ def validate(value):
 
 
 @contextmanager
-def root_fd(value,uid):
+def root_fd(value,uid,*,writable=True):
+    if type(writable) is not bool:raise ValueError('Filesystem write requirement must be explicit boolean')
     validate(value);fd=os.open('/',os.O_RDONLY|os.O_DIRECTORY)
     try:
         for component in Path(value['path']).parts[1:]:
@@ -38,7 +39,7 @@ def root_fd(value,uid):
         if item.st_uid!=uid or item.st_mode&0o777!=0o700:raise ValueError('Central payload root ownership or permissions differ')
         if (item.st_dev,item.st_ino)!=(value['device'],value['root_inode']):raise ValueError('Central payload filesystem identity changed')
         if (space.f_blocks*space.f_frsize,space.f_files)!=(value['bytes'],value['inodes']):raise ValueError('Central payload filesystem capacity changed')
-        if space.f_flag&os.ST_RDONLY or not space.f_flag&os.ST_NOSUID or not space.f_flag&os.ST_NODEV:raise ValueError('Central payload filesystem requires writable,nosuid,nodev')
+        if writable and space.f_flag&os.ST_RDONLY or not space.f_flag&os.ST_NOSUID or not space.f_flag&os.ST_NODEV:raise ValueError('Central payload filesystem requires approved read/write,nosuid,nodev flags')
         mounts=[]
         for line in Path('/proc/self/mountinfo').read_text().splitlines():
             before,after=line.split(' - ',1)

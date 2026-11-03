@@ -162,7 +162,7 @@ def read(jobs,job,kind,config):
         with jobs.lifecycle.reader('archive',job['id']):
             projection,reason=confirmation(job)
             if projection is None:raise JobError('Confirmed terminal archive is required for report viewing',409)
-            directory=jobs.directory(job['id']);hashes=parse(raw_file(directory,'artifact-hashes.json',2*1024**2))
+            directory=jobs.archive_directory(job['id']);hashes=parse(raw_file(directory,'artifact-hashes.json',2*1024**2))
             if hashes.get('version')!=1 or manifest_sha256(hashes['files'])!=projection['artifact_manifest_sha256']:
                 raise ValueError('Archive manifest differs from confirmed receipt')
             entries={v['name']:v for v in hashes['files']};name,limit=KINDS[kind]

@@ -298,7 +298,7 @@ class Schedules:
             return {'state':'execution_failed','job_id':job['id'],'original_state':job['state'],'health_certified':False,'performance_qualified':False}
         try:
             from archive_api import open_artifact
-            with open_artifact(self.jobs.directory(job['id']),REPORT,128*1024) as stream:raw=stream.read()
+            with open_artifact(self.jobs.archive_directory(job['id']),REPORT,128*1024) as stream:raw=stream.read()
             comparison=validate_report(json.loads(raw))
             if job.get('_npu_access_context')!=run['access_context_sha256'] or job['node_id']!=plan['spec']['node_id'] or job['allocation']['npu_ids']!=[run['device_id']]:raise ValueError('Execution context differs')
             status='microchecks_passed' if comparison['precision_passed'] else 'microchecks_failed'

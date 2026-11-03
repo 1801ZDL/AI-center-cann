@@ -21,6 +21,7 @@ def relative_name(name):
 
 def open_artifact(directory, name, max_file=MAX_FILE):
     if not relative_name(name):raise JobError('Invalid artifact name', 404)
+    if hasattr(directory,'cold_manifest'):return directory.open(name,max_file)
     descriptors=[]
     try:
         parent=os.open(directory, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW);descriptors.append(parent)
@@ -38,8 +39,20 @@ def open_artifact(directory, name, max_file=MAX_FILE):
         for descriptor in reversed(descriptors):os.close(descriptor)
 
 
+def document(directory,name,maximum=4*1024**2,missing=None):
+    import json
+    try:
+        with open_artifact(directory,name,maximum) as source:raw=source.read(maximum+1)
+    except JobError as error:
+        if not hasattr(directory,'cold_manifest') and error.status==404:return missing
+        raise
+    if len(raw)>maximum:raise JobError('Archive document exceeds its reader budget',409)
+    try:return json.loads(raw)
+    except (ValueError,UnicodeError):raise JobError('Archive document is invalid',409) from None
+
+
 def indexed_names(directory):
-    entries=(read_json(directory/'artifacts.json') or {}).get('files', [])
+    entries=(document(directory,'artifacts.json',missing={}) or {}).get('files', [])
     if not isinstance(entries, list) or len(entries) > 2000:raise JobError('Invalid archive index', 409)
     names=[entry.get('name') for entry in entries if isinstance(entry, dict)]
     if len(names) != len(entries) or any(not relative_name(name) for name in names) or len(set(names)) != len(names):

@@ -172,8 +172,9 @@ class Dependencies:
         provenance=[];lookup={p['id']:p for p in parents};terminal_proofs,reason=self.terminal_proofs(job,parents)
         if reason:raise InvalidDependency('Terminal source confirmation changed before handoff')
         for item in job['artifact_inputs']:
-            parent=lookup[item['job_id']];directory=self.jobs.directory(parent['id'])
-            hashes=read_json(directory/'artifact-hashes.json')
+            parent=lookup[item['job_id']];directory=self.jobs.archive_directory(parent['id'])
+            from archive_api import document
+            hashes=document(directory,'artifact-hashes.json',2*1024**2)
             if not isinstance(hashes,dict) or hashes.get('version')!=1 or not isinstance(hashes.get('files'),list):
                 raise InvalidDependency('Parent lacks its confirmed artifact checksum receipt')
             if item.get('when')=='terminal':
@@ -253,7 +254,7 @@ class Dependencies:
                         offset=bundle['uploaded'].get(item['name'],0)
                         if offset==item['size']:continue
                         source=sources[item['name']]
-                        directory=(self.jobs.inputs.directory(source['input_id']) if source['kind']=='input' else self.jobs.directory(source['job_id']))
+                        directory=(self.jobs.inputs.directory(source['input_id']) if source['kind']=='input' else self.jobs.archive_directory(source['job_id']))
                         with open_artifact(directory,source['name'],self.jobs.inputs.MAX_FILE) as stream:
                             before=os.fstat(stream.fileno())
                             if before.st_size!=item['size']:raise InvalidDependency('Producer file size changed during dependency transfer')

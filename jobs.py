@@ -231,6 +231,14 @@ class JobStore:
             self.payload.object(path,owner)
         return path
 
+    def archive_directory(self,job_id,db=None):
+        """Read authority only. Creation, completion and lifecycle keep warm paths."""
+        if db is None:
+            with self.connect() as connection:return self.archive_directory(job_id,connection)
+        from cold_reads import resolve
+        selected=resolve(self,job_id,db)
+        return selected if selected is not None else self.directory(job_id)
+
     def normalize(self, request, principal=None, *, _db=None):
         if not isinstance(request, dict):
             raise JobError('请求必须是 JSON 对象。')
@@ -622,14 +630,15 @@ class JobStore:
         if stream not in {'stdout', 'stderr'}:
             raise JobError('无效的日志类型。')
         with self.lifecycle.reader('archive',job_id):
-            path = self.directory(job_id) / (stream + '.log')
-            if path.is_symlink():
-                raise JobError('拒绝读取符号链接。', 403)
-            if not path.exists():
+            from archive_api import open_artifact
+            directory=self.archive_directory(job_id);name=stream+'.log'
+            if not hasattr(directory,'cold_manifest') and (directory/name).is_symlink():raise JobError('拒绝读取符号链接。',403)
+            present=name in directory.files if hasattr(directory,'cold_manifest') else (directory/name).exists()
+            if not present:
                 job=self.get(job_id,principal=principal)
                 if job.get('_remote') and stream in job.get('_log_preview',{}):return job['_log_preview'][stream]
                 return {'text': '', 'bytes': 0, 'truncated': False}
-            with path.open('rb') as f:
+            with open_artifact(directory,name,self.get(job_id)['_max_log_bytes']) as f:
                 size = os.fstat(f.fileno()).st_size
                 f.seek(max(0, size - 65536))
                 data = f.read(65536)

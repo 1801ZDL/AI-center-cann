@@ -147,7 +147,7 @@ class References:
             if not epoch(job['reserved_at'])-15<=epoch(completed)<=epoch(now())+1:raise ValueError()
             self.jobs.lifecycle.available('archive',job['id'],db)
             self.jobs.lifecycle.available('input',job['input']['id'],db)
-            with open_artifact(self.jobs.directory(job['id']),REPORT,128*1024) as stream:raw=stream.read()
+            with open_artifact(self.jobs.archive_directory(job['id']),REPORT,128*1024) as stream:raw=stream.read()
             if hashlib.sha256(raw).hexdigest()!=job.get('_fixed_microcheck_report_sha256'):raise ValueError()
             report=json.loads(raw);checked=validate_report(report);timing=checked['performance']
             marker=report.get('timing',{}).get('measurement_window',{})

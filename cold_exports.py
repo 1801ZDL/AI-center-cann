@@ -67,6 +67,19 @@ def rows(db,table):
     return values
 
 
+def one(db,table,key):
+    """Archive readers fetch one bounded receipt, not the entire cold history."""
+    if table not in {'cold_pools','cold_transfers'} or not isinstance(key,str) or not re.fullmatch('[0-9a-f]{64}',key):raise DeployError('Invalid cold receipt identity')
+    if not db.execute('SELECT 1 FROM sqlite_master WHERE name=?',(table,)).fetchone():return None
+    row=db.execute('SELECT state,record FROM '+table+' WHERE id=?',(key,)).fetchone()
+    if row is None:return None
+    state,raw=row
+    if len(raw.encode())>(1024**2 if table=='cold_pools' else 65536):raise DeployError('Cold receipt exceeds its bound')
+    value=json.loads(raw)
+    if not isinstance(value,dict) or value.get('id')!=key:raise DeployError('Cold receipt row and record differ')
+    return state,value
+
+
 @contextmanager
 def context(prefix):
     from audit_retention import Database,service_identity
@@ -151,14 +164,14 @@ def check_plan(value,kind):
 
 
 @contextmanager
-def cold_root(spec,uid):
+def cold_root(spec,uid,*,read_only=False):
     from payload_storage import root_fd
     path=spec['storage']['path'];mounts=[]
     for line in Path('/proc/self/mountinfo').read_text().splitlines():
         before,after=line.split(' - ',1);parts=before.split()
         if parts[4]==path:mounts.append((parts[3],after.split()[0]))
     if mounts!=[('/','ext4')]:raise DeployError('Cold pool must expose an entire dedicated ext4 filesystem, not a subdirectory bind')
-    with root_fd(spec['storage'],uid) as fd:yield fd
+    with root_fd(spec['storage'],uid,writable=not read_only) as fd:yield fd
 
 
 def location(spec,binding,payload):
@@ -207,11 +220,11 @@ def publish_json(path,value):
     fs.move(temporary,path);sync(path.parent)
 
 
-def pool_check(pool,initial=False):
+def pool_check(pool,initial=False,*,read_only=False):
     expected=marker(pool);path=Path(pool['spec']['storage']['path'])
     uid=path.lstat().st_uid
     if uid not in ({0,pool['binding']['uid']} if initial else {pool['binding']['uid']}):raise DeployError('Cold root owner changed')
-    with cold_root(pool['spec'],uid) as fd:
+    with cold_root(pool['spec'],uid,read_only=read_only) as fd:
         names=set(os.listdir(fd))
         allowed={MARKER,'incoming','objects'}
         if initial:
@@ -504,7 +517,9 @@ def pinned(db,job_id):
 
 def public_copies(db,job_id):
     if not db.execute("SELECT 1 FROM sqlite_master WHERE name='cold_transfers'").fetchone():return []
-    return [{**response(json.loads(text),state,True),'available_for_user_reads':False} for state,text in db.execute('SELECT state,record FROM cold_transfers WHERE job_id=? LIMIT 100',(job_id,))]
+    from cold_reads import public
+    authority=public(db,job_id)
+    return [{**response(json.loads(text),state,True),'available_for_user_reads':bool(authority and authority['user_reads_enabled'] and authority['copy_id']==json.loads(text)['id'])} for state,text in db.execute('SELECT state,record FROM cold_transfers WHERE job_id=? LIMIT 100',(job_id,))]
 
 
 def require_compatible(state,role,manifest):

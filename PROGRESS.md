@@ -1,5 +1,32 @@
 # 实施进度
 
+## 2026-11-03 权威冷存读取与原件回收（最终1410项/两恢复路径各17边界通过）
+
+新增cold_reads.py/cold_retention.py和Root `cold-read-plan`、`cold-retire-plan`、`cold-read-resume-plan`、`cold-retention-apply`。以原copy plan/回执为基础，独立批准读权威，再以绑定原reader、任务语义、账单和引用快照的计划分步回收原件。原任务/attempt/幂等键/结果/授权不变，source grants、图、自检/参考及设备资格记录保留。普通属主不再用旧trash/purge删除已接管归档；复制/读取/原件维护是独立动作。
+
+统一archive_directory覆盖详情/日志/清单、分块与Range、四类报告、依赖交接、来源授权、Node环境认证、自检/性能参考。读取只取该副本的有限SQL回执，核对池/原计划/回执与树元数据，再校验每个实际返回范围涉及的原256KiB块；丢盘不回退旧目录，位损坏不以当前文件生成的新SHA自证。冷盘不可读时仍可查看原任务元数据。内部证据不加入原用户索引，原ACL和文件级授权不扩大。
+
+原件维护先入retiring持久意图，再在原载荷盘无覆盖移动至专用隔离目录，按原inventory每步最多256条删除；只在原/隔离均确认不存在后原子提交retired与一次预留差额，保留有限控制元数据账单。未知执行/hold/交接门禁保持，未完回收阻断普通backup/activate。旧快照不能丢失reader/回收/审批，旧代码缺helper拒降级；最新恢复冻结reader与复制写权，Root显式全副本重新核验仅恢复读取，不复活池写权、实验预算或source grant。
+
+候选原生 **job-b13569a4a88c**：原systemd249.11 PID1/UID999零cap控制器、独立128MiB ext4、原规范IR任务提交后未执行即取消（0attempt），仍明确使用700KiB公开P/900KiB私有Q传输样本，不是编译/性能结果。原复制10处加reader_committed、retire_prepared、original_renamed、original_purged_step、original_removed、retirement_credited共**16个真实SIGKILL**各-9，同计划恢复；原件和隔离确实删除、预留只减一次。实际HTTP清单与原清单完全相同，跨块chunk/Range、日志、原幂等重放同ID、private404、另一逻辑账号四种读取404、原属主维护409均通过。该逻辑账号仍共享服务UID，不是两名真实Linux登录用户。
+
+实际服务挂载视图readonly/nosuid/nodev均true。最初native-r1已过16fault但读路径因原校验要求可写而不可用；拆分维护与读取的写要求后，native-r2通过读取至测试隔离CLI子进程缺模块路径失败。修复受保护脚本loader后native-r3通过业务/权限，恢复后遗漏既有offline unit-refresh，被manager-plan正确拒绝；补正常refresh交接后native-r4全部通过。恢复先验证metadata200/归档409冻结，再Root读重批准恢复原清单；copy/池SQL仍restore_frozen。
+
+专项最初 **job-875f8d675b75：32项通过**。新增3个消费者检查后focus-r2错误地预期撤销grant会拒绝原幂等重放；实际原任务被正确返回，改为核对旧ID仍返回、新key拒绝。最终 **job-1c6238281895：35项通过**，四类真实HTTP报告、现有协议夹具依赖交接与预算来源授权在移除在线目录后读取正确，来源预算任务仍不可见；这些源执行回执是协议夹具，不是本轮真设备/编译。完整中间 **job-3413c6a2c284：1404项/250.838秒**；候选 **job-81f5c13145e1：1407项/248.507秒/零跳过+JS**，当时15项新增，source-frozen-r6=118非mdCORE+286递归tests/helpers+scanner（405）。以下补充恢复分支后以最终r9为准。所有原终态/清退后才新变体，无超时换key。
+
+独立 **job-5b9febbca19c** 读私有tar/SQL和卸载ext4：最新备份确无原/隔离目录、所有cold bytes匹配原清单与已知P/Q样本、唯一reader/副本与三份applied批准、原结果/任务数/0attempt、一次计费差额、恢复后copy写权仍冻结逐项核对。四个native的容器/卷/helper及loops均清退/released/sysfs无原backing关联，host cg与parent limits不变。evidence/cold-reader-validation.json保留为未发布候选证据；最终证据改为cold-reader-final-validation.json，公开仅reports.public-source-check.cold_reader；Root计划/SQL/原盘含私有材料不上传。
+
+Main配置、19profiles、唯一域CPU/内存/SHM/并发、保护6、领域agent/web/zdl保持原值，未对Main启用冷读或回收其历史数据。0实际daily计划/规则/参考/图，0新image/0模型/0NPU kernel。当前**不释放历史名额**，max_jobs仍原语义；历史/在线容量拆分、完整异地冷盘/身份迁移、最终冷副本维护/有限轮转与长期规模继续待。真实宿主/多机/NPU及PUBLIC-001门槛保持，整体目标未完成。操作见COLD_RETENTION.md。
+
+
+发布前复核补齐“备份时原件仍保留”的分支：恢复会创建新inode，不能拿旧copy inventory直接批准删除。Root read-resume现完整校验恢复原件的字节与原manifest，再批准其新inventory摘要。回收前将完整批准库存持久保存在Root私有prefix/cold-retire-inventories，SQLite只存摘要/原操作；部分删除后从这份原库存继续，文件丢失/变化不猜测、不归还额度。增加retire_inventory_synced（落盘后、SQL意图前）真实故障点。普通升级和code-only repair activation均不能使未完cold计划的代码绑定失效；独立metadata-only对账仍可执行。
+
+最终普通路径 **job-056a4339340b** 与“保留原件恢复→新字节/库存批准→回收→再恢复”路径 **job-bd7b746729bd** 各17个真实SIGKILL（合计34），所有原job/result/0attempt与原API清单保持，Root私有库存、一次计费、readonly服务视图、跨用户/私有文件拒绝、旧代码/旧reader快照拒绝和显式恢复读取通过。后一路在首次状态恢复前验证原幂等请求；不能将它表述为旧workspace路径请求在恢复后自动重写。通用已执行任务的原幂等重放由普通路径验证。
+
+新增3项恢复库存/私有库存损坏检查后，专项 **job-1f7d4056bfc3：38项/2.072秒通过**；此前focus-r4因Root库存错误现在使用DeployError、测试仍只期待JobError而失败，调整为接受两种明确拒绝后通过，无安全语义放宽。最终完整 **job-00934dc8b174：1410项/247.441秒/零跳过+JS**，较上一发布18项新增，source-frozen-r9=118非mdCORE+286递归tests/helpers+scanner（405），两最终native/full同冻结。
+
+最终独立 **job-2536f9cd0c68** 分别读取两角色的私有tar/SQL/Root完整删除库存和已卸载ext4：普通库存与原copy一致、恢复保留库存与原inode身份不同且匹配新批准；最新备份无原/隔离目录，全部冷字节匹配原SHA及P/Q，单reader/副本、3/4份applied批准、原job仅archive_dir按恢复变更、一次额度提交、复制写权保持冻结均核对。6个owned native盘关联released/sysfs无原backing，容器/卷/helper全部清退。旧candidate finalizer/update_docs不重跑，最终采用finalize_final/update_docs_final和新私有证据，保留全部中间原件。
+
 ## 2026-11-03 有限冷存副本与真实中断恢复（1392项/原生10边界通过）
 
 新增 cold_files.py/cold_exports.py 以及 Root-only `cold-register-plan/apply`、`cold-copy-plan/step/verify`。停止态中央登记一个独立有限空 ext4 整盘，固定原生身份和每 owner 应用预留。终态完整归档包含原索引产物与内部证据，二者分区枚举；未知内部文件在读内容前拒绝，额外文件须显式逐个批准，完整树不能超过原已结算额度。没有扫描模型配置或个人会话。

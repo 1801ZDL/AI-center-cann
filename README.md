@@ -1,6 +1,6 @@
 # AI-center-cann
 
-新增[有限冷存副本](https://github.com/1801ZDL/AI-center-cann/blob/main/COLD_EXPORT.md)：Root 离线登记独立 ext4 池，完整公开/私有归档分块复制与校验，同计划中断恢复及旧快照保护。最新1392项回归、原生控制器10个真实SIGKILL边界和卸载盘独立字节审计通过。API仍读原件，未切换读路径、删除原件、释放额度或历史名额；完整冷存仍待后续实现。
+新增[权威冷存读取与原件回收](https://github.com/1801ZDL/AI-center-cann/blob/main/COLD_RETENTION.md)：沿原任务ACL的日志/下载/报告/交接读取、确认原件删除后一次额度提交及恢复后显式读核验已贯通。最新1410项回归、两恢复路径各17个真实SIGKILL和卸载盘字节审计通过；历史数量计数和完整异地存储迁移仍待，未对Main执行数据迁移。
 
 新增[旧pending库存管理员对账](https://github.com/1801ZDL/AI-center-cann/blob/main/STORAGE_RECONCILIATION.md)：停止态精确计划、同计划中断恢复、原计费/批准清单保留及缺helper的显式修复升级。输入和取消任务归档已做实际原生服务验收；它不执行冷存或自动清理，部署边界见PROGRESS.md。
 

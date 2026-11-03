@@ -9444,5 +9444,54 @@
     "main_config_profiles_domain_zdl_protected_and_web_unchanged": true,
     "main_live_daily_plans_rules_references_graphs": 0,
     "scope": "Root-managed non-authoritative whole-archive copy on owned native PID1 plus finite ext4; ten actual SIGKILLs. No original retirement, user cold readers, history capacity release, real host users/two physical machines or NPU compute."
+  },
+  "cold_reader": {
+    "passed": true,
+    "verified_at": "2026-11-03T01:08:20.461932+00:00",
+    "native_cases": [
+      {
+        "label": "native-r5",
+        "job_id": "job-056a4339340b",
+        "retained_original_restored": false,
+        "actual_sigkills": 17,
+        "approvals": 3
+      },
+      {
+        "label": "native-retained-r1",
+        "job_id": "job-bd7b746729bd",
+        "retained_original_restored": true,
+        "actual_sigkills": 17,
+        "approvals": 4
+      }
+    ],
+    "production_files": 118,
+    "frozen_paths": 405,
+    "actual_sigkills": 34,
+    "actual_sigkills_per_path": 17,
+    "source_job_attempts": 0,
+    "retained_control_jobs_per_case": 1,
+    "original_and_quarantine_absent": true,
+    "private_full_deletion_inventories_verified": true,
+    "restored_warm_inventory_reapproved_after_full_byte_checks": true,
+    "unmounted_ext4_all_bytes_match_original_manifests": true,
+    "cold_service_readonly_nosuid_nodev": true,
+    "cross_owner_and_private_artifact_denials": true,
+    "original_job_and_result_retained": true,
+    "original_charge_released_once_after_absence": true,
+    "copy_write_authority_remains_frozen_after_read_resume": true,
+    "history_capacity_released": false,
+    "owned_native_disks_released": 6,
+    "physical_hosts": 1,
+    "model_calls": 0,
+    "npu_kernel_launches": 0,
+    "production_ready": false,
+    "unit_tests": 1410,
+    "unit_seconds": 247.441,
+    "unit_skipped": 0,
+    "javascript_syntax_passed": true,
+    "new_unit_cases": 18,
+    "main_config_profiles_domain_zdl_protected_and_web_unchanged": true,
+    "main_live_daily_plans_rules_references_graphs": 0,
+    "scope": "Root-approved authoritative cold reads and original retirement on owned native PID1 plus finite ext4; seventeen actual SIGKILLs per normal/retained-restore path (34 total), owner/peer HTTP and restored read revalidation. Restored retained originals receive byte-verified fresh deletion inventory persisted privately before unlink. Protocol fixtures separately cover reports/dependencies/source grants. Not history capacity release, new NPU compute, real host users or two physical machines."
   }
 }

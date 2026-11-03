@@ -267,16 +267,23 @@ def handler_class(store, config, jobs=None):
                     parts = path.strip('/').split('/')
                     if len(parts) >= 3 and parts[:2] == ['api', 'jobs']:
                         job_id = parts[2]
-                        directory = jobs.directory(job_id)
                         job = jobs.get(job_id, principal=self.principal)
                         if len(parts) == 3:
                             from cold_exports import public_copies
                             with jobs.connect() as cold_db:cold_copies=public_copies(cold_db,job_id)
-                            index=read_json(directory/'artifacts.json') or jobs.lifecycle.record('archive',job_id).get('manifest') or {}
+                            from archive_api import document
+                            from cold_reads import public as cold_status
+                            with jobs.connect() as cold_db:archive_location=cold_status(cold_db,job_id)
+                            archive_unavailable=False
+                            try:index=document(jobs.archive_directory(job_id),'artifacts.json',missing={}) or jobs.lifecycle.record('archive',job_id).get('manifest') or {}
+                            except JobError:
+                                if not archive_location:raise
+                                index={};archive_unavailable=True
                             return self.reply({'job': public(job), 'attempts':jobs.attempts(job_id,self.principal), 'permissions':{'cancel':'jobs:cancel' in self.principal.scopes and access.can_cancel(self.principal,job),
-                              'storage':'storage:manage' in self.principal.scopes and job['owner']==self.principal.id and job['state'] in {'succeeded','failed','cancelled','timed_out'}}, 'artifacts': index.get('files', []),
+                              'storage':'storage:manage' in self.principal.scopes and job['owner']==self.principal.id and job['state'] in {'succeeded','failed','cancelled','timed_out'} and not archive_location}, 'artifacts': index.get('files', []),
                               'retention_metadata':jobs.lifecycle.record('archive',job_id).get('evidence') if job.get('archive_status',{}).get('state','available')!='available' else None,
-                              **({'cold_copies':cold_copies} if cold_copies else {})})
+                              **({'cold_copies':cold_copies} if cold_copies else {}),**({'archive_location':{**archive_location,'read_unavailable':archive_unavailable}} if archive_location else {})})
+                        directory=jobs.archive_directory(job_id)
                         if parts[3:] == ['log']:
                             return self.reply(jobs.log(job_id, parse_qs(parsed.query).get('stream', ['stdout'])[0], self.principal))
                         if parts[3:] == ['archive-manifest']:
@@ -296,7 +303,8 @@ def handler_class(store, config, jobs=None):
                         if parts[3:] == ['artifact']:
                             name = parse_qs(parsed.query).get('name', [''])[0]
                             jobs.lifecycle.available('archive',job_id)
-                            index=read_json(directory/'artifacts.json') or jobs.lifecycle.record('archive',job_id).get('manifest') or {}
+                            from archive_api import document
+                            index=document(directory,'artifacts.json',missing={}) or jobs.lifecycle.record('archive',job_id).get('manifest') or {}
                             indexed = {f['name'] for f in index.get('files', [])}
                             if name not in indexed:
                                 raise JobError('归档文件不存在或未登记。', 404)
@@ -334,6 +342,9 @@ def handler_class(store, config, jobs=None):
                                         if not block:break
                                         self.wfile.write(block);remaining-=len(block)
                                 except (BrokenPipeError,ConnectionResetError):pass
+                                except JobError:
+                                    self.close_connection=True
+                                    return
                             return
                 except (JobError, AccessError) as exc:
                     if path.startswith('/api/jobs/job-'):
@@ -450,7 +461,8 @@ def handler_class(store, config, jobs=None):
                     return self.reply({'request':public(normalized),'input_available':not normalized.get('input') or jobs.lifecycle.record('input',normalized['input']['id'])['state']=='available'})
                 parts = path.strip('/').split('/')
                 if len(parts) == 4 and parts[:2] == ['api', 'jobs'] and parts[3] == 'cancel':
-                    jobs.directory(parts[2])
+                    from storage_lifecycle import identifier
+                    identifier('archive',parts[2])
                     job=jobs.cancel(parts[2], self.principal)
                     access.record(self.principal,'job.cancel',job['id'])
                     return self.reply({'job':job})

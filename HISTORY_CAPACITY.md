@@ -1,6 +1,6 @@
 # 历史容量与保留证据的迁移设计
 
-状态：完整冷存合同仍未完成。新增[有限冷存副本](COLD_EXPORT.md)实现 Root 离线登记、完整树分块复制、持久校验与恢复冻结；API 仍读原件，不释放原额度或历史名额。读路径切换、引用保护下的原件维护与计数拆分继续待做。旧pending库存前置见[STORAGE_RECONCILIATION.md](STORAGE_RECONCILIATION.md)。本文件不是删除原件或恢复旧授权的批准；Demo历史上限1100只是临时计数容量，原计算/并发/存储预算保持。最终证据见PROGRESS.md。
+状态：完整冷存合同仍未完成。[有限冷存副本](COLD_EXPORT.md)已有 Root 离线登记、分块复制与持久校验；[权威读取和原件回收](COLD_RETENTION.md)现可沿原任务权限读取，并在确认删除原件后释放在线账本预留，恢复后需显式重新核验读取。**历史/在线数量计数尚未拆分，仍不释放历史名额**；完整异地存储身份迁移与接管/fencing仍待。旧pending前置见[STORAGE_RECONCILIATION.md](STORAGE_RECONCILIATION.md)。本文件不是删除原件或恢复旧授权的批准；Demo历史上限1100只是临时计数容量，原计算/并发/存储预算保持。最终证据见PROGRESS.md。
 
 ## 已触发的限制
 
