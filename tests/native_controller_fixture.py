@@ -51,7 +51,9 @@ class Controller:
         path='/root/native-controller-reconcile-'+plan['id']+'.json'
         write='import json,os,sys;from pathlib import Path;p=Path(sys.argv[1]);v=json.loads(sys.argv[2]);\nif p.exists():assert json.loads(p.read_text())==v\nelse:\n f=os.open(p,os.O_WRONLY|os.O_CREAT|os.O_EXCL,0o600)\n with os.fdopen(f,"w") as out:json.dump(v,out)'
         self.docker(['exec',self.container,'/usr/bin/python3','-I','-B','-c',write,path,json.dumps(plan)])
-        return self.cli('unit-start-apply','--plan',path)
+        result=self.cli('unit-start-apply','--plan',path)
+        if result['state']=='pending':result['required_nodes']=len(plan['required_nodes'])
+        return result
 
     def start(self):
         pending=self.reconcile()
@@ -70,8 +72,13 @@ class Controller:
         until=time.monotonic()+25
         while True:
             receipt=self.reconcile();status=self.cli('status')
-            if status['ready']:break
-            if time.monotonic()>until:raise RuntimeError('Original native controller did not become ready')
+            self.events.append({'action':'native-start-readback','ready':status['ready'],
+                'startup_state':receipt.get('state') if receipt else None})
+            # A Node cannot claim while its own startup journal/gate remains.
+            # The controller may still need to return pending so that its Node
+            # can start and confirm inventory; preserve that two-role handshake.
+            if status['ready'] and (receipt is None or receipt['state']=='ready' or self.role=='controller' and receipt.get('required_nodes',0)>0):break
+            if time.monotonic()>until:raise RuntimeError('Original native role did not finish its required startup receipt')
             time.sleep(.2)
         if receipt is None or receipt['state']=='ready':self.cli('unit-manager-check','--running')
         else:status['startup_pending']=True

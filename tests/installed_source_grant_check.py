@@ -175,7 +175,7 @@ def after_restore(ctx,proof):
         value=owner.request('/api/experiment-budgets/'+key)['budget'];assert value['state']=='restored_frozen' and value['charged']==charged
     ctx['ctl'](ctx['node'],'node','stop');ctx['ctl'](ctx['controller'],'controller','stop')
     rejected=ctx['ctl'](ctx['controller'],'controller','activate','--archive','/provision/source-grant-old-server.tar.gz',check=False)
-    assert rejected.returncode!=0 and 'source grants' in rejected.stderr,rejected.stderr
+    assert rejected.returncode!=0 and ('Migrated control history' if ctx['options'].cold_history else 'source grants') in rejected.stderr,rejected.stderr
     assert ctx['ctl'](ctx['controller'],'controller','start')['ready'] and ctx['ctl'](ctx['node'],'node','start')['ready']
     helpers=ctx['_source_grant_helpers'];key,client,profile=helpers['budget']('restored',1)
     grant=helpers['approval']('restored',proof['parent'],key,helpers['files'])

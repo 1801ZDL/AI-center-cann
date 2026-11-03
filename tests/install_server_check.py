@@ -22,7 +22,8 @@ from jobs import atomic_json,now
 from deployment import bundle,unpack_release
 from backends import physical_identity
 
-arguments=argparse.ArgumentParser();arguments.add_argument('--large-wheel');arguments.add_argument('--https-network',action='store_true');arguments.add_argument('--disk-workspace',action='store_true');arguments.add_argument('--user-quota-workspace',action='store_true');arguments.add_argument('--storage-pressure',action='store_true');arguments.add_argument('--control-storage-pressure',action='store_true');arguments.add_argument('--central-payload',action='store_true');arguments.add_argument('--central-owner-quotas',action='store_true');arguments.add_argument('--node-spool-pressure',action='store_true');arguments.add_argument('--persistent-cache',action='store_true');arguments.add_argument('--dependencies',action='store_true');arguments.add_argument('--input-durability',action='store_true');arguments.add_argument('--native-toolchain',action='store_true');arguments.add_argument('--payload-quota-resize',action='store_true');arguments.add_argument('--node-quota-resize',action='store_true');arguments.add_argument('--deadline-limit',action='store_true');arguments.add_argument('--operator-analysis');arguments.add_argument('--operator-image');arguments.add_argument('--compiler-case');arguments.add_argument('--large-compiler-case');arguments.add_argument('--agent-experiment');arguments.add_argument('--accuracy-case');arguments.add_argument('--terminal-handoff');arguments.add_argument('--source-grants');arguments.add_argument('--simulation-case');arguments.add_argument('--report-view');arguments.add_argument('--native-control',action='store_true');arguments.add_argument('--audit-retention',action='store_true');arguments.add_argument('--browser-workflow',action='store_true');arguments.add_argument('--experiment-budget',action='store_true');arguments.add_argument('--device-schedule',action='store_true');arguments.add_argument('--device-evidence',action='store_true');arguments.add_argument('--measurement-windows',action='store_true');arguments.add_argument('--performance-reference',action='store_true');arguments.add_argument('--reference-rotation',action='store_true');arguments.add_argument('--job-graph',action='store_true');arguments.add_argument('--native-controller-image');arguments.add_argument('--native-node-image');options=arguments.parse_args()
+arguments=argparse.ArgumentParser();arguments.add_argument('--large-wheel');arguments.add_argument('--https-network',action='store_true');arguments.add_argument('--disk-workspace',action='store_true');arguments.add_argument('--user-quota-workspace',action='store_true');arguments.add_argument('--storage-pressure',action='store_true');arguments.add_argument('--control-storage-pressure',action='store_true');arguments.add_argument('--central-payload',action='store_true');arguments.add_argument('--central-owner-quotas',action='store_true');arguments.add_argument('--node-spool-pressure',action='store_true');arguments.add_argument('--persistent-cache',action='store_true');arguments.add_argument('--dependencies',action='store_true');arguments.add_argument('--input-durability',action='store_true');arguments.add_argument('--native-toolchain',action='store_true');arguments.add_argument('--payload-quota-resize',action='store_true');arguments.add_argument('--node-quota-resize',action='store_true');arguments.add_argument('--deadline-limit',action='store_true');arguments.add_argument('--operator-analysis');arguments.add_argument('--operator-image');arguments.add_argument('--compiler-case');arguments.add_argument('--large-compiler-case');arguments.add_argument('--agent-experiment');arguments.add_argument('--accuracy-case');arguments.add_argument('--terminal-handoff');arguments.add_argument('--source-grants');arguments.add_argument('--simulation-case');arguments.add_argument('--report-view');arguments.add_argument('--native-control',action='store_true');arguments.add_argument('--audit-retention',action='store_true');arguments.add_argument('--browser-workflow',action='store_true');arguments.add_argument('--experiment-budget',action='store_true');arguments.add_argument('--device-schedule',action='store_true');arguments.add_argument('--device-evidence',action='store_true');arguments.add_argument('--measurement-windows',action='store_true');arguments.add_argument('--performance-reference',action='store_true');arguments.add_argument('--reference-rotation',action='store_true');arguments.add_argument('--job-graph',action='store_true');arguments.add_argument('--native-controller-image');arguments.add_argument('--native-node-image');arguments.add_argument('--cold-history',action='store_true');arguments.add_argument('--preserve-main',metavar='ORIGINAL_JOB_ID');options=arguments.parse_args()
+assert not options.cold_history or (options.source_grants and options.native_controller_image and options.native_node_image and options.preserve_main), 'Cold history uses actual UID-separated CPU source grants and both native roles without stopping Main'
 assert not options.device_evidence or (options.device_schedule and options.user_quota_workspace), 'Evidence guards use the separate CPU daily-history/UID fixture'
 assert not options.reference_rotation or (options.performance_reference and options.device_evidence), 'Rotation extends installed synthetic reference/evidence histories'
 assert not options.performance_reference or options.measurement_windows, 'Reference source rejection uses three actually completed CPU jobs from the marker fixture'
@@ -92,7 +93,7 @@ retention_proof={};mount_proof={};owned_disk=None;pressure_disk=None;pressure_vo
 central_disks=[];central_volumes=[];payload_args=[];payload_contracts=[];central_proof=None
 native_control_volumes=[];native_control_proof=None;browser_workflow_proof=None;experiment_budget_proof=None
 group_pressure={};quota_resize_proof=None;node_quota_proof=None;deadline_proof=None;operator_proof=None;compiler_proof=None;compiler_experiment_proof=None;large_compiler_proof=None;accuracy_proof=None;terminal_handoff_proof=None;source_grant_proof=None;simulation_proof=None;report_view_proof=None;device_schedule_proof=None;device_evidence_proof=None;measurement_proof=None;performance_reference_proof=None;reference_rotation_proof=None
-graph_proof=None
+graph_proof=None;cold_history_proof=None;cold_history_disk=None;cold_history_volume=None
 node_spool_pressure=None;cache_disk=None;cache_volume=None;cache_policy=None;cache_proof=None;dependency_proof=None;input_durability=None;native_proof=None
 controller_url=('https://controller.lab:' if https else 'http://127.0.0.1:')+str(port)
 outer_url=('https' if https else 'http')+'://127.0.0.1:'+str(port)
@@ -189,6 +190,13 @@ def wait(job_id,seconds=60,headers=None):
         assert status==200,body
         if body['job']['state'] in {'succeeded','failed','timed_out','cancelled'}:return body['job']
         time.sleep(.2)
+    if options.cold_history:
+        diagnostics={}
+        for name,role in [(controller,'controller'),(node,'node')]:
+            code='import json;from pathlib import Path;p=Path("/opt/ascend-lab-'+role+'");print(json.dumps({n:json.loads((p/n).read_text()) for n in ["unit-start-change.json","unit-start-gate.json"] if (p/n).is_file()}))'
+            result=docker(['exec',name,'/usr/bin/python3','-I','-B','-c',code],check=False)
+            diagnostics[role]={'exit_code':result.returncode,'readback':result.stdout[-32000:]}
+        atomic_json(base/('observation-'+job_id+'-native-gates.json'),diagnostics)
     raise RuntimeError('Observation deadline exceeded; inspect the original Root installation task '+job_id+' without resubmission')
 
 
@@ -209,7 +217,12 @@ def restore_host_owner():
 
 
 try:
-    if options.operator_analysis:
+    if options.preserve_main:
+        from lab_client import Client,job_id
+        parent=Client.from_profile(ROOT/'runtime/config.json').request('/api/jobs/'+job_id(options.preserve_main))['job']
+        assert parent['state'] in {'running','reserved'} and parent['resources']=={'cpu':2,'memory_mib':2048,'shm_mib':0,'npu':0}
+        assert set(parent['allocation']['cpu_ids'])==set(os.sched_getaffinity(0))
+    elif options.operator_analysis:
         from lab_client import Client
         current=Client(json.loads((ROOT/'runtime/config.json').read_text())).request('/api/jobs')
         expected=json.loads((Path(os.environ['LAB_JOB_DIR'])/'dispatch.json').read_text())['id']
@@ -247,6 +260,12 @@ try:
             docker(['volume','create','--label','io.ascend-lab.installproof='+prefix,'--driver','local',
                     '--opt','type=ext4','--opt','device='+device,'--opt','o=nosuid,nodev'+(',grpquota' if central_groups else ''),mounted])
             volumes.append(mounted);central_volumes.append(mounted)
+    if options.cold_history:
+        sys.path.insert(0,str(ROOT/'tests'));from disk_workspace_fixture import OwnedDisk
+        cold_history_disk=OwnedDisk(base,prefix+'-cold-history',image,cpus,docker,folder_name='cold-history-disk',image_mib=128,inodes=4096,helper_seconds=1500)
+        cold_device=cold_history_disk.create();cold_history_volume=prefix+'-cold-history'
+        docker(['volume','create','--label','io.ascend-lab.installproof='+prefix,'--driver','local','--opt','type=ext4','--opt','device='+cold_device,'--opt','o=nosuid,nodev',cold_history_volume])
+        volumes.append(cold_history_volume)
     if options.native_control:
         sys.path.insert(0,str(ROOT/'tests'));from disk_workspace_fixture import OwnedDisk
         for i in range(6):
@@ -319,6 +338,8 @@ try:
             for i,mounted in enumerate(central_volumes):
                 argv+=['--mount','type=volume,src='+mounted+',dst=/srv/lab-payload'+('-restore' if i else '')+',volume-nocopy']
             argv+=['--mount','type=volume,src='+central_volumes[0]+',dst=/srv/lab-payload-alias,volume-nocopy']
+        if options.cold_history and role=='controller':
+            argv+=['--mount','type=volume,src='+cold_history_volume+',dst=/srv/cold-history,volume-nocopy']
         if options.native_control and role=='controller':
             argv+=['--cap-add','SYS_ADMIN','--security-opt','seccomp=unconfined','--security-opt','apparmor=unconfined']
             for i,mounted in enumerate(native_control_volumes):
@@ -766,6 +787,10 @@ try:
         sys.path.insert(0,str(ROOT/'tests'));from installed_source_grant_check import run as source_grant_check
         source_grant_proof=source_grant_check(globals())
         check('Personal UID approves exact files to a new budget; revoked partial handoff survives controller restart without copying or execution, and fresh approval preserves original failure')
+    if options.cold_history:
+        from installed_cold_history_check import run as cold_history_run
+        cold_history_proof=cold_history_run(globals())
+        check('Actual failed CPU producer remains single-attempt while cold bytes, migrated metadata, current file-scoped grants and revocation preserve original semantics')
     if options.simulation_case:
         sys.path.insert(0,str(ROOT/'tests'));from installed_simulation_check import run as simulation_check
         simulation_proof=simulation_check(globals())
@@ -1125,6 +1150,10 @@ try:
         from installed_terminal_handoff_check import after_restore as terminal_after_restore
         terminal_handoff_proof['after_restore']=terminal_after_restore(globals(),terminal_handoff_proof)
         check('Restore preserves failed and timed-out artifact lineage, revokes old spending credentials and rejects an actual historical controller without terminal edge support')
+    if cold_history_proof:
+        from installed_cold_history_check import after_restore as cold_history_after_restore
+        cold_history_proof['after_restore']=cold_history_after_restore(globals(),cold_history_proof)
+        check('Restored original metadata is readable while cold access stays frozen until explicit Root revalidation; original spending/grants stay frozen')
     if source_grant_proof:
         from installed_source_grant_check import after_restore as source_grant_after_restore
         source_grant_proof['after_restore']=source_grant_after_restore(globals(),source_grant_proof)
@@ -1308,9 +1337,20 @@ try:
             'fixed_probe_memory':{'explicit_memory_mib':256,'oversized_request_http_status':quota_status,
                                   'ordinary_user_quota_enforced':True,'default_memory_unchanged':True},
             'scope':'Owned containers on one physical server; not a real two-server or NPU deployment acceptance'}
+    if cold_history_proof:
+        from installed_cold_history_check import retain_private_evidence
+        cold_history_proof['final_evidence']=retain_private_evidence(globals(),cold_history_proof)
+        report['cold_history']=cold_history_proof
+        report['cold_history_disk']=cold_history_disk.report
     atomic_json(Path(os.environ['LAB_JOB_DIR'])/'results/server-install-validation.json',report)
     print(json.dumps(report,ensure_ascii=False,indent=2))
 finally:
+    if options.cold_history and controller in containers:
+        try:
+            from installed_cold_history_check import retain_private_evidence
+            retain_private_evidence(globals(),cold_history_proof or {},partial=True)
+        except Exception as error:
+            atomic_json(base/'cold-history-capture-failure.json',{'type':type(error).__name__})
     owned_attempts=[]
     if node in containers:
         info=json.loads(docker(['inspect',node]).stdout)[0]
@@ -1395,6 +1435,13 @@ print(json.dumps(sorted(set(items))))
         for item in central_disks:
             try:item.cleanup()
             except Exception as error:disk_cleanup_errors.append(type(error).__name__+': '+str(error))
+    if cold_history_disk and not disk_cleanup_errors:
+        try:cold_history_disk.cleanup()
+        except Exception as error:disk_cleanup_errors.append(type(error).__name__+': '+str(error))
+    if cold_history_disk and 'report' in locals():
+        report['cold_history_disk']=cold_history_disk.report
+        report['cleanup_errors']=disk_cleanup_errors;report['passed']=report['passed'] and not disk_cleanup_errors
+        atomic_json(Path(os.environ['LAB_JOB_DIR'])/'results/server-install-validation.json',report)
     if cache_disk and not disk_cleanup_errors:
         try:cache_disk.cleanup()
         except Exception as error:disk_cleanup_errors.append(type(error).__name__+': '+str(error))

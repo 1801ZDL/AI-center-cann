@@ -1,5 +1,20 @@
 # 实施进度
 
+## 2026-11-03 冷产物、迁出元数据与当前来源授权组合验收（1478项/真实CPU）
+
+在原Main单lease **job-11cc08c4b26b** 内复用2CPU/2048MiB/max1/SHM0/NPU0，实际安装Controller/Node两个原生systemd PID1角色，使用原7bee与任务镜像，无新镜像或模型。新增固定QA入口--cold-history及--preserve-main，必须核对原Main任务及其资源租约；本轮没有重启Main、增加计算预算或删除历史。生产CORE实现未改，新增组合验收和安装夹具修正。
+
+原5376元素CPU数值失败任务经真实Node执行一次、保留11个差异。在迁出前创建逐文件来源授权及独立消费预算；Root在自有128MiB ext4完成冷复制、逐字节校验和原warm回收，原在线slot释放后才迁出job大JSON，SQL保留紧凑身份/原key及一次control credit。原详情、attempt和manifest在迁出后仍是同一任务。实际CPU诊断从冷载荷读取原actual.bin，得到同11差异和同SHA，原producer不重跑。撤销当前grant后新key409且不扣费，原MCP请求重放仍返回原child且免费；agent对原parent详情/manifest404。分别暂移自有冷对象和元数据原文件时均拒读，移回同inode后恢复，未用改写或重哈希掩盖损坏。
+
+最新state异目录恢复保留原元数据、一次attempt及紧凑credit；原cold reader必须经显式Root新计划重新核对才开放。旧grant/budget/token仍按原恢复合同冻结/撤销，不能从副本旧active授权复活。随后普通用户建立新budget与新逐文件批准，真实CPU consumer再次读取同一原冷张量并得到11差异，仍只有一个producer attempt。旧包缺迁出读取器先被新guard拒绝，未放宽原来源授权downgrade保护。
+
+focus case98项，含4项grant/cold/control/restore组合、1项明确synthetic的测量引用组合、3项native启动回执竞态；合成引用用例保留比较值和当前身份撤销，不代表NPU测量。完整check.sh case11 **1478/270.365秒/0skip**及JS检查通过；native case10、full和独立audit case12同417路径冻结（121非mdCORE、293递归tests/helpers及scanner/check.sh/webapp）。独立审计直接核Root私有tar中的原六列、规范JSON/SHA、紧凑索引/批准、当前SQL授权/账单/attempt，并用无网络、无cap、非root只读helper直接debugfs读取已卸载ext4的20个原文件/73676字节；每个SHA一致。真实角色、helper及loop均清退；原SQL/计划/tar/张量仅本地保存，公开报告仅curated cold_control字段。
+
+失败记录保留：focus1/2为单元Root/物理路径及封存权限的stand-in错误；native5在创建角色前被固定磁盘目录白名单拒绝，补一个QA目录。native6原IR观察60秒后仍queued/0attempt，保留原记录并清退自有fixture，不把观察超时当终态成功、不另造重复任务。native8初始controller没有待确认Node，但status.ready先于原startup receipt完成，admin操作被生产guard正确拒绝；私有原journal证实phase=issued/required_nodes=[]。修正仅在native测试夹具：Node及零Node初始controller都须等原回执ready，只有确需Node启动确认的controller可pending交接，避免互等；加3项确定性检查。生产准入guard未改。
+
+本轮完成先前purge场景之外的cold-retired正文+有效来源授权+撤销+恢复实际CPU组合；测量reference组合仅单元级。全部关联SQL留存、20人/大副本吞吐、独立故障域迁移、反向迁回/pending重绑、真实宿主/两登录账号/非root NPU/两物理机fencing/长期混合负载仍未完成；真实逐卡日程和PUBLIC-001不启。Main上限1100、旧记录全留且原预算不变，整体goal active/production_ready=false。
+
+
 ## 2026-11-03 终态任务JSON迁出、原历史读与完整记录名额复用（1470项/原生2中断）
 
 新增control_rotation.py及Root control-rotate-plan/apply，沿原停止态锁/服务UID SQLite VFS，要求已显式启用双容量、原任务终态且在线slot已由原purge或cold retire证明释放。选择先前verified副本中明确selection的1..32原job；当前原六列与副本逐字节一致、代码/安装/配置/DB/策略/全体历史摘要绑定。普通目录丢失、trash、复制完成都不能迁出。首次事务写紧凑索引及原批准，替换同一jobs行data，原五标量列/rowid/unique(owner,key)保持，事务提交后才把完整control计数减去已批准索引，原online slot不另释放。提交前rollback/提交后原plan重放，不重复credit。

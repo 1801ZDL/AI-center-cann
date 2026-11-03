@@ -114,6 +114,13 @@ def private_values():
     files.update(r.glob('jobs/*/tmp/installation/accuracy-budget-client.json'))
     files.update(r.glob('jobs/*/tmp/installation/terminal-budget-client.json'))
     files.update(r.glob('jobs/*/tmp/installation/*-source-grant-client.json'))
+    for pattern in ['jobs/*/tmp/validation-session/case-*/tmp/installation/controller-*/config.json',
+                    'jobs/*/tmp/validation-session/case-*/tmp/installation/controller-*/personas/*/client.json',
+                    'jobs/*/tmp/validation-session/case-*/tmp/installation/node-control/*/config.json',
+                    'jobs/*/tmp/validation-session/case-*/tmp/installation/node-control/*/attempts/*/control/grant.json',
+                    'jobs/*/tmp/validation-session/case-*/tmp/installation/node-control/*/attempts/*/control/measurement.json',
+                    'jobs/*/tmp/validation-session/case-*/tmp/installation/*-source-grant-client.json']:
+        files.update(r.glob(pattern))
     files.update(r.glob('jobs/*/tmp/installation/simulation-budget-client-*.json'))
     files.update(r.glob('jobs/*/tmp/installation/simulation-personal-client-*.json'))
     files.update(r.glob('jobs/*/tmp/installation/report-view-budget-client.json'))
@@ -133,6 +140,7 @@ def private_values():
         if p.is_file() and not p.is_symlink():collect(read_json(p))
     archives=set(r.glob('jobs/*/tmp/native-systemd/evidence/private-controller-evidence.tar.gz'))
     archives.update(r.glob('jobs/*/tmp/validation-session/case-*/tmp/native-systemd/evidence/private-controller-evidence.tar.gz'))
+    archives.update(r.glob('jobs/*/tmp/validation-session/case-*/tmp/installation/private-controller-evidence.tar.gz'))
     for p in archives:collect(native_fixture_config(p,include_control=True))
     files.update(archives)
     return values,len(files)

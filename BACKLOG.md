@@ -1,5 +1,12 @@
 # 后续任务
 
+## 2026-11-03 cold-retired元数据与有效来源授权组合已实际贯通
+
+1478项、同机原生Controller/Node、一个真实CPU producer和迁出/恢复后的两个CPU consumer已覆盖冷载荷、元数据迁出、当前逐文件授权/撤销、免费原请求重放及恢复重新批准。原11个数值差异和张量SHA不变，原producer仅一次；Root私有SQL/原文件及卸载ext4逐字节独立审计通过。测量引用组合新增synthetic单元覆盖，未验收真实硬件性能。详见PROGRESS.md及CONTROL_ROTATION.md。
+
+不再将这一CPU组合列为完全缺失；仍需真实NPU测量/日检、全部关联表有限留存与轮转、独立物理故障域/跨UID路径迁移、20人长期混合负载、大副本吞吐、反向迁回/pending取消重绑、最新状态丢失与两物理机fencing。Main未启用迁出/新policy，未重启或删除旧记录，1100上限/原资源预算不变。PUBLIC-001继续遗留，真实逐卡计划暂不启。
+
+
 ## 2026-11-03 终态JSON迁出与名额复用已贯通，继续完整留存/迁移
 
 CONTROL_ROTATION.md提供停止态Root显式迁出：已确认原载荷回收、已verified当前副本的终态任务，保原身份/key/FP/ACL/图/attempt/result及账单，SQL大JSON变紧凑索引、原API读已核副本，事务提交后复用完整control名额。1470项/16新增、原生两真实SIGKILL、原limit下第三job准入/再次满额、恢复和独立字节审计见PROGRESS.md。不再将任务JSON迁出/正常历史读/该名额回收列为完全缺失。
