@@ -1,5 +1,7 @@
 # 从个人 Demo 扩展到多用户、多服务器
 
+新增[有限冷存副本管理](https://github.com/1801ZDL/AI-center-cann/blob/main/COLD_EXPORT.md)：停止态Root、独立有限整盘、每owner应用预留、完整公开/私有树分块校验和恢复冻结已验收。API继续读原归档，未释放原配额/历史名额；独立冷盘字节和Root计划需另行保留，读切换/原件维护与完整容量闭环仍待。最新1392项与原生10个SIGKILL边界见PROGRESS.md。
+
 新增[旧pending库存管理员对账](https://github.com/1801ZDL/AI-center-cann/blob/main/STORAGE_RECONCILIATION.md)：停止态精确计划、同计划中断恢复、原计费/批准清单保留及缺helper的显式修复升级。输入和取消任务归档已做实际原生服务验收；它不执行冷存或自动清理，部署边界见PROGRESS.md。
 
 本项目选择程序化中央调度器。个人 agent、CLI 和网页是同一 API 的客户端；分析能力可以更换，身份、资源账本、执行许可、日志和归档合同保持稳定。目标规模约100名可访问用户、峰值20名使用者，不等于已经完成该规模的负载验收。

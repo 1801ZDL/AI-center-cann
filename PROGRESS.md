@@ -1,5 +1,19 @@
 # 实施进度
 
+## 2026-11-03 有限冷存副本与真实中断恢复（1392项/原生10边界通过）
+
+新增 cold_files.py/cold_exports.py 以及 Root-only `cold-register-plan/apply`、`cold-copy-plan/step/verify`。停止态中央登记一个独立有限空 ext4 整盘，固定原生身份和每 owner 应用预留。终态完整归档包含原索引产物与内部证据，二者分区枚举；未知内部文件在读内容前拒绝，额外文件须显式逐个批准，完整树不能超过原已结算额度。没有扫描模型配置或个人会话。
+
+登记先入持久意图，复制先预留完整成本；256KiB块写入/fsync后保存进度，核对前缀后才处理未确认尾部。完成后完整SHA校验、权限封存与无覆盖发布，最后提交回执。对额外挂载、链接、特殊文件、源或目标改变、未知文件和余额不足拒绝；normal backup/activate在登记或复制未完时拒绝。复制中原owner的存储维护也被阻断；独立metadata-only对账可继续，避免互锁。普通API保持原归档，只增加沿原ACL的有限副本状态，不公开冷存路径、私有文件名或内部清单。
+
+最终原生演练 **job-2ce1db67261c**：复用原systemd249.11镜像，自有PID1、UID999/CAPeff0控制器，无Docker socket/设备；独立128MiB文件后备ext4。真实提交后未执行即取消的规范IR任务为0attempt；700KiB公开与900KiB私有传输样本是明确注入的测试字节，不是编译器结果。登记reserved/marker/committed三处及复制reserved/file_created/data_synced/progress_committed/sealed/copy_published/verified七处均实际SIGKILL（各-9），同一原计划继续，只有一份预留/传输。期间原归档和账单不变，原owner实际HTTP trash请求409，普通backup拒绝；完成后原manifest保持、私有文件请求404、非Root冷存写操作拒绝。
+
+旧备份丢冷存记录被拒；最新备份恢复原在线数据后冻结旧池/传输，旧写计划因原绑定失效拒绝，原Root计划仍可验证保留冷副本。普通backup只包含原在线数据及SQL冷存元数据，不包含独立冷盘字节和Root完整计划原像，须另外私有保留。独立 **job-1ea484beae4b** 读取私有tar/SQL和已卸载的自有ext4固定对象：原/冷所有文件大小与SHA、分区、唯一传输、copied_bytes、预留、0attempt、原计费和任务数逐项一致；恢复仅按既有逻辑变更job.archive_dir。两次native夹具的容器/卷/helper清退，loop已released且无原backing关联，host cgroup挂载和parent limits不变。
+
+最终完整 **job-91d7dc443111：1392项/246.755秒/零跳过+JS**；新增20项，冻结source-frozen-r6=116非mdCORE+284递归tests/helpers+scanner，最终native/full同冻结。专项 job-b241ae0e737b=20项；最初focus-r1因非Root单测未模拟Root权限失败，r2暴露真正的剩余额度不足整块时无限循环，确认原进程存活后明确取消、终态后修复为返回copying；r3还需模拟Root重命名封存目录的权限，r4通过。native-r1的10个实际SIGKILL与验证已过，最后错误地要求恢复后的archive_dir完全不变；改为按既有目录迁移语义比对后r2全部通过。所有失败和取消原记录保留，无轮询超时换key。
+
+证据 `evidence/cold-export-validation.json`、私有阶段 `runtime/cold-export-20261103/`；公开仅curated reports.public-source-check.cold_export。Main配置、19profiles、唯一物理域、原CPU/内存/SHM/并发、保护6与领域agent/web/zdl均保持，0实际daily计划/规则/参考/图，0新image/0模型/0NPU kernel。当前复制不改读取指针、不回收原件、不归还额度或历史名额，不能宣称长期容量已经解决。下一步必须继续原任务ACL下的冷存读取、引用保护和确认原件维护、历史/载荷计数拆分；真实宿主/多机/NPU门槛和PUBLIC-001延期仍在，整体未完成。
+
 ## 2026-11-03 旧pending库存显式对账与修复升级（最终1372/原生两类对象恢复通过）
 
 新增storage_reconciliation.py和Root-only `storage-reconcile-plan/apply`，处理legacy v1 pending trash/restore/purge。保留原操作/完整批准清单/计费，只在当前FD和非mount元数据核对后发布v2库存、递增revision及小回执；archive同步job.archive_status。Root计划/原像私有留在prefix历史，单SQLite事务保持记录/事件一致。重放不重复生效，不移动/删除负载、不释放额度或重跑任务，属主继续走原授权接口。

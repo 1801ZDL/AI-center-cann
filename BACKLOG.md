@@ -1,5 +1,9 @@
 # 后续任务
 
+## 2026-11-03 冷存副本前置已实现，继续读取与回收闭环
+
+Root有限池登记、完整归档分块副本、回执、10个真实SIGKILL及恢复冻结已验证，见COLD_EXPORT.md/PROGRESS.md。仍须沿原job/attempt、幂等键、结果及ACL实现冷存读取、引用门禁、确认原件维护、在线载荷/控制历史计数拆分和完整异地恢复。不得把副本、普通purge或提高max_jobs当作完成。当前未完成写计划的取消/重绑和10000传输历史轮转也未实现；管理员试点/NPU/两机与PUBLIC-001延期不变。
+
 ## 2026-11-03 legacy pending对账前置已补齐
 
 旧v1 pending存储操作现有显式Root对账及缺helper安装的code-only修复升级，真实原生controller输入/取消任务归档、四处同计划SIGKILL、owner继续原操作和恢复拒旧快照已验证，见STORAGE_RECONCILIATION.md/PROGRESS.md。不再列为完全缺少入口。它只更新已验证库存，冷存副本/读路径/原件维护与历史计数拆分仍待；1024份Root回执历史的导出轮转亦待。真实宿主/多机/NPU门槛及PUBLIC-001延期不变。

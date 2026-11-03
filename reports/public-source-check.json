@@ -9415,5 +9415,34 @@
       "full_before_peer_pending_fix": 1372
     },
     "scope": "Metadata-only Root repair on an owned native controller, two real inputs and one actual cancelled-job archive with explicitly simulated legacy pending intents; four actual helper SIGKILLs. Not cold storage, host boot, two host users, two physical machines or NPU compute."
+  },
+  "cold_export": {
+    "passed": true,
+    "verified_at": "2026-11-03T00:04:23.655760+00:00",
+    "production_files": 116,
+    "frozen_paths": 401,
+    "actual_sigkills": 10,
+    "actual_cancelled_job_attempts": 0,
+    "single_copy_record": true,
+    "all_original_tar_bytes_match_copy_manifest": true,
+    "unmounted_ext4_all_copy_bytes_match_manifest": true,
+    "private_partition_preserved": true,
+    "owner_charge_and_job_count_unchanged": true,
+    "restore_only_changes_original_archive_dir": true,
+    "restore_frozen_pool_and_copy_verified": true,
+    "no_reader_switch_or_quota_history_credit": true,
+    "owned_containers_volumes_and_loop_released": true,
+    "npu_kernel_launches": 0,
+    "model_calls": 0,
+    "physical_hosts": 1,
+    "production_ready": false,
+    "unit_tests": 1392,
+    "unit_seconds": 246.755,
+    "unit_skipped": 0,
+    "javascript_syntax_passed": true,
+    "new_unit_cases": 20,
+    "main_config_profiles_domain_zdl_protected_and_web_unchanged": true,
+    "main_live_daily_plans_rules_references_graphs": 0,
+    "scope": "Root-managed non-authoritative whole-archive copy on owned native PID1 plus finite ext4; ten actual SIGKILLs. No original retirement, user cold readers, history capacity release, real host users/two physical machines or NPU compute."
   }
 }

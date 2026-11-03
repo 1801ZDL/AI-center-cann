@@ -106,6 +106,8 @@
     "unit_relocation.py",
     "storage_inventory.py",
     "storage_reconciliation.py",
+    "cold_files.py",
+    "cold_exports.py",
     "job_graphs.py",
     "graph_client.py",
     "control_monitor.py",

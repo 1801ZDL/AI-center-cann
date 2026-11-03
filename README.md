@@ -1,5 +1,7 @@
 # AI-center-cann
 
+新增[有限冷存副本](https://github.com/1801ZDL/AI-center-cann/blob/main/COLD_EXPORT.md)：Root 离线登记独立 ext4 池，完整公开/私有归档分块复制与校验，同计划中断恢复及旧快照保护。最新1392项回归、原生控制器10个真实SIGKILL边界和卸载盘独立字节审计通过。API仍读原件，未切换读路径、删除原件、释放额度或历史名额；完整冷存仍待后续实现。
+
 新增[旧pending库存管理员对账](https://github.com/1801ZDL/AI-center-cann/blob/main/STORAGE_RECONCILIATION.md)：停止态精确计划、同计划中断恢复、原计费/批准清单保留及缺helper的显式修复升级。输入和取消任务归档已做实际原生服务验收；它不执行冷存或自动清理，部署边界见PROGRESS.md。
 
 面向 Triton-Ascend / AscendNPU-IR 开发服务器的 AI 任务调度与实验管理原型。程序化中央服务负责资源分配和可靠执行，个人 Agent、CLI 与网页通过同一 API 提交任务、读取日志和分析结果。

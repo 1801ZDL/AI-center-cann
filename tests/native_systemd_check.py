@@ -8,7 +8,7 @@ from lab_client import atomic_json,now
 assert os.environ.get('LAB_JOB_DIR')
 import argparse
 parser=argparse.ArgumentParser();parser.add_argument('--image-metadata',required=True)
-parser.add_argument('--scenario',choices=['controller','storage','reconcile'],default='controller');parser.add_argument('--legacy-archive');args=parser.parse_args()
+parser.add_argument('--scenario',choices=['controller','storage','reconcile','cold'],default='controller');parser.add_argument('--legacy-archive');args=parser.parse_args()
 fixtures=ROOT/'tests/native_systemd'
 for source in fixtures.glob('*.py'):compile(source.read_bytes(),str(source),'exec')
 job=Path(os.environ['LAB_JOB_DIR']);base=job/'tmp/native-systemd';base.mkdir(mode=0o700,parents=True)
@@ -24,7 +24,7 @@ if args.scenario=='reconcile':
 else:assert not args.legacy_archive
 metadata=Path(args.image_metadata);assert metadata.is_file() and not metadata.is_symlink() and metadata.stat().st_size<=128*1024
 native=json.loads(metadata.read_text());image=native['image'];assert native['passed'] and re.fullmatch('sha256:[0-9a-f]{64}',image)
-binding,_=discover();name='ascend-lab-nativepid1-run-'+uuid.uuid4().hex[:12];created=None;cleaned=False;report=None;timed_out=False
+binding,_=discover();name='ascend-lab-nativepid1-run-'+uuid.uuid4().hex[:12];created=None;cleaned=False;report=None;timed_out=False;disk=None;volume=None;volume_created=False
 def docker(args,check=True,timeout=30):
  argv,env=command(binding,['docker',*args]);r=subprocess.run(argv,env=env,capture_output=True,text=True,timeout=timeout)
  if check and r.returncode:raise RuntimeError('Owned native acceptance operation refused: '+r.stderr[-2048:])
@@ -32,6 +32,14 @@ def docker(args,check=True,timeout=30):
 host_before=[x for x in Path('/proc/self/mountinfo').read_text().splitlines() if ' - cgroup2 ' in x]
 atomic_json(job/'results/native-intent.json',{'name':name,'label':name,'image':image,'release_id':release['release_id'],'max_acceptance_seconds':250,'recorded_at':now()})
 try:
+ mounts=[]
+ if args.scenario=='cold':
+  from disk_workspace_fixture import OwnedDisk
+  disk=OwnedDisk(base,name,image,sorted(os.sched_getaffinity(0)),docker,image_mib=128,inodes=2048)
+  device=disk.create();volume=name+'-cold'
+  docker(['volume','create','--driver','local','--label','io.ascend-lab.nativepid1='+name,
+   '--opt','type=ext4','--opt','o=rw,nosuid,nodev','--opt','device='+device,volume]);volume_created=True
+  mounts=['--mount','type=volume,src='+volume+',dst=/srv/cold,volume-nocopy']
  caps=['SYS_ADMIN','CHOWN','DAC_OVERRIDE','FOWNER','FSETID','SETUID','SETGID','SYS_CHROOT','KILL','SETFCAP','SETPCAP','MKNOD']
  r=docker(['create','--pull','never','--name',name,'--label','io.ascend-lab.nativepid1='+name,
   '--network','none','--cgroupns','private','--tty','--cap-drop','ALL',*[x for cap in caps for x in ['--cap-add',cap]],
@@ -44,7 +52,7 @@ try:
   '--mount','type=bind,src='+str(provision)+',dst=/provision,readonly',
   '--mount','type=bind,src='+str(evidence)+',dst=/evidence',
   '--mount','type=bind,src='+str(fixtures/'boot.py')+',dst=/boot-native.py,readonly',
-  '--mount','type=bind,src='+str(fixtures/({'storage':'storage_inside.py','reconcile':'reconcile_inside.py'}.get(args.scenario,'inside.py')))+',dst=/native-inside.py,readonly',
+  '--mount','type=bind,src='+str(fixtures/({'storage':'storage_inside.py','reconcile':'reconcile_inside.py','cold':'cold_inside.py'}.get(args.scenario,'inside.py')))+',dst=/native-inside.py,readonly',*mounts,
   '--entrypoint','/usr/bin/python3',image,'-I','-B','/boot-native.py'])
  created=r.stdout.strip();assert re.fullmatch('[0-9a-f]{64}',created)
  docker(['start',created]);info=json.loads(docker(['inspect',created]).stdout)[0]
@@ -76,6 +84,10 @@ finally:
   if current['State']['Running']:docker(['stop','--time','8',current['Id']],timeout=20)
   stopped=json.loads(docker(['inspect',current['Id']]).stdout)[0];assert not stopped['State']['Running'] and stopped['State']['Pid']==0
   docker(['rm',current['Id']]);cleaned=True
+ if volume_created:
+  vi=json.loads(docker(['volume','inspect',volume]).stdout)[0];assert vi['Labels']['io.ascend-lab.nativepid1']==name
+  docker(['volume','rm',volume]);volume_created=False
+ if disk is not None:disk.cleanup()
 assert cleaned
 host_after=[x for x in Path('/proc/self/mountinfo').read_text().splitlines() if ' - cgroup2 ' in x]
 assert host_before==host_after
@@ -83,6 +95,7 @@ result={'recorded_at':now(),'scenario':args.scenario,'passed':bool(report and re
  'image':image,'release_id':release['release_id'],'report':report,'acceptance_deadline_reached':timed_out,
  'original_container_stopped_and_removed':cleaned,'host_cgroup_mounts_unchanged':True,
  'fixture_apparmor_unconfined':True,'minimal_fixture_targets':True,'host_units_changed':False,'npu_launches':0,
+ 'cold_disk':disk.report if disk is not None else None,
  'scope':'Real native PID1 and project controller in an owned no-device namespace, with private minimal boot targets; not real host accounts/full host boot/two physical machines.'}
 atomic_json(job/'results/native-systemd-validation.json',result);print(json.dumps(result))
 assert result['passed'],'Original native acceptance failed; preserve private evidence and diagnose, no replacement start'

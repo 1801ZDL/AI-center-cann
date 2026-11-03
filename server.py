@@ -270,10 +270,13 @@ def handler_class(store, config, jobs=None):
                         directory = jobs.directory(job_id)
                         job = jobs.get(job_id, principal=self.principal)
                         if len(parts) == 3:
+                            from cold_exports import public_copies
+                            with jobs.connect() as cold_db:cold_copies=public_copies(cold_db,job_id)
                             index=read_json(directory/'artifacts.json') or jobs.lifecycle.record('archive',job_id).get('manifest') or {}
                             return self.reply({'job': public(job), 'attempts':jobs.attempts(job_id,self.principal), 'permissions':{'cancel':'jobs:cancel' in self.principal.scopes and access.can_cancel(self.principal,job),
                               'storage':'storage:manage' in self.principal.scopes and job['owner']==self.principal.id and job['state'] in {'succeeded','failed','cancelled','timed_out'}}, 'artifacts': index.get('files', []),
-                              'retention_metadata':jobs.lifecycle.record('archive',job_id).get('evidence') if job.get('archive_status',{}).get('state','available')!='available' else None})
+                              'retention_metadata':jobs.lifecycle.record('archive',job_id).get('evidence') if job.get('archive_status',{}).get('state','available')!='available' else None,
+                              **({'cold_copies':cold_copies} if cold_copies else {})})
                         if parts[3:] == ['log']:
                             return self.reply(jobs.log(job_id, parse_qs(parsed.query).get('stream', ['stdout'])[0], self.principal))
                         if parts[3:] == ['archive-manifest']:

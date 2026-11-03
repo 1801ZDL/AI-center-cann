@@ -46,8 +46,9 @@ def tree(root):
     finally:os.close(fd)
 
 
-def assert_quiescent(state,role,check_spool=True,*,storage_reconcile=None):
+def assert_quiescent(state,role,check_spool=True,*,storage_reconcile=None,cold_export=False):
     state=Path(state)
+    if type(cold_export) is not bool or cold_export and role!='controller':raise DeployError('Cold export is controller-only maintenance')
     if storage_reconcile is not None:
         from storage_reconciliation import selection
         if role!='controller' or not isinstance(storage_reconcile,tuple) or len(storage_reconcile)!=2:
@@ -81,8 +82,12 @@ def assert_quiescent(state,role,check_spool=True,*,storage_reconcile=None):
                     # interrupted objects. Requiring every peer to finish
                     # first would deadlock their independent reconciliations.
                     # Ordinary maintenance still requires all of them done.
-                    if storage_reconcile is None and db.execute("SELECT 1 FROM storage_lifecycle WHERE state IN ('moving_to_trash','restoring','purging') LIMIT 1").fetchone():
+                    if storage_reconcile is None and not cold_export and db.execute("SELECT 1 FROM storage_lifecycle WHERE state IN ('moving_to_trash','restoring','purging') LIMIT 1").fetchone():
                         raise DeployError('Finish pending storage maintenance before offline backup or activation')
+                if not cold_export and storage_reconcile is None and db.execute("SELECT 1 FROM sqlite_master WHERE name='cold_transfers'").fetchone():
+                    if db.execute('SELECT 1 FROM cold_transfers WHERE state="copying" LIMIT 1').fetchone():raise DeployError('Finish the original cold copy before offline backup or activation')
+                if not cold_export and storage_reconcile is None and db.execute("SELECT 1 FROM sqlite_master WHERE name='cold_pools'").fetchone():
+                    if db.execute('SELECT 1 FROM cold_pools WHERE state="registering" LIMIT 1').fetchone():raise DeployError('Finish the original cold registration before offline backup or activation')
                 for state_value,encoded in db.execute('SELECT state,data FROM jobs'):
                     if state_value not in {'succeeded','failed','cancelled','timed_out'} or json.loads(encoded).get('state')!=state_value:
                         raise DeployError('Stop admission and finish/cancel all queued or active jobs before offline maintenance')
@@ -339,9 +344,14 @@ def restore(prefix,archive_path,new_state,max_bytes=10*1024**3,payload_config=No
             if meta['role']=='controller':
                 from storage_reconciliation import require_history as require_reconciliation_history
                 require_reconciliation_history(old,stage)
+                from cold_exports import require_history as require_cold_history
+                require_cold_history(old,stage)
             relocate(stage,manifest['original_state'],target,meta['role'],
                      original_payload['path'] if original_payload else manifest['original_state'],policy['path'] if policy else None)
             restored_config=read_json(stage/'config.json')
+            if meta['role']=='controller':
+                from cold_exports import freeze_restored
+                freeze_restored(stage)
             if restored_config.get('scheduler',{}).get('control_filesystem')!=original_control:
                 raise DeployError('Snapshot configuration and control manifest differ')
             if native:
@@ -442,6 +452,8 @@ def require_control_storage(config,role,manifest):
 
 
 def require_features(state,role,manifest,installation=None):
+    from cold_exports import require_compatible as require_cold
+    require_cold(state,role,manifest)
     from storage_reconciliation import require_compatible as require_reconciliation
     require_reconciliation(state,role,manifest)
     from storage_inventory import require_compatible as require_inventory

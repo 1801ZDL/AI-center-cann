@@ -1,6 +1,6 @@
 # 历史容量与保留证据的迁移设计
 
-状态：冷存仍为设计；已补旧pending库存显式对账和缺helper安装的修复升级前置，见[STORAGE_RECONCILIATION.md](STORAGE_RECONCILIATION.md)。尚未实现冷归档副本、读路径切换、原件维护或历史计数拆分。不得把本文件当作删除原件或恢复旧授权的批准。本机Demo仅将历史计数上限显式调整到1100，保留所有记录，计算/并发/存储预算不变；最终systemd验收进度见PROGRESS.md。
+状态：完整冷存合同仍未完成。新增[有限冷存副本](COLD_EXPORT.md)实现 Root 离线登记、完整树分块复制、持久校验与恢复冻结；API 仍读原件，不释放原额度或历史名额。读路径切换、引用保护下的原件维护与计数拆分继续待做。旧pending库存前置见[STORAGE_RECONCILIATION.md](STORAGE_RECONCILIATION.md)。本文件不是删除原件或恢复旧授权的批准；Demo历史上限1100只是临时计数容量，原计算/并发/存储预算保持。最终证据见PROGRESS.md。
 
 ## 已触发的限制
 

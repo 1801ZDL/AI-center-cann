@@ -82,6 +82,8 @@ class Lifecycle:
         if self.jobs.inventory.holds(db=db):raise JobError('Reconcile outstanding node execution inventories before storage maintenance',409)
         if kind=='archive':
             if subject['state'] not in TERMINAL:raise JobError('Running, queued or unknown tasks cannot be retired',409)
+            from cold_exports import pinned
+            if pinned(db,value):raise JobError('Finish the original cold copy before moving or deleting this archive',409)
             if self.jobs.dependencies.pinned(value,db):raise JobError('A waiting, running or unknown downstream stage still pins this producer archive',409)
             for raw, in db.execute('SELECT profile FROM worker_nodes WHERE disabled=0'):
                 if json.loads(raw).get('environment_manifest',{}).get('source',{}).get('job_id')==value:
