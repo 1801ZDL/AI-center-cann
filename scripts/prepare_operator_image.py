@@ -11,8 +11,9 @@ import shutil
 import sys
 import tempfile
 
-ROOT=Path(__file__).resolve().parents[1];sys.path.insert(0,str(ROOT))
+ROOT=Path(__file__).resolve().parents[1];sys.path.insert(0,str(ROOT/'src/ascend_lab' if (ROOT/'src/ascend_lab').is_dir() else ROOT))
 from operator_workflow import APP_FILES
+from source_layout import source_file
 
 
 def prepare(wheels,output):
@@ -39,7 +40,7 @@ def prepare(wheels,output):
     output.parent.mkdir(parents=True,exist_ok=True);stage=Path(tempfile.mkdtemp(prefix='.operator-context-',dir=output.parent))
     try:
         (stage/'app').mkdir();(stage/'wheels').mkdir()
-        for name in APP_FILES:shutil.copyfile(ROOT/name,stage/'app'/name)
+        for name in APP_FILES:shutil.copyfile(source_file(ROOT,name),stage/'app'/name)
         shutil.copyfile(requirement,stage/'requirements-linux-x86_64-py311.txt')
         shutil.copyfile(ROOT/'examples/operator_tools/Dockerfile',stage/'Dockerfile')
         for path in found.values():shutil.copyfile(path,stage/'wheels'/path.name)

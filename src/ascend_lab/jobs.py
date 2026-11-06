@@ -1,0 +1,936 @@
+"""Single-node cooperative scheduler; durable SQLite ledger and independent workers."""
+from __future__ import annotations
+from source_layout import project_root
+
+from contextlib import contextmanager
+import datetime as dt
+import fcntl
+import hashlib
+import json
+import logging
+import os
+from pathlib import Path
+import secrets
+import shlex
+import shutil
+import sqlite3
+import subprocess
+import threading
+import time
+import uuid
+
+from collector import ROOT, now
+from auth import AccessControl, AccessError
+from templates import expand_template
+
+TERMINAL = {'succeeded', 'failed', 'cancelled', 'timed_out'}
+ACTIVE = {'reserved', 'running', 'cancelling', 'needs_attention'}
+KINDS = {'command', 'build', 'accuracy', 'performance', 'simulation', 'ir'}
+ARTIFACT_NAMES = {'stdout.log', 'stderr.log', 'request.json', 'result.json', 'environment.json', 'artifacts.json','validated-result.json','artifact-hashes.json','npu-admission.json','dependency-inputs.json','npu-conditions.json'}
+
+
+class JobError(ValueError):
+    def __init__(self, message, status=400):
+        super().__init__(message)
+        self.status = status
+
+
+def atomic_json(path, data):
+    path = Path(path)
+    temp = path.with_name(path.name + '.' + uuid.uuid4().hex + '.tmp')
+    with temp.open('x') as file:
+        json.dump(data, file, ensure_ascii=False, indent=2)
+        file.write('\n')
+        file.flush()
+        os.fsync(file.fileno())
+    temp.chmod(0o600)
+    os.replace(temp, path)
+
+
+def read_json(path):
+    try:
+        return json.loads(Path(path).read_text())
+    except (OSError, ValueError):
+        return None
+
+
+def identity(pid):
+    try:
+        p = Path('/proc') / str(pid)
+        values = (p / 'stat').read_text().rsplit(')', 1)[1].split()
+        return {'pid': pid, 'start_ticks': int(values[19]), 'uid': p.stat().st_uid,
+                'boot_id': Path('/proc/sys/kernel/random/boot_id').read_text().strip(),
+                'state': values[0]}
+    except (OSError, ValueError, IndexError):
+        return None
+
+
+def identity_alive(saved):
+    if not saved:
+        return False
+    actual = identity(saved.get('pid', -1))
+    return bool(actual and actual['state'] != 'Z' and all(actual[k] == saved.get(k) for k in ('pid', 'uid', 'start_ticks', 'boot_id')))
+
+
+def defaults(config):
+    cpus = sorted(os.sched_getaffinity(0))[-2:]
+    policy = {'cpu_ids': cpus, 'memory_mib': 2048, 'shm_mib': 1024, 'max_running': 1,
+              'max_queued': 100, 'max_timeout_seconds': 3600,
+              'max_log_bytes': 2 * 1024**2, 'npu_enabled': True,
+              'workspace_root': str(Path.home()), 'max_jobs': 1000, 'local_enabled':True,
+              'require_bounded_workspace':False,'require_pinned_docker':False,'require_environment_contract':False,'require_attempt_inventory':False,'require_node_spool':False,'require_finite_node_spool':False,'aging_seconds':300}
+    policy.update(config.get('scheduler', {}))
+    from resource_pressure import policy as pressure_policy
+    policy['resource_pressure'] = pressure_policy(policy.get('resource_pressure'))
+    from interactive_debug import policy as debug_policy
+    policy['interactive_debug'] = debug_policy(policy.get('interactive_debug'))
+    from control_storage import validate as control_policy
+    policy['control_storage']=control_policy(policy.get('control_storage'))
+    from experiment_budget import policy as experiment_policy
+    policy['experiment_budget']=experiment_policy(policy.get('experiment_budget'))
+    from workflow_spec import MAX_TIMEOUT_SECONDS
+    if type(policy['max_timeout_seconds']) is not int or not 1<=policy['max_timeout_seconds']<=MAX_TIMEOUT_SECONDS:
+        raise ValueError('Administrator execution timeout must be within 1..86400 seconds')
+    from queue_policy import threshold
+    threshold(policy)
+    from io_policy import limits
+    policy['io_limits']=limits(policy.get('io_limits'))
+    environments = {
+        'worker-python': {'label':'节点服务 · 隔离 Python','type':'worker','python':'/usr/bin/python3'},
+        'host-python': {'label': '宿主机 · Python 3', 'type': 'host', 'python': '/usr/bin/python3'},
+        'zdl-python': {'label': 'zdl · 系统 Python', 'type': 'docker', 'container': config['container'],
+                       'python': '/usr/bin/python3', 'uid': os.getuid(), 'gid': os.getgid(),
+                       'npu_id_mapping': 'identity'},
+        'zdl-mxh-dev': {'label': 'zdl · mxh_dev', 'type': 'docker', 'container': config['container'],
+                        'python': '/data/miniconda3/envs/mxh_dev/bin/python',
+                        'uid': os.getuid(), 'gid': os.getgid(), 'npu_id_mapping': 'identity'},
+    }
+    for name,override in config.get('environments', {}).items():
+        environments[name]={**environments.get(name,{}),**override}
+    for env in environments.values():
+        env.setdefault('cann_env', '/data/pri/cann/set_env.sh')
+    return policy, environments
+
+
+def public(job):
+    return {k: v for k, v in job.items() if not k.startswith('_')}
+
+
+class JobStore:
+    def __init__(self, runtime, config):
+        self.runtime = Path(runtime)
+        from control_filesystem import Filesystem
+        self.control_filesystem=Filesystem(self.runtime,config)
+        self.control_filesystem.check()
+        from payload_storage import Payload
+        self.payload=Payload(self.runtime,config)
+        self.root = self.payload.path('jobs')
+        self.root.mkdir(mode=0o700, parents=True, exist_ok=True)
+        self.db_path = self.runtime / 'jobs.sqlite3'
+        self.owner = config['username']
+        self.access = AccessControl(runtime, config)
+        # Import lazily because backend implementations use the manifest helpers above.
+        from backends import LocalExecutionBackend
+        self.backend = LocalExecutionBackend(runtime)
+        self.policy, self.environments = defaults(config)
+        with self.connect() as db:
+            db.executescript('''
+                CREATE TABLE IF NOT EXISTS jobs (
+                    id TEXT PRIMARY KEY, owner TEXT NOT NULL, idem_key TEXT NOT NULL,
+                    fingerprint TEXT NOT NULL, state TEXT NOT NULL, data TEXT NOT NULL,
+                    UNIQUE(owner, idem_key));
+                CREATE TABLE IF NOT EXISTS execution_attempts (
+                    id TEXT PRIMARY KEY, job_id TEXT NOT NULL, node_id TEXT NOT NULL,
+                    state TEXT NOT NULL, created_at TEXT NOT NULL);
+            ''')
+        self.db_path.chmod(0o600)
+        from resources import ResourceDomains
+        self.resources=ResourceDomains(self)
+        from nodes import NodeRegistry
+        self.nodes=NodeRegistry(self)
+        from attempt_inventory import Inventory
+        self.inventory=Inventory(self)
+        from inputs import InputStore
+        self.inputs=InputStore(self)
+        from workflow_results import ResultStore
+        self.results=ResultStore(self)
+        from storage_lifecycle import Lifecycle
+        self.lifecycle=Lifecycle(self)
+        from storage_budget import StorageBudget
+        self.storage=StorageBudget(self)
+        from dependencies import Dependencies
+        self.dependencies=Dependencies(self)
+        from experiment_budget import Budgets
+        self.experiment_budgets=Budgets(self)
+        from source_grants import SourceGrants
+        self.source_grants=SourceGrants(self)
+        from device_schedule import Schedules
+        self.device_schedules=Schedules(self)
+        from device_evidence import Evidence
+        self.device_evidence=Evidence(self)
+        from performance_reference import References
+        self.performance_references=References(self)
+        from job_graphs import Graphs
+        self.graphs=Graphs(self)
+        from history_capacity import Capacity
+        self.history=Capacity(self)
+        from notifications import policy as notification_policy, initialize as initialize_notifications
+        self.notification_policy=notification_policy(config.get('scheduler',{}).get('notifications'))
+        if self.notification_policy['enabled']:
+            with self.connect() as db:initialize_notifications(db)
+
+    def connect(self):
+        self.control_filesystem.check()
+        return sqlite3.connect(self.db_path, timeout=5)
+
+    @contextmanager
+    def transaction(self):
+        db = self.connect()
+        try:
+            db.execute('BEGIN IMMEDIATE')
+            yield db
+            db.commit()
+        except BaseException:
+            db.rollback()
+            raise
+        finally:
+            db.close()
+
+    def write(self, db, job):
+        from control_rotation import guard_write
+        guard_write(db,job['id'])
+        notification_policy=getattr(self,'notification_policy',{'enabled':False})
+        previous=db.execute('SELECT state FROM jobs WHERE id=?',(job['id'],)).fetchone() if notification_policy.get('enabled') else None
+        if job['state'] in TERMINAL:self.storage.settle(db,job)
+        db.execute('UPDATE jobs SET state=?,data=? WHERE id=?',
+                   (job['state'], json.dumps(job, ensure_ascii=False), job['id']))
+        if previous is not None:
+            from notifications import job_event
+            job_event(db,previous[0],job,notification_policy)
+        if job.get('attempt_id'):
+            db.execute('UPDATE execution_attempts SET state=? WHERE id=? AND job_id=?',
+                       (job['state'],job['attempt_id'],job['id']))
+
+    def attempts(self, job_id, principal=None):
+        self.get(job_id,principal=principal)
+        with self.connect() as db:
+            db.row_factory=sqlite3.Row
+            return [dict(row) for row in db.execute('SELECT * FROM execution_attempts WHERE job_id=? ORDER BY created_at',(job_id,))]
+
+    def all(self, db=None):
+        if db is not None:
+            from control_rotation import read_many
+            return read_many(db,(r[0] for r in db.execute('SELECT data FROM jobs ORDER BY rowid')))
+        with self.connect() as connection:
+            return self.all(connection)
+
+    def working(self,db=None,states=None):
+        states=ACTIVE|{'queued'} if states is None else set(states)
+        if db is None:
+            with self.connect() as connection:return self.working(connection,states)
+        history=getattr(self,'history',None)
+        if history and history.policy:return history.working(db,states)
+        return [job for job in self.all(db) if job['state'] in states]
+
+    def get(self, job_id, db=None, principal=None):
+        if db is None:
+            with self.connect() as connection:
+                return self.get(job_id, connection, principal)
+        row = db.execute('SELECT data FROM jobs WHERE id=?', (job_id,)).fetchone()
+        if row is None:
+            raise JobError('找不到此作业。', 404)
+        job = json.loads(row[0])
+        if principal and not self.access.can_read(principal, job):
+            raise JobError('找不到此作业。', 404)
+        from control_rotation import read
+        return read(db,row[0])
+
+    def directory(self, job_id, owner=None):
+        # IDs never become arbitrary file paths.
+        if not isinstance(job_id, str) or len(job_id) != 16 or not job_id.startswith('job-') or any(c not in '0123456789abcdef' for c in job_id[4:]):
+            raise JobError('无效的作业编号。', 404)
+        self.payload.check()
+        path=self.root/job_id
+        if self.payload.policy and self.payload.policy.get('owner_groups'):
+            if owner is None:
+                with self.connect() as db:row=db.execute('SELECT owner FROM jobs WHERE id=?',(job_id,)).fetchone()
+                if row is None:raise JobError('作业不存在。',404)
+                owner=row[0]
+            self.payload.object(path,owner)
+        return path
+
+    def archive_directory(self,job_id,db=None):
+        """Read authority only. Creation, completion and lifecycle keep warm paths."""
+        if db is None:
+            with self.connect() as connection:return self.archive_directory(job_id,connection)
+        from cold_reads import resolve
+        selected=resolve(self,job_id,db)
+        return selected if selected is not None else self.directory(job_id)
+
+    def normalize(self, request, principal=None, *, _db=None):
+        if not isinstance(request, dict):
+            raise JobError('请求必须是 JSON 对象。')
+        principal = principal or self.access.local
+        if principal.mode == 'templates' or 'template' in request:
+            try:
+                request = expand_template(request)
+            except ValueError as error:
+                raise JobError(str(error), 400)
+        if request.get('template')=='debug_v1':
+            from interactive_debug import policy as debug_policy
+            settings=debug_policy(self.policy.get('interactive_debug'))
+            if (not settings['enabled'] or principal.id not in settings['owners'] or principal.experiment_id is not None
+                or request.get('project') not in {None,'personal:'+principal.id}
+                or request.get('depends_on') or request.get('artifact_inputs')):
+                raise JobError('Debugging requires an explicitly enabled personal owner and no delegated budget or task graph',403)
+        allowed = {'name', 'environment', 'kind', 'cwd', 'argv', 'command', 'cpu', 'memory_mib', 'shm_mib', 'npu', 'timeout_seconds', 'idempotency_key', 'output', 'origin','project','template','parameters','depends_on','artifact_inputs','experiment_id','placement'}
+        if set(request) - allowed:
+            raise JobError('请求含有不支持的字段。身份由登录认证确定，不能由请求指定。')
+        argv = request.get('argv')
+        if 'command' in request:
+            if argv is not None:
+                raise JobError('argv 和 command 只能提供一个。')
+            try:
+                argv = shlex.split(request['command'])
+            except (ValueError, TypeError):
+                raise JobError('命令引号不匹配。')
+        if not isinstance(argv, list) or not 1 <= len(argv) <= 128 or any(not isinstance(a, str) or '\0' in a or len(a) > 4096 for a in argv) or not argv[0]:
+            raise JobError('请提供有效的命令参数数组。')
+        argv = list(argv)
+        if any(a in {'|', '||', '&&', ';', '>', '>>', '<', '&'} for a in argv):
+            raise JobError('请把管道或多步操作保存为脚本后提交；命令不会经过 shell 解释。')
+        env_id = request.get('environment', 'host-python')
+        if env_id not in self.environments:
+            raise JobError('请选择已注册的执行环境。')
+        if '*' not in principal.environments and env_id not in principal.environments:
+            raise JobError('此身份不允许使用该执行环境。', 403)
+        env = dict(self.environments[env_id])
+        if env['type']=='worker' and not request.get('template'):
+            raise JobError('受控节点当前只接收已注册模板。',403)
+        if env['type']!='worker' and not self.policy['local_enabled']:
+            raise JobError('此中央服务未启用本地执行；请使用节点环境。',403)
+        if principal.mode == 'templates':
+            env['sanitized_environment'] = True
+            env['home'] = principal.workspace
+        if argv[0] in {'python', 'python3'}:
+            argv[0] = env['python']
+        kind = request.get('kind', 'command')
+        if kind not in KINDS:
+            raise JobError('不支持的任务类型。')
+        def integer(name, default, low, high):
+            value = request.get(name, default)
+            if isinstance(value, bool) or not isinstance(value, int) or not low <= value <= high:
+                raise JobError(f'{name} 需要在 {low}–{high} 之间。')
+            return value
+        limits=self.policy
+        if env['type']=='worker':
+            pools=[domain['policy'] for domain in self.resources.summary()]
+            limits={'cpu_ids':list(range(max(len(pool['cpu_ids']) for pool in pools))),
+                    **{key:max(pool[key] for pool in pools) for key in ['memory_mib','shm_mib']}}
+        cpu = integer('cpu', 1, 1, len(limits['cpu_ids']))
+        memory = integer('memory_mib', 256, 64, limits['memory_mib'])
+        shm = integer('shm_mib', 0, 0, limits['shm_mib'])
+        if shm > memory:
+            raise JobError('共享内存包含在总内存申报内，不能大于 memory_mib。')
+        npu = integer('npu', 0, 0, 2)
+        timeout = integer('timeout_seconds', 60, 1, self.policy['max_timeout_seconds'])
+        if kind in {'accuracy', 'performance'} and npu == 0:
+            raise JobError('精度和性能任务必须显式申请 NPU。')
+        if npu and not self.policy['npu_enabled']:
+            raise JobError('当前配置未开启 NPU 作业。')
+        if npu and env['type']=='docker' and env.get('npu_gid') is not None:
+            device_gid=env['npu_gid']
+            # docker exec --user UID:GID does not retain host supplementary groups.
+            # This is trusted environment policy, never a client-controlled field.
+            if type(device_gid) is not int or device_gid<1 or device_gid not in {os.getgid(),*os.getgroups()}:
+                raise JobError('注册 NPU 访问组不在服务账号的已授权组内。',403)
+            env['gid']=device_gid
+        input_manifest=None
+        from io_policy import artifacts,fits,submission_artifacts
+        parameters=request.get('parameters',{})
+        if not isinstance(parameters,dict):raise JobError('parameters must be an object')
+        if 'template' not in request and set(parameters)-{'artifacts'}:
+            raise JobError('Legacy command parameters only support artifacts')
+        try:artifact_request=submission_artifacts(request)
+        except ValueError as error:raise JobError(str(error)) from None
+        if not fits(artifact_request,self.policy['io_limits']):raise JobError('Artifact request exceeds administrator IO limits',403)
+        # Keep default command fingerprints unchanged for pre-upgrade retries.
+        # A non-default declaration must participate in the saved spec and its
+        # fingerprint, just as it already does for validated workflow templates.
+        legacy_parameters={'artifacts':artifact_request} if 'template' not in request and artifact_request!=artifacts() else None
+        if request.get('template') in __import__('workflow_spec').WORKFLOWS:
+            if request['parameters'].get('workspace') and env['type']!='worker':raise JobError('Bounded workspace workflows require a managed worker')
+            bundle=self.inputs.get(request['parameters']['input_id'],principal)
+            if not bundle['sealed']:raise JobError('Workflow input must be sealed before submission',409)
+            input_manifest={k:bundle[k] for k in ['id','owner','files','manifest_sha256','bytes']}
+        workspace = Path(principal.workspace).resolve()
+        cwd = Path(request.get('cwd') or (project_root(ROOT) if principal.legacy else workspace)).expanduser().resolve()
+        if not cwd.is_relative_to(workspace) or not cwd.is_dir():
+            raise JobError('工作目录必须位于当前用户的已授权工作区内。')
+        output = request.get('output')
+        if output:
+            output = Path(output).expanduser()
+            output = (cwd / output).resolve() if not output.is_absolute() else output.resolve()
+            if not output.is_relative_to(workspace):
+                raise JobError('归档目录必须位于当前用户的已授权工作区内。')
+            output = str(output)
+        name = request.get('name') or Path(argv[0]).name
+        if not isinstance(name, str) or not 1 <= len(name) <= 100:
+            raise JobError('作业名称长度必须在 1–100 之间。')
+        key = request.get('idempotency_key') or uuid.uuid4().hex
+        if not isinstance(key, str) or not 1 <= len(key) <= 120:
+            raise JobError('无效的幂等键。')
+        origin = request.get('origin')
+        if origin is not None and (not isinstance(origin, dict) or set(origin)-{'client','model','agent_run_id'} or any(not isinstance(v,str) or len(v)>200 for v in origin.values())):
+            raise JobError('无效的客户端来源元数据。')
+        project = request.get('project', 'personal:'+principal.id)
+        if not isinstance(project,str) or len(project)>100 or self.access.project_role(principal,project) not in {'editor','manager'}:
+            raise JobError('没有此项目的提交权限。', 403)
+        for resource_name, value in {'cpu':cpu,'memory_mib':memory,'shm_mib':shm,'npu':npu}.items():
+            if value>principal.quota.get(resource_name,value):
+                raise JobError('任务超过当前用户的 '+resource_name+' 配额。', 403)
+        dependencies=self.dependencies.validate(request,principal,db=_db)
+        from experiment_budget import select
+        experiment=select(request,principal)
+        placement={}
+        if 'placement' in request:
+            if env['type']!='worker':raise JobError('Exact placement is only available for managed Node tasks')
+            from placement import validate
+            try:placement={'placement':validate(request['placement'],npu)}
+            except ValueError as error:raise JobError(str(error)) from None
+        return {'name': name, 'environment': env_id, '_environment': env, 'kind': kind,**dependencies,**experiment,
+                **placement,
+                **({'input':input_manifest} if input_manifest is not None else {}),
+                **({'project':project} if 'project' in request or not principal.legacy else {}),
+                **({'template':request['template'],'parameters':request['parameters']} if 'template' in request else {}),
+                **({'parameters':legacy_parameters} if legacy_parameters is not None else {}),
+                **({'origin': origin} if origin is not None else {}),
+                'cwd': str(cwd), 'argv': argv, 'resources': {'cpu': cpu, 'memory_mib': memory, 'shm_mib': shm, 'npu': npu},
+                'timeout_seconds': timeout, 'idempotency_key': key, 'output': output}
+
+    def preview(self, request, principal=None, snapshot=None):
+        """Read placement evidence without creating a job, attempt or reservation.
+
+        This is an estimate across current controller state and Node observations,
+        not a start permit or a substitute for transactional submit/claim checks.
+        """
+        from resources import memory_cost
+        from queue_policy import protected,WAIT_REASON
+        from nodes import REQUIRED_CAPABILITIES,MULTI_SLOT,PINNED_RUNTIME,ENVIRONMENT
+        principal=principal or self.access.local
+        principal.require('jobs:submit')
+        job={**self.normalize(request,principal),'owner':principal.id}
+        wanted=job['resources'];candidates=[]
+        with self.connect() as db:
+            db.execute('PRAGMA query_only=ON')
+            db.execute('BEGIN')
+            self.experiment_budgets.check(db,job,principal)
+            self.nodes.probe_submission(job,principal,db)
+            rows=self.working(db);active=[item for item in rows if item['state'] in ACTIVE]
+            input_reason=None
+            if job.get('input') and self.lifecycle.record('input',job['input']['id'])['state']!='available':
+                input_reason='输入当前不可用，需恢复封存输入后再执行'
+            if job['_environment']['type']=='worker':
+                for node_id,raw,seen,report,disabled in db.execute('SELECT id,profile,last_seen,report,disabled FROM worker_nodes ORDER BY id'):
+                    profile=json.loads(raw)
+                    # Unmapped nodes and their configuration are not user-visible.
+                    if principal.id not in profile['users']:continue
+                    target=job.get('parameters',{}).get('node_id') if job.get('template') in {'environment_probe','npu_access_probe'} else None
+                    if target and target!=node_id:continue
+                    node={'id':node_id,'profile':profile,'last_seen':seen,'report':json.loads(report),
+                          'device_qualifications':self.nodes.qualifications.records(node_id,db)}
+                    domain=self.resources.get(profile['physical_id'],db);pool=domain['policy'];policy=profile['policy']
+                    capacity=[]
+                    if wanted['cpu']>len(set(policy['cpu_ids'])&set(pool['cpu_ids'])):capacity.append('CPU 数量超过节点与物理域共同上限')
+                    if memory_cost(job,True)>min(policy['memory_mib'],pool['memory_mib']):capacity.append('内存加托管开销超过节点或物理域上限')
+                    if wanted['shm_mib']>min(policy['shm_mib'],pool['shm_mib']):capacity.append('共享内存超过节点或物理域上限')
+                    reason=input_reason;code='input_unavailable' if reason else None
+                    if disabled:reason,code='节点已停用','node_disabled'
+                    elif job.get('template') not in profile['templates']:reason,code='节点未登记此任务模板','template_unavailable'
+                    elif capacity:reason,code='；'.join(capacity),'capacity_exceeded'
+                    elif not 0<=time.time()-seen<=30:reason,code='等待新鲜节点心跳','heartbeat_unavailable'
+                    elif not REQUIRED_CAPABILITIES<=set(node['report'].get('capabilities',[])):reason,code='节点执行协议需要升级','capability_unavailable'
+                    elif policy['max_running']>1 and MULTI_SLOT not in node['report'].get('capabilities',[]):reason,code='节点尚未确认并发执行能力','capability_unavailable'
+                    elif self.nodes.handoff.pending(node_id,db):reason,code='等待节点身份交接完成','handoff_pending'
+                    elif self.policy.get('require_pinned_docker') and PINNED_RUNTIME not in node['report'].get('capabilities',[]):reason,code='节点尚未确认固定 Docker 运行时','capability_unavailable'
+                    elif self.policy.get('require_environment_contract') and (ENVIRONMENT not in node['report'].get('capabilities',[]) or not profile.get('image')):reason,code='等待节点确认不可变镜像和环境准入能力','environment_unavailable'
+                    if not reason:
+                        reason=self.nodes.placement(job,node,domain,active,db)['reason']
+                        if not reason and protected(self,rows,profile['physical_id'],db):reason=WAIT_REASON
+                        code='placement_wait' if reason else 'eligible_snapshot'
+                    candidates.append({'node_id':node_id,'status':'blocked' if reason else 'eligible_snapshot',
+                        'reason_code':code,'reason':reason,'capacity_fits':not capacity,
+                        'capacity_blockers':capacity,'heartbeat_age_seconds':max(0,round(time.time()-seen,1))})
+            else:
+                domain=self.resources.get(self.backend.physical_id,db)
+                reason=input_reason or Scheduler(self,None,None).placement(job,active,snapshot,domain)['reason']
+                if not reason and protected(self,rows,domain['physical_id'],db):reason=WAIT_REASON
+                candidates.append({'node_id':self.backend.node_id,'status':'blocked' if reason else 'eligible_snapshot',
+                    'reason_code':'placement_wait' if reason else 'eligible_snapshot','reason':reason})
+        eligible=sum(item['status']=='eligible_snapshot' for item in candidates)
+        return {'version':1,'scope':'placement','observed_at':now(),'status':'eligible_snapshot' if eligible else 'blocked' if candidates else 'no_visible_node',
+            'resources':wanted,'candidate_count':len(candidates),'eligible_count':eligible,'candidates':candidates[:128],
+            'truncated':len(candidates)>128,'reservation_created':False,'start_guaranteed':False,
+            'note':'只读预览，不入队或占用资源。容量检查仅含 CPU/内存/SHM 上限；其余原因由当前准入检查返回。提交、存储额度、排队顺序及启动时仍会重新校验；等待可以持续到新节点或新环境接入。'}
+
+    @contextmanager
+    def submission_transaction(self, staged=False):
+        if staged:
+            with self.nodes.handoff.transaction() as pair:yield pair
+        else:
+            with self.transaction() as db:yield db,None
+
+    def submit(self, request, principal=None, *, _staged_probe=None, _scheduled=None):
+        from unit_start import admission_reason
+        reason=admission_reason(self.runtime,submit=True)
+        if reason:raise JobError(reason,503)
+        principal = principal or self.access.local
+        principal.require('jobs:submit')
+        raw_request=None
+        if self.history.policy and _staged_probe is None and _scheduled is None:
+            from history_capacity import sha
+            # The exact accepted request can resolve its original receipt even
+            # after an offline restore relocates the user's workspace. Changed
+            # requests still pass through all normal validation below.
+            with self.connect() as connection:replayed=self.history.replay(connection,request,principal)
+            if replayed is not None:return replayed
+            try:raw_request=sha(request)
+            except (ValueError,TypeError):raise JobError('Request must be finite JSON') from None
+        if _scheduled is not None:
+            if _staged_probe is not None:raise JobError('Distinct fixed authorities cannot be combined',403)
+            with self.connect() as connection:plan,run,action=self.device_schedules.load_action(_scheduled,connection)
+            if principal.id!=plan['spec']['owner'] or request!=action['request']:raise JobError('Daily action requires its original fixed request and robot',403)
+        if _staged_probe is not None:
+            from owner_device_probe import job_request,load
+            with self.connect() as connection:original=load(connection,_staged_probe)
+            if request!=job_request(original['request']) or principal.id!=original['request']['owner']:
+                raise JobError('Staged probes require the original fixed administrator request',403)
+        spec = self.normalize(request, principal)
+        if _staged_probe is not None:spec['_staged_device_probe']=_staged_probe
+        if _scheduled is not None:spec['_device_schedule']=dict(_scheduled)
+        with self.submission_transaction(_staged_probe is not None or _scheduled is not None) as (db,identities):
+            if raw_request is not None:
+                replayed=self.history.replay(db,request,principal)
+                if replayed is not None:return replayed
+            return self._submit_record(db,identities,spec,principal,_staged_probe=_staged_probe,_scheduled=_scheduled,_raw_request_sha256=raw_request)
+
+    def _submit_record(self,db,identities,spec,principal,*,_staged_probe=None,_scheduled=None,_defer_archive=False,_job_id=None,_raw_request_sha256=None):
+        from unit_start import admission_reason
+        fingerprint = hashlib.sha256(json.dumps({k: v for k, v in spec.items() if k != 'idempotency_key'}, sort_keys=True).encode()).hexdigest()
+        reason=admission_reason(self.runtime,submit=True)
+        if reason:raise JobError(reason,503)
+        if _scheduled is not None:self.device_schedules.validate_action(_scheduled,db,identities)
+        if _staged_probe is not None:
+            from owner_device_probe import validate
+            validate(self,_staged_probe,db,identities)
+        existing = db.execute('SELECT data,fingerprint FROM jobs WHERE owner=? AND idem_key=?', (principal.id, spec['idempotency_key'])).fetchone()
+        if existing:
+            if existing[1] != fingerprint:
+                raise JobError('该幂等键已经用于不同的任务。', 409)
+            from control_rotation import read
+            existing_job=read(db,existing[0])
+            if _staged_probe is not None:validate(self,_staged_probe,db,identities,existing_job)
+            return public(existing_job), True
+        self.nodes.probe_submission(spec,principal,db)
+        if spec.get('input'):
+            self.lifecycle.available('input',spec['input']['id'],db)
+        self.dependencies.available({**spec,'owner':principal.id},db)
+        rows = self.working(db) if self.history.policy else self.all(db)
+        if self.history.policy:self.history.admit(db)
+        if sum(j['state'] == 'queued' for j in rows) >= self.policy['max_queued'] or not self.history.policy and sum(j.get('archive_status',{}).get('state')!='purged' for j in rows) >= self.policy['max_jobs']:
+            raise JobError('本 Demo 的作业数量已达到上限。', 409)
+        if sum(j['owner']==principal.id and j['state']=='queued' for j in rows)>=principal.quota.get('max_queued', self.policy['max_queued']):
+            raise JobError('当前用户等待队列已满。', 409)
+        job_id = _job_id or 'job-' + uuid.uuid4().hex[:12]
+        experiment_charge=self.experiment_budgets.charge(db,spec,principal,job_id)
+        from io_policy import submission_artifacts,MIB,META
+        artifact_limits={'file_mib':1,'total_mib':2} if _staged_probe is not None or _scheduled is not None else submission_artifacts(spec)
+        self.storage.reserve(db,'archive',job_id,principal,artifact_limits['total_mib']*MIB+META)
+        directory = self.directory(job_id,owner=principal.id)
+        source = None
+        source_content=None
+        for arg in spec['argv'][1:]:
+            if arg.endswith('.py'):
+                path = (Path(spec['cwd']) / arg).resolve()
+                from container_engine import SCRIPTS
+                if path.is_relative_to(Path(principal.workspace)) or spec.get('template') and path==SCRIPTS.get(spec['template']):
+                    try:
+                        if not path.is_file():continue
+                        if path.stat().st_size > min(4*MIB,artifact_limits['file_mib']*MIB):
+                            raise JobError('入口源码超过单文件归档额度或 4 MiB，请调整申报或使用较小的入口脚本。')
+                        content=path.read_bytes()
+                    except OSError:raise JobError('无法读取入口源码，请核对授权路径和安装文件权限。',403)
+                    source={'path':str(path),'sha256':hashlib.sha256(content).hexdigest()}
+                    source_content=(path.name,content)
+                    break
+        if not _defer_archive:
+            directory.mkdir(mode=0o700)
+            self.payload.object(directory,principal.id,create=True)
+            if source_content:
+                (directory/'source').mkdir(mode=0o700)
+                (directory/'source'/source_content[0]).write_bytes(source_content[1])
+        job = {**spec, **experiment_charge, 'id': job_id, 'owner': principal.id, 'project':spec.get('project', 'personal:'+principal.id), 'state': 'queued',
+               'reason': '等待资源分配', 'created_at': now(), 'started_at': None,
+               'finished_at': None, 'allocation': {}, 'source': source,
+               'archive_dir': str(directory), 'result': None, '_token': secrets.token_hex(24),
+               '_max_log_bytes': self.policy['max_log_bytes'],'artifact_limits':artifact_limits}
+        if _raw_request_sha256 is not None:
+            from history_capacity import FORMAT
+            job['_request_identity']={'format':FORMAT,'request_sha256':_raw_request_sha256,'fingerprint':fingerprint}
+        from workflow_spec import WORKFLOWS,runtime_manifest
+        if job.get('template') in WORKFLOWS or job.get('template') in {'environment_probe','npu_access_probe'}:job['runtime_files']=runtime_manifest()
+        if job.get('depends_on'):
+            job['_dependency_base_input']=job['parameters']['input_id']
+            from dependency_conditions import uses_terminal
+            waiting=('等待上游确认结束、资源清退及阶段输入封存；尚未预留计算资源' if uses_terminal(job)
+                else '等待上游成功及阶段输入封存；尚未预留计算资源')
+            job['dependency_state']={'status':'waiting','reason':waiting}
+            job['reason']=job['dependency_state']['reason']
+        if _staged_probe is not None:
+            from owner_device_probe import bind_job
+            bind_job(self,_staged_probe,job,db,identities)
+        if _scheduled is not None:self.device_schedules.bind(_scheduled,job,db,identities)
+        if _defer_archive:
+            import base64
+            job['_graph_payload']={'request':public(job),'source':({'name':source_content[0],
+                'base64':base64.b64encode(source_content[1]).decode()} if source_content else None)}
+        else:atomic_json(directory / 'request.json', public(job))
+        db.execute('INSERT INTO jobs VALUES (?,?,?,?,?,?)', (job_id, principal.id, spec['idempotency_key'], fingerprint, job['state'], json.dumps(job, ensure_ascii=False)))
+        self.history.add(db,job)
+        return public(job), False
+
+    def cancel(self, job_id, principal=None, *, _queued_only=False):
+        principal = principal or self.access.local
+        principal.require('jobs:cancel')
+        existing=self.get(job_id,principal=principal)
+        if self.graphs.reason(existing):raise JobError('Task graph archives are not ready; resume the original graph before cancelling its tasks',409)
+        with self.transaction() as db:
+            job = self.get(job_id, db, principal)
+            if not self.access.can_cancel(principal,job):
+                raise JobError('没有取消此作业的权限。',403)
+            if _queued_only and job['state']!='queued':return public(job)
+            if job['state'] in TERMINAL:
+                return public(job)
+            if job['state'] == 'queued':
+                job.update(state='cancelled', reason='用户取消了等待中的作业', finished_at=now())
+                result = {'job_id': job_id, 'status': 'cancelled', 'exit_code': None, 'finished_at': job['finished_at'], 'reason': job['reason']}
+                job['result'] = result
+                atomic_json(self.directory(job_id) / 'result.json', result)
+                atomic_json(self.directory(job_id) / 'artifacts.json', {'files': [
+                    {'name': name, 'bytes': (self.directory(job_id)/name).stat().st_size}
+                    for name in ['request.json', 'result.json']]})
+            elif job.get('_remote'):
+                job['_cancel_requested']=True
+                if job['state']!='needs_attention':job.update(state='cancelling',reason='等待节点确认容器结束；确认前保留资源')
+            else:
+                atomic_json(self.directory(job_id) / 'cancel.json', {'token': job['_token'], 'requested_at': now()})
+                if job['state'] != 'needs_attention':
+                    job.update(state='cancelling', reason='等待执行器确认停止；确认前保留资源')
+            self.write(db, job)
+            return public(job)
+
+    def summary(self, principal=None):
+        principal = principal or self.access.local
+        principal.require('jobs:read')
+        history_counts=None
+        if self.history.policy:
+            with self.connect() as db:
+                rows,history_counts=self.history.dashboard(db,principal)
+        else:rows = self.all()
+        active = [j for j in rows if j['state'] in ACTIVE]
+        readable = self.access.readable_jobs(principal,rows)
+        visible = {j['id'] for j in readable[-100:]} | {j['id'] for j in readable if j['state'] in ACTIVE|{'queued'}}
+        environments = {k:v for k,v in self.environments.items() if ('*' in principal.environments or k in principal.environments)
+                        and (self.policy['local_enabled'] or v['type']=='worker')}
+        policy = dict(self.policy)
+        if policy.get('control_filesystem'):
+            storage=policy['control_filesystem']
+            policy['control_filesystem']={'enforced':True,'filesystem':storage['filesystem'],'bytes':storage['bytes'],'inodes':storage['inodes']}
+        if policy.get('payload_storage'):
+            storage=policy['payload_storage']
+            policy['payload_storage']={'enforced':True,'filesystem':storage['filesystem'],'bytes':storage['bytes'],'inodes':storage['inodes']}
+        domains=self.resources.summary(rows=rows)
+        pools=[domain['policy'] for domain in domains]
+        policy.update(cpu_ids=max((pool['cpu_ids'] for pool in pools),key=len),
+                      memory_mib=max(pool['memory_mib'] for pool in pools),
+                      shm_mib=max(pool['shm_mib'] for pool in pools),
+                      max_running=sum(pool['max_running'] for pool in pools))
+        if not principal.legacy:
+            policy['workspace_root'] = principal.workspace
+        for key in ['memory_mib','shm_mib','max_running','max_queued']:
+            policy[key] = min(policy[key], principal.quota.get(key,policy[key]))
+        if 'cpu' in principal.quota:
+            policy['cpu_ids'] = policy['cpu_ids'][:principal.quota['cpu']]
+        return {'enabled': True, 'backend': 'sqlite-single-node',
+                'policy':policy,'identity':self.access.public_profile(principal),'storage':self.storage.summary(principal),
+                'history_capacity':self.history.status(),
+                'control_storage':self.control_storage(),
+                'audit_retention':self.access.audit_status(),
+                'experiment_budget':self.experiment_budgets.summary(principal),
+                'default_cwd': str(project_root(ROOT)) if principal.legacy else principal.workspace,
+                'environments': [{'id': k, 'label': v['label'], 'type': v['type']} for k, v in environments.items()],
+                'counts': history_counts or {s: sum(j['state'] == s for j in readable) for s in ['queued', 'reserved', 'running', 'cancelling', 'needs_attention', *sorted(TERMINAL)]},
+                'reserved': {'cpu': sum(j['resources']['cpu'] for j in active),
+                             'memory_mib': sum(j['resources']['memory_mib'] for j in active),
+                             'shm_mib': sum(j['resources'].get('shm_mib', 0) for j in active),
+                             'npu_ids': [n for j in active for n in j['allocation'].get('npu_ids', [])]},
+                'user_reserved': {key:sum(j['resources'].get(key,0) for j in active if j['owner']==principal.id)
+                                  for key in ['cpu','memory_mib','shm_mib','npu']},
+                'resource_pool': self.resources.get(self.backend.physical_id)['policy'],
+                'resource_domains':domains,
+                'jobs': [public(j) for j in reversed(rows) if j['id'] in visible]}
+
+    def activity(self):
+        return {'jobs':[{k:j.get(k) for k in ['id','owner','kind','state','resources','allocation','created_at','started_at']}
+                        for j in self.working()]}
+
+    def history_page(self,principal,limit=100,offset=0,state=None):
+        principal.require('jobs:read')
+        if type(limit) is not int or not 1<=limit<=200 or type(offset) is not int or offset<0 or state is not None and state not in ACTIVE|TERMINAL|{'queued'}:
+            raise JobError('Invalid job history page')
+        if self.history.policy:
+            with self.connect() as db:return self.history.page(db,principal,limit,offset,state)
+        rows=list(reversed(self.access.readable_jobs(principal,self.all())))
+        if state is not None:rows=[j for j in rows if j['state']==state]
+        return {'jobs':[public(j) for j in rows[offset:offset+limit]],'total':len(rows),'limit':limit,'offset':offset}
+
+    def log(self, job_id, stream='stdout', principal=None):
+        self.get(job_id, principal=principal)
+        if stream not in {'stdout', 'stderr'}:
+            raise JobError('无效的日志类型。')
+        with self.lifecycle.reader('archive',job_id):
+            from archive_api import open_artifact
+            directory=self.archive_directory(job_id);name=stream+'.log'
+            if not hasattr(directory,'cold_manifest') and (directory/name).is_symlink():raise JobError('拒绝读取符号链接。',403)
+            present=name in directory.files if hasattr(directory,'cold_manifest') else (directory/name).exists()
+            if not present:
+                job=self.get(job_id,principal=principal)
+                if job.get('_remote') and stream in job.get('_log_preview',{}):return job['_log_preview'][stream]
+                return {'text': '', 'bytes': 0, 'truncated': False}
+            with open_artifact(directory,name,self.get(job_id)['_max_log_bytes']) as f:
+                size = os.fstat(f.fileno()).st_size
+                f.seek(max(0, size - 65536))
+                data = f.read(65536)
+            return {'text': data.decode(errors='replace'), 'bytes': size, 'truncated': size > 65536}
+
+    def dispatch_permission(self,job,active,db=None,identities=None):
+        if job.get('template')=='debug_v1':
+            settings=self.policy.get('interactive_debug',{})
+            if not settings.get('enabled') or job['owner'] not in settings.get('owners',[]):
+                return '交互调试授权已关闭，暂停新会话'
+        from unit_start import admission_reason
+        reason=admission_reason(self.runtime)
+        if reason:return reason
+        reason=self.graphs.reason(job,db)
+        if reason:return reason
+        from owner_device_probe import dispatch_principal
+        try:principal=dispatch_principal(self,job,db,identities)
+        except (JobError,ValueError,KeyError,TypeError,sqlite3.Error):return '管理员预激活探针原授权已失效；保留原任务等待明确协调'
+        if not principal or self.access.project_role(principal,job.get('project','personal:'+job['owner'])) not in {'editor','manager'}:
+            return '等待有效账号和项目提交权限；不会启动已撤权的作业'
+        if '*' not in principal.environments and job['environment'] not in principal.environments:return '执行环境授权已撤销；不会启动作业'
+        if principal.mode=='templates' and not job.get('template'):return '账号已限制为模板执行；不会启动旧的任意命令'
+        if job.get('_device_schedule'):
+            reason=self.device_schedules.permission(job,active,db,identities)
+            if reason:return reason
+        from control_storage import HOLD as CONTROL_HOLD
+        if self.control_storage()['blocks_new_work']:return CONTROL_HOLD
+        from audit_retention import HOLD as AUDIT_HOLD
+        if self.access.audit_status()['blocks_new_work']:return AUDIT_HOLD
+        user_active=[j for j in active if j['owner']==job['owner']]
+        if 'max_running' in principal.quota and len(user_active)>=principal.quota['max_running']:return '等待当前用户的运行名额'
+        if any(sum(j['resources'].get(k,0) for j in user_active)+job['resources'].get(k,0)>v
+               for k,v in principal.quota.items() if k in {'cpu','memory_mib','shm_mib','npu'}):return '等待当前用户的资源配额'
+        return None
+
+    def control_storage(self):
+        from control_storage import observe
+        return observe(self.runtime,self.policy.get('control_storage'),self.control_filesystem)
+
+
+class Scheduler:
+    def __init__(self, jobs, observations, stop_event):
+        self.jobs, self.observations, self.stop = jobs, observations, stop_event
+        self.lock = None
+        self.children = []
+
+    def acquire(self):
+        self.lock = (self.jobs.runtime / 'scheduler.lock').open('a')
+        try:
+            fcntl.flock(self.lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            self.lock.close()
+            self.lock = None
+            raise RuntimeError('Another scheduler already owns this runtime directory')
+
+    def reconcile(self):
+        with self.jobs.transaction() as db:
+            for job in self.jobs.working(db,ACTIVE):
+                if job['state'] not in ACTIVE:
+                    continue
+                if job.get('_remote'):
+                    if time.time()-job.get('_worker_seen',0)>30:
+                        job.update(state='needs_attention',reason='节点回执超时；保留资源，不自动迁移或重跑')
+                        self.jobs.write(db,job)
+                    continue
+                directory = self.jobs.directory(job['id'])
+                completion = read_json(directory / 'completion.json')
+                if completion and completion.get('token') == job['_token'] and completion.get('job_id') == job['id']:
+                    if job.get('attempt_id') and (completion.get('attempt_id')!=job['attempt_id'] or completion.get('node_id')!=job['node_id']):
+                        job.update(state='needs_attention',reason='完成记录的执行尝试或节点不匹配；保留资源')
+                        self.jobs.write(db,job)
+                        continue
+                    result = completion.get('result')
+                    if isinstance(result,dict) and result.get('status')=='prestart_deferred':
+                        from cooperative_start import reconcile
+                        outcome=reconcile(self.jobs,db,job,result)
+                        if outcome in {'queued','exhausted'}:continue
+                        job.update(state='needs_attention' if outcome=='invalid' else job['state'],
+                            reason='启动前回队回执异常；保留原资源' if outcome=='invalid' else '等待原执行器退出后确认回队')
+                        self.jobs.write(db,job);continue
+                    if not isinstance(result, dict) or result.get('status') not in TERMINAL | {'needs_attention'}:
+                        job.update(state='needs_attention', reason='执行器完成记录格式异常；保留资源等待人工核对')
+                        self.jobs.write(db, job)
+                        continue
+                    job.update(state=result['status'], reason=result.get('reason', ''), result=result,
+                               started_at=result.get('started_at'), finished_at=result.get('finished_at'))
+                    self.jobs.write(db, job)
+                    continue
+                supervisor = read_json(directory / 'supervisor.json')
+                heartbeat = read_json(directory / 'heartbeat.json')
+                if supervisor and supervisor.get('token') == job['_token'] and identity_alive(supervisor):
+                    if heartbeat and heartbeat.get('token') == job['_token']:
+                        if job['state'] not in {'cancelling', 'needs_attention'}:
+                            job.update(state='running', started_at=heartbeat.get('started_at'), reason='执行器运行中')
+                        job['heartbeat_at'] = heartbeat.get('at')
+                    self.jobs.write(db, job)
+                elif time.time() - job.get('_reserved_epoch', time.time()) > 15:
+                    job.update(state='needs_attention', reason='执行器状态无法确认；保留资源且不自动重跑，请人工核对')
+                    self.jobs.write(db, job)
+        self.children = [p for p in self.children if p.poll() is None]
+
+    def placement(self,job,all_active,snapshot,domain):
+        from resources import memory_cost
+        active=[j for j in all_active if j.get('_physical_id',self.jobs.backend.physical_id)==self.jobs.backend.physical_id]
+        pool=domain['policy']
+        reason = self.jobs.dispatch_permission(job,all_active) or self.jobs.inventory.reason(domain['physical_id'])
+        if not reason:
+            from cooperative_start import wait_reason
+            reason=wait_reason(job,snapshot)
+        used_cpus = {c for j in active for c in j['allocation'].get('cpu_ids', [])}
+        free_cpus = [c for c in pool['cpu_ids'] if c not in used_cpus]
+        used_memory = sum(memory_cost(j) for j in active)
+        used_shm = sum(j['resources'].get('shm_mib', 0) for j in active)
+        wanted = job['resources']
+        npus = []
+        if not reason:
+            from resource_pressure import reason as pressure_reason
+            reason=pressure_reason(snapshot['host'].get('resource_pressure'),
+                                   wanted['memory_mib']*1024**2,self.jobs.policy.get('resource_pressure'))
+        if reason:pass
+        elif domain['draining']:
+            reason='此物理资源域正在排空，暂停分配新任务'
+        elif not self.jobs.policy['local_enabled']:
+            reason='此中央服务已关闭本地执行'
+        elif len(active) >= pool['max_running']:
+            reason = '等待物理资源域运行名额'
+        elif len(free_cpus) < wanted['cpu']:
+            reason = '等待 CPU 预算'
+        elif used_memory + wanted['memory_mib'] > pool['memory_mib']:
+            reason = '等待内存申报预算'
+        elif used_shm + wanted.get('shm_mib', 0) > pool['shm_mib']:
+            reason = '等待共享内存申报预算'
+        elif not snapshot or time.time() - dt.datetime.fromisoformat(snapshot['sampled_at']).timestamp() > 45:
+            reason = '等待新鲜的节点采样'
+        elif snapshot['host']['memory_available_bytes'] < wanted['memory_mib'] * 1024**2 + 512 * 1024**2:
+            reason = '主机可用内存不足；保留 512 MiB 余量'
+        elif snapshot['host']['workspace_disk']['free_bytes'] < 512 * 1024**2:
+            reason = '工作区磁盘余量不足'
+        if not reason and wanted.get('shm_mib', 0):
+            scope = snapshot.get('container') if job['_environment']['type'] == 'docker' else snapshot['host']
+            observed = (scope or {}).get('shm')
+            if not observed or observed.get('free_bytes', 0) < wanted['shm_mib'] * 1024**2:
+                reason = '执行环境的共享内存容量不足或采样不可用'
+        if not reason and wanted['npu']:
+            npu = snapshot['npu']
+            if npu['status'] != 'ok' or not npu.get('sampled_at') or time.time() - dt.datetime.fromisoformat(npu['sampled_at']).timestamp() > 45:
+                reason = '等待新鲜的 NPU 健康与占用采样'
+            else:
+                reserved = {n for j in active for n in j['allocation'].get('npu_ids', [])}
+                npus = [d['id'] for d in npu['devices'] if d['id'] not in reserved and d['health'] == 'OK' and d['utilization_pct'] == 0 and d['scoped_process_count'] + d['external_process_count'] == 0]
+                if len(npus) < wanted['npu']:
+                    reason = '等待健康且未观察到占用的 NPU；不抢占未托管任务'
+        return {'reason':reason,'cpu_ids':free_cpus,'npu_ids':npus}
+
+    def tick(self):
+        self.reconcile()
+        self.jobs.graphs.recover()
+        self.jobs.dependencies.tick()
+        self.jobs.device_schedules.tick()
+        snapshot = self.observations.latest()
+        with self.jobs.transaction() as db:
+            rows = self.jobs.working(db) if self.jobs.history.policy else self.jobs.all(db)
+            active = [j for j in rows if j['state'] in ACTIVE]
+            all_active=list(active)
+            active=[j for j in active if j.get('_physical_id',self.jobs.backend.physical_id)==self.jobs.backend.physical_id]
+            domain=self.jobs.resources.get(self.jobs.backend.physical_id,db)
+            from queue_policy import ordered
+            queued=ordered(rows,self.jobs.policy,last_dispatch=self.jobs.history.last_dispatch(db) if self.jobs.history.policy else None)
+            for job in queued:
+                if job['_environment']['type']=='worker':continue
+                from queue_policy import protected,note_wait,WAIT_REASON
+                placement=self.placement(job,all_active,snapshot,domain)
+                reason=placement['reason'];wanted=job['resources']
+                if reason:
+                    idle=self.placement(job,[],snapshot,domain)
+                    note_wait(self.jobs,job,self.jobs.backend.node_id,domain,None,db,
+                              not idle['reason'] and not self.jobs.dispatch_permission(job,all_active))
+                else:
+                    guard=protected(self.jobs,rows,self.jobs.backend.physical_id,db)
+                    if guard and guard['id']!=job['id']:reason=WAIT_REASON
+                if reason:
+                    job['reason']=reason;self.jobs.write(db,job);continue
+                free_cpus=placement['cpu_ids'];npus=placement['npu_ids']
+                job.update(state='reserved', reason='已预留资源，等待执行器启动',
+                           allocation={'cpu_ids': free_cpus[:wanted['cpu']], 'memory_mib': wanted['memory_mib'], 'shm_mib': wanted.get('shm_mib', 0), 'npu_ids': npus[:wanted['npu']]},
+                           reserved_at=now(), _reserved_epoch=time.time(),
+                           node_id=self.jobs.backend.node_id, attempt_id='attempt-'+uuid.uuid4().hex,
+                           _token=secrets.token_hex(24),_physical_id=self.jobs.backend.physical_id)
+                if wanted['npu']:
+                    from cooperative_start import contract
+                    job['_cooperative_start']=contract()
+                db.execute('INSERT INTO execution_attempts VALUES(?,?,?,?,?)',
+                           (job['attempt_id'],job['id'],job['node_id'],'reserved',job['reserved_at']))
+                self.jobs.write(db, job)
+                atomic_json(self.jobs.directory(job['id']) / 'dispatch.json', job)
+                active.append(job)
+                all_active.append(job)
+        # Launch only once. An ambiguous crash stays reserved/needs_attention, never gets blindly re-run.
+        for job in active:
+            if job.get('_remote'):continue
+            if job['state'] != 'reserved' or job.get('_launch_attempted'):
+                continue
+            with self.jobs.transaction() as db:
+                actual = self.jobs.get(job['id'], db)
+                if actual.get('_launch_attempted') or actual['state'] != 'reserved':
+                    continue
+                actual['_launch_attempted'] = True
+                self.jobs.write(db, actual)
+            directory = self.jobs.directory(job['id'])
+            try:
+                child = self.jobs.backend.launch(directory,job)
+                self.children.append(child)
+            except OSError:
+                logging.exception('Could not launch job %s', job['id'])
+
+    def run(self):
+        try:
+            while not self.stop.is_set():
+                try:
+                    self.tick()
+                except Exception:
+                    logging.exception('Scheduler iteration failed')
+                self.stop.wait(1)
+        finally:
+            if self.lock:
+                self.lock.close()

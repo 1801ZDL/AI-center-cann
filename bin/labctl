@@ -1,0 +1,4 @@
+#!/bin/sh
+set -eu
+ascend_lab_repository="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
+exec "$ascend_lab_repository/src/ascend_lab/labctl" "$@"

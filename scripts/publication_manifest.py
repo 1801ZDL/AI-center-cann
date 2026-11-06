@@ -18,24 +18,18 @@ import sys
 import tarfile
 
 ROOT=Path(__file__).resolve().parents[1]
-sys.path.insert(0,str(ROOT))
+sys.path.insert(0,str(ROOT/'src/ascend_lab' if (ROOT/'src/ascend_lab').is_dir() else ROOT))
 from lab_client import atomic_json,read_json,now
 from deployment import CORE
+from source_layout import source_file
 from workflow_spec import runtime_manifest
 
 
 def source_paths():
-    paths={p for pattern in ['*.py','*.md'] for p in ROOT.glob(pattern) if p.name!='AGENTS.md'}
-    paths.update(ROOT/n for n in ['.gitignore','labctl','agentctl','accessctl','workerctl','servicectl','install-client','opsctl','debugctl',
-                                  'check-browser.sh','requirements-qa.txt','evidence/README.md'])
-    for folder in ['examples','tests','web','scripts']:
-        paths.update(p for p in (ROOT/folder).rglob('*') if p.is_file() and '__pycache__' not in p.parts
-                     and (p.name=='Dockerfile' or p.suffix in {'.py','.md','.sh','.html','.css','.js','.svg','.mlir','.c','.cpp','.json','.txt'}))
-    # Reports are a separate, explicit allowlist, never a catch-all JSON export.
-    paths.update(ROOT/'reports'/n for n in ['v036-public.json','public-source-check.json','mixed-compiler-stage.json']
-                 if (ROOT/'reports'/n).is_file())
-    assert set(CORE)<={str(p.relative_to(ROOT)) for p in paths}
-    return sorted(paths)
+    from source_layout import public_paths,source_file
+    paths=public_paths(ROOT)
+    assert {str(source_file(ROOT,name).relative_to(ROOT)) for name in CORE}<={str(p.relative_to(ROOT)) for p in paths}
+    return paths
 
 
 def native_fixture_config(path,include_control=False):
@@ -159,7 +153,7 @@ def main():
                 'large_compiler_build_executed_this_turn','domain_agent_installed_or_accepted_this_turn',
                 'npu_compute_accepted','remaining']}
         source_changes=[n for n in CORE if not n.endswith('.md')
-                        and hashlib.sha256((ROOT/n).read_bytes()).hexdigest()!=old['source_files'].get(n)]
+                        and hashlib.sha256(source_file(ROOT,n).read_bytes()).hexdigest()!=old['source_files'].get(n)]
         public.update(schema='ai-center-cann-public-validation/v1',
             source='Curated historical v0.36 local evidence; raw private reports are not published',
             public_source_changes_since_acceptance='Documentation/publication tooling, mixed-workload fixtures, legacy cooperative Unix-socket portability, Worker heartbeat/completion ordering, legacy command artifact fixes, native UID-slot append administration/compatible historical manifest validation, staged owner authentication/lifecycle guards, central owner-group append, Node/cache binding, durable commit/ready ACK, final owner activation, explicit activation abort, offline unit CAS, typed manager readback/reload journal, one-send startup/ready/heartbeat admission gating, Root final activation plus non-overwriting local UID credential handoff with controller restart/retry recovery, active-owner second-Node grants with monotonic authority revisions, explicit pending reauthorization and prospective slot reservations, and a Root Node participant coordinating native slots, immutable proposal, binding/ACK, explicit partial abort and post-binding Node-key rotation recovery; protected six-file runtime hashes unchanged. Historical Root54 is not a new acceptance of these edits; later checks retain frozen scopes. Manager mutations used a fixed adapter with actual installed processes, not actual PID1. Central onboarding now composes credential-free stage, native group quota, service lifecycle, protected Node packets/proposals/ACK/readiness and final local UID delivery with crash recovery; same-host CPU process onboarding accepted; NPU onboarding waits for explicit administrator qualification; explicit remote admin transport and initial Node/storage installation remain prerequisites. Staged NPU access now has a local administrator fixed-probe authorization with immutable Node/stage/context, monotonic revocation and identity-lock checks at grant/start/result and activation; the ordinary probe rejects missing active identity rather than falling back to the controller. Synthetic device observations are protocol evidence only. Explicit parent-flow candidate probes now submit once and preserve original jobs across observation, failure and expiry; completed-probe adoption atomically fences prior authorization and persists a CAS parent chain, with bounded observation and preserved prior snapshots. Candidate count can exceed concurrent NPU quota. Synthetic device protocols and actual CPU/negative CLI installation only; Process-mode onboarding now rejects new submissions while existing queued/active work drains, retains unknown leases and pending cleanup, snapshots explicit local process participants and restores them on pre-stage abort or late work; 49 same-host Root crash boundaries and single-attempt real CPU IR draining accepted. Final identity activation now permits known foreign work while retaining all leases; staged fixed probes may queue without enabling the identity, but final activation waits for its own pending work. Verified live controller inventory epochs protect local administration and detect switches; a same-host actual UID23802 personal IR queued behind UID23801 IR, with one attempt each and 715 checks passed. Structural handoffs remain idle-only; synthetic NPU protocols do not prove hardware computation. Exact approved owner appends now preserve only still-valid active-user device access qualifications after fresh authenticated Node confirmation and unchanged identity/host/runtime proof. Original probe, receipt and expiry remain unchanged; global revision checks stay intact, rejected history never retries, and bounded audit state fences incompatible downgrade.739 checks and24 synthetic compatibility protocols passed; actual Root CPU regression and empty audit CLI passed, not real NPU qualification carry. Fixed device/environment probes now require a registered mapped target and static Node/domain CPU and payload-plus128MiB memory capacity inside submission transactions; onboarding checks the same minimum or selected probe envelope before staging. Busy capacity still queues, original idempotent jobs remain observable and authorization races retain their original intent.757 checks and18 admission cases pass; actual same-host Root rejected a256MiB domain before CPU onboarding and restored its original policy. Untargeted workflow feasibility remains incomplete. Managed service busy-drain, real PID1, NPU compute, two physical hosts and remote-home automation remain incomplete.',
