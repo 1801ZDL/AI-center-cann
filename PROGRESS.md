@@ -1,5 +1,17 @@
 # 实施进度
 
+## 2026-11-06 核心运维本地开发与31项轻量检查
+
+按用户最新优先级，领域Agent、夜间PR及网页扩展暂缓。本轮没有创建中央job、启动服务/线程/定时器、Docker/NPU/PTY工作负载或真实通知发送；没有更改本机runtime配置、额度或他人任务。
+
+- resource_pressure.py采集固定proc/cgroup文件，观察可见祖先memory.high/max余量、swap和最高memory/IO full PSI；可选策略接入本地/Node新分配，未知/过期保守等待，不清退活任务。
+- probe_guard.py私有持久journal与单探针锁，保PID/start/boot，未知启动或SIGKILL后存活阻止后续启动；失败60..900秒冷却。个人容器df探测已移除；固定NPU准入/频率/测量查询共享同UID保护，周期个人逐卡频率不再启动额外命令。
+- maintenance_runner.py/opsctl仅推进显式摘要绑定的原维护计划一步，默认preview；审计32行/64KiB、控制副本<=256KiB/32任务、每步copy64KiB，复用原Root/停止态/源身份/确认回收合同，不自动停服务或生成下一批任务。关联SQL最终全量轮转仍未实现。
+- notifications.py将终态/attention事件与JobStore.write放在同事务；本人API/CLI、有限健康变化告警、单事件HTTPS发送/原ID退避/有界重试、已投递32行/64KiB校验归档与链检查点。队列满保原未发送行并记录溢出；旧状态恢复/不兼容代码不能丢失历史。
+- debug_v1走原Node排队/硬限额/环境锁/归档，固定个人非root CPU shell，1..300秒/空闲30秒，输入64帧/保守64KiB、输出1MiB，无网络/宿主路径/Docker socket/代理预算。Node只attach原容器stdin、不exec；发送意图先持久化，不确定不重发，当前是显式逐行CLI，非网页终端/NPU调试器。恢复后关闭通知和新交互，须重新明确启用。
+
+最终小检查31项全部通过：24项新核心边界、2项容器观测防exec、5项原客户端/MCP恢复。wall0.286秒、CPU0.269秒、peakRSS34816KiB、单CPU；外层强制禁止socket、真实Popen和Thread.start，RLIMIT_AS256MiB/CPU5秒/alarm8秒。此前16项/20项检查和合并检查中一次包装器位置参数兼容错误均保留；改为timeout关键字传递后先30项通过；补充维护CAS预像与原子journal保护后最终31项通过。私有证据runtime/core-ops-20261106/。这不是旧1487项的重跑、真实PTY/HTTP/原生安装恢复或发布验收，不继承旧报告结论。源码与分角色包/个人客户端入口已接线，未生成或安装发布包，所有新策略默认关闭。
+
 ## 2026-11-03 私有历史读取准入与20应用账号的32MiB HTTP验收（1487项）
 
 新增进程内私有历史读取准入：最多2个操作、等待2秒，繁忙返回503/Retry-After:1及数值retry_after_seconds。每线程嵌套调用复用原permit，成功/错误均finally释放；分组批读取在释放前清空解析副本。单任务迁出读、read_many、校验/全历史迭代、容量snapshot和原copies.checked共用门禁，避免只限page而由详情/管理员验证旁路并发解析。无迁出任务的普通读取、工作集与普通新任务不消耗此permit，任务CPU/NPU调度预算不变。原当前ACL先于历史准入，原全SHA/devino/权限/规范JSON/row/approval核验不变，无跨请求cache。/api/me公布进程内读限制；仅原GET错误响应携带有限重试提示，不自动提交或重跑计算。

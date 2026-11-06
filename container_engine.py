@@ -24,6 +24,7 @@ SCRIPTS['npu_probe']=ROOT/'examples/npu_device_probe.py'
 SCRIPTS['environment_probe']=ROOT/'environment_probe.py'
 SCRIPTS['npu_access_probe']=ROOT/'environment_probe.py'
 SCRIPTS.update({name:ROOT/'workflow_runner.py' for name in WORKFLOWS})
+SCRIPTS['debug_v1']=ROOT/'debug_runtime.py'
 
 
 def run(argv,timeout=15,binding=None):
@@ -239,6 +240,7 @@ class DockerAttempt:
         self.payload.chmod(0o555)
         resource=self.grant['resources'];cpus=','.join(map(str,self.grant['allocation']['cpu_ids']))
         argv=['docker','create','--pull','never','--name',self.name,'--label',LABEL+'='+self.grant['attempt_id'],
+              *(['--interactive'] if self.grant['template']=='debug_v1' else []),
               '--network','none','--read-only','--cap-drop','ALL','--cap-add','CHOWN','--cap-add','SETUID',
               '--cap-add','SETGID','--security-opt','no-new-privileges:true','--user','0:0',
               '--memory',str(resource['memory_mib'])+'m','--memory-swap',str(resource['memory_mib'])+'m',

@@ -236,6 +236,10 @@ class NodeRegistry:
             if isinstance(value,bool) or not isinstance(value,int) or value<0:raise JobError('Invalid node resource observation')
             report[key]=value
         report['sampled_at']=now()
+        if 'resource_pressure' in body:
+            from resource_pressure import validate as validate_pressure
+            try:report['resource_pressure']=validate_pressure(body['resource_pressure'])
+            except ValueError as error:raise JobError(str(error),400) from None
         from workflow_spec import DEADLINE_CAPABILITY,MAX_TIMEOUT_SECONDS
         if DEADLINE_CAPABILITY in body.get('capabilities',[]):
             maximum=body.get('max_timeout_seconds')
@@ -245,6 +249,8 @@ class NodeRegistry:
         if cpu is not None and (isinstance(cpu,bool) or not isinstance(cpu,(int,float)) or not math.isfinite(cpu) or not 0<=cpu<=100):raise JobError('Invalid node CPU observation')
         report['host_cpu_utilization_pct']=cpu
         report['capabilities']=sorted((REQUIRED_CAPABILITIES|CAPABILITIES|{MULTI_SLOT})&set(body.get('capabilities',[])))
+        from interactive_debug import CAPABILITY as DEBUG
+        if DEBUG in body.get('capabilities',[]):report['capabilities'].append(DEBUG)
         if FIXED_PROBE_CAPABILITY in body.get('capabilities',[]):report['capabilities'].append(FIXED_PROBE_CAPABILITY)
         from npu_measurement import CAPABILITY as MEASUREMENT
         if MEASUREMENT in body.get('capabilities',[]):
@@ -372,6 +378,8 @@ class NodeRegistry:
         reason=self.jobs.dispatch_permission(job,active,db,identities) or self.jobs.dependencies.reason(job,db)
         from placement import reason as placement_reason
         reason=placement_reason(job,node_id) or reason
+        if job.get('template')=='debug_v1' and __import__('interactive_debug').CAPABILITY not in node['report'].get('capabilities',[]):
+            reason='节点需要升级受控交互输入能力'
         identity_reason=('用户任务不能使用同机中央服务UID，需管理员重新映射'
             if profile['physical_id']==self.jobs.backend.physical_id and profile['users'][job['owner']]['uid']==self.controller_uid() else None)
         inventory_reason=self.jobs.inventory.reason(profile['physical_id'],db)
@@ -424,6 +432,10 @@ class NodeRegistry:
         if not reason and sum(j['resources'].get('shm_mib',0) for j in group)+wanted.get('shm_mib',0)>pool['shm_mib']:reason='等待节点共享内存预算'
         if not reason and (sum(memory_cost(j) for j in node_active)+memory_cost(job,True)>profile['policy']['memory_mib'] or sum(j['resources'].get('shm_mib',0) for j in node_active)+wanted.get('shm_mib',0)>profile['policy']['shm_mib']):reason='等待此节点内存/共享内存预算（含受控执行开销）'
         if not reason and (node['report']['memory_available_bytes']<memory_cost(job,True)*1024**2+512*1024**2 or node['report']['disk_free_bytes']<512*1024**2):reason='节点实际内存或磁盘余量不足'
+        if not reason:
+            from resource_pressure import reason as pressure_reason
+            reason=pressure_reason(node['report'].get('resource_pressure'),memory_cost(job,True)*1024**2,
+                                   self.jobs.policy.get('resource_pressure'))
         from node_storage import pressure,CAPABILITY as SPOOL
         if not reason and self.jobs.policy.get('require_node_spool') and SPOOL not in node['report']['capabilities']:
             reason='节点需要升级暂存准入和已确认副本回收能力'
@@ -648,6 +660,8 @@ class NodeRegistry:
             job=self._owned(node_id,body,db)
             if job['state'] in TERMINAL:return {'terminal':True,'cancel':False,'state':job['state']}
             job['_worker_seen']=time.time()
+            if job.get('template')=='debug_v1':
+                job['_debug_capable']=__import__('interactive_debug').CAPABILITY in self.node(node_id,db)['report'].get('capabilities',[])
             if body.get('attention') is True:
                 job.update(state='needs_attention',reason='节点无法确认执行状态；保留资源，不自动重跑')
                 if body.get('output_pending') is True:
@@ -666,7 +680,10 @@ class NodeRegistry:
                     for key,value in preview.items() if key in {'stdout','stderr'} and isinstance(value,dict)}
                 }
             self.jobs.write(db,job)
-            return {'terminal':False,'cancel':bool(job.get('_cancel_requested')),'state':job['state']}
+            from interactive_debug import exchange
+            try:debug=exchange(db,job,body)
+            except ValueError as error:raise JobError(str(error),400) from None
+            return {'terminal':False,'cancel':bool(job.get('_cancel_requested')),'state':job['state'],**debug}
 
     def upload(self,node_id,body):
         name=body.get('name')
@@ -812,7 +829,7 @@ class NodeRegistry:
                     **({key:profile['environment_manifest']['observed'][key] for key in ['python','machine','packages']}
                        if profile.get('environment_manifest') else {}),
                     **({'lock':__import__('environment_contract').lock_for(profile['environment_manifest'])} if profile.get('environment_manifest') else {})},
-                'observed':{k:node['report'].get(k) for k in ['memory_available_bytes','disk_free_bytes','disk_free_inodes','artifact_gc_ready','host_cpu_utilization_pct']},
+                'observed':{k:node['report'].get(k) for k in ['memory_available_bytes','disk_free_bytes','disk_free_inodes','artifact_gc_ready','host_cpu_utilization_pct','resource_pressure']},
                 'capacity':profile['policy'],'resource_domain':domain,'npu_configured':bool(profile.get('npu')),
                 'device_access':{'counts':access,'scope':'device-files-only','acl_verified':False,'numerical_verified':False},
                 'io_limits':__import__('io_policy').limits(profile.get('io_limits')),

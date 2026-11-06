@@ -1,0 +1,117 @@
+#!/usr/bin/env python3
+"""Manual, line-oriented debug client. Never runs Docker or starts a daemon."""
+import argparse
+import base64
+import fcntl
+import json
+import os
+from pathlib import Path
+import stat
+import uuid
+
+from lab_client import Client, ClientError, atomic_json, job_id
+
+
+def private_directory(path):
+    path = Path(path)
+    path.mkdir(mode=0o700, parents=True, exist_ok=True)
+    info = path.lstat()
+    if not stat.S_ISDIR(info.st_mode) or info.st_uid != os.getuid() or info.st_mode & 0o077:
+        raise ValueError('Debug client session directory must be private')
+    return path
+
+
+def send(client, ident, root, data=None):
+    pending = root / 'pending-input.json'
+    if pending.exists():
+        if data is not None:
+            raise ValueError('Resume the previous original input first')
+        value = json.loads(pending.read_text())
+    else:
+        if not isinstance(data, bytes) or not 1 <= len(data) <= 4096:
+            raise ValueError('Input requires 1..4096 bytes')
+        value = {'job_id': ident, 'request': {'key': uuid.uuid4().hex,
+                                            'data': base64.b64encode(data).decode()}}
+        atomic_json(pending, value)
+    if value['job_id'] != ident:
+        raise ValueError('Pending input belongs to another original debug job')
+    response = client.request('/api/jobs/' + ident + '/debug-input', value['request'])
+    pending.unlink()
+    return response
+
+
+def main():
+    os.umask(0o077)
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--profile', required=True)
+    sub = parser.add_subparsers(dest='action', required=True)
+    p = sub.add_parser('open', help='Submit one explicitly enabled, frozen debug_v1 request')
+    p.add_argument('--request', required=True)
+    for action in ['status', 'close']:
+        p = sub.add_parser(action)
+        p.add_argument('job_id')
+    for action in ['input', 'resume-input', 'attach']:
+        p = sub.add_parser(action)
+        p.add_argument('job_id')
+        p.add_argument('--session-dir', required=True)
+        if action == 'input':
+            p.add_argument('--text', required=True)
+    args = parser.parse_args()
+    client = Client.from_profile(args.profile)
+    if args.action == 'open':
+        raw = Path(args.request).read_bytes()
+        if len(raw) > 32768:
+            raise ValueError('Debug request is too large')
+        request = json.loads(raw)
+        if request.get('template') != 'debug_v1' or not request.get('idempotency_key'):
+            raise ValueError('Use a frozen debug_v1 request with its original idempotency key')
+        print(json.dumps(client.request('/api/jobs', request), ensure_ascii=False))
+        return
+    ident = job_id(args.job_id)
+    if args.action == 'status':
+        print(json.dumps(client.request('/api/jobs/' + ident + '/debug'), ensure_ascii=False))
+        return
+    if args.action == 'close':
+        # Confirm ownership/type before sending the ordinary cancellation.
+        client.request('/api/jobs/' + ident + '/debug')
+        print(json.dumps(client.request('/api/jobs/' + ident + '/cancel', {}), ensure_ascii=False))
+        return
+    root = private_directory(args.session_dir)
+    descriptor = os.open(root / 'client.lock', os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW, 0o600)
+    try:
+        fcntl.flock(descriptor, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        if args.action == 'input':
+            print(json.dumps(send(client, ident, root, (args.text + '\n').encode())))
+            return
+        if args.action == 'resume-input':
+            print(json.dumps(send(client, ident, root)))
+            return
+        if (root / 'pending-input.json').exists():
+            print(json.dumps(send(client, ident, root)))
+        print('Manual line-mode terminal. /status, /logs, /close, /detach; idle expiry30s, maximum300s.')
+        while True:
+            try:
+                line = input('debug> ')
+            except (EOFError, KeyboardInterrupt):
+                return  # No implicit resubmission or replacement session.
+            if line == '/detach':
+                return
+            if line == '/close':
+                client.request('/api/jobs/' + ident + '/cancel', {})
+                return
+            if line in {'/status', '/logs'}:
+                route = '/debug' if line == '/status' else '/log?stream=stdout'
+                result = client.request('/api/jobs/' + ident + route)
+                print(result.get('text', json.dumps(result, ensure_ascii=False)))
+                continue
+            print(json.dumps(send(client, ident, root, (line + '\n').encode())))
+    finally:
+        os.close(descriptor)
+
+
+if __name__ == '__main__':
+    try:
+        main()
+    except (ClientError, OSError, ValueError) as error:
+        print(type(error).__name__ + ': operation not completed; preserve original job and pending input')
+        raise SystemExit(1)

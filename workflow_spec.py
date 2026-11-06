@@ -4,6 +4,7 @@ import hashlib
 from pathlib import Path
 
 WORKFLOWS={name+'_v1':name for name in ['accuracy','performance','simulation','build','ir']}
+WORKFLOWS['debug_v1']='command'
 CAPABILITIES={'immutable-input-v1','protected-environment-v1','short-artifact-paths-v1'}
 MAX_TIMEOUT_SECONDS=86400
 DEADLINE_CAPABILITY='node-deadline-limit-v1'

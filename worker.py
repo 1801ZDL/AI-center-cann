@@ -124,6 +124,7 @@ class Worker:
         self.previous_cpu=current
         from attempt_inventory import CAPABILITY as INVENTORY,local as attempt_inventory
         capabilities=['start-ticket-v1','cleanup-before-complete-v1',PINNED_RUNTIME,ENVIRONMENT,INVENTORY,MULTI_SLOT,*sorted(CAPABILITIES)]
+        capabilities.append(__import__('interactive_debug').CAPABILITY)
         capabilities.append(PROBE_MEMORY_CAPABILITY)
         from npu_measurement import CAPABILITY as MEASUREMENT
         capabilities.append(MEASUREMENT)
@@ -169,6 +170,7 @@ class Worker:
             except (OSError,ValueError):host_sha=None
             npu.update(access_host_sha256=host_sha,access_runtime_files=runtime_manifest())
         body={'physical_id':physical_identity(),
+             'resource_pressure':__import__('resource_pressure').sample(),
              'measurement_source_sha256':__import__('npu_measurement').source_sha(),
              'image_sha256':self.config['image'],'environment_setup':self.config.get('environment_setup'),
              'python_executable':self.config.get('python','/usr/bin/python3'),
@@ -373,7 +375,9 @@ class Worker:
                     self.finish_attempt(engine,result)
                     print(json.dumps({'at':now(),'job_id':grant['job_id'],'attempt_id':grant['attempt_id'],'state':result['status']}),flush=True)
                     return
-                try:state=self.client.call('update',{**self.auth_body(grant),'running':True,'logs':engine.preview()})
+                debug_delivery=engine.state.get('debug_delivery') if grant.get('template')=='debug_v1' else None
+                try:state=self.client.call('update',{**self.auth_body(grant),'running':True,'logs':engine.preview(),
+                    **({'debug_ack':{k:debug_delivery[k] for k in ['seq','state']}} if debug_delivery else {})})
                 except ControllerUnavailable:
                     # Continue observing this exact container, including local timeout
                     # and exit checks. A lost response must not abandon supervision
@@ -381,6 +385,9 @@ class Worker:
                     STOP.wait(.5)
                     continue
                 if state.get('cancel'):engine.tick(cancel=True)
+                elif state.get('debug_input') is not None:
+                    from interactive_debug import node_input
+                    node_input(engine,state['debug_input'])
                 STOP.wait(.5)
         except ControllerUnavailable:
             # Before start or during result transfer, recovery resumes the same

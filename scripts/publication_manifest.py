@@ -26,7 +26,7 @@ from workflow_spec import runtime_manifest
 
 def source_paths():
     paths={p for pattern in ['*.py','*.md'] for p in ROOT.glob(pattern) if p.name!='AGENTS.md'}
-    paths.update(ROOT/n for n in ['.gitignore','labctl','agentctl','accessctl','workerctl','servicectl','install-client',
+    paths.update(ROOT/n for n in ['.gitignore','labctl','agentctl','accessctl','workerctl','servicectl','install-client','opsctl','debugctl',
                                   'check-browser.sh','requirements-qa.txt','evidence/README.md'])
     for folder in ['examples','tests','web','scripts']:
         paths.update(p for p in (ROOT/folder).rglob('*') if p.is_file() and '__pycache__' not in p.parts

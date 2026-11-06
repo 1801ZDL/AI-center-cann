@@ -61,7 +61,7 @@ def main():
     elif config['template'] in {'isolation_probe','npu_probe'}:
         env['LAB_FORBIDDEN_PATHS']=json.dumps(config.get('forbidden_paths',[]))
         arguments=[]
-    elif config['template'] in {'accuracy_v1','performance_v1','simulation_v1','build_v1','ir_v1'}:
+    elif config['template'] in {'accuracy_v1','performance_v1','simulation_v1','build_v1','ir_v1','debug_v1'}:
         arguments=[]
     elif config['template'] in {'environment_probe','npu_access_probe'}:arguments=[]
     else:raise SystemExit('Unknown registered template')
@@ -93,7 +93,7 @@ def main():
         if config['template'] in {'environment_probe','npu_access_probe'}:raise SystemExit(0)
         receipt['workload_started']=True;save_receipt()
     child=subprocess.Popen(with_setup(command),
-                           env=env,preexec_fn=prepare,stdin=subprocess.DEVNULL,start_new_session=True)
+                           env=env,preexec_fn=prepare,stdin=None if config['template']=='debug_v1' else subprocess.DEVNULL,start_new_session=True)
     # PID 1 exit tears down this container's PID namespace, including escaped child groups.
     while child.poll() is None:
         if time.monotonic()>=deadline:os._exit(124)

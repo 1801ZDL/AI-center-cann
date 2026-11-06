@@ -114,6 +114,7 @@ def main():
     command = sub.add_parser('jobs')
     command.add_argument('--json', action='store_true')
     sub.add_parser('me', help='Verify personal identity through the controller API')
+    sub.add_parser('notifications',help='Read only this owner\'s bounded notification outbox')
     sub.add_parser('nodes', help='Read authorized node status')
     command=sub.add_parser('input-add',help='Upload and seal a file/directory; hidden files excluded')
     command.add_argument('path')
@@ -169,7 +170,7 @@ def main():
     if (ROOT/'client-only').exists() and not args.profile:
         p.error('This portable client requires a personal --profile and cannot manage the controller')
     if args.profile:
-        if args.action not in {'submit','jobs','job','logs','cancel','wait','me','nodes','input-add','input','environment-lock','archive','archive-config','diagnose','operator-case','compiler-case','accuracy-case','simulation-case','storage','retry-inputs','experiment-budget','source-grant'}:
+        if args.action not in {'submit','jobs','job','logs','cancel','wait','me','nodes','notifications','input-add','input','environment-lock','archive','archive-config','diagnose','operator-case','compiler-case','accuracy-case','simulation-case','storage','retry-inputs','experiment-budget','source-grant'}:
             p.error('Client profiles only support job operations')
         config = private_profile(args.profile)
     else:
@@ -292,7 +293,7 @@ def main():
             print(f"{'JOB':18} {'STATE':16} {'ENV':15} NAME / REASON")
             for job in summary['jobs']:
                 print(f"{job['id']:18} {job['state']:16} {job['environment']:15} {job['name']} / {job['reason']}")
-    elif args.action in {'me','nodes'}:
+    elif args.action in {'me','nodes','notifications'}:
         print(json.dumps(request(config, '/api/'+args.action), ensure_ascii=False, indent=2))
     elif args.action=='retry-inputs':
         print(json.dumps(request(config,'/api/jobs/'+args.job_id+'/retry-inputs',{}),ensure_ascii=False,indent=2))

@@ -1,0 +1,143 @@
+# 核心运维功能：默认关闭、有限执行
+
+2026-11-06 开发源码同步版本，非生产发布包。没有启动控制器、Worker、定时器、通知投递或调试任务。
+本轮只能做短时、低资源开发检查；真实 Docker/PTY、安装、恢复和完整回归尚未执行。
+不得把下面的接口已实现理解为部署验收已完成。
+
+## 资源压力准入
+
+中央配置的可选 `scheduler.resource_pressure`：
+
+```json
+{"enabled":true,"max_age_seconds":20,"memory_full_avg10":10,"io_full_avg10":25,"reserve_mib":128}
+```
+
+默认 enabled=false。开启后，新的本地任务和 Node 分配必须有有效新鲜观测。
+读固定的 proc/cgroup v2 文件，不运行 df、Docker exec 或 NPU 命令。
+可用内存取宿主 MemAvailable 与可见所有祖先的 memory.high/max 剩余额度的最小值；
+同时保留 swap 余量、最高 memory/IO full avg10 PSI。高压力、未知或过期暂停新分配，
+不终止既有任务、不释放未知租约。原资源账本、任务硬限额和存储预算继续生效。
+
+应将 Node 放在与任务执行边界相符的宿主命名空间。隐藏的祖先限制无法凭空推断；
+本采样器不能代替任务实际 cgroup 的硬限制，也不宣称观测可避免所有准入后竞争。
+旧 Node 不提供新观测时，开启策略会保守等待；不要拿宿主空闲量代替缺失值。
+
+`opsctl pressure` 是显式一次性只读检查，不启动采集线程。
+
+## 防止监控探针累积
+
+周期采集不再进入租户容器探测共享内存；使用量为 unknown，仅保留配置上限。
+监控的 inspect/top/NPU 查询使用私有持久 journal、非阻塞独占锁和一次一个探针。
+超时先终止本次探针进程组，再最多观察0.2秒；仍存活则保留 PID/启动时刻/boot 身份，
+阻断之后的探针，包括同一服务重启后的再次启动。启动状态不明也保守阻断，不反复 fork。
+已确认退出的失败探针也进入持久冷却，首次60秒、连续失败逐步延长至900秒；
+成功才清除失败计数。重启服务不会消除冷却或未知进程记录。
+
+NPU 准入、频率和测量查询经同 UID 的 `/tmp/ascend-lab-npu-probe-UID` 共用保护，
+个人监控另在当前 runtime/monitor-probes 留证。它们只允许固定命令；不允许任意 shell。
+周期个人监控不再额外查询逐卡频率，字段保持 unknown。
+不把 Docker 客户端退出视为远端 exec 已结束。没有自动清 journal 或重启容器的路径。
+
+## 有限历史维护
+
+`maintenance_runner.plan(prefix, steps)` 为明确选定的原始操作生成摘要绑定计划。
+Root 把计划保存为0600文件，然后使用匹配安装中的：
+
+```bash
+opsctl maintenance --plan /root/private/maintenance.json
+# 显式批准后，每次仅推进原计划的一步；未完成则下次继续同一计划
+opsctl maintenance --plan /root/private/maintenance.json --apply
+```
+
+preview不写文件。真实执行要求匹配版本的已安装中央；底层维护仍要求停止态及全部原保护。
+这里不会为了维护自动停服务、自动排空队列、启动工作负载或改变现有容量。
+
+支持步骤：
+
+- audit_export：输出到指定受保护、独立于控制盘的 archive；最多32行/64KiB。
+- audit_prune：只能引用本计划更早 audit_export 步骤的确切 SHA 和原路径，先核验再裁剪。
+- control_copy/control_verify/control_rotate：三步均绑定同一个原 control_history 计划。
+  原选择最多32任务、总正文最多256KiB，每次copy最多64KiB；verify之后才沿原规则迁出。
+  rotate再次核对原任务集合。未满足原 purge/cold-retired 条件的任务不会被自动回收。
+
+计划journal保存在prefix/maintenance-runs/PLAN.json，原意图先落盘；失败或超时保留原步，
+下次复用既有幂等操作，不更换任务ID、计划或归档。每计划最多32步，完成后不继续生成新计划。
+opsctl限制单CPU、256MiB虚拟内存、2CPU秒和5秒观察；超时不代表底层已完成或允许换计划。
+
+没有安装cron/timer。以后管理员可在批准的维护窗口外部触发这个有限入口；维护窗口、
+新归档盘容量和下一份明确选择的计划仍由管理员控制。
+执行尝试、授权/撤销、账单和任务图等关联SQL仍保留原语义，未实现整个关系图的最终轮转；
+也没有自动VACUUM、删除用户源目录或无限期保留的承诺。
+
+## 通知和告警
+
+可选 `scheduler.notifications={"enabled":true,"max_pending":1024}`，默认关闭。
+状态变更事件与任务写入同一事务；消息仅含owner、job ID、固定状态和时间，不含命令、
+日志、对话、模型密钥或磁盘路径。`GET /api/notifications`仅返回本人最近50条和溢出数。
+队列总行数有限；满时不删除未投递消息、不阻塞计算完成，记录可见溢出。
+
+Root 私有 destinations 文件格式为 `{"alice":{"url":"https://notify.example/hooks/alice"}}`。
+仅管理员配置目的地，HTTPS/443、校验证书、无重定向和环境代理。URL不进入用户API或错误输出。
+
+```bash
+opsctl notify-once --prefix /opt/ascend-lab-controller --destinations /root/private/destinations.json
+# 显式许可后最多发一条；没有常驻发送线程
+opsctl notify-once --prefix /opt/ascend-lab-controller --destinations /root/private/destinations.json --send
+```
+
+发送前有限检查最多32个Node的心跳/压力及控制存储；状态变化和恢复才记录。
+超过32个Node用返回的health_next_after和--after-node显式分页，下一轮从头开始。
+过期观测/未知不是健康。没有给接收端配置目的地的owner不会阻塞其他已配置owner。
+独立连接先领取30秒发送租约，网络IO不占SQLite事务；失败60秒退避，最多8次。
+发送工具持有正常共享状态锁，备份/恢复的独占维护不能与发送状态写入交错。
+这是至少一次投递：接收端必须按Idempotency-Key去重，网络断开后不能保证对方未接收。
+目的地变更不会把已绑定消息自动重定向。未完成/耗尽/溢出保留供运维核对。
+
+`labctl --profile /本人/private/client.json notifications`可读取本人事件。
+已投递事件也受队列总量限制；用以下显式有限维护入口释放已确认投递的行：
+
+```bash
+opsctl notification-archive --prefix /opt/ascend-lab-controller --directory /受保护的个人服务归档目录
+opsctl notification-archive --prefix /opt/ascend-lab-controller --directory /受保护的个人服务归档目录 --apply
+```
+
+目录须预先存在且属中央服务UID、权限0700。每次最多32条/64KiB，只处理delivered行，
+先写0600副本、fsync并独立重读核对，再同事务提交精确原行回收与单行链检查点。
+任何未投递/失败消息都保留；最多256份文件，满后须显式安排外部档案轮转。
+这些历史副本供管理员保存，个人通知接口只展示仍在线的最近事件；原任务历史不受影响。
+恢复拒绝回退投递/溢出/归档检查点或交互输入记录，恢复后通知投递和交互新会话均关闭，
+须管理员重新明确开启，不能从旧配置自动恢复外部副作用。
+
+## 受控交互调试
+
+可选 `scheduler.interactive_debug={"enabled":true,"owners":["alice"]}`，默认关闭。
+Node必须明确登记debug_v1模板并提供新transport capability；旧Node不领取此类任务。
+它是个人所有的独立调试作业：普通中央队列/许可/硬限额/日志/取消/归档全保留，
+不附着到zdl等原容器，也不提供Node Docker socket、Root shell或宿主目录。
+
+冻结请求沿普通工作流包含封存input_id和环境lock；template=debug_v1、
+environment=worker-python，parameters.argv固定["/bin/bash"]。
+1..2CPU、128..2048MiB、NPU=0/SHM=0、总时限1..300秒、空闲30秒；不接受持久缓存、
+共享项目、Agent预算委托或任务图。命令只在原非root、无网络的受控容器里运行。
+shell访问/inputs封存源码和/work个人工作区，环境受现有protected bootstrap核对。
+
+```bash
+debugctl --profile /本人/private/client.json open --request /本人/private/debug-request.json
+debugctl --profile /本人/private/client.json status job-原ID
+debugctl --profile /本人/private/client.json attach job-原ID --session-dir /本人/private/debug-session
+debugctl --profile /本人/private/client.json close job-原ID
+```
+
+当前是显式逐行PTY客户端，/logs查看原任务输出，/status查看会话，/detach离开，/close取消。
+不是完整网页终端、SFTP或IDE调试器，也不自动申请下一会话。
+每会话最多64帧、保守累计64KiB输入，运行时输出上限1MiB；Node监控及既有日志上限仍生效。
+输入先保存个人请求键，再经认证owner API和原attempt更新投递到原容器stdin，绝不docker exec。
+Node发送意图在IO之前持久化；不确定时不重发，后续输入暂停，可查看日志或取消。
+stdin_sent只表示字节已交给传输，不表示命令执行成功；实际结果以原日志和终态为准。
+重连复用session-dir/pending-input.json，禁止换key重发原输入。
+
+## 当前验证边界
+
+只允许纯mock、临时小文件和内存SQLite检查，不启动PTY、shell、Docker、NPU或网络发送。
+真实PTY attach、原生安装/中断恢复、异地档案持久性和完整回归仍待授权环境验收。
+这不会恢复本机已停的demo，也不会重启zdl或改变当前服务器上的其他任务。

@@ -10,13 +10,20 @@ import sys
 import time
 import uuid
 
-from lab_client import ROOT, Client, ClientError, atomic_json, now, private_profile, read_json,bound_workflow
+from lab_client import ROOT, Client, ClientError, ClientHTTPError, atomic_json, now, private_profile, read_json,bound_workflow
 
 FINAL = {'succeeded', 'failed', 'cancelled', 'timed_out'}
 
 
 class BridgeError(ValueError):
     pass
+
+
+class BridgeReadBusy(BridgeError):
+    def __init__(self,seconds):
+        if type(seconds) is not int or not 1<=seconds<=60:raise BridgeError('Invalid finite read retry advice')
+        self.retry_after_seconds=seconds
+        super().__init__('Controller HTTP 503')
 
 
 class Bridge:
@@ -38,6 +45,9 @@ class Bridge:
                 if actor.get('id')!=self.session['identity'] or actor.get('experiment_id')!=self.session.get('experiment_id'):
                     raise BridgeError('Client credential identity changed or experiment binding changed during this conversation')
             return client.request(path, data, raw=raw, max_bytes=1024*1024)
+        except ClientHTTPError as error:
+            if error.retry_after_seconds is not None:raise BridgeReadBusy(error.retry_after_seconds) from None
+            raise BridgeError(str(error)) from None
         except ClientError as error:
             raise BridgeError(str(error)) from None
 
@@ -144,7 +154,7 @@ class Bridge:
                 if self.session.get('workflow_request'):
                     if job['state'] not in FINAL:return {'job':job,'artifact':None,'note':'Workflow remains managed; result is not terminal'}
                     try:record=self.api('/api/jobs/'+job_id+'/artifact?name=validated-result.json',raw=True)
-                    except ClientError as error:
+                    except BridgeError as error:
                         if str(error)!='Controller HTTP 404' or job['state']=='succeeded':raise
                         record=None
                     value={'job_id':job_id,'status':job['state'],'artifact_name':'validated-result.json' if record is not None else None,
@@ -248,6 +258,9 @@ def serve(bridge, instream=sys.stdin, outstream=sys.stdout):
                     result={'content':[{'type':'text','text':json.dumps(value,ensure_ascii=False)}],'isError':False}
                 except (BridgeError,ValueError,KeyError,TypeError) as error:
                     value={'error':str(error)[:500]}
+                    if isinstance(error,BridgeReadBusy):
+                        value.update(http_status=503,retry_after_seconds=error.retry_after_seconds,
+                          retry_scope='same_read',instruction='Retry the original read; retain original job IDs and request keys. Do not submit a replacement calculation.')
                     bridge.audit(name,arguments,value,True)
                     result={'content':[{'type':'text','text':json.dumps(value,ensure_ascii=False)}],'isError':True}
             else:

@@ -1,0 +1,105 @@
+#!/usr/bin/env python3
+"""Explicit, bounded operations. Installing this file never enables a timer."""
+import argparse
+import json
+import os
+from pathlib import Path
+import resource
+import signal
+import sqlite3
+import stat
+import sys
+
+sys.dont_write_bytecode = True
+
+
+def private_json(path, maximum=262144):
+    fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+    with os.fdopen(fd, 'rb') as stream:
+        info = os.fstat(stream.fileno())
+        if not stat.S_ISREG(info.st_mode) or info.st_uid != os.geteuid() or info.st_mode & 0o077 or info.st_nlink != 1 or info.st_size > maximum:
+            raise ValueError('Operation input must be a private, bounded owned regular file')
+        return json.loads(stream.read(maximum + 1))
+
+
+def limit():
+    os.umask(0o077)
+    os.sched_setaffinity(0, {min(os.sched_getaffinity(0))})
+    resource.setrlimit(resource.RLIMIT_AS, (256 * 1024**2, 256 * 1024**2))
+    resource.setrlimit(resource.RLIMIT_CPU, (2, 2))
+    signal.signal(signal.SIGALRM, lambda *_: (_ for _ in ()).throw(TimeoutError('Operation exceeded its observation budget; retain original journal')))
+    signal.alarm(5)
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    subs = parser.add_subparsers(dest='action', required=True)
+    p = subs.add_parser('pressure', help='One proc/cgroup snapshot; no device commands')
+    p = subs.add_parser('maintenance', help='Preview or resume one exact offline maintenance approval')
+    p.add_argument('--plan', required=True)
+    p.add_argument('--apply', action='store_true')
+    p = subs.add_parser('notify-once', help='Optional one-event delivery; never called by the scheduler')
+    p.add_argument('--prefix', required=True)
+    p.add_argument('--destinations', required=True)
+    p.add_argument('--send', action='store_true', help='Explicitly permit one HTTPS delivery')
+    p.add_argument('--after-node',default='',help='Bounded health scan cursor for deployments with more than32 Nodes')
+    p = subs.add_parser('notification-archive',help='Seal and verify at most32 delivered events, preserving all pending messages')
+    p.add_argument('--prefix',required=True);p.add_argument('--directory',required=True)
+    p.add_argument('--apply',action='store_true')
+    args = parser.parse_args()
+    limit()
+    if args.action == 'pressure':
+        from resource_pressure import sample
+        return sample()
+    if args.action == 'maintenance':
+        from maintenance_runner import run_once
+        value = private_json(args.plan)
+        if not args.apply:
+            return run_once(value, '/unused', apply=False)
+        from deployment import require_root, verify
+        require_root()
+        prefix, meta, release = verify(value['prefix'])
+        if meta['role'] != 'controller' or (release / 'maintenance_runner.py').read_bytes() != Path(__file__).with_name('maintenance_runner.py').read_bytes():
+            raise ValueError('Use the matching installed controller maintenance code')
+        journal_dir = prefix / 'maintenance-runs'
+        journal_dir.mkdir(mode=0o700, exist_ok=True)
+        return run_once(value, journal_dir / (value['id'] + '.json'), apply=True)
+    from deployment import require_root, verify
+    require_root()
+    prefix, meta, release = verify(args.prefix)
+    if meta['role'] != 'controller' or (release / 'notifications.py').read_bytes() != Path(__file__).with_name('notifications.py').read_bytes():
+        raise ValueError('Use the matching installed controller notification code')
+    destinations = private_json(args.destinations, 65536) if args.action=='notify-once' else None
+    from audit_retention import service_identity
+    from state_lock import state_lock
+    with service_identity(meta),state_lock(meta['state_dir']):
+        config = private_json(Path(meta['state_dir']) / 'config.json')
+        from notifications import policy, dispatch_one, initialize, health_once, outbox_status
+        if args.action=='notification-archive':
+            from notifications import archive_delivered
+            with sqlite3.connect(Path(meta['state_dir'])/'jobs.sqlite3',timeout=.2) as connection:
+                return archive_delivered(connection,args.directory,apply=args.apply)
+        settings = policy(config.get('scheduler', {}).get('notifications'))
+        if not settings['enabled']:
+            return {'status': 'disabled', 'sent': False}
+        if not args.send:
+            return {'status': 'preview', 'sent': False, 'configured_owners': len(destinations)}
+        from control_monitor import inspect
+        status = inspect(prefix)
+        storage = 'unknown' if not status.get('check_success') else status.get('status', 'unknown')
+        with sqlite3.connect(Path(meta['state_dir']) / 'jobs.sqlite3', timeout=.2) as db:
+            initialize(db)
+            cursor=health_once(db, config['username'], settings, config.get('scheduler', {}).get('resource_pressure'), storage=storage,after_node=args.after_node)
+        connection = sqlite3.connect(Path(meta['state_dir']) / 'jobs.sqlite3', timeout=.2)
+        try:return {**dispatch_one(connection, destinations),'health_next_after':cursor,'outbox':outbox_status(connection)}
+        finally:connection.close()
+
+
+if __name__ == '__main__':
+    try:
+        print(json.dumps(main(), ensure_ascii=False, allow_nan=False))
+    except (ValueError, OSError, RuntimeError, TimeoutError, sqlite3.Error) as error:
+        # No webhook URL, configuration secret or remote response is printed.
+        print(json.dumps({'status': 'not_completed', 'error_type': type(error).__name__,
+                          'retain_original_request': True}))
+        raise SystemExit(1)

@@ -9898,5 +9898,68 @@
       "Real host boot/login isolation, controlled nonroot NPU numerical/performance/simulation, daily-card UT and two physical hosts.",
       "PUBLIC-001 nightly PR attribution remains deferred."
     ]
+  },
+  "core_operations_source_sync": {
+    "schema": "ascend-lab-core-operations-source/v1",
+    "date": "2026-11-06",
+    "delivery": "Development source only; no installed release or service activation",
+    "defaults_enabled": false,
+    "production_ready": false,
+    "overall_goal_complete": false,
+    "focused_checks": {
+      "tests": 31,
+      "failures": 0,
+      "errors": 0,
+      "wall_seconds": 0.2857622879964765,
+      "cpu_seconds": 0.26898099999999997,
+      "peak_rss_kib": 34816
+    },
+    "focused_check_controls": {
+      "single_cpu": true,
+      "no_real_subprocess": true,
+      "no_network": true,
+      "no_background_threads": true
+    },
+    "real_http_or_pty_accepted": false,
+    "native_install_or_restore_accepted": false,
+    "full_regression_rerun": false,
+    "docker_or_npu_workloads_started": false,
+    "complete_associated_sql_rotation": false,
+    "source_sha256": {
+      "resource_pressure.py": "ab301d5373751b338be4b1bedf2674f196a09be11d6150c8cd08810fe623d8fd",
+      "probe_guard.py": "587609859f439435dd0c12fb28caabc92c2dedd2cdc6940072bea30683a58baa",
+      "notifications.py": "c6bea6090e64d111932f8713cd6463e38e6dded72470b5135bd90566955ff8c0",
+      "maintenance_runner.py": "82d660317355131cefa14e8d6de7a08775a0484fcf57f17b526ac5ea1c53592a",
+      "interactive_debug.py": "6671db275b5b6d0ce45bd33fddadc65f200d8564d693be1e67c95d87a221cd30",
+      "debug_runtime.py": "0b57e1465674b83cf6dea2c0221fe54c260768cace0654daa453a3906167ed89",
+      "opsctl": "5fe4e4b3258c8280fbcd8be01f5d1ded2fb23028b98125090447ba4fec98c9e5",
+      "debugctl": "f4c86c93fff7790f422887b41a21c19d02d0aac2d52a89e9466ff28cafcaecc0",
+      "collector.py": "77ee44ce100a3715df6fcc4a68f4b9281265daa3b9b63cb2838a184b1cc4089e",
+      "worker.py": "27c47ece045526198cef8028ec6a28112394e9abaaf3bbe0f07c8e8ce1c9249d",
+      "nodes.py": "03f071db0c032d68537869d60e9cf9e40a94b647b6ec3c5fb795097b717c36cf",
+      "jobs.py": "af35c8a09dd67e7923695fa206e157c80ece0db2c456f88f771f31daa81eb49b",
+      "server.py": "8ec87dee2041308f6db874101db6b2f96ba5f1813ec174d71c8f202b75e6d6c9",
+      "templates.py": "ab9cecb716f2be73ad21009443b89b1a784895238a1678a1256034cd7b934ee0",
+      "container_engine.py": "8e69da1f55558f8eb9063c5fdee3f53296427183b8f5029087af6293ba3c91a4",
+      "container_entry.py": "c0008a5d220d31712428d1a922320b548fca88dfc945e531833231b9c16df2f9",
+      "workflow_spec.py": "76a60ab4424ceb562921c0bd594a5d3aded30aaffe405f05e8b6063e69d5578f",
+      "maintenance.py": "3cccf72b0e4b01f19e0d171396dd6af02d0270a7c27acd01e8e41b2a2901fd4f",
+      "deployment.py": "07d394de139f84ce30177c47a2ebb0b84f7aeb39aab1685b28b426c9f0cb30fd",
+      "install-client": "029696165e932ae4429c198feef72b3ccffe1a61e5b8559585bb4cd29868019a",
+      "labctl": "1a527e5972bb6b0c95fc0bee7bb94f524fd2c4a93e3edc5f6767e91458c9bd8f",
+      "lab_client.py": "1ab8ea9607044a65ca609ac78c6718a1fe54e5c6a99d3cb6ad370ce8486f49bc",
+      "mcp_bridge.py": "9af73c37815e825ce01667f62ce3212344cd76cd429d1d7ece83d44fe9458542",
+      "tests/test_core_operations.py": "0425180d2e7b400f8dc2b77efdd883c450a87e60c43ac86bcb46a3d6bf5bbaa6",
+      "tests/test_collector_safety.py": "f787c150c29213b0c2a60171233364e1a0d114c8b200a4294a022b34a9bd0437",
+      "tests/test_read_retry.py": "f39ef3f6f724f6e55008c40e0ceb068977f3502f6efa49d5b20ed0e1769c5c8b"
+    },
+    "remaining": [
+      "complete associated SQL rotation",
+      "native installation and restore",
+      "real PTY attach",
+      "full regression",
+      "administrator/multiuser/multiserver acceptance"
+    ],
+    "publication_scan_scope": "Changed public files plus unchanged-file hash continuity; no repeat of the historical fixture sweep"
   }
 }

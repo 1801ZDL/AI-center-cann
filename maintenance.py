@@ -360,10 +360,20 @@ def restore(prefix,archive_path,new_state,max_bytes=10*1024**3,payload_config=No
                 require_export_history(old,stage)
                 from control_rotation import require_history as require_rotation_history
                 require_rotation_history(old,stage)
+                from notifications import require_history as require_notification_history
+                require_notification_history(old,stage)
+                from interactive_debug import require_history as require_debug_history
+                require_debug_history(old,stage)
             relocate(stage,manifest['original_state'],target,meta['role'],
                      original_payload['path'] if original_payload else manifest['original_state'],policy['path'] if policy else None)
             restored_config=read_json(stage/'config.json')
             if meta['role']=='controller':
+                operational=restored_config.get('scheduler',{})
+                frozen=False
+                for key in ['notifications','interactive_debug']:
+                    if isinstance(operational.get(key),dict) and operational[key].get('enabled'):
+                        operational[key]={**operational[key],'enabled':False};frozen=True
+                if frozen:atomic_json(stage/'config.json',restored_config)
                 from cold_exports import freeze_restored
                 freeze_restored(stage)
                 from cold_retention import freeze_restored as freeze_cold_readers
@@ -452,6 +462,15 @@ def restore(prefix,archive_path,new_state,max_bytes=10*1024**3,payload_config=No
 
 
 def require_control_storage(config,role,manifest):
+    if role=='controller':
+        scheduler=config.get('scheduler',{})
+        for setting,required in [
+            ('resource_pressure',{'resource_pressure.py'}),
+            ('notifications',{'notifications.py','opsctl'}),
+            ('interactive_debug',{'interactive_debug.py','debug_runtime.py','container_entry.py'})]:
+            value=scheduler.get(setting)
+            if isinstance(value,dict) and value.get('enabled') and not required<=set(manifest.get('files',{})):
+                raise DeployError('Enabled core operation policy requires matching release support: '+setting)
     if role=='controller' and config.get('audit_retention') is not None:
         from audit_retention import policy
         policy(config['audit_retention'])
@@ -470,6 +489,10 @@ def require_control_storage(config,role,manifest):
 
 
 def require_features(state,role,manifest,installation=None):
+    from notifications import require_compatible as require_notifications
+    require_notifications(state,role,manifest)
+    from interactive_debug import require_compatible as require_debug
+    require_debug(state,role,manifest)
     from control_rotation import all_jobs as retained_jobs
     from control_rotation import require_compatible as require_rotation
     require_rotation(state,role,manifest)

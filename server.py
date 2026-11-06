@@ -265,6 +265,13 @@ def handler_class(store, config, jobs=None):
                         try:limit=int(query.get('limit',['100'])[0]);offset=int(query.get('offset',['0'])[0])
                         except ValueError:raise JobError('Invalid job history page')
                         return self.reply(jobs.history_page(self.principal,limit,offset,query.get('state',[None])[0]))
+                    if path=='/api/notifications':
+                        self.principal.require('jobs:read')
+                        if not jobs.notification_policy['enabled']:
+                            return self.reply({'events':[],'dropped_events':0,'enabled':False})
+                        from notifications import page
+                        with jobs.connect() as db:value=page(db,self.principal.id)
+                        return self.reply({**value,'enabled':True})
                     if path in {'/api/results','/api/results.csv'}:
                         query=parse_qs(parsed.query);kind=query.get('kind',[None])[0]
                         if path.endswith('.csv'):
@@ -283,6 +290,9 @@ def handler_class(store, config, jobs=None):
                     if len(parts) >= 3 and parts[:2] == ['api', 'jobs']:
                         job_id = parts[2]
                         job = jobs.get(job_id, principal=self.principal)
+                        if len(parts)==4 and parts[3]=='debug':
+                            from interactive_debug import status
+                            return self.reply(status(jobs,self.principal,job_id))
                         if len(parts) == 3:
                             from cold_exports import public_copies
                             with jobs.connect() as cold_db:cold_copies=public_copies(cold_db,job_id)
@@ -399,6 +409,13 @@ def handler_class(store, config, jobs=None):
                     raise JobError('请求内容长度无效或超过接口上限。', 413)
                 self.connection.settimeout(5)
                 request = json.loads(self.rfile.read(length))
+                debug_parts=path.strip('/').split('/')
+                if len(debug_parts)==4 and debug_parts[:2]==['api','jobs'] and debug_parts[3]=='debug-input':
+                    from interactive_debug import submit
+                    try:value=submit(jobs,self.principal,debug_parts[2],request)
+                    except ValueError as error:raise JobError(str(error),400) from None
+                    access.record(self.principal,'debug.input',debug_parts[2])
+                    return self.reply(value)
                 if path=='/api/storage/plan':return self.reply(jobs.lifecycle.plan(self.principal,request))
                 if path=='/api/source-grants/preview':
                     return self.reply({'plan':jobs.source_grants.plan(self.principal,request)})
@@ -564,7 +581,7 @@ def main():
     # Never expose a prior server's snapshot as a fresh sample after restart.
     with store.connect() as db:
         db.execute("DELETE FROM state WHERE key='latest'")
-    collector = Collector(config['username'], config['container']) if config.get('monitor_local',True) else None
+    collector = Collector(config['username'], config['container'], runtime / 'monitor-probes') if config.get('monitor_local',True) else None
     jobs = JobStore(runtime, config)
     import uuid
     jobs.controller_instance=uuid.uuid4().hex

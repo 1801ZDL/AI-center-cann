@@ -26,8 +26,15 @@ def expand_template(request):
         allowed={'template','parameters','name','environment','project','idempotency_key','output','cwd','origin','depends_on','artifact_inputs','experiment_id','placement'}
         if set(request)-allowed:raise ValueError('Workflow command/resources belong in validated parameters')
         parameters=validate(request.get('parameters'),WORKFLOWS[template])
+        if template=='debug_v1':
+            resource=parameters['resources']
+            if (parameters['argv']!=['/bin/bash'] or resource['npu']!=0 or resource['shm_mib']!=0
+                or not 1<=resource['cpu']<=2 or not 128<=resource['memory_mib']<=2048
+                or not 1<=parameters['timeout_seconds']<=300 or parameters.get('cache')
+                or parameters['result_file']!='results/workload-result.json'):
+                raise ValueError('Debug requires a fixed shell, CPU-only 1..300s lease and bounded resources')
         return {**{k:v for k,v in request.items() if k not in {'template','parameters'}},
-                'template':template,'parameters':parameters,'argv':['python','-u',str(ROOT/'workflow_runner.py')],
+                'template':template,'parameters':parameters,'argv':['python','-u',str(ROOT/('debug_runtime.py' if template=='debug_v1' else 'workflow_runner.py'))],
                 'kind':WORKFLOWS[template],**parameters['resources'],'timeout_seconds':parameters['timeout_seconds']}
     if template not in {'cpu_demo','isolation_probe','npu_probe'}:
         raise ValueError('当前受限身份仅支持已注册 CPU 模板。')

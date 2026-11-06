@@ -79,6 +79,10 @@ def defaults(config):
               'workspace_root': str(Path.home()), 'max_jobs': 1000, 'local_enabled':True,
               'require_bounded_workspace':False,'require_pinned_docker':False,'require_environment_contract':False,'require_attempt_inventory':False,'require_node_spool':False,'require_finite_node_spool':False,'aging_seconds':300}
     policy.update(config.get('scheduler', {}))
+    from resource_pressure import policy as pressure_policy
+    policy['resource_pressure'] = pressure_policy(policy.get('resource_pressure'))
+    from interactive_debug import policy as debug_policy
+    policy['interactive_debug'] = debug_policy(policy.get('interactive_debug'))
     from control_storage import validate as control_policy
     policy['control_storage']=control_policy(policy.get('control_storage'))
     from experiment_budget import policy as experiment_policy
@@ -169,6 +173,10 @@ class JobStore:
         self.graphs=Graphs(self)
         from history_capacity import Capacity
         self.history=Capacity(self)
+        from notifications import policy as notification_policy, initialize as initialize_notifications
+        self.notification_policy=notification_policy(config.get('scheduler',{}).get('notifications'))
+        if self.notification_policy['enabled']:
+            with self.connect() as db:initialize_notifications(db)
 
     def connect(self):
         self.control_filesystem.check()
@@ -190,9 +198,14 @@ class JobStore:
     def write(self, db, job):
         from control_rotation import guard_write
         guard_write(db,job['id'])
+        notification_policy=getattr(self,'notification_policy',{'enabled':False})
+        previous=db.execute('SELECT state FROM jobs WHERE id=?',(job['id'],)).fetchone() if notification_policy.get('enabled') else None
         if job['state'] in TERMINAL:self.storage.settle(db,job)
         db.execute('UPDATE jobs SET state=?,data=? WHERE id=?',
                    (job['state'], json.dumps(job, ensure_ascii=False), job['id']))
+        if previous is not None:
+            from notifications import job_event
+            job_event(db,previous[0],job,notification_policy)
         if job.get('attempt_id'):
             db.execute('UPDATE execution_attempts SET state=? WHERE id=? AND job_id=?',
                        (job['state'],job['attempt_id'],job['id']))
@@ -262,6 +275,13 @@ class JobStore:
                 request = expand_template(request)
             except ValueError as error:
                 raise JobError(str(error), 400)
+        if request.get('template')=='debug_v1':
+            from interactive_debug import policy as debug_policy
+            settings=debug_policy(self.policy.get('interactive_debug'))
+            if (not settings['enabled'] or principal.id not in settings['owners'] or principal.experiment_id is not None
+                or request.get('project') not in {None,'personal:'+principal.id}
+                or request.get('depends_on') or request.get('artifact_inputs')):
+                raise JobError('Debugging requires an explicitly enabled personal owner and no delegated budget or task graph',403)
         allowed = {'name', 'environment', 'kind', 'cwd', 'argv', 'command', 'cpu', 'memory_mib', 'shm_mib', 'npu', 'timeout_seconds', 'idempotency_key', 'output', 'origin','project','template','parameters','depends_on','artifact_inputs','experiment_id','placement'}
         if set(request) - allowed:
             raise JobError('请求含有不支持的字段。身份由登录认证确定，不能由请求指定。')
@@ -693,6 +713,10 @@ class JobStore:
             return {'text': data.decode(errors='replace'), 'bytes': size, 'truncated': size > 65536}
 
     def dispatch_permission(self,job,active,db=None,identities=None):
+        if job.get('template')=='debug_v1':
+            settings=self.policy.get('interactive_debug',{})
+            if not settings.get('enabled') or job['owner'] not in settings.get('owners',[]):
+                return '交互调试授权已关闭，暂停新会话'
         from unit_start import admission_reason
         reason=admission_reason(self.runtime)
         if reason:return reason
@@ -798,6 +822,10 @@ class Scheduler:
         used_shm = sum(j['resources'].get('shm_mib', 0) for j in active)
         wanted = job['resources']
         npus = []
+        if not reason:
+            from resource_pressure import reason as pressure_reason
+            reason=pressure_reason(snapshot['host'].get('resource_pressure'),
+                                   wanted['memory_mib']*1024**2,self.jobs.policy.get('resource_pressure'))
         if reason:pass
         elif domain['draining']:
             reason='此物理资源域正在排空，暂停分配新任务'

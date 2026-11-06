@@ -27,6 +27,11 @@ def now():
 
 
 def command(argv, timeout=8):
+    from probe_guard import management_command, management_guard
+    if management_command(argv):
+        if COMMANDS_STOPPED:
+            raise RuntimeError('Collector is stopping')
+        return management_guard().run(argv, timeout)
     # These arguments originate exclusively from fixed collectors, never HTTP input.
     with COMMAND_LOCK:
         if COMMANDS_STOPPED:
@@ -54,6 +59,8 @@ def command(argv, timeout=8):
 
 
 def cancel_commands():
+    from probe_guard import cancel
+    cancel()
     global COMMANDS_STOPPED
     with COMMAND_LOCK:
         COMMANDS_STOPPED = True
@@ -150,14 +157,20 @@ def disk(path):
 
 
 class Collector:
-    def __init__(self, username, container):
+    def __init__(self, username, container, probe_root=None):
         self.username = username
         self.uid = pwd.getpwnam(username).pw_uid
         self.container_name = container
+        from probe_guard import ProbeGuard
+        self.probes = ProbeGuard(probe_root or ROOT / 'runtime' / 'monitor-probes')
         self.previous_cpu = None
         self.previous_processes = {}
         self.previous_time = None
         self.npu_cache = {'status': 'pending', 'sampled_at': None, 'devices': [], 'processes': []}
+
+    def query(self, argv, timeout=8):
+        probes = getattr(self, 'probes', None)
+        return probes.run(argv, timeout=timeout) if probes is not None else command(argv, timeout=timeout)
 
     def host(self):
         memory = {}
@@ -174,6 +187,7 @@ class Collector:
                 utilization = max(0, min(100, 100 * (1 - (idle - self.previous_cpu[1]) / delta)))
         self.previous_cpu = total, idle
         return {'hostname': os.uname().nodename, 'cpu_count': os.cpu_count(),
+                'resource_pressure': __import__('resource_pressure').sample(),
                 'cpu_utilization_pct': utilization, 'load_average': list(os.getloadavg()),
                 'memory_total_bytes': memory['MemTotal'], 'memory_available_bytes': memory['MemAvailable'],
                 'memory_used_bytes': memory['MemTotal'] - memory['MemAvailable'],
@@ -190,22 +204,21 @@ class Collector:
             'ipc_mode': '.HostConfig.IpcMode', 'privileged': '.HostConfig.Privileged',
         }
         template = '{' + ','.join('"' + k + '":{{json ' + v + '}}' for k, v in fields.items()) + '}'
-        result = json.loads(command(['docker', 'inspect', '--format', template, self.container_name]))
+        result = json.loads(self.query(['docker', 'inspect', '--format', template, self.container_name]))
         result['name'] = result['name'].lstrip('/')
         result['sampled_at'] = now()
         pids = set()
         if result['status'] == 'running':
-            lines = command(['docker', 'top', self.container_name, '-eo', 'pid']).splitlines()[1:]
+            lines = self.query(['docker', 'top', self.container_name, '-eo', 'pid']).splitlines()[1:]
             pids = {int(x.strip()) for x in lines if x.strip().isdigit()}
             result['process_count'] = len(pids)
             result['cgroup_memory'] = cgroup_memory(result['pid'])
-            # Fixed read-only command; no shell and no user-submitted arguments.
-            try:
-                output = command(['docker', 'exec', self.container_name, 'df', '-B1', '--output=size,used,avail', '/dev/shm'], timeout=4)
-                values = output.splitlines()[-1].split()
-                result['shm'] = dict(zip(('total_bytes', 'used_bytes', 'free_bytes'), map(int, values)))
-            except (OSError, ValueError, RuntimeError, subprocess.TimeoutExpired):
-                result['shm'] = None
+            # A timeout of the Docker client does not terminate its exec process.
+            # A blocked filesystem probe would survive and accumulate every poll.
+            # Monitoring must not create commands inside a tenant's container.
+            # Keep the configured limit above; usage is deliberately unavailable.
+            result['shm'] = None
+            result['shm_status'] = 'unavailable_no_container_exec'
         else:
             result.update(process_count=0, cgroup_memory=None, shm=None)
         # CPU comes from process deltas below, not a blocking docker stats stream.
@@ -268,15 +281,13 @@ class Collector:
     def collect_npu(self):
         # Initialize CANN only inside this bounded read-only subprocess.
         tool = shutil.which('npu-smi') or '/usr/local/sbin/npu-smi'
-        argv = ['bash', '--noprofile', '--norc', '-c',
-                'source "$1" >/dev/null 2>&1; exec "$2" info',
-                'ascend-lab-monitor', '/data/pri/cann/set_env.sh', tool]
+        argv = [tool, 'info']
         try:
-            devices, processes = parse_npu(command(argv, timeout=12))
+            devices, processes = parse_npu(self.query(argv, timeout=12))
             sampled_at=now()
-            from npu_frequency import collect
-            frequencies=collect([row['id'] for row in devices],'/data/pri/cann/set_env.sh',tool)
-            for row in devices:row['frequency']=frequencies[row['id']]
+            from npu_frequency import unknown
+            for row in devices:
+                row['frequency']=unknown('unavailable','periodic_frequency_probe_disabled')
             self.npu_cache = {'status': 'ok', 'sampled_at': sampled_at, 'devices': devices, 'processes': processes}
         except (OSError, ValueError, RuntimeError, subprocess.TimeoutExpired) as exc:
             self.npu_cache = {**self.npu_cache, 'status': 'error', 'error': type(exc).__name__}
@@ -305,6 +316,8 @@ class Collector:
             device['allocation_status'] = '观察到设备进程' if all_for_device else '未观察到设备进程；尚未预留'
         if npu['status'] == 'error':
             errors.append('NPU 查询失败；如存在上次读数，会保留时间戳并标记过期。')
+        if container.get('shm_status') == 'unavailable_no_container_exec':
+            errors.append('容器共享内存使用量未采集；为避免阻塞进程累积，监控不在容器内执行探测命令。')
         selected = [r for r in processes if 'user' in r['scopes']]
         in_container = [r for r in processes if 'container' in r['scopes']]
         def summary(rows):

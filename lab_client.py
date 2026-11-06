@@ -25,8 +25,10 @@ class ClientError(ValueError):
 
 class ClientHTTPError(ClientError):
     """A received HTTP status, without retaining remote bodies or credentials."""
-    def __init__(self, status):
+    def __init__(self, status, *, retry_after_seconds=None):
         self.status = status
+        self.retry_after_seconds = (retry_after_seconds if status==503 and type(retry_after_seconds) is int
+                                    and 1<=retry_after_seconds<=60 else None)
         super().__init__('Controller HTTP ' + str(status))
 
 
@@ -194,9 +196,18 @@ class Client:
                 raise ClientError('Controller response exceeds client limit')
             return content if raw else json.loads(content)
         except urllib.error.HTTPError as error:
+            retry=None
+            if data is None and error.code==503 and error.headers is not None:
+                all_values=getattr(error.headers,'get_all',None)
+                values=all_values('Retry-After',[]) if all_values else [error.headers.get('Retry-After')]
+                if len(values)==1 and isinstance(values[0],str) and re.fullmatch('[1-9][0-9]?',values[0]):
+                    seconds=int(values[0])
+                    if seconds<=60:retry=seconds
             error.close()
             # Do not echo remotely supplied text, credentials, URLs, or TLS diagnostics.
-            raise ClientHTTPError(error.code) from None
+            # Only finite numeric advice for a failed GET survives. No automatic
+            # retry, request replay or interpretation of a remote error body.
+            raise ClientHTTPError(error.code,retry_after_seconds=retry) from None
         except ClientError:
             raise
         except (OSError, ValueError):

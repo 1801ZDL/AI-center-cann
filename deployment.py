@@ -33,11 +33,16 @@ CORE=['auth.py','owner_identity.py','owner_handoff.py','qualification_compatibil
       'spool_storage.py','spool_transfer.py','persistent_cache.py','dependencies.py','control_storage.py','control_filesystem.py','control_process.py','labctl','install-client','mcp_bridge.py','diagnostic_case.py','compiler_diagnostic.py','compiler_experiment.py','COMPILER_EXPERIMENT.md','operator_profile.py','operator_node.py','operator_workflow.py','CLIENT.md','SERVER.md','API.md','WORKFLOWS.md','NPU.md','WORKSPACE.md','STORAGE.md','CACHE.md','DEPENDENCIES.md',
       'README.md','DEPLOYMENT.md','SCALING.md','HARNESS.md','OPERATOR_ANALYSIS.md','COMPILER_DIAGNOSTICS.md','ENVIRONMENTS.md','RECOVERY.md','HTTPS.md','SPOOL.md','OWNER_PROVISION.md']
 SCHEMA=1
+CORE.extend(['resource_pressure.py','probe_guard.py','notifications.py','maintenance_runner.py',
+             'interactive_debug.py','debug_runtime.py','opsctl','debugctl','CORE_OPERATIONS.md'])
 EXECUTABLES={'servicectl','accessctl','workerctl','labctl','install-client'}
+EXECUTABLES.update({'opsctl','debugctl'})
 # Bundles always include these helpers, but earlier compatible service releases
 # do not need them to run existing workspaces. Do not make their absence alone
 # prevent verification/rollback of an otherwise intact historical installation.
 OPTIONAL_ADMIN_FILES={'qualification_compatibility.py','workspace_quota_admin.py','OWNER_PROVISION.md','owner_identity.py','payload_owner_admin.py','node_owner_admin.py','owner_handoff.py','owner_node_grant.py','node_owner_provision.py','owner_provision.py','owner_maintenance_drain.py','owner_device_probe.py','owner_probe_adoption.py','node_owner_ack.py','owner_activation.py','unit_refresh.py','unit_manager.py','unit_start.py','owner_activation_abort.py','owner_delivery.py','owner_finish.py'}
+OPTIONAL_ADMIN_FILES.update({'resource_pressure.py','probe_guard.py','notifications.py','maintenance_runner.py',
+                            'interactive_debug.py','debug_runtime.py','opsctl','debugctl','CORE_OPERATIONS.md'})
 
 
 # Older intact services do not need the optional personal diagnostic reader.

@@ -9,6 +9,8 @@
 !/workerctl
 !/servicectl
 !/install-client
+!/opsctl
+!/debugctl
 !/check-browser.sh
 !/requirements-qa.txt
 !/examples/
