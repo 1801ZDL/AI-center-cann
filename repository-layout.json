@@ -57,7 +57,8 @@
     "OWNER_PROVISION.md": "docs/operations/OWNER_PROVISION.md",
     "STATUS.md": "docs/STATUS.md",
     "DOCS.md": "docs/index.md",
-    "MAINTENANCE_POLICY.md": "docs/operations/MAINTENANCE_POLICY.md"
+    "MAINTENANCE_POLICY.md": "docs/operations/MAINTENANCE_POLICY.md",
+    "MAINTENANCE_EXECUTION.md": "docs/operations/MAINTENANCE_EXECUTION.md"
   },
   "commands": [
     "labctl",

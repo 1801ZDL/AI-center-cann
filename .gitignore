@@ -49,3 +49,4 @@ __pycache__/
 !/reports/mixed-compiler-stage.json
 !/reports/repository-layout-check.json
 !/reports/retention-policy-check.json
+!/reports/maintenance-execution-check.json

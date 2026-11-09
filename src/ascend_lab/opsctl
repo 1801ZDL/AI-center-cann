@@ -41,6 +41,11 @@ def main():
     p = subs.add_parser('maintenance-select', help='Select one bounded offline retention approval; never apply it')
     p.add_argument('--prefix',required=True);p.add_argument('--policy',required=True)
     p.add_argument('--after-rowid',type=int,default=0)
+    p.add_argument('--execution-contract',help='Bind an explicit finite v2 execution approval')
+    p = subs.add_parser('maintenance-window',help='Bind a finite execution window and invocation budget; no execution')
+    p.add_argument('--plan',required=True);p.add_argument('--contract',required=True)
+    p = subs.add_parser('maintenance-status',help='Read original journal progress without advancing it')
+    p.add_argument('--plan',required=True)
     p = subs.add_parser('notify-once', help='Optional one-event delivery; never called by the scheduler')
     p.add_argument('--prefix', required=True)
     p.add_argument('--destinations', required=True)
@@ -54,6 +59,9 @@ def main():
     if args.action == 'pressure':
         from resource_pressure import sample
         return sample()
+    if args.action=='maintenance-window':
+        from maintenance_runner import with_execution
+        return with_execution(private_json(args.plan),private_json(args.contract))
     if args.action == 'maintenance-select':
         from deployment import require_root,verify
         require_root()
@@ -61,11 +69,12 @@ def main():
         if meta['role']!='controller' or (release/'maintenance_policy.py').read_bytes()!=Path(__file__).with_name('maintenance_policy.py').read_bytes():
             raise ValueError('Use matching installed retention selection code')
         from maintenance_policy import plan
-        return plan(prefix,private_json(args.policy),after_rowid=args.after_rowid)
-    if args.action == 'maintenance':
-        from maintenance_runner import run_once
-        value = private_json(args.plan)
-        if not args.apply:
+        execution=private_json(args.execution_contract) if args.execution_contract else None
+        return plan(prefix,private_json(args.policy),after_rowid=args.after_rowid,execution=execution)
+    if args.action in {'maintenance','maintenance-status'}:
+        from maintenance_runner import run_once,checked
+        value = checked(private_json(args.plan))
+        if args.action=='maintenance' and not args.apply:
             return run_once(value, '/unused', apply=False)
         from deployment import require_root, verify
         require_root()
@@ -73,6 +82,9 @@ def main():
         if meta['role'] != 'controller' or (release / 'maintenance_runner.py').read_bytes() != Path(__file__).with_name('maintenance_runner.py').read_bytes():
             raise ValueError('Use the matching installed controller maintenance code')
         journal_dir = prefix / 'maintenance-runs'
+        if args.action=='maintenance-status':
+            from maintenance_runner import status
+            return status(value,journal_dir/(value['id']+'.json'))
         journal_dir.mkdir(mode=0o700, exist_ok=True)
         return run_once(value, journal_dir / (value['id'] + '.json'), apply=True)
     from deployment import require_root, verify

@@ -1,5 +1,11 @@
 # 实施进度
 
+## 2026-11-09 维护执行窗口与跨次预算（开发源码）
+
+maintenance_runner支持明确批准的v2合同：绝对生效/到期<=7天、UTC每日窗口<=180分钟、最大128次原步骤推进；preview显示阻碍、opsctl maintenance-status只读进度。每次先原子fsync调用计数/时刻/pending原意图，失败或中断也消耗预算；轮转CAS预像仍先持久化再apply，丢回包不重规划。窗口在锁前/锁后/意图持久后复核，回拨暂停，耗尽/到期保原pending，不自动加预算或换plan。不同journal共享同前缀非阻塞执行锁，避免多个维护进程同时推进；损坏/空/丢计数状态拒，兼容原v1手动计划。独立启动标记先于首次journal持久化，单独丢journal或标记拒绝续接；首次双文件之间中断保守停止，整体Root前缀旧快照回滚尚不提供检测保证。选择器可直接绑定合同，也提供maintenance-window显式v1转新批准；已启动原v1不应重绑，v2不接受静默换预算。
+
+25新增临时文件/替代动作检查加原56项合并81通过；实际本进程flock/atomic journal与内存SQL，未运行Root维护、子进程、网络、线程、Docker/NPU、真实SIGKILL/服务或定时器。仍限单CPU/AS256MiB/CPU5秒/截止8秒，原opsctl执行上限CPU2秒/观察5秒不变。未修改既有runtime配置/额度/任务，未生成安装包，未跑完整回归。文档[执行合同](../operations/MAINTENANCE_EXECUTION.md)说明范围；定时触发部署、维护完整生命周期、所有关联SQL及批准/副本/索引最终留存仍未完成，整体目标保留。
+
 ## 2026-11-09 有限留存选择器（开发源码）
 
 新增maintenance_policy.py及opsctl maintenance-select：默认关闭，按UTC选择窗口、终态留存年龄、水位/目标数量、明确保留ID、每人最近提交任务，读取至多256行/512KiB/64KiB单正文，选择至多32个有原purged/cold-retired及online=0/计费凭据的任务。旧compact不重复迁出，异常凭据拒；SQL约200万指令与原opsctl资源界限保留。control_history.plan抽取原plan_in_context，选择和原源副本计划共用离线锁/事务，避免重新加锁；原匹配代码/稳定存储/停止/原预算/未完成副本保护不变。256KiB关联源上限，输出原copy/verify/rotate有限计划，不自动apply、清理、停启服务或安装timer。
@@ -52,7 +58,7 @@ native case5另跑原生control-rotation安装流程，使用既有7bee/systemd�
 仍需20真实HTTP账号混合长期负载、最大32MiB副本下的内存/准入与延迟、全部关联SQL与索引/副本有限留存、独立故障域迁移和真实宿主/NPU/两物理机。当前整份副本校验成本仍与文件大小相关，分组减少同请求重复，不等于随机访问索引。真实逐卡日检与PUBLIC-001按原门槛不启，整体goal active/production_ready=false。
 
 
-## 2026-11-03 冷产物、迁出元数据与当前来源授权组合验收（1478项/真实CPU）
+## 2026-11-03 冷产物、迁出元数据与当前来源授权组合验收（1481项/真实CPU）
 
 在原Main单lease **job-11cc08c4b26b** 内复用2CPU/2048MiB/max1/SHM0/NPU0，实际安装Controller/Node两个原生systemd PID1角色，使用原7bee与任务镜像，无新镜像或模型。新增固定QA入口--cold-history及--preserve-main，必须核对原Main任务及其资源租约；本轮没有重启Main、增加计算预算或删除历史。生产CORE实现未改，新增组合验收和安装夹具修正。
 
@@ -918,7 +924,7 @@ Main未为安装演练停机，仅最终0非终态/有效hold时重载。原conf
 
 ## 离线领域工具接入与中央通信中断恢复（2026-10-31）
 
-当前最终完整检查 **808项/141.079秒/无跳过，JavaScript语法通过**。78个非文档CORE生产源码与最终full/Root冻结一致；六个受保护运行文件继续保持v0.36哈希。新增22项算子报告检查、6项通信恢复检查、2项自有清理范围检查。原网页11组仍保留此前静态资产验收，本轮未重新运行浏览器。
+当前最终完整检查 **808项/141.079秒/无跳过，JavaScript语法通过**。78个非文档CORE生产源码与最终full/Root冻结一致；六个受保护运行文件继续保持v0.36哈希。新增25项算子报告检查、6项通信恢复检查、2项自有清理范围检查。原网页11组仍保留此前静态资产验收，本轮未重新运行浏览器。
 
 真实工具接入：独立CPU队列任务实际调用msprof-mcp0.1.8/MCP1.30.0的stdio `get_operator_details`，独立CSV解析交叉核对，再运行固定msagent提交5a9b2a1a8a38f35cc63109929850aa4a46db090e中的未改动delta_report.py。原项目文件只读，输入副本、来源和代码哈希私有保存，结果JSON/CSV归档。完整msagent、自动采集/上板/优化和正式Node工具镜像未安装或验收。安装依赖集中在本项目tools独立环境，不改共享Python或其他项目。
 
@@ -953,7 +959,7 @@ Main只在0非终态/有效inventory hold时重载；config SHA、CPU254/255、2
 
 失败及前期证据保留：首轮job-5b8887356afe为原9组通过。加入真实过期计时后job-935416191a85在最后Main浏览器读取超出测试原5秒等待，随后直调同API0.02秒，原因未证实；当前UI补了15秒超时/取消，测试等待有界结束。job-c279c9c9c685的11功能检查通过、Main HTTP200/5.39秒，但故意悬置Playwright route在清理时报CancelledError；改用事件延迟实际fixture服务端读取，最终无此回调告警。不把超时处理称作后端性能修复。
 
-77非md后端文件及所有已发现unit源码均与上一阶段778项/Root49基线完全相同，本轮未重跑重型后端全量或Root。当前网页SHA由实际浏览器验证；测试包中网页是最终资产，文档后续更新，不把此当新整包Root安装验收。Main配置/物理域/19Node profile不变，未重启中央、未升级旧Node、无库存豁免；最终0nonterminal/有效hold，protected6仍v036原SHA。0NPU kernel/模型调用。证据本地evidence/web-preview-validation.json，精选reports/public-source-check.json.web_preview。
+77非md后端文件及所有已发现unit源码均与上一阶段781项/Root49基线完全相同，本轮未重跑重型后端全量或Root。当前网页SHA由实际浏览器验证；测试包中网页是最终资产，文档后续更新，不把此当新整包Root安装验收。Main配置/物理域/19Node profile不变，未重启中央、未升级旧Node、无库存豁免；最终0nonterminal/有效hold，protected6仍v036原SHA。0NPU kernel/模型调用。证据本地evidence/web-preview-validation.json，精选reports/public-source-check.json.web_preview。
 
 下一：真实日志/IR与领域工具的诊断闭环、五类冻结工作流网页提交；控制盘增长/留存、一般资源合同和真实管理员部署验收继续。已有网页结果/状态并不表示五类工作流JSON提交入口已实现。实际PID1/宿主用户/两机fencing/NPU ACL与精度性能仿真、msagent真实能力仍待；PUBLIC-001延期，整体目标未完成。下方为历史阶段。
 
@@ -966,7 +972,7 @@ Main只在0非终态/有效inventory hold时重载；config SHA、CPU254/255、2
 
 MCP预览与提交共用同一请求构造、同一固定会话约束，模型不能改命令、输入、锁或资源；预览不写submitted-request或消耗单任务名额。CLI不记录个人归档上下文，拒与归档参数组合。网页按钮仍待。
 
-**最终778项/123.119秒/无跳过和JS语法通过；77非文档生产源码与最终Root/full/focused冻结一致。** 系统Python focused job-1fe5f13ae1fc为21/3.333秒，覆盖真实HTTP、CLI、会话MCP、授权/不可写连接、原账本/目录不变、共享物理域满载、原attempt保留、CPU交集与开销、过期/未来心跳、隐私/撤权、未来Node排队、环境认证/锁差异及固定探针拒绝。初步21/3.473秒同样通过。首轮完整job-3ce62af8e81b为778项1失败2跳过：旧MCP协议断言固定7工具，改验8及preview只读声明；默认Conda Python缺pidfd，最终用与安装器一致/usr/bin/python3，0skip。失败保留。历史live_client脚本的工具数同步为8，本轮没有重跑该旧完整脚本。
+**最终781项/123.119秒/无跳过和JS语法通过；77非文档生产源码与最终Root/full/focused冻结一致。** 系统Python focused job-1fe5f13ae1fc为21/3.333秒，覆盖真实HTTP、CLI、会话MCP、授权/不可写连接、原账本/目录不变、共享物理域满载、原attempt保留、CPU交集与开销、过期/未来心跳、隐私/撤权、未来Node排队、环境认证/锁差异及固定探针拒绝。初步21/3.473秒同样通过。首轮完整job-3ce62af8e81b为781项1失败2跳过：旧MCP协议断言固定7工具，改验8及preview只读声明；默认Conda Python缺pidfd，最终用与安装器一致/usr/bin/python3，0skip。失败保留。历史live_client脚本的工具数同步为8，本轮没有重跑该旧完整脚本。
 
 Root job-e091e976bccb通过原49个SIGKILL恢复点/开户排空/并发身份交付/原CPU容量拒绝/第二Node等回归；host独立读取持久控制元数据，6个CPU IR任务均succeeded且各1attempt，原domain policy一致。七盘loop/helper/角色已清退，backing files私有保留；/opt和/personal仍角色tmpfs，不称host持有其历史或当前挂载quota。无NPU计算或新模型调用。
 
@@ -1130,7 +1136,7 @@ servicectl owner-provision --wait-seconds 1..900观察同一请求；预算不�
 
 中止仅处理原操作：未提交激活走已有spent-ID中止，已提交激活不自动撤销/禁用；交付及资源不回滚，未知/已交付/Root私有未完成文件不自动删除。Root回执明确保留原状态，完成重放是历史。pending阻断离线备份、代码切换和资源维护；纯凭据阶段不改变执行合同，中央可正常恢复启动/停止，其他resource/unit/startup journal仍阻断。已实际演练pending期间重启中央再恢复，避免激活等待live controller与禁止启动互相锁死。子程序输出丢弃，不用全进程FSIZE限制误伤超过256KiB的合法SQLite。
 
-最终 **578项/103.558秒/无跳过** 及JS语法通过，70个非文档生产源码与最后Root包一致。实际Root/SVC23820/个人UID23802：原激活7、交付8、完成协调6个SIGKILL边界与同请求恢复；未提交完成中止后换operation_id沿用同一目标；一份最终激活token。实际部分Root文件续写、已有目标不覆盖、stale parent/跨文件系统拒绝、handoff前推进隔离管理员进程时钟导致过期拒绝并显式中止、300000字节身份DB填充通过。用户接管后实际UID修改archive_root，继续恢复保留；源用户禁用/令牌撤销后拒绝新交付，旧完成记录不重新启用或覆盖。随后个人UID用程序交付的client完成真实API登录/幂等提交/单attempt BishengIR 19+23=42及读取产物，peer UID读取凭据拒绝，无手工凭据复制。既有本地配额/缓存/Node ACK及中央/Node启动适配流程继续通过。
+最终 **581项/103.558秒/无跳过** 及JS语法通过，70个非文档生产源码与最后Root包一致。实际Root/SVC23820/个人UID23802：原激活7、交付8、完成协调6个SIGKILL边界与同请求恢复；未提交完成中止后换operation_id沿用同一目标；一份最终激活token。实际部分Root文件续写、已有目标不覆盖、stale parent/跨文件系统拒绝、handoff前推进隔离管理员进程时钟导致过期拒绝并显式中止、300000字节身份DB填充通过。用户接管后实际UID修改archive_root，继续恢复保留；源用户禁用/令牌撤销后拒绝新交付，旧完成记录不重新启用或覆盖。随后个人UID用程序交付的client完成真实API登录/幂等提交/单attempt BishengIR 19+23=42及读取产物，peer UID读取凭据拒绝，无手工凭据复制。既有本地配额/缓存/Node ACK及中央/Node启动适配流程继续通过。
 
 独立核对保留的master/交付回执、Svc原client SHA、激活DB记录与唯一已撤销token摘要一致；最终账户disabled1。三次成功Root各四盘均释放，所有自有角色/helper/volume缺失，原盘保留。私有完整evidence/owner-finish-validation.json、公开精选reports/public-source-check.json.owner_finish。两次测试失败保留：首focused夹具漏config.json导致2错误；后577回归的两个pidfd夹具漏合法role元数据导致2错误，已修夹具。此前Root/577绿色不重标为最后source范围。
 
@@ -1228,7 +1234,7 @@ Root在停止并排空时计划，持久journal后执行管理器Reload及选定
 
 首轮演练因降权固定写入进程读不到Root私有测试源码，在开户/追加操作前失败；失败及清理证据保留。改用实际安装代码后通过；随后补回执重放的重启/组更新提示和实际身份定义变更拒绝，最终独立Root案例通过。没有把旧Root54或原生Node槽追加案例重标为本轮全量安装验收。
 
-当前完整回归 **478项/78.009秒/无跳过**、JavaScript语法通过；9项新增单元涵盖计划/定义/数据拒绝/互斥及历史安装保护。最终Root案例冻结包的60个生产源码摘要与本轮受测源码一致，自有角色和卷另行确认已不存在。个人Main没有重载或修改预算；首次全量提交在Root父任务尚预留归档时被409拒绝，父任务结算后相同请求/幂等键正常接纳，未提高额度或删除历史数据。
+当前完整回归 **481项/78.009秒/无跳过**、JavaScript语法通过；9项新增单元涵盖计划/定义/数据拒绝/互斥及历史安装保护。最终Root案例冻结包的60个生产源码摘要与本轮受测源码一致，自有角色和卷另行确认已不存在。个人Main没有重载或修改预算；首次全量提交在Root父任务尚预留归档时被409拒绝，父任务结算后相同请求/幂等键正常接纳，未提高额度或删除历史数据。
 
 **尚未完成统一开户。** 账号保持待预配，未交付凭据，Node工作/缓存绑定和最终激活仍待做。进程模式新组已测；真实systemd PID1和既有unit补充组更新未测、尚未自动化，返回明确更新标记。操作见 [OWNER_PROVISION.md](../operations/OWNER_PROVISION.md)。
 
@@ -1275,7 +1281,7 @@ Root在停止并排空时计划，持久journal后执行管理器Reload及选定
 
 ## 当前代码检查
 
-当前完整回归 **578 项/103.558 秒/无跳过**、网页 JavaScript 语法通过；此前567项为启动/心跳准入交接、554项为manager读回/加载恢复、541项为未提交激活中止、525项为unit离线更新、515项为最后激活、497项为中央/Node交接、486项为Node本地绑定、478项为中央存储组、469项为待预配身份、457项为原生槽追加、440项为独立原盘核验工具阶段。公开摘要 [reports/public-source-check.json](../../reports/public-source-check.json) 保存受测 70 个生产代码摘要。
+当前完整回归 **578 项/103.558 秒/无跳过**、网页 JavaScript 语法通过；此前567项为启动/心跳准入交接、554项为manager读回/加载恢复、541项为未提交激活中止、525项为unit离线更新、515项为最后激活、497项为中央/Node交接、486项为Node本地绑定、481项为中央存储组、469项为待预配身份、457项为原生槽追加、440项为独立原盘核验工具阶段。公开摘要 [reports/public-source-check.json](../../reports/public-source-check.json) 保存受测 70 个生产代码摘要。
 
 新增 5 个核验工具回归使用真实子进程，覆盖有效元数据、单次短写截断、持续写达到内核文件限额、stderr 洪泛和文件系统警告拒绝。小记录输出在子进程写入时就受 2MiB 上限约束，避免 capture_output 读完后才检查大小；不影响已冻结的生产代码或构建工作负载。
 

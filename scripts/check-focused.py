@@ -16,7 +16,7 @@ from unittest.mock import patch
 
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--module',action='append',choices=['test_core_operations','test_collector_safety','test_read_retry','test_repository_layout','test_maintenance_policy'])
+    parser.add_argument('--module',action='append',choices=['test_core_operations','test_collector_safety','test_read_retry','test_repository_layout','test_maintenance_policy','test_maintenance_execution'])
     args=parser.parse_args()
     os.umask(0o077);os.nice(10);os.sched_setaffinity(0,{min(os.sched_getaffinity(0))})
     resource.setrlimit(resource.RLIMIT_AS,(256*1024**2,256*1024**2))
@@ -30,7 +30,7 @@ def main():
     with tempfile.TemporaryDirectory(prefix='ascend-lab-source-check-') as folder:
         info=snapshot(root,folder)
         sys.path[:0]=[folder,str(Path(folder)/'tests')]
-        modules=args.module or ['test_core_operations','test_collector_safety','test_read_retry','test_repository_layout','test_maintenance_policy']
+        modules=args.module or ['test_core_operations','test_collector_safety','test_read_retry','test_repository_layout','test_maintenance_policy','test_maintenance_execution']
         with patch('socket.socket',side_effect=AssertionError('Network forbidden in focused checks')), \
              patch('subprocess.Popen',side_effect=AssertionError('Subprocess forbidden in focused checks')), \
              patch('threading.Thread.start',side_effect=AssertionError('Background threads forbidden in focused checks')):

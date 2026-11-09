@@ -120,11 +120,12 @@ def select(db,value,*,epoch,after_rowid=0):
     return result
 
 
-def plan(prefix,value,*,after_rowid=0,epoch=None):
+def plan(prefix,value,*,after_rowid=0,epoch=None,execution=None):
     """Root/matching release/stopped state remain the original copy guards."""
     import control_history as copies
-    from maintenance_runner import plan as maintenance_plan,MAX_SOURCE_BYTES
+    from maintenance_runner import plan as maintenance_plan,execution_contract,MAX_SOURCE_BYTES
     settings=policy(value);epoch=time.time() if epoch is None else epoch
+    if execution is not None:execution=execution_contract(execution)
     # Disabled/out-of-window previews do not open the controller database.
     if not settings['enabled'] or not window(settings,epoch):
         return select(None,settings,epoch=epoch,after_rowid=after_rowid)
@@ -134,5 +135,5 @@ def plan(prefix,value,*,after_rowid=0,epoch=None):
             original=copies.plan_in_context(db,binding,meta,result['selected'],settings['archive_budget'])
             if original['source']['bytes']>MAX_SOURCE_BYTES:raise ValueError('Selected related history exceeds256KiB; reduce max_jobs')
             result['maintenance_plan']=maintenance_plan(prefix,[{'action':action,'plan':original}
-                for action in ['control_copy','control_verify','control_rotate']])
+                for action in ['control_copy','control_verify','control_rotate']],execution=execution)
         return result
