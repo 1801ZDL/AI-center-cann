@@ -1,5 +1,15 @@
 # 实施进度
 
+## 2026-11-09 维护计划永久撤销与切换保护（开发源码）
+
+新增maintenance_lifecycle和opsctl maintenance-revoke，默认preview；Root匹配已安装runner/lifecycle后永久阻止原ID后续执行，窗口外/到期/耗尽也可停止。共享非阻塞执行锁与原计划inode锁串行，不杀现有操作。先持久独立marker，保留原calls/结果/pending/CAS预像并附加撤销，再封存原锁；满256KiB journal不增长/不截断，使用独立marker+锁封存。标记/原journal/anchor逐项核对，单件丢失或预算篡改不重启执行；可识别锁短写只沿原marker重封存，中断revocation_pending不执行，重复撤销不改原原因/时刻或加预算。v1/v2批准摘要不变，无unrevoke或自动替代批准。
+
+原runner提取同一atomic journal写入器；代码activation加入同一互斥锁，并拒绝含撤销记录/锁却缺lifecycle实现的候选版本，1024项有限检查不清历史。Root安装前缀维护记录仍不在普通状态快照内，完整维护备份/留存管理及定时部署待；不宣称全Root前缀回滚最新性。
+
+原49专项先通过，新22通过；补满journal及拿锁前撤销竞争后24新检查+原25执行合同共49通过。满journal初夹具误降共享plan/journal上限导致plan先拒，改用真实256KiB边界数据，不放松代码上限；原失败日志保留。固定小文件/当前UID锁与同步异常注入，Root/安装/代码切换边界替代，无真实进程SIGKILL、服务、Root、容器/NPU或全回归。没有定时器、线程、消息、模型、宿主账号或既有runtime配置/数据库/容量改动，整体目标继续未完成。
+
+最终24新增+原219按88/55/100三组串行通过243项，CPU合计1.727秒/wall合计1.957秒/VmHWM45916KiB，各单CPU/AS256MiB/CPU5秒/截止8秒，禁Popen/socket/Thread.start。实际匹配源码读取/临时文件与当前UID锁，Root身份/安装/离线前置边界替代；原生activation在切链接前拒绝旧版本，未实际切换服务代码。[公开摘要](../../reports/maintenance-lifecycle-check.json)不代表完整回归、真实Root或断电/进程崩溃验收。
+
 ## 2026-11-09 通知失败处置与目的地变更闭环（开发源码）
 
 notification_ops新增Root匹配版本/服务身份/共享状态锁下的list、plan、apply入口；有限hold/retry/rebind/close，不投递、不启策略。原事件及owner、release、DB设备/inode与完整行/控制预像、一小时有效期绑定；活动租约拒，未知租约及尝试后close/rebind须显式接受投递不确定。累计attempt不重置，每次显式最多加8、总64；原计划回包丢失重放只读原receipt，不加预算或续期。已关闭/送达不重新打开。发送器按目的地摘要预过滤，旧改址事件不阻塞其他owner/新事件；仍保原记录且不自动转发，过期旧发送器不能覆盖新处置。

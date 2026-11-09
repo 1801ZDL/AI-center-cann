@@ -28,7 +28,7 @@ def execution_contract(value):
 
 
 def execution_gate(contract,epoch):
-    if type(epoch) not in {int,float} or not math.isfinite(epoch) or not 0<=epoch<=253402300799:
+    if type(epoch) not in {int,float} or not 0<=epoch<=253402300799 or not math.isfinite(epoch):
         raise ValueError('Invalid maintenance clock')
     if epoch<contract['not_before_epoch']:return 'before_start'
     if epoch>=contract['expires_epoch']:return 'expired'
@@ -162,21 +162,45 @@ def prepare_rotation(prefix, step):
     return value
 
 
-def load_journal(journal):
+def load_journal(journal,maximum=MAX_PLAN_BYTES):
     try:source=os.open(journal,os.O_RDONLY|os.O_NOFOLLOW|os.O_NONBLOCK)
     except FileNotFoundError:return None
     with os.fdopen(source,'rb') as stream:
         item=os.fstat(stream.fileno())
-        if not stat.S_ISREG(item.st_mode) or item.st_uid!=os.geteuid() or item.st_mode&0o077 or item.st_nlink!=1 or item.st_size>MAX_PLAN_BYTES:
+        if not stat.S_ISREG(item.st_mode) or item.st_uid!=os.geteuid() or item.st_mode&0o077 or item.st_nlink!=1 or item.st_size>maximum:
             raise ValueError('Unsafe maintenance journal contents')
         # An existing empty or corrupt journal is never a fresh approval.
-        return json.loads(stream.read(MAX_PLAN_BYTES+1))
+        return json.loads(stream.read(maximum+1))
+
+
+def save_journal(journal,state,*,exclusive=False):
+    raw=encoded(state)
+    if len(raw)>MAX_PLAN_BYTES:raise ValueError('Maintenance journal exceeds its budget')
+    directory=os.open(journal.parent,os.O_DIRECTORY|os.O_NOFOLLOW)
+    temporary=journal.name+'.tmp-'+uuid.uuid4().hex
+    try:
+        output=os.open(temporary,os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,0o600,dir_fd=directory)
+        try:
+            offset=0
+            while offset<len(raw):
+                size=os.write(output,raw[offset:])
+                if size<=0:raise OSError('Maintenance journal write made no progress')
+                offset+=size
+            os.fsync(output)
+        finally:os.close(output)
+        if exclusive:os.link(temporary,journal.name,src_dir_fd=directory,dst_dir_fd=directory,follow_symlinks=False)
+        else:os.replace(temporary,journal.name,src_dir_fd=directory,dst_dir_fd=directory)
+        os.fsync(directory)
+    finally:
+        try:os.unlink(temporary,dir_fd=directory)
+        except FileNotFoundError:pass
+        os.close(directory)
 
 
 def checked_state(value,state):
     bounded=value.get('schema')=='ascend-lab-maintenance/v2'
     required={'plan_id','index','results'}|({'calls','last_invocation_epoch'} if bounded else set())
-    if not isinstance(state,dict) or not required<=set(state) or set(state)-required-{'pending'} or state['plan_id']!=value['id']:
+    if not isinstance(state,dict) or not required<=set(state) or set(state)-required-{'pending','revocation'} or state['plan_id']!=value['id']:
         raise ValueError('Resume the original maintenance approval; do not replace its journal')
     index=state['index']
     if type(index) is not int or not 0<=index<=len(value['steps']):raise ValueError('Invalid maintenance progress')
@@ -188,6 +212,9 @@ def checked_state(value,state):
         raise ValueError('Maintenance completed results are missing or ahead of progress')
     if 'pending' in state and (type(state['pending']) is not int or state['pending']!=index or index==len(value['steps'])):
         raise ValueError('Invalid pending maintenance step')
+    if 'revocation' in state:
+        from maintenance_lifecycle import checked_revocation
+        checked_revocation(value,state['revocation'])
     if bounded:
         calls=state['calls'];last=state['last_invocation_epoch']
         if type(calls) is not int or not index<=calls<=value['execution']['max_invocations']:
@@ -244,6 +271,9 @@ def status(value,journal):
         if not stat.S_ISDIR(parent.st_mode) or parent.st_uid!=os.geteuid() or parent.st_mode&0o077:
             raise ValueError('Maintenance journal directory must be private')
     state=load_journal(journal)
+    from maintenance_lifecycle import stopped
+    revoked=stopped(value,journal,state,read_anchor(journal))
+    if revoked:return revoked
     if value.get('schema')=='ascend-lab-maintenance/v2':check_anchor(value,read_anchor(journal),state)
     if state is None:return {'status':'not_started','writes':False,**progress(value,initial_state(value))}
     state=checked_state(value,state)
@@ -273,6 +303,7 @@ def run_once(value, journal, *, apply=False, executor=operation, prepare=prepare
     No service is stopped or started here, and there is no arbitrary deletion.
     """
     value = checked(value)
+    journal=Path(journal)
     contract=value.get('execution') if value.get('schema')=='ascend-lab-maintenance/v2' else None
     clock=lambda:time.time() if epoch is None else epoch
     if not apply:
@@ -280,6 +311,12 @@ def run_once(value, journal, *, apply=False, executor=operation, prepare=prepare
                 'writes': False, 'starts_service': False, 'starts_workload': False}
         if contract:result.update(execution=contract,execution_blocker=execution_gate(contract,clock()))
         return result
+    from maintenance_lifecycle import stopped
+    if journal.parent.exists():
+        parent=journal.parent.lstat()
+        if not stat.S_ISDIR(parent.st_mode) or parent.st_uid!=os.geteuid() or parent.st_mode&0o077:raise ValueError('Maintenance journal directory must be private')
+    revoked=stopped(value,journal,load_journal(journal),read_anchor(journal))
+    if revoked:return revoked
     if contract:
         blocker=execution_gate(contract,clock())
         if blocker:return {'status':'deferred','reason':blocker,'plan_id':value['id'],'writes':False}
@@ -298,6 +335,10 @@ def run_once(value, journal, *, apply=False, executor=operation, prepare=prepare
             raise ValueError('Unsafe maintenance journal')
         fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
         saved=load_journal(journal)
+        os.lseek(fd,0,os.SEEK_SET)
+        revoked=stopped(value,journal,saved,os.read(fd,513))
+        if revoked:return revoked
+        os.lseek(fd,0,os.SEEK_SET)
         anchored=False
         if contract:
             if info.st_size>512:raise ValueError('Invalid original maintenance anchor')
@@ -316,27 +357,7 @@ def run_once(value, journal, *, apply=False, executor=operation, prepare=prepare
             state['calls']+=1;state['last_invocation_epoch']=now
 
         def save():
-            raw = encoded(state)
-            if len(raw) > MAX_PLAN_BYTES:
-                raise ValueError('Maintenance journal exceeds its budget')
-            directory=os.open(journal.parent,os.O_DIRECTORY|os.O_NOFOLLOW)
-            temporary=journal.name+'.tmp-'+uuid.uuid4().hex
-            try:
-                output=os.open(temporary,os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,0o600,dir_fd=directory)
-                try:
-                    offset=0
-                    while offset<len(raw):
-                        size=os.write(output,raw[offset:])
-                        if size<=0:raise OSError('Maintenance journal write made no progress')
-                        offset+=size
-                    os.fsync(output)
-                finally:os.close(output)
-                os.replace(temporary,journal.name,src_dir_fd=directory,dst_dir_fd=directory)
-                os.fsync(directory)
-            finally:
-                try:os.unlink(temporary,dir_fd=directory)
-                except FileNotFoundError:pass
-                os.close(directory)
+            save_journal(journal,state)
 
         state['pending'] = index
         if contract and not anchored:

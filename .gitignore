@@ -56,3 +56,4 @@ __pycache__/
 !/reports/graph-history-check.json
 !/reports/execution-pressure-check.json
 !/reports/notification-operations-check.json
+!/reports/maintenance-lifecycle-check.json

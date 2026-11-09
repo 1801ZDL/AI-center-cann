@@ -46,6 +46,9 @@ def main():
     p.add_argument('--plan',required=True);p.add_argument('--contract',required=True)
     p = subs.add_parser('maintenance-status',help='Read original journal progress without advancing it')
     p.add_argument('--plan',required=True)
+    p=subs.add_parser('maintenance-revoke',help='Permanently stop future steps of one original maintenance plan')
+    p.add_argument('--plan',required=True);p.add_argument('--apply',action='store_true')
+    p.add_argument('--reason',choices=['operator_stop','resource_pressure','superseded_after_review','maintenance_incident'],default='operator_stop')
     p = subs.add_parser('result-history-plan',help='Preview result-body rotation against an original migrated job copy')
     p.add_argument('--prefix',required=True);p.add_argument('--export-id',required=True)
     p = subs.add_parser('result-history-apply',help='Apply one exact offline result-body migration approval')
@@ -110,21 +113,29 @@ def main():
         from maintenance_policy import plan
         execution=private_json(args.execution_contract) if args.execution_contract else None
         return plan(prefix,private_json(args.policy),after_rowid=args.after_rowid,execution=execution)
-    if args.action in {'maintenance','maintenance-status'}:
+    if args.action in {'maintenance','maintenance-status','maintenance-revoke'}:
         from maintenance_runner import run_once,checked
         value = checked(private_json(args.plan))
         if args.action=='maintenance' and not args.apply:
             return run_once(value, '/unused', apply=False)
+        if args.action=='maintenance-revoke' and not args.apply:
+            from maintenance_lifecycle import revoke_once
+            return revoke_once(value,'/unused',reason=args.reason,apply=False)
         from deployment import require_root, verify
         require_root()
         prefix, meta, release = verify(value['prefix'])
         if meta['role'] != 'controller' or (release / 'maintenance_runner.py').read_bytes() != Path(__file__).with_name('maintenance_runner.py').read_bytes():
             raise ValueError('Use the matching installed controller maintenance code')
+        if (release/'maintenance_lifecycle.py').read_bytes()!=Path(__file__).with_name('maintenance_lifecycle.py').read_bytes():
+            raise ValueError('Use matching installed maintenance lifecycle code')
         journal_dir = prefix / 'maintenance-runs'
         if args.action=='maintenance-status':
             from maintenance_runner import status
             return status(value,journal_dir/(value['id']+'.json'))
         journal_dir.mkdir(mode=0o700, exist_ok=True)
+        if args.action=='maintenance-revoke':
+            from maintenance_lifecycle import revoke_once
+            return revoke_once(value,journal_dir/(value['id']+'.json'),reason=args.reason,apply=True)
         return run_once(value, journal_dir / (value['id'] + '.json'), apply=True)
     from deployment import require_root, verify
     require_root()

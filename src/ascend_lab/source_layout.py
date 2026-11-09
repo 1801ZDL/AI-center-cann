@@ -7,7 +7,7 @@ from urllib.parse import urlsplit, urlunsplit
 
 COMMANDS = ('labctl','agentctl','accessctl','workerctl','servicectl','install-client','opsctl','debugctl')
 TEXT_SUFFIXES = {'.py','.md','.sh','.html','.css','.js','.svg','.mlir','.c','.cpp','.json','.txt'}
-PUBLIC_REPORTS = ('v036-public.json','public-source-check.json','mixed-compiler-stage.json','repository-layout-check.json','retention-policy-check.json','maintenance-execution-check.json','result-history-check.json','grant-history-check.json','graph-history-check.json','execution-pressure-check.json','notification-operations-check.json')
+PUBLIC_REPORTS = ('v036-public.json','public-source-check.json','mixed-compiler-stage.json','repository-layout-check.json','retention-policy-check.json','maintenance-execution-check.json','result-history-check.json','grant-history-check.json','graph-history-check.json','execution-pressure-check.json','notification-operations-check.json','maintenance-lifecycle-check.json')
 
 
 def project_root(root):

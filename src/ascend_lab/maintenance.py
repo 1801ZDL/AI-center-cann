@@ -9,6 +9,7 @@ import sqlite3
 import stat
 import tarfile
 import tempfile
+from contextlib import nullcontext
 
 from lab_client import atomic_json,read_json
 from state_lock import state_lock
@@ -681,7 +682,8 @@ def require_features(state,role,manifest,installation=None):
 def activate(prefix,archive_path=None,release_id=None,*,storage_reconcile=None):
     require_root();prefix,meta,_=verify(prefix);state=Path(meta['state_dir'])
     from control_process import offline
-    with state_lock(state,exclusive=True),offline(prefix,meta):
+    from maintenance_lifecycle import coordination,require_compatible as require_lifecycle
+    with state_lock(state,exclusive=True),offline(prefix,meta),(coordination(prefix) if meta['role']=='controller' else nullcontext()):
         if meta['role']=='controller':
             from cold_retention import require_stable_code
             require_stable_code(state)
@@ -707,6 +709,7 @@ def activate(prefix,archive_path=None,release_id=None,*,storage_reconcile=None):
         if storage_reconcile is not None and 'storage_reconciliation.py' not in manifest['files']:
             raise DeployError('Code-only repair activation requires the reconciliation helper; pending payload is unchanged')
         require_features(state,meta['role'],manifest,meta)
+        if meta['role']=='controller':require_lifecycle(prefix,manifest)
         # Validate the old/new release before allowing the service manager to execute it.
         for name,record in manifest['files'].items():
             path=target/name

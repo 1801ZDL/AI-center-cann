@@ -17,11 +17,11 @@ from unittest.mock import patch
 
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--module',action='append',choices=['test_core_operations','test_collector_safety','test_read_retry','test_repository_layout','test_maintenance_policy','test_maintenance_execution','test_result_history','test_grant_history','test_budget_restore','test_graph_history','test_execution_pressure','test_notification_ops'])
+    parser.add_argument('--module',action='append',choices=['test_core_operations','test_collector_safety','test_read_retry','test_repository_layout','test_maintenance_policy','test_maintenance_execution','test_result_history','test_grant_history','test_budget_restore','test_graph_history','test_execution_pressure','test_notification_ops','test_maintenance_lifecycle'])
     parser.add_argument('--direct-source',action='store_true',help='Explicit supported focused modules only; skip legacy source snapshot IO')
     args=parser.parse_args()
     direct={'test_core_operations','test_collector_safety','test_read_retry','test_repository_layout',
-            'test_maintenance_policy','test_maintenance_execution','test_result_history','test_grant_history','test_budget_restore','test_graph_history','test_execution_pressure','test_notification_ops'}
+            'test_maintenance_policy','test_maintenance_execution','test_result_history','test_grant_history','test_budget_restore','test_graph_history','test_execution_pressure','test_notification_ops','test_maintenance_lifecycle'}
     if args.direct_source and (not args.module or set(args.module)-direct):
         parser.error('--direct-source needs explicit supported source modules')
     os.umask(0o077);os.nice(10);os.sched_setaffinity(0,{min(os.sched_getaffinity(0))})
@@ -38,7 +38,7 @@ def main():
         info={'files':0,'bytes':0,'mode':'direct_source'} if args.direct_source else snapshot(root,folder)
         sys.path[:0]=[str(root/'src/ascend_lab'),str(root/'tests')] if args.direct_source else [folder,str(Path(folder)/'tests')]
         print(json.dumps({'phase':'source_ready','snapshot':info}),flush=True)
-        modules=args.module or ['test_core_operations','test_collector_safety','test_read_retry','test_repository_layout','test_maintenance_policy','test_maintenance_execution','test_result_history','test_grant_history','test_budget_restore','test_graph_history','test_execution_pressure','test_notification_ops']
+        modules=args.module or ['test_core_operations','test_collector_safety','test_read_retry','test_repository_layout','test_maintenance_policy','test_maintenance_execution','test_result_history','test_grant_history','test_budget_restore','test_graph_history','test_execution_pressure','test_notification_ops','test_maintenance_lifecycle']
         with patch('socket.socket',side_effect=AssertionError('Network forbidden in focused checks')), \
              patch('subprocess.Popen',side_effect=AssertionError('Subprocess forbidden in focused checks')), \
              patch('threading.Thread.start',side_effect=AssertionError('Background threads forbidden in focused checks')):
