@@ -49,6 +49,10 @@ def main():
     p=subs.add_parser('maintenance-revoke',help='Permanently stop future steps of one original maintenance plan')
     p.add_argument('--plan',required=True);p.add_argument('--apply',action='store_true')
     p.add_argument('--reason',choices=['operator_stop','resource_pressure','superseded_after_review','maintenance_incident'],default='operator_stop')
+    p=subs.add_parser('maintenance-plan-backup',help='Preserve one original approval and its private journal/anchor/revocation')
+    p.add_argument('--plan',required=True);p.add_argument('--output',required=True);p.add_argument('--prefix');p.add_argument('--apply',action='store_true')
+    p=subs.add_parser('maintenance-plan-recover',help='Recover one private approval as permanently stopped evidence; never run it')
+    p.add_argument('--prefix',required=True);p.add_argument('--archive',required=True);p.add_argument('--apply',action='store_true')
     p = subs.add_parser('result-history-plan',help='Preview result-body rotation against an original migrated job copy')
     p.add_argument('--prefix',required=True);p.add_argument('--export-id',required=True)
     p = subs.add_parser('result-history-apply',help='Apply one exact offline result-body migration approval')
@@ -84,6 +88,10 @@ def main():
     if args.action=='maintenance-window':
         from maintenance_runner import with_execution
         return with_execution(private_json(args.plan),private_json(args.contract))
+    if args.action in {'maintenance-plan-backup','maintenance-plan-recover'}:
+        from maintenance_plan_backup import export,recover
+        if args.action=='maintenance-plan-backup':return export(private_json(args.plan),args.output,apply=args.apply,prefix=args.prefix)
+        return recover(args.prefix,args.archive,apply=args.apply)
     if args.action in {'notification-list','notification-plan','notification-apply'}:
         from notification_ops import inspect,plan,apply,check
         destinations=private_json(args.destinations,65536) if args.destinations else None

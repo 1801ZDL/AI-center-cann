@@ -45,6 +45,10 @@ def stopped(value,journal,state,raw):
     record=load_journal(marker(journal),maximum=2048)
     in_state=state.get('revocation') if isinstance(state,dict) else None
     if record is None:
+        recovery=journal.parent.parent/'maintenance-recovered'
+        if journal.parent.name=='maintenance-runs' and recovery.exists():
+            from maintenance_plan_backup import recovered_fence
+            if recovered_fence(recovery,value['id']):raise ValueError('Recovered maintenance evidence exists; restore the original stop records before proceeding')
         if in_state is not None:raise ValueError('Original maintenance revocation marker is missing; do not resume')
         if raw and (value['schema']=='ascend-lab-maintenance/v1' or raw!=anchor_bytes(value)):
             raise ValueError('Original maintenance revocation or execution anchor is missing or changed')
@@ -77,14 +81,37 @@ def stopped(value,journal,state,raw):
 def _checkpoint(stage):pass
 
 
+def revocation_record(value,saved,raw,reason,epoch):
+    from maintenance_runner import encoded,initial_state,MAX_PLAN_BYTES
+    record={'schema':SCHEMA,'plan_id':value['id'],'prefix':value['prefix'],'reason':reason,'revoked_epoch':epoch,
+            'journal_before_sha256':hashlib.sha256(encoded(saved)).hexdigest() if saved is not None else None,
+            'anchor_before_sha256':hashlib.sha256(raw).hexdigest(),'journal_annotation':True}
+    base=initial_state(value) if saved is None else saved
+    if len(encoded({**base,'revocation':record}))>MAX_PLAN_BYTES:record['journal_annotation']=False
+    return checked_revocation(value,record)
+
+
 def revoke_once(value,journal,*,reason='operator_stop',apply=False,epoch=None):
-    from maintenance_runner import checked,execution_lock,load_journal,checked_state,initial_state,check_anchor,anchor_bytes,save_journal,encoded,MAX_PLAN_BYTES
+    from maintenance_runner import checked,execution_lock
+    value=checked(value);journal=Path(journal)
+    if not isinstance(reason,str) or reason not in REASONS:raise ValueError('Invalid maintenance revocation reason')
+    if not apply:return _revoke_serialized(value,journal,reason=reason,apply=False,epoch=epoch)
+    parent=journal.parent.lstat()
+    if not stat.S_ISDIR(parent.st_mode) or parent.st_uid!=os.geteuid() or parent.st_mode&0o077:raise ValueError('Maintenance directory must remain private')
+    fd=execution_lock(journal.parent)
+    try:return _revoke_serialized(value,journal,reason=reason,apply=True,epoch=epoch)
+    finally:os.close(fd)
+
+
+def _revoke_serialized(value,journal,*,reason='operator_stop',apply=False,epoch=None):
+    """Internal: caller holds the prefix execution lock for the whole change."""
+    from maintenance_runner import checked,load_journal,checked_state,initial_state,check_anchor,save_journal
     value=checked(value);journal=Path(journal)
     if not isinstance(reason,str) or reason not in REASONS:raise ValueError('Invalid maintenance revocation reason')
     if not apply:return {'status':'preview','plan_id':value['id'],'reason':reason,'writes':False,'starts_service':False,'starts_workload':False}
     parent=journal.parent.lstat()
     if not stat.S_ISDIR(parent.st_mode) or parent.st_uid!=os.geteuid() or parent.st_mode&0o077:raise ValueError('Maintenance directory must remain private')
-    shared=execution_lock(journal.parent);fd=None
+    fd=None
     try:
         path=journal.with_name(journal.name+'.lock')
         fd=os.open(path,os.O_RDWR|os.O_CREAT|os.O_NOFOLLOW|os.O_NONBLOCK,0o600)
@@ -99,11 +126,7 @@ def revoke_once(value,journal,*,reason='operator_stop',apply=False,epoch=None):
             if value['schema']=='ascend-lab-maintenance/v2':check_anchor(value,raw,saved)
             elif raw:raise ValueError('Original revocation marker is missing or changed')
             at=time.time() if epoch is None else epoch
-            record={'schema':SCHEMA,'plan_id':value['id'],'prefix':value['prefix'],'reason':reason,'revoked_epoch':at,
-                    'journal_before_sha256':hashlib.sha256(encoded(saved)).hexdigest() if saved is not None else None,
-                    'anchor_before_sha256':hashlib.sha256(raw).hexdigest(),'journal_annotation':True}
-            base=initial_state(value) if saved is None else saved
-            if len(encoded({**base,'revocation':record}))>MAX_PLAN_BYTES:record['journal_annotation']=False
+            record=revocation_record(value,saved,raw,reason,at)
             checked_revocation(value,record);save_journal(marker(journal),record,exclusive=True)
             _checkpoint('marker_persisted')
         else:
@@ -130,7 +153,6 @@ def revoke_once(value,journal,*,reason='operator_stop',apply=False,epoch=None):
         return {**stopped(value,journal,state,final),'writes':True,'reused':False}
     finally:
         if fd is not None:os.close(fd)
-        os.close(shared)
 
 
 @contextmanager
@@ -148,6 +170,9 @@ def coordination(prefix):
 def require_compatible(prefix,manifest):
     """No silent downgrade to code that ignores a surviving revocation."""
     from maintenance_runner import read_anchor,encoded
+    recovered=Path(prefix)/'maintenance-recovered'
+    if recovered.exists() and 'maintenance_plan_backup.py' not in manifest.get('files',{}):
+        raise ValueError('Recovered maintenance evidence requires compatible backup code')
     directory=Path(prefix)/'maintenance-runs'
     if not directory.exists():return
     info=directory.lstat()

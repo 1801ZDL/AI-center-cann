@@ -1,10 +1,10 @@
 {
   "schema": "ai-center-cann-publication/v1",
-  "recorded_at": "2026-11-09T06:04:18.802484+00:00",
+  "recorded_at": "2026-11-09T06:49:00.328394+00:00",
   "files": {
     ".gitignore": {
-      "sha256": "ad6c28c1e17be3ff8a9495d1ab38f1daff384c569d07cccb8600c8f3e0a47f6b",
-      "bytes": 1171,
+      "sha256": "5800e1ae2ed069e8634344fb312cfda2d32e30e1aad0d2966e861c7e43fba3b3",
+      "bytes": 1216,
       "mode": "100644"
     },
     "CONTRIBUTING.md": {
@@ -13,8 +13,8 @@
       "mode": "100644"
     },
     "README.md": {
-      "sha256": "d2d3e912e7678120b0635f3aef356f55cfb5fedf74bb047c2aec280d6ebb642c",
-      "bytes": 5504,
+      "sha256": "1c6868c22ef2cd766de05cc7fa16fede765cb28a23cc4518c68920117a3d7ef0",
+      "bytes": 5630,
       "mode": "100644"
     },
     "bin/accessctl": {
@@ -58,8 +58,8 @@
       "mode": "100755"
     },
     "docs/STATUS.md": {
-      "sha256": "2a27668b874284b5523765db1fb41dc998adc7fb9a38143e4e828eea3c0411da",
-      "bytes": 8975,
+      "sha256": "130740d8c911a5277eb6e4fac055dd2e601e88eff712c86e53c457f32e312bb2",
+      "bytes": 9677,
       "mode": "100644"
     },
     "docs/architecture/COOPERATIVE_START.md": {
@@ -93,8 +93,8 @@
       "mode": "100644"
     },
     "docs/development/PROGRESS.md": {
-      "sha256": "5d4bf294a3059424ef6fde6f327d88d0524df2c7bb0aaf405778872c8d36ff89",
-      "bytes": 326570,
+      "sha256": "a06a8d7f3380b1c368b95cafc4872f6ec808e94f9ff1945f74f63ece20211e56",
+      "bytes": 328885,
       "mode": "100644"
     },
     "docs/development/TEAM_LOAD.md": {
@@ -193,8 +193,8 @@
       "mode": "100644"
     },
     "docs/operations/CORE_OPERATIONS.md": {
-      "sha256": "6864b1d31a86193a28eb28d5b5c6cda9cff4456e24acce8fe4d0536e46bcf848",
-      "bytes": 18054,
+      "sha256": "55fe6afdf6417c7364d5065ace54a5d7b377a3b82d90e18f412f070614e6e8b0",
+      "bytes": 18296,
       "mode": "100644"
     },
     "docs/operations/DEPLOYMENT.md": {
@@ -233,8 +233,8 @@
       "mode": "100644"
     },
     "docs/operations/MAINTENANCE_EXECUTION.md": {
-      "sha256": "e896e179b0511a1103f1a6e698bdd5f9ed3b9d2477a63c10ff341b898fb600aa",
-      "bytes": 9805,
+      "sha256": "435f7c4bfd249628fdd760ba7dfdc313ee8f1f512dca29d8c30813ee621a22e6",
+      "bytes": 14000,
       "mode": "100644"
     },
     "docs/operations/MAINTENANCE_POLICY.md": {
@@ -467,6 +467,11 @@
       "bytes": 1541,
       "mode": "100644"
     },
+    "reports/maintenance-plan-backup-check.json": {
+      "sha256": "2ec274d6e60e7bf4a13a735cbb1a4039a6395a1d856e5157440e57d253577955",
+      "bytes": 1752,
+      "mode": "100644"
+    },
     "reports/mixed-compiler-stage.json": {
       "sha256": "47ed900a11832da90213c3a865ee82fc23e5da0499889a28b8fa7b0b42766853",
       "bytes": 7032,
@@ -518,8 +523,8 @@
       "mode": "100644"
     },
     "scripts/check-focused.py": {
-      "sha256": "1ca850538c2cf700a8102e4195f9ba8b5b14d8b8daeec6ae39e04888a10e45ff",
-      "bytes": 4244,
+      "sha256": "ef9e800a0656b7ebb649bed74fa819409499992c811345b9cacf7efb045f3ae3",
+      "bytes": 4337,
       "mode": "100644"
     },
     "scripts/check-tests.py": {
@@ -708,8 +713,8 @@
       "mode": "100644"
     },
     "src/ascend_lab/deployment.py": {
-      "sha256": "af89d9f2acd2edaa48006f25a304ae70b82121073274e29f6c06275f0f931bdb",
-      "bytes": 48029,
+      "sha256": "a1050898abba860ead197f86c7b0f09fde72de3d246f9e97fc2b1b0e2c032187",
+      "bytes": 48126,
       "mode": "100644"
     },
     "src/ascend_lab/device_evidence.py": {
@@ -833,8 +838,13 @@
       "mode": "100644"
     },
     "src/ascend_lab/maintenance_lifecycle.py": {
-      "sha256": "6f3df70a527d846d08d1826fa6ba54951be2efc803b3eac85135306f9bad2afb",
-      "bytes": 10423,
+      "sha256": "ded0b15a0d72291d7377d341846db04abecc82cff84b375696810c61ac448473",
+      "bytes": 11934,
+      "mode": "100644"
+    },
+    "src/ascend_lab/maintenance_plan_backup.py": {
+      "sha256": "c63861550b0d4adcc8d310afafb65cf79a96c78f773ff973417a0ce46889283f",
+      "bytes": 15818,
       "mode": "100644"
     },
     "src/ascend_lab/maintenance_policy.py": {
@@ -943,8 +953,8 @@
       "mode": "100644"
     },
     "src/ascend_lab/opsctl": {
-      "sha256": "82dc4f9715b0198d57d435b699bec0ef2f46efc9cf9fc4687509e504202d01e0",
-      "bytes": 11672,
+      "sha256": "06dd909d611c71056a7fa1be7991f58de13792085194f6c025d4ea0c4f362e63",
+      "bytes": 12563,
       "mode": "100755"
     },
     "src/ascend_lab/owner_activation.py": {
@@ -1113,8 +1123,8 @@
       "mode": "100644"
     },
     "src/ascend_lab/source_layout.py": {
-      "sha256": "594aaf8851050202d3c793a38d8fd0cc755e02971fb8a59f06afc1332f49443f",
-      "bytes": 6639,
+      "sha256": "901de43b1aeabcec6fa09076cd9ecdea7bcc9808667d48125ca894cfe4079646",
+      "bytes": 6676,
       "mode": "100644"
     },
     "src/ascend_lab/spool_storage.py": {
@@ -2377,6 +2387,11 @@
       "bytes": 15562,
       "mode": "100644"
     },
+    "tests/test_maintenance_plan_backup.py": {
+      "sha256": "0cc50d26d0414b3c46e52de66956148a18f60c11bf5408ce1579fe9ecc8ffaaf",
+      "bytes": 16794,
+      "mode": "100644"
+    },
     "tests/test_maintenance_policy.py": {
       "sha256": "e5fd0d6b8630ab3b9fb4a8443e13076f45e78e7fa6f82bb04ed5d1288573e45c",
       "bytes": 10569,
@@ -2793,18 +2808,18 @@
       "mode": "100644"
     }
   },
-  "files_count": 558,
-  "total_bytes": 6999082,
+  "files_count": 561,
+  "total_bytes": 7043700,
   "known_private_values_checked": 234,
   "private_fixture_files_considered": 97,
   "model_keys_read": false,
   "raw_runtime_or_evidence_included": false,
   "passed": true,
   "scan_scope": "Changed public sources scanned; moved/unchanged bytes and modes verified against previous published manifest",
-  "base_commit": "598e6eb408c9c57266344c5cdaeb0f001916cb99",
-  "previous_manifest_sha256": "b8c1220ce696988366340673467f55d6fe4c7c6205eafbd990c474027629d94e",
-  "changed_files_scanned": 15,
-  "unchanged_files_hash_verified": 543,
+  "base_commit": "2038b03e99968b5bc642cecbec3a7345cc57761d",
+  "previous_manifest_sha256": "7a416490955ffb70337e9de816cc888af90787c3a9fac19c57e4f979f9add90c",
+  "changed_files_scanned": 14,
+  "unchanged_files_hash_verified": 547,
   "historical_fixture_sweep_repeated": false,
   "production_ready": false,
   "full_regression_rerun": false

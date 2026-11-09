@@ -127,6 +127,56 @@ status保留原next_step/pending和调用预算，并显示original_journal_pres
 这些Root维护记录位于安装前缀，**不在现有普通状态快照中**。迁机须独立保留核对它们，
 不能凭状态快照重建批准、清零预算或恢复已撤销计划。完整Root元数据备份/留存管理、
 定时触发部署、实际中断和原生Root验收仍待；整个Root前缀的旧快照回滚仍无外部最新性保证。
+
+## 单份原计划的独立备份与冻结恢复
+
+2026-11-09新增`maintenance_plan_backup.py`。普通state恢复会将目录交给服务UID，因此
+Root维护批准和锁记录单独保存，**没有改动普通snapshot格式**。匹配安装的Root入口：
+
+```bash
+opsctl maintenance-plan-backup --plan /root/private/original-plan.json --output /root/private/plan-backup.json
+opsctl maintenance-plan-backup --plan /root/private/original-plan.json --output /root/private/plan-backup.json --apply
+opsctl maintenance-plan-recover --prefix /opt/ascend-lab-controller --archive /root/private/plan-backup.json
+opsctl maintenance-plan-recover --prefix /opt/ascend-lab-controller --archive /root/private/plan-backup.json --apply
+```
+
+这些命令本机未实际运行。归档父目录预先由Root准备为0700，文件为0600；生产入口核对
+Root祖先、拒绝链接，并禁止输出到安装前缀或服务state中。Root维护记录可能含内部路径，
+不能上传到代码仓库。工具只返回摘要、计数和状态，不打印完整批准或journal正文。
+默认preview不写归档或活动journal；源端首次取得协调锁可能建立Root协调目录/锁文件。
+恢复preview只核包结构、大小、摘要和显示快照信息；apply还会在私有临时目录核对完整
+budget/marker/anchor状态语义，然后才发布恢复证据，不凭preview推断恢复完成。
+
+单包包含原v1/v2批准对象，以及journal、原锁内字节、撤销marker的确切原字节/长度/SHA。
+原journal最多256KiB、锁512B、marker2KiB、整个JSON包最多1MiB，源端使用同一非阻塞
+执行锁读取，不跟随符号/硬链接。不清空calls或pending，不改原批准ID，不执行步骤。
+已有输出文件不覆盖：重试显示原备份是否仍代表当前记录，不能把旧文件当作新备份。
+
+恢复到现有或新前缀时，先将原包和各部分校验后保存到Root私有
+maintenance-recovered/BACKUP_ID，再发布原计划的停止标记。空目标只恢复被该标记摘要
+确切约束的源journal；目标若已有有效记录，保留目标的预算/结果/预像和原撤销原因/时刻，
+即使源备份更旧也不覆盖。最终始终永久撤销原计划，返回execution_restored=false。
+恢复的calls只是已知事实，不是新执行额度；旧批准不会因迁机获得继续执行的许可。
+
+已撤销源的原marker完整保留。撤销过程中断的已知记录可恢复后继续封存；每个发布阶段
+中断均保留停止依据，不自动推进维护动作。回包丢失后重复原包，核对原恢复receipt和当前
+停止记录，不再次修改预算。若已完成恢复后的最新活动记录丢失，不拿旧源包覆盖：保留
+原证据并报错，需管理员核对。即使活动journal/锁/marker一同丢失，独立恢复副本仍阻止
+该原ID重新执行；所有副本/Root前缀整体回滚后的最新性仍不能据此证明。
+
+可用`--prefix`显式指定备份来源的当前已安装控制器；仅作只读记录查找，包中保留原
+approval_prefix和实际source_prefix。这样已恢复到不同前缀的旧批准还能再次作为冻结
+证据备份，不重写其ID、路径、工具链或授权。要开始新维护，必须核对原未完成动作并
+另行明确批准；工具不会为此自动生成另一计划。
+
+恢复证据最多16包，每包1MiB，逐包读取而非整目录加载；额外部分字节另受各自上限约束。
+满额、坏字节、未知对象、缺失原journal但仍有旧anchor，均拒绝覆盖，不自动清理或增额。
+存在恢复证据时，代码切换需保留对应backup实现，执行/恢复/撤销继续共用原全局锁。
+这些Root目录不是普通state的用户文件，不chown给服务UID、不触碰数据库或现有服务。
+
+当前只完成**单份原计划**的显式备份/冻结恢复。全量Root元数据和普通快照联动、外部归档
+轮转/最终回收、自动维护部署及真实Root/跨主机/进程崩溃验收仍待；本轮只用了当前UID的
+私有小文件、Root/安装边界替代和同步异常注入，没有创建真实服务器备份或恢复服务。
 保留整个maintenance-runs目录及计划文件，不用旧副本覆盖已用计数；此目录在Root安装前缀内，
 不因服务状态目录备份就自动获得独立备份或灾备保证。启动标记防护单独文件丢失，
 不宣称可检测整个Root前缀一起回滚到旧快照；不可用旧副本覆盖已用状态。

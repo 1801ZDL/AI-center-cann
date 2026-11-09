@@ -1,5 +1,15 @@
 # 实施进度
 
+## 2026-11-09 原维护计划独立备份与冻结恢复（开发源码）
+
+maintenance_plan_backup/opsctl新增单份原批准的显式backup/recover，Root匹配安装、私有输出祖先/链接/大小约束；原计划、journal256KiB、anchor512B、marker2KiB确切字节与摘要，整包<=1MiB。源端同原全局锁，旧输出不覆盖且区分是否仍代表当前记录。普通state恢复会chown给服务UID，因此Root记录独立保存，未改snapshot格式或调用真实备份；全量联动/最终留存仍待。
+
+恢复先校验原状态语义，保存Root私有原包/组成部分，再发布停止标记、仅在摘要匹配时恢复源journal，最终封存撤销。已有目标有效状态/更高calls/撤销marker不覆盖，原ID/预算/结果/pending/CAS事实保留，无步骤执行、新额度或自动替代批准。跨前缀保原批准命名空间，实际source_prefix另记；可显式指定当前Root前缀再次只读备份冻结旧批准。回包丢失复核原receipt，已完成后的最新活动事实缺失则拒绝拿旧源覆盖；恢复证据独立阻断活动三文件丢失后的原ID重启，不能证明全Root前缀回滚后的最新性。
+
+最多16包逐包读，坏/满/未知对象拒，不清理或扩额。lifecycle抽取内部已串行撤销实现供恢复保持全程同一全局锁；切换候选需保留恢复实现。首20新增通过，补真实近256KiB转义journal、receipt和Root匹配边界后23新增+原49维护检查合并72通过，无初始错误。Root/安装/输出祖先校验在专项用当前UID私有临时目录替代；实际文件fsync/重读及同步checkpoint异常，不是真Root安装、SIGKILL或跨机验收。未启服务/线程/timer/模型/通知/容器/NPU/宿主账号或既有runtime配置/数据库/容量改动，整体目标保留。
+
+最终23新增+原243按111/55/100三组串行通过266项，CPU合计1.798秒/wall合计2.028秒/VmHWM46004KiB，各单CPU/AS256MiB/CPU5秒/截止8秒，禁Popen/socket/Thread.start。匹配源码读取/私有文件和锁真实，Root/安装及生产祖先验证替代，没有生成真实服务器备份或恢复服务。[公开摘要](../../reports/maintenance-plan-backup-check.json)不代表全量Root备份、普通快照联动、真实跨机或当前源码完整回归。
+
 ## 2026-11-09 维护计划永久撤销与切换保护（开发源码）
 
 新增maintenance_lifecycle和opsctl maintenance-revoke，默认preview；Root匹配已安装runner/lifecycle后永久阻止原ID后续执行，窗口外/到期/耗尽也可停止。共享非阻塞执行锁与原计划inode锁串行，不杀现有操作。先持久独立marker，保留原calls/结果/pending/CAS预像并附加撤销，再封存原锁；满256KiB journal不增长/不截断，使用独立marker+锁封存。标记/原journal/anchor逐项核对，单件丢失或预算篡改不重启执行；可识别锁短写只沿原marker重封存，中断revocation_pending不执行，重复撤销不改原原因/时刻或加预算。v1/v2批准摘要不变，无unrevoke或自动替代批准。

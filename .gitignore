@@ -57,3 +57,4 @@ __pycache__/
 !/reports/execution-pressure-check.json
 !/reports/notification-operations-check.json
 !/reports/maintenance-lifecycle-check.json
+!/reports/maintenance-plan-backup-check.json
