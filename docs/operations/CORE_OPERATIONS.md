@@ -135,7 +135,7 @@ opsctl notify-once --prefix /opt/ascend-lab-controller --destinations /root/priv
 发送前有限检查最多32个Node的心跳/压力及控制存储；状态变化和恢复才记录。
 超过32个Node用返回的health_next_after和--after-node显式分页，下一轮从头开始。
 过期观测/未知不是健康。没有给接收端配置目的地的owner不会阻塞其他已配置owner。
-独立连接先领取30秒发送租约，网络IO不占SQLite事务；失败60秒退避，最多8次。
+独立连接先领取30秒发送租约，网络IO不占SQLite事务；失败60秒退避，默认最多8次。
 发送工具持有正常共享状态锁，备份/恢复的独占维护不能与发送状态写入交错。
 这是至少一次投递：接收端必须按Idempotency-Key去重，网络断开后不能保证对方未接收。
 目的地变更不会把已绑定消息自动重定向。未完成/耗尽/溢出保留供运维核对。
@@ -148,12 +148,66 @@ opsctl notification-archive --prefix /opt/ascend-lab-controller --directory /受
 opsctl notification-archive --prefix /opt/ascend-lab-controller --directory /受保护的个人服务归档目录 --apply
 ```
 
-目录须预先存在且属中央服务UID、权限0700。每次最多32条/64KiB，只处理delivered行，
+目录须预先存在且属中央服务UID、权限0700。每次最多32条/64KiB，处理delivered或明确closed行，
 先写0600副本、fsync并独立重读核对，再同事务提交精确原行回收与单行链检查点。
-任何未投递/失败消息都保留；最多256份文件，满后须显式安排外部档案轮转。
+未投递/失败消息未经明确close仍保留；最多256份文件，满后须显式安排外部档案轮转。
 这些历史副本供管理员保存，个人通知接口只展示仍在线的最近事件；原任务历史不受影响。
 恢复拒绝回退投递/溢出/归档检查点或交互输入记录，恢复后通知投递和交互新会话均关闭，
 须管理员重新明确开启，不能从旧配置自动恢复外部副作用。
+
+## 通知失败与目的地变更的明确处置
+
+2026-11-09新增`notification_ops.py`和三个Root入口：只检查或修改原消息的控制状态，
+不连接接收端、不启用通知策略或后台投递。使用匹配的已安装中央版本；文件须为Root私有
+普通文件，目录按既有部署要求准备。以下在管理员Root shell中执行，**本机未运行**：
+
+```bash
+umask 077
+opsctl notification-list --prefix /opt/ascend-lab-controller --destinations /root/private/destinations.json
+opsctl notification-plan --prefix /opt/ascend-lab-controller --event-id event-原32位ID --decision retry --extra-attempts 2 --destinations /root/private/destinations.json > /root/private/notification-decision.json
+opsctl notification-apply --prefix /opt/ascend-lab-controller --plan /root/private/notification-decision.json --destinations /root/private/destinations.json
+```
+
+list默认16条、最多32条，通过next_after/--after-id按原ID分页；每次调用是一个一致的SQL读取。
+跨页期间的新消息应在下一轮从头核对。显示pending/leased/retry_exhausted/held/closed/delivered、
+累计attempt与上限、目的地same/changed/unbound/not_configured及失效租约不确定标记。
+未提供目的地文件时明确记not_checked，不推断配置缺失。列表给出固定事件/任务ID/状态摘要，
+不输出Webhook URL、完整payload、租约token或模型/日志信息。本人通知API新增delivery_state和
+delivery_attempt_limit，仍先按owner选择原消息。
+
+decision支持四种处置：
+
+- hold：暂停原事件，保留已有attempt和目的地；不关闭消息。
+- retry：只允许原owner的原目的地（或首次尚未绑定的目的地），可显式加0至8次预算。
+- rebind：明确绑定同一owner当前私有配置中的不同目的地；保留原ID及累计attempt。
+- close：终态关闭，不设置delivered。尝试过的消息仍记投递结果unknown，不能宣称未送达。
+
+活动30秒租约存在时四种操作均拒绝。失效但未结清的租约，或尝试过消息的close/rebind，
+必须在plan阶段明确加`--accept-uncertain-delivery`；这表示接受原投递可能已经发生，不会
+撤回接收端请求。仍在途的旧发送器以后返回时不能覆盖新处置，返回lease_superseded。
+相同目的地重试沿原接收端按事件ID去重合同；跨目的地去重不能保证，须管理员先核对。
+已送达或已关闭事件不允许重新打开，配置文件变更不会自动转发旧消息。
+
+计划绑定中央release、服务UID/GID、状态路径和数据库设备/inode、原行与控制状态摘要，
+有效期一小时。apply在原共享状态锁和单一SQL事务内核对预像、目的地摘要、租约及预算。
+记录、状态和累计预算一起提交；失败不重规划。回包丢失后重放原计划只返回原receipt，
+不再次处置、延长有效期或重复增加预算。已经归档的原计划不复活事件，须查原归档凭据。
+这些入口允许在通知策略关闭时管理既有队列，但不会开启通知策略；后续投递仍需独立
+`notify-once --send`，本轮没有实际发送。
+
+每事件累计投递上限64；最多8份处置记录，最后一个位置只用于close。在线处置账本和
+非closed事件的关闭预留合计最多1024，满后仍能使用既有预留关闭已登记事件，并沿归档
+回收额度；不能静默删除失败消息或重置attempt。处置凭据/控制投影缺失或改变会拒绝后续
+读取/发送。Root恢复检查增加这两张表，降级必须保留对应实现。
+
+发送器在选择最老事件之前过滤目的地不符的记录，因此旧坏路由不会阻塞另一个owner或
+同owner的新未绑定消息。原消息仍留存，只有明确rebind后才允许使用新路由。
+归档v2将已送达/明确关闭的原事件、全部处置及控制投影一起封存；按完整事件缩小批次以
+满足64KiB，验证原字节后同事务CAS删除这三类行。未处置事件不删除，原检查点链继续。
+没有处置记录的旧归档仍用v1格式。文件计数仍有限，外部归档轮转和渠道/订阅管理仍待。
+
+当前只有小型SQLite、私有临时文件及替代Root/HTTP检查；没有真实Root安装、HTTPS接收端、
+进程崩溃或跨服务器通知验收。实际操作者应核对当前状态，不能把这些专项当成生产放行。
 
 ## 受控交互调试
 

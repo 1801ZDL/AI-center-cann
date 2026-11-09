@@ -1,5 +1,15 @@
 # 实施进度
 
+## 2026-11-09 通知失败处置与目的地变更闭环（开发源码）
+
+notification_ops新增Root匹配版本/服务身份/共享状态锁下的list、plan、apply入口；有限hold/retry/rebind/close，不投递、不启策略。原事件及owner、release、DB设备/inode与完整行/控制预像、一小时有效期绑定；活动租约拒，未知租约及尝试后close/rebind须显式接受投递不确定。累计attempt不重置，每次显式最多加8、总64；原计划回包丢失重放只读原receipt，不加预算或续期。已关闭/送达不重新打开。发送器按目的地摘要预过滤，旧改址事件不阻塞其他owner/新事件；仍保原记录且不自动转发，过期旧发送器不能覆盖新处置。
+
+每事件8个决策位置，最后仅close；在线操作与每个未关闭控制的关闭预留合计1024，满时保留既有关闭能力。本人API显示处置及累计上限，不暴露目的地/租约；Root列表keyset最多32。归档v2同封原事件/全部处置/控制，完整事件自适应缩至64KiB，核字节与CAS后同事务回收三表；未关闭pending不删除，旧无处置v1不改。恢复/降级保护补两表，丢失控制投影或处置凭据拒读/发送。外部归档轮转、渠道/订阅和真Root/HTTPS/崩溃场景仍待。
+
+首23新专项通过，补充坏路由队首、跨表丢失、容量关闭预留、8份完整归档/32事件分段、CAS/丢回包、CLI路由与Root边界后29项通过。仅私有小型SQLite/文件、Root上下文替代及HTTP callback，无真实投递/线程/服务/设备/宿主账号/安装或既有runtime配置数据库容量改动；临时SQL同步关闭只验逻辑，不宣称断电或进程崩溃验收。领域Agent/夜间PR/网页仍暂缓，整体目标未完成。
+
+最终29新增+原190按94/100/25三组串行通过219项，CPU合计1.575秒/wall合计1.673秒/VmHWM44416KiB；每组单CPU/AS256MiB/CPU5秒/截止8秒，禁Popen/socket/Thread.start。新Root入口用匹配源码与当前UID临时状态锁替代安装上下文，真实小文件fsync/重读与SQL事务，无真实Root、HTTP或进程中断。[公开摘要](../../reports/notification-operations-check.json)仅说明专项，不是完整回归或生产放行。
+
 ## 2026-11-09 CPU/PID可见祖先压力反馈（开发源码）
 
 resource_pressure保留原内存/IO观测v1，新增独立execution_pressure及Node能力标记。固定proc/cgroup读取CPU some avg10的宿主/祖先最大值，PID取可见有限祖先最小余量；控制器缺失分别unknown，root可无pids接口，全部max标no_visible_limit，不宣称无限空闲。最多32层/文件16KiB，无fork/设备/新线程。新cpu_some_avg10、reserve_pids默认null，启用时缺失/过期/高压阻断新分配，原内存/IO规则继续。大整数/NaN/bool/坏状态均转有限验证失败，避免验证器自身OverflowError/TypeError。

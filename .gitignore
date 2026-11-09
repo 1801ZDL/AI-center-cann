@@ -55,3 +55,4 @@ __pycache__/
 !/reports/grant-history-check.json
 !/reports/graph-history-check.json
 !/reports/execution-pressure-check.json
+!/reports/notification-operations-check.json

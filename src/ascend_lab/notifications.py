@@ -7,6 +7,7 @@ import ssl
 import time
 import uuid
 import sqlite3
+from contextlib import closing
 from pathlib import Path
 import os
 import stat
@@ -43,6 +44,8 @@ def initialize(db):
         singleton INTEGER PRIMARY KEY CHECK(singleton=1),record TEXT NOT NULL)''')
     db.execute('INSERT OR IGNORE INTO notification_archive_checkpoint VALUES(1,?)',
                (json.dumps({'epoch':uuid.uuid4().hex,'generation':0,'head':'0'*64},sort_keys=True),))
+    from notification_ops import initialize as initialize_operations
+    initialize_operations(db)
 
 
 def append(db, owner, event, subject, detail, settings, *, epoch=None):
@@ -111,21 +114,29 @@ def health_once(db, owner, settings, pressure_config, *, epoch=None, storage=Non
 
 
 def outbox_status(db):
-    row=db.execute('''SELECT count(*),coalesce(sum(delivered IS NULL),0),
-        coalesce(sum(delivered IS NULL AND attempts>=8),0) FROM notification_outbox''').fetchone()
+    from notification_ops import selection
+    join,state,maximum=selection(db)
+    row=db.execute('SELECT count(*),coalesce(sum(n.delivered IS NULL AND '+state+"!='closed'),0),"
+        'coalesce(sum(n.delivered IS NULL AND '+state+"='active' AND n.attempts>="+maximum+'),0),'
+        'coalesce(sum('+state+"='held'),0),coalesce(sum("+state+"='closed'),0) FROM notification_outbox n "+join).fetchone()
     dropped=db.execute('SELECT coalesce(sum(dropped),0) FROM notification_overflow').fetchone()[0]
-    return {'retained':row[0],'pending':row[1],'retry_exhausted':row[2],'dropped_events':dropped}
+    return {'retained':row[0],'pending':row[1],'retry_exhausted':row[2],'held':row[3],'closed':row[4],'dropped_events':dropped}
 
 
 def page(db, owner, limit=50):
     if type(limit) is not int or not 1 <= limit <= 100:
         raise ValueError('Invalid notification page limit')
-    rows = db.execute('''SELECT payload,delivered,attempts FROM notification_outbox
+    rows = db.execute('''SELECT payload,delivered,attempts,id FROM notification_outbox
         WHERE owner=? ORDER BY created DESC,id DESC LIMIT ?''', (owner, limit)).fetchall()
     overflow = db.execute('SELECT dropped FROM notification_overflow WHERE owner=?', (owner,)).fetchone()
-    return {'events': [{**json.loads(row[0]), 'delivered': row[1] is not None,
-                        'delivery_attempts': row[2]} for row in rows],
-            'dropped_events': overflow[0] if overflow else 0}
+    from notification_ops import control
+    events=[]
+    for row in rows:
+        state=control(db,row[3]);mode=state[1] if state else 'active';maximum=state[2] if state else 8
+        events.append({**json.loads(row[0]),'delivered':row[1] is not None,'delivery_attempts':row[2],
+            'delivery_state':'delivered' if row[1] is not None else mode if mode!='active' else 'retry_exhausted' if row[2]>=maximum else 'pending',
+            'delivery_attempt_limit':maximum})
+    return {'events':events,'dropped_events':overflow[0] if overflow else 0}
 
 
 def destination(value):
@@ -160,6 +171,18 @@ def deliver(url, payload):
         connection.close()
 
 
+def destination_fingerprint(value):
+    destination(value)
+    # Preserve the encoding used by original outbox destination bindings.
+    return hashlib.sha256(json.dumps(value,sort_keys=True).encode()).hexdigest()
+
+
+def destination_fingerprints(value):
+    if not isinstance(value,dict) or len(value)>128 or any(not isinstance(owner,str) or not 1<=len(owner)<=64 or any(ord(c)<32 for c in owner) for owner in value):
+        raise ValueError('Invalid notification destinations')
+    return {owner:destination_fingerprint(item) for owner,item in value.items()}
+
+
 def dispatch_one(db, destinations, *, transport=deliver, epoch=None):
     """One event per invocation; at-least-once delivery with stable event ID.
 
@@ -169,28 +192,30 @@ def dispatch_one(db, destinations, *, transport=deliver, epoch=None):
     epoch = time.time() if epoch is None else epoch
     if db.in_transaction:
         raise ValueError('Notification dispatcher needs its own idle connection')
-    if not isinstance(destinations, dict) or len(destinations) > 128:
-        raise ValueError('Invalid notification destinations')
-    for value in destinations.values():
-        destination(value)
+    fingerprints=destination_fingerprints(destinations)
     if not destinations:
         return {'status': 'no_destinations'}
     token = uuid.uuid4().hex
     with db:
         db.execute('BEGIN IMMEDIATE')
         names = sorted(destinations)
-        selected = db.execute('''SELECT id,owner,payload,destination_sha FROM notification_outbox
-            WHERE delivered IS NULL AND attempts<8 AND due<=? AND lease_until<=? AND owner IN ('''
-            + ','.join('?' for _ in names) + ') ORDER BY created,id LIMIT 1', (epoch, epoch, *names)).fetchone()
+        from notification_ops import selection,current
+        join,state,maximum=selection(db)
+        eligible=' FROM notification_outbox n '+join+' WHERE n.delivered IS NULL AND '+state+"='active' AND n.attempts<"+maximum+' AND n.due<=? AND n.lease_until<=? AND n.owner IN ('+','.join('?' for _ in names)+')'
+        # Filter changed destinations before selecting the oldest event. A held
+        # route must not starve another owner's or a new unbound notification.
+        routes=' OR '.join('(n.owner=? AND n.destination_sha=?)' for _ in names)
+        parameters=(epoch,epoch,*names,*(v for owner in names for v in (owner,fingerprints[owner])))
+        selected=db.execute('SELECT n.id'+eligible+' AND (n.destination_sha IS NULL OR '+routes+') ORDER BY n.created,n.id LIMIT 1',parameters).fetchone()
         if not selected:
+            blocked=db.execute('SELECT n.id'+eligible+' ORDER BY n.created,n.id LIMIT 1',(epoch,epoch,*names)).fetchone()
+            if blocked:return {'status':'destination_changed','event_id':blocked[0]}
             return {'status': 'idle'}
-        ident, owner, raw, previous = selected
+        row,_=current(db,selected[0]);ident,owner,raw=row[0],row[1],row[3]
         target = destinations.get(owner)
         if target is None:
             return {'status': 'destination_missing', 'event_id': ident}
-        fingerprint = hashlib.sha256(json.dumps(target, sort_keys=True).encode()).hexdigest()
-        if previous is not None and previous != fingerprint:
-            return {'status': 'destination_changed', 'event_id': ident}
+        fingerprint=fingerprints[owner]
         db.execute('''UPDATE notification_outbox SET lease_until=?,lease_token=?,
             destination_sha=?,attempts=attempts+1 WHERE id=?''', (epoch + 30, token, fingerprint, ident))
     success = False
@@ -200,23 +225,25 @@ def dispatch_one(db, destinations, *, transport=deliver, epoch=None):
     except (OSError, ValueError, RuntimeError, http.client.HTTPException):
         pass  # Do not expose URL, remote response or credential query strings.
     with db:
-        db.execute('''UPDATE notification_outbox SET delivered=?,due=?,lease_until=0,lease_token=NULL
+        updated=db.execute('''UPDATE notification_outbox SET delivered=?,due=?,lease_until=0,lease_token=NULL
             WHERE id=? AND lease_token=?''', (epoch if success else None, epoch + 60, ident, token))
+        if updated.rowcount!=1:return {'status':'lease_superseded','event_id':ident}
     return {'status': 'delivered' if success else 'retry_later', 'event_id': ident}
 
 
 def table_digest(state, table):
     """Stream bounded-width rows; no table creation or whole-history list."""
-    if table not in {'notification_outbox','notification_overflow','notification_signals','notification_archive_checkpoint','debug_inputs'}:
+    if table not in {'notification_outbox','notification_overflow','notification_signals','notification_archive_checkpoint','notification_event_control','notification_operations','debug_inputs'}:
         raise ValueError('Unregistered operational history table')
     path=Path(state)/'jobs.sqlite3'
     if not path.exists():return None
-    with sqlite3.connect(path.absolute().as_uri()+'?mode=ro',uri=True) as db:
+    with closing(sqlite3.connect(path.absolute().as_uri()+'?mode=ro',uri=True)) as db:
         if not db.execute('SELECT 1 FROM sqlite_master WHERE type=? AND name=?',('table',table)).fetchone():return None
         digest=hashlib.sha256();count=0
         # Table and order identifiers are from this fixed allowlist only.
         order={'notification_outbox':'id','notification_overflow':'owner',
-               'notification_signals':'owner,subject,event','notification_archive_checkpoint':'singleton','debug_inputs':'job_id,seq'}[table]
+               'notification_signals':'owner,subject,event','notification_archive_checkpoint':'singleton',
+               'notification_event_control':'event_id','notification_operations':'id','debug_inputs':'job_id,seq'}[table]
         for row in db.execute('SELECT * FROM '+table+' ORDER BY '+order):
             raw=json.dumps(row,sort_keys=True,separators=(',',':'),allow_nan=False).encode()
             if len(raw)>16384:raise ValueError('Operational history row exceeds its bound')
@@ -225,7 +252,7 @@ def table_digest(state, table):
 
 
 def require_history(current, staged):
-    for table in ['notification_outbox','notification_overflow','notification_signals','notification_archive_checkpoint']:
+    for table in ['notification_outbox','notification_overflow','notification_signals','notification_archive_checkpoint','notification_event_control','notification_operations']:
         old=table_digest(current,table)
         if old is not None and old!=table_digest(staged,table):
             raise ValueError('Restore would rewind notification history, delivery or overflow evidence')
@@ -235,6 +262,8 @@ def require_compatible(state, role, manifest):
     if role=='controller' and any(table_digest(state,table) is not None for table in ['notification_outbox','notification_overflow','notification_signals','notification_archive_checkpoint']):
         if 'notifications.py' not in manifest.get('files',{}):
             raise ValueError('Retained notification history requires compatible code')
+    if role=='controller' and any(table_digest(state,table) is not None for table in ['notification_event_control','notification_operations']):
+        if 'notification_ops.py' not in manifest.get('files',{}):raise ValueError('Retained notification decisions require compatible operation code')
 
 
 def archive_delivered(db, directory, *, apply=False):
@@ -247,7 +276,10 @@ def archive_delivered(db, directory, *, apply=False):
     if db.in_transaction:
         raise ValueError('Archive requires its own idle database connection')
     fields='id,owner,created,payload,delivered,attempts,due,lease_until,lease_token,destination_sha'
-    rows=db.execute('SELECT '+fields+' FROM notification_outbox WHERE delivered IS NOT NULL ORDER BY created,id LIMIT 32').fetchall()
+    from notification_ops import exists,current,archive_evidence
+    closed=" OR id IN (SELECT event_id FROM notification_event_control WHERE state='closed')" if exists(db,'notification_event_control') else ''
+    rows=db.execute('SELECT '+fields+' FROM notification_outbox WHERE delivered IS NOT NULL'+closed+' ORDER BY created,id LIMIT 32').fetchall()
+    for row in rows:current(db,row[0])
     saved=db.execute('SELECT record FROM notification_archive_checkpoint WHERE singleton=1').fetchone()
     if not saved:raise ValueError('Notification archive checkpoint is missing')
     previous=json.loads(saved[0])
@@ -264,9 +296,14 @@ def archive_delivered(db, directory, *, apply=False):
             if count>=256:raise ValueError('Notification archive directory needs explicit rotation')
             if not entry.is_file(follow_symlinks=False) or not entry.name.endswith('.json'):
                 raise ValueError('Unexpected object in notification archive directory')
-    value={'schema':'ascend-lab-notification-archive/v1','previous':previous,'rows':rows}
-    raw=json.dumps(value,sort_keys=True,separators=(',',':'),allow_nan=False).encode()
-    if len(raw)>65536:raise ValueError('Notification archive exceeds64KiB')
+    while rows:
+        evidence=archive_evidence(db,[r[0] for r in rows])
+        value={'schema':'ascend-lab-notification-archive/v1','previous':previous,'rows':rows}
+        if any(evidence.values()):value.update(schema='ascend-lab-notification-archive/v2',**evidence)
+        raw=json.dumps(value,sort_keys=True,separators=(',',':'),allow_nan=False).encode()
+        if len(raw)<=65536:break
+        rows.pop()
+    if not rows:raise ValueError('One complete event and its original decisions exceed64KiB; retained')
     digest=hashlib.sha256(raw).hexdigest();name=digest+'.json'
     parent=os.open(directory,os.O_DIRECTORY|os.O_NOFOLLOW)
     try:
@@ -289,7 +326,11 @@ def archive_delivered(db, directory, *, apply=False):
             for row in rows:
                 actual=db.execute('SELECT '+fields+' FROM notification_outbox WHERE id=?',(row[0],)).fetchone()
                 if actual!=row:raise ValueError('Original delivered event changed; no rows removed')
-            for row in rows:db.execute('DELETE FROM notification_outbox WHERE id=?',(row[0],))
+            if archive_evidence(db,[r[0] for r in rows])!=evidence:raise ValueError('Original notification decisions changed; no rows removed')
+            for row in rows:
+                if exists(db,'notification_event_control'):db.execute('DELETE FROM notification_event_control WHERE event_id=?',(row[0],))
+                if exists(db,'notification_operations'):db.execute('DELETE FROM notification_operations WHERE event_id=?',(row[0],))
+                db.execute('DELETE FROM notification_outbox WHERE id=?',(row[0],))
             next_value={**previous,'generation':previous['generation']+1,'head':digest}
             db.execute('UPDATE notification_archive_checkpoint SET record=? WHERE singleton=1',(json.dumps(next_value,sort_keys=True),))
         return {'status':'archived','rows':len(rows),'sha256':digest,'generation':next_value['generation']}

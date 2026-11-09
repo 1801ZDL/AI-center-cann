@@ -59,9 +59,20 @@ def main():
     p.add_argument('--destinations', required=True)
     p.add_argument('--send', action='store_true', help='Explicitly permit one HTTPS delivery')
     p.add_argument('--after-node',default='',help='Bounded health scan cursor for deployments with more than32 Nodes')
-    p = subs.add_parser('notification-archive',help='Seal and verify at most32 delivered events, preserving all pending messages')
+    p = subs.add_parser('notification-archive',help='Seal at most32 delivered or explicitly closed events with their decisions')
     p.add_argument('--prefix',required=True);p.add_argument('--directory',required=True)
     p.add_argument('--apply',action='store_true')
+    p=subs.add_parser('notification-list',help='Inspect at most32 retained events; no delivery')
+    p.add_argument('--prefix',required=True);p.add_argument('--destinations')
+    p.add_argument('--after-id',default='');p.add_argument('--limit',type=int,default=16)
+    p=subs.add_parser('notification-plan',help='Plan one exact hold/retry/rebind/close decision; no delivery')
+    p.add_argument('--prefix',required=True);p.add_argument('--event-id',required=True)
+    p.add_argument('--decision',choices=['hold','retry','rebind','close'],required=True)
+    p.add_argument('--reason',choices=['operator_review','transient_failure','destination_update','no_longer_needed','receiver_checked'],default='operator_review')
+    p.add_argument('--destinations');p.add_argument('--extra-attempts',type=int,default=0)
+    p.add_argument('--accept-uncertain-delivery',action='store_true')
+    p=subs.add_parser('notification-apply',help='Apply an original private decision once; never send')
+    p.add_argument('--prefix',required=True);p.add_argument('--plan',required=True);p.add_argument('--destinations')
     args = parser.parse_args()
     limit()
     if args.action == 'pressure':
@@ -70,6 +81,14 @@ def main():
     if args.action=='maintenance-window':
         from maintenance_runner import with_execution
         return with_execution(private_json(args.plan),private_json(args.contract))
+    if args.action in {'notification-list','notification-plan','notification-apply'}:
+        from notification_ops import inspect,plan,apply,check
+        destinations=private_json(args.destinations,65536) if args.destinations else None
+        if args.action=='notification-list':return inspect(args.prefix,destinations=destinations,after_id=args.after_id,limit=args.limit)
+        if args.action=='notification-plan':
+            return plan(args.prefix,args.event_id,args.decision,reason=args.reason,destinations=destinations,
+                        extra_attempts=args.extra_attempts,accept_uncertain=args.accept_uncertain_delivery)
+        return apply(args.prefix,check(private_json(args.plan,8192)),destinations=destinations)
     if args.action in {'result-history-plan','result-history-apply'}:
         from result_history import plan,apply
         if args.action=='result-history-plan':return plan(args.prefix,args.export_id)
