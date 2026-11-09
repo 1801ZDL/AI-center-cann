@@ -40,6 +40,10 @@ NPU 准入、频率和测量查询经同 UID 的 `/tmp/ascend-lab-npu-probe-UID`
 
 ## 有限历史维护
 
+2026-11-09新增[有限留存策略与自动选择](MAINTENANCE_POLICY.md)：按年龄、水位、
+明确保留名单和每人最近提交任务，在原离线事务中生成下述原格式计划。默认关闭，
+不会自行执行或安装定时触发；完整关联SQL最终轮转仍待。
+
 `maintenance_runner.plan(prefix, steps)` 为明确选定的原始操作生成摘要绑定计划。
 Root 把计划保存为0600文件，然后使用匹配安装中的：
 

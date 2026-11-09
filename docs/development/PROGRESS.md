@@ -1,5 +1,11 @@
 # 实施进度
 
+## 2026-11-09 有限留存选择器（开发源码）
+
+新增maintenance_policy.py及opsctl maintenance-select：默认关闭，按UTC选择窗口、终态留存年龄、水位/目标数量、明确保留ID、每人最近提交任务，读取至多256行/512KiB/64KiB单正文，选择至多32个有原purged/cold-retired及online=0/计费凭据的任务。旧compact不重复迁出，异常凭据拒；SQL约200万指令与原opsctl资源界限保留。control_history.plan抽取原plan_in_context，选择和原源副本计划共用离线锁/事务，避免重新加锁；原匹配代码/稳定存储/停止/原预算/未完成副本保护不变。256KiB关联源上限，输出原copy/verify/rotate有限计划，不自动apply、清理、停启服务或安装timer。
+
+17项新增真实内存SQLite/小文件检查加原39项合并56通过；Root上下文替代，原在线回收凭据和副本源选择函数真实执行。全程单CPU/AS256MiB/CPU5秒/截止8秒，禁真实子进程/网络/Thread.start；没有工作负载、Docker/NPU查询、模型调用、账号或配置更改。当前源码的真实Root锁/安装/中断恢复/冷盘及完整回归仍未验收。完整关联SQL轮转与执行日程继续未完成，领域Agent/夜间PR/网页暂缓。使用边界见[留存策略](../operations/MAINTENANCE_POLICY.md)，未缩小整体目标。
+
 ## 2026-11-06 源码目录与当前缺口整理
 
 实现归入src/ascend_lab、源码命令归入bin、文档按guides/architecture/reference/operations/development分类。README改为简洁入口，新增[文档导航](../index.md)和[当前能力与缺口](../STATUS.md)，历史证据保留。源码路径经source_layout适配，安装产物仍为原平铺合同；runtime状态与个人配置不迁移，嵌套个人客户端不继承中央状态。发布、客户端、静态资源、编译驱动和测试入口已接线。

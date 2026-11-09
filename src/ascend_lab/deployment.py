@@ -37,6 +37,7 @@ SCHEMA=1
 CORE.extend(['resource_pressure.py','probe_guard.py','notifications.py','maintenance_runner.py',
              'interactive_debug.py','debug_runtime.py','opsctl','debugctl','CORE_OPERATIONS.md'])
 CORE.extend(['source_layout.py','STATUS.md','DOCS.md'])
+CORE.extend(['maintenance_policy.py','MAINTENANCE_POLICY.md'])
 EXECUTABLES={'servicectl','accessctl','workerctl','labctl','install-client'}
 EXECUTABLES.update({'opsctl','debugctl'})
 # Bundles always include these helpers, but earlier compatible service releases
@@ -46,6 +47,7 @@ OPTIONAL_ADMIN_FILES={'qualification_compatibility.py','workspace_quota_admin.py
 OPTIONAL_ADMIN_FILES.update({'resource_pressure.py','probe_guard.py','notifications.py','maintenance_runner.py',
                             'interactive_debug.py','debug_runtime.py','opsctl','debugctl','CORE_OPERATIONS.md'})
 OPTIONAL_ADMIN_FILES.update({'source_layout.py','STATUS.md','DOCS.md'})
+OPTIONAL_ADMIN_FILES.update({'maintenance_policy.py','MAINTENANCE_POLICY.md'})
 
 
 # Older intact services do not need the optional personal diagnostic reader.

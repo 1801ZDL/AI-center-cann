@@ -192,18 +192,23 @@ def accounting(records,limit,additional=0):
 def plan(prefix,identifiers,limit):
     limit=budget(limit)
     with context(prefix) as (db,binding,meta):
-        records=rows(db)
-        if any(state=='copying' for state,_ in records.values()):raise DeployError('Resume the original pending control history export first')
-        saved=policy(db)
-        if saved is not None and saved!=limit:raise DeployError('Existing control history budget is immutable; use its original limits')
-        if fs.exists(Path(prefix)/DIRECTORY):
-            path,_=directory(prefix,meta['gid']);inventory(path,records)
-        raw,jobs=source(db,identifiers)
-        value={'format':FORMAT,'binding':binding,'budget':limit,'selection':selection(identifiers),
-            'source':{'bytes':len(raw),'sha256':sha(raw),'jobs':jobs}}
-        value['id']=sha(encoded(value))
-        if value['id'] not in records:accounting(records,limit,len(raw)+4096)
-        return value
+        return plan_in_context(db,binding,meta,identifiers,limit)
+
+
+def plan_in_context(db,binding,meta,identifiers,limit):
+    """Use an already-held offline transaction; never reacquire its state lock."""
+    limit=budget(limit);prefix=binding['prefix'];records=rows(db)
+    if any(state=='copying' for state,_ in records.values()):raise DeployError('Resume the original pending control history export first')
+    saved=policy(db)
+    if saved is not None and saved!=limit:raise DeployError('Existing control history budget is immutable; use its original limits')
+    if fs.exists(Path(prefix)/DIRECTORY):
+        path,_=directory(prefix,meta['gid']);inventory(path,records)
+    raw,jobs=source(db,identifiers)
+    value={'format':FORMAT,'binding':binding,'budget':limit,'selection':selection(identifiers),
+        'source':{'bytes':len(raw),'sha256':sha(raw),'jobs':jobs}}
+    value['id']=sha(encoded(value))
+    if value['id'] not in records:accounting(records,limit,len(raw)+4096)
+    return value
 
 
 def save(db,record,state,blob=None):

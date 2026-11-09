@@ -8,7 +8,7 @@
 | 个人提交、归档、Agent 接入 | [客户端](guides/CLIENT.md)、[工作流](guides/WORKFLOWS.md)、[环境锁](guides/ENVIRONMENTS.md)、[Harness / MCP](guides/HARNESS.md) |
 | 部署及扩展 | [服务器指南](guides/SERVER.md)、[部署](operations/DEPLOYMENT.md)、[多服务器路线](architecture/SCALING.md)、[账号接入](operations/OWNER_PROVISION.md) |
 | 调度与依赖 | [任务图](architecture/JOB_GRAPHS.md)、[依赖](architecture/DEPENDENCIES.md)、[启动竞争](architecture/COOPERATIVE_START.md) |
-| 本轮运维能力 | [资源压力、维护、通知和交互调试](operations/CORE_OPERATIONS.md) |
+| 本轮运维能力 | [资源压力、维护、通知和交互调试](operations/CORE_OPERATIONS.md)、[有限留存策略与自动选择](operations/MAINTENANCE_POLICY.md) |
 | 历史与存储 | [存储](operations/STORAGE.md)、[冷存读取回收](operations/COLD_RETENTION.md)、[历史容量](operations/HISTORY_CAPACITY.md)、[控制历史轮转](operations/CONTROL_ROTATION.md)、[恢复](operations/RECOVERY.md) |
 | NPU 使用边界 | [设备准入](operations/NPU.md)、[条件观测](operations/NPU_CONDITIONS.md)、[测量窗口](operations/NPU_MEASUREMENT.md) |
 | 接口 | [HTTP / MCP](reference/API.md) |

@@ -38,6 +38,9 @@ def main():
     p = subs.add_parser('maintenance', help='Preview or resume one exact offline maintenance approval')
     p.add_argument('--plan', required=True)
     p.add_argument('--apply', action='store_true')
+    p = subs.add_parser('maintenance-select', help='Select one bounded offline retention approval; never apply it')
+    p.add_argument('--prefix',required=True);p.add_argument('--policy',required=True)
+    p.add_argument('--after-rowid',type=int,default=0)
     p = subs.add_parser('notify-once', help='Optional one-event delivery; never called by the scheduler')
     p.add_argument('--prefix', required=True)
     p.add_argument('--destinations', required=True)
@@ -51,6 +54,14 @@ def main():
     if args.action == 'pressure':
         from resource_pressure import sample
         return sample()
+    if args.action == 'maintenance-select':
+        from deployment import require_root,verify
+        require_root()
+        prefix,meta,release=verify(args.prefix)
+        if meta['role']!='controller' or (release/'maintenance_policy.py').read_bytes()!=Path(__file__).with_name('maintenance_policy.py').read_bytes():
+            raise ValueError('Use matching installed retention selection code')
+        from maintenance_policy import plan
+        return plan(prefix,private_json(args.policy),after_rowid=args.after_rowid)
     if args.action == 'maintenance':
         from maintenance_runner import run_once
         value = private_json(args.plan)
