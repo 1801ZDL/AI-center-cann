@@ -53,3 +53,4 @@ __pycache__/
 !/reports/result-history-check.json
 
 !/reports/grant-history-check.json
+!/reports/graph-history-check.json

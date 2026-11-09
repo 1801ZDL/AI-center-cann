@@ -5,9 +5,11 @@ SQLite transaction. Fixed launcher snapshots are materialized only after that
 commit. A durable preparing record blocks dispatch and resumes the same IDs.
 """
 import base64
+from contextlib import ExitStack, closing
 import copy
 import hashlib
 import json
+import math
 import os
 from pathlib import Path
 import re
@@ -24,8 +26,19 @@ MAX_NODES=16
 MAX_GRAPHS=4096
 MAX_BYTES=32768
 MAX_PREPARE_RETRIES=32
+MAX_RECORD_BYTES=65536
+MAX_JOB_BYTES=32*1024**2
+MAX_RESTORE_BYTES=64*1024**2
+MAX_RESTORE_ATTEMPTS=32
+MAX_RESTORE_SQL_STEPS=4000000
 ID=re.compile(r'graph-[0-9a-f]{24}')
 KEY=re.compile(r'[a-z][a-z0-9_-]{0,31}')
+GRAPH_COLUMNS='id,owner,idem_key,fingerprint,state,retry_after,record'
+
+
+def graph_columns():
+    # Refuse an oversized record inside SQLite, before materializing it in Python.
+    return GRAPH_COLUMNS.rsplit(',',1)[0]+',CASE WHEN length(CAST(record AS BLOB))<='+str(MAX_RECORD_BYTES)+' THEN record END'
 
 
 def _checkpoint(stage):pass
@@ -108,32 +121,130 @@ def write_once(path,raw):
     os.replace(temporary,path);fsync_directory(path.parent)
 
 
+def decode_graph(row):
+    """Check both SQL dispatch fields and the bounded JSON authority."""
+    try:
+        identifier,owner,key,fingerprint,state,retry,raw=row
+        if not isinstance(raw,str) or len(raw.encode())>MAX_RECORD_BYTES:raise ValueError()
+        value=json.loads(raw)
+        def text(item,limit):return isinstance(item,str) and 1<=len(item)<=limit and all(ord(c)>=32 for c in item)
+        if (not isinstance(value,dict) or not isinstance(identifier,str) or not ID.fullmatch(identifier)
+            or not text(owner,128) or not text(key,120) or not isinstance(fingerprint,str)
+            or not re.fullmatch('[a-f0-9]{64}',fingerprint)
+            or state not in {'preparing','submitted','needs_attention'}
+            or (value.get('id'),value.get('owner'),value.get('state'))!=(identifier,owner,state)):
+            raise ValueError()
+        delay=value.get('retry_after',0)
+        if any(isinstance(v,bool) or not isinstance(v,(int,float)) or not math.isfinite(v) or v<0 for v in (retry,delay)) or retry!=delay:raise ValueError()
+        nodes=value.get('jobs');experiment=value.get('experiment_id');failures=value.get('preparation_failures',0)
+        if (not isinstance(nodes,dict) or not 1<=len(nodes)<=MAX_NODES
+            or any(not isinstance(k,str) or not KEY.fullmatch(k) or not isinstance(v,str) or not re.fullmatch('job-[a-f0-9]{12}',v) for k,v in nodes.items())
+            or len(set(nodes.values()))!=len(nodes)
+            or experiment is not None and (not isinstance(experiment,str) or not re.fullmatch('experiment-[a-f0-9]{24}',experiment))
+            or not text(value.get('name'),100) or not text(value.get('created_at'),64)
+            or isinstance(failures,bool) or not isinstance(failures,int) or not 0<=failures<2**63):raise ValueError()
+        if 'prepared_at' in value and not text(value['prepared_at'],64):raise ValueError()
+        if value.get('reason') is not None and not text(value['reason'],2048):raise ValueError()
+        canonical(value)  # Reject nonfinite values even in extension metadata.
+        return value
+    except (ValueError,TypeError,KeyError,OverflowError,RecursionError):
+        raise JobError('Task graph SQL/JSON record is invalid; original tasks retained',409) from None
+
+
+def bound_stage(graph,label,job):
+    return (job.get('id')==graph['jobs'].get(label) and job.get('owner')==graph['owner']
+            and job.get('_graph_id')==graph['id'] and job.get('experiment_id')==graph.get('experiment_id')
+            and job.get('submission_graph')=={'id':graph['id'],'node':label})
+
+
+def _restore_graph(db,row,spend):
+    """One compact digest per stage, at most one hydrated private copy in memory."""
+    from storage_files import encode
+    from control_rotation import read as read_job, row_record
+    from cooperative_start import DEFERRED
+    from jobs import ACTIVE,TERMINAL
+    graph=decode_graph(row);spend(row[-1])
+    groups={}
+    for label,identifier in graph['jobs'].items():
+        hint=row_record(db,identifier)
+        groups.setdefault(hint['export_id'] if hint else '',[]).append((label,identifier))
+    cache={};stages={}
+    try:
+        for members in groups.values():
+            for label,identifier in members:
+                task=db.execute('SELECT id,owner,idem_key,fingerprint,state,CASE WHEN length(CAST(data AS BLOB))<=? THEN data END FROM jobs WHERE id=?',
+                                (MAX_JOB_BYTES,identifier)).fetchone()
+                if task is None or task[-1] is None:raise ValueError('Missing or oversized graph task')
+                spend(task[-1]);job=read_job(db,task[-1],cache=cache)
+                if ((job.get('id'),job.get('owner'),job.get('state'))!=(task[0],task[1],task[4])
+                    or not bound_stage(graph,label,job) or graph['state']=='submitted' and '_graph_payload' in job):raise ValueError('Graph stage binding differs')
+                attempts=list(db.execute('SELECT id,job_id,node_id,state,created_at FROM execution_attempts WHERE job_id=? ORDER BY id LIMIT ?',
+                                         (identifier,MAX_RESTORE_ATTEMPTS+1)))
+                if len(attempts)>MAX_RESTORE_ATTEMPTS:raise ValueError('Graph attempt audit exceeds finite bound')
+                if len({a[0] for a in attempts})!=len(attempts):raise ValueError('Duplicate graph attempt')
+                current=job.get('attempt_id');found=False
+                for attempt in attempts:
+                    if (any(not isinstance(v,str) or not 1<=len(v)<=128 for v in attempt)
+                        or attempt[1]!=identifier or attempt[3] not in ACTIVE|TERMINAL|{DEFERRED}):raise ValueError('Invalid graph attempt')
+                    spend(canonical(attempt))
+                    if attempt[0]==current:
+                        found=True
+                        if (attempt[2],attempt[3])!=(job.get('node_id'),job['state']):raise ValueError('Current graph attempt differs')
+                    elif attempt[3] in ACTIVE:raise ValueError('Unbound active graph attempt')
+                if current is not None and not found:raise ValueError('Current graph attempt is missing')
+                # Same semantic encoding as cold_reads.semantic. Count hydrated
+                # bytes too, so compact SQL cannot hide unlimited snapshot work.
+                facts=encode({k:v for k,v in job.items() if k not in {'archive_dir','archive_status'}})
+                spend(facts)
+                stages[identifier]=hashlib.sha256(canonical([list(task[:5]),hashlib.sha256(facts).hexdigest(),attempts]).encode()).hexdigest()
+                del facts,job
+    finally:cache.clear()
+    return (tuple(row[:6]),canonical(graph),stages)
+
+
 def require_restore_history(current,staged,role):
-    """A surviving controller must not forget committed graph keys or attempts."""
+    """Validate staged bindings, then preserve all surviving graph/attempt facts."""
     if role!='controller':return
     from deployment import DeployError
-    def read(directory):
-        path=Path(directory)/'jobs.sqlite3'
-        if not path.exists():return {},{},{}
-        with sqlite3.connect(path.as_uri()+'?mode=ro',uri=True) as db:
-            if not db.execute("SELECT 1 FROM sqlite_master WHERE name='job_graphs'").fetchone():return {},{},{}
-            graphs={row[0]:row for row in db.execute('SELECT id,owner,idem_key,fingerprint,state,record FROM job_graphs')}
-            jobs={};attempts={}
-            for graph in graphs.values():
-                value=json.loads(graph[-1])
-                for ident in value['jobs'].values():
-                    row=db.execute('SELECT fingerprint,data FROM jobs WHERE id=?',(ident,)).fetchone()
-                    if not row:raise DeployError('Retained graph task is missing')
-                    from control_rotation import read as read_job
-                    job=read_job(db,row[1]);jobs[ident]=(row[0],job['owner'],job['state'],job.get('attempt_id'),job.get('_graph_id'))
-                    attempts[ident]=list(db.execute('SELECT id,node_id,state,created_at FROM execution_attempts WHERE job_id=? ORDER BY id',(ident,)))
-            return graphs,jobs,attempts
-    old,jobs,attempts=read(current);new,other,other_attempts=read(staged)
-    for ident,row in old.items():
-        if ident not in new or row[:5]!=new[ident][:5] or json.loads(row[-1])['jobs']!=json.loads(new[ident][-1])['jobs']:
-            raise DeployError('Retained graph admission keys or stage IDs would be lost or rewound')
-    if any(other.get(ident)!=row or other_attempts.get(ident)!=attempts[ident] for ident,row in jobs.items()):
-        raise DeployError('Retained graph tasks or original attempts would be lost or rewound')
+    remaining=MAX_RESTORE_BYTES
+    def spend(raw):
+        nonlocal remaining
+        remaining-=len(raw.encode() if isinstance(raw,str) else raw)
+        if remaining<0:raise ValueError('Graph restore audit exceeds byte budget')
+    with ExitStack() as stack:
+        def open_db(directory):
+            path=Path(directory)/'jobs.sqlite3'
+            if not path.exists():return None
+            db=stack.enter_context(closing(sqlite3.connect(path.resolve().as_uri()+'?mode=ro',uri=True,timeout=1)))
+            steps=0
+            def progress():
+                nonlocal steps
+                steps+=1000
+                return steps>MAX_RESTORE_SQL_STEPS
+            db.set_progress_handler(progress,1000);db.execute('BEGIN')
+            if not db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='job_graphs'").fetchone():return None
+            return db
+        try:
+            old=open_db(current);new=open_db(staged)
+            for db,other in ((old,new),(new,old)):
+                if db is None:continue
+                count=0
+                for row in db.execute('SELECT '+graph_columns()+' FROM job_graphs ORDER BY id LIMIT ?',(MAX_GRAPHS+1,)):
+                    count+=1
+                    if count>MAX_GRAPHS:raise ValueError('Graph restore audit exceeds row budget')
+                    # Existing staged graphs are audited during comparison above.
+                    # Audit extra staged graphs as well, including a fresh restore.
+                    if db is new and other is not None and other.execute('SELECT 1 FROM job_graphs WHERE id=?',(row[0],)).fetchone():continue
+                    original=_restore_graph(db,row,spend)
+                    if db is old:
+                        target=other.execute('SELECT '+graph_columns()+' FROM job_graphs WHERE id=?',(row[0],)).fetchone() if other is not None else None
+                        if target is None or original[:2]!=(tuple(target[:6]),canonical(decode_graph(target))):
+                            raise DeployError('Retained graph admission keys or metadata would be lost or rewound')
+                        if original!=_restore_graph(other,target,spend):
+                            raise DeployError('Retained graph tasks or original attempts would be lost or rewound')
+        except DeployError:raise
+        except (ValueError,TypeError,KeyError,AttributeError,OverflowError,RecursionError,sqlite3.Error,OSError):
+            raise DeployError('Graph restore audit failed: invalid binding, original attempts, or finite audit budget; state retained') from None
 
 
 class Graphs:
@@ -145,25 +256,35 @@ class Graphs:
 
     def load(self,identifier,db,principal=None):
         if not isinstance(identifier,str) or not ID.fullmatch(identifier):raise JobError('Task graph not found',404)
-        row=db.execute('SELECT record FROM job_graphs WHERE id=?',(identifier,)).fetchone()
+        row=db.execute('SELECT '+graph_columns()+' FROM job_graphs WHERE id=?',(identifier,)).fetchone()
         if row is None:raise JobError('Task graph not found',404)
-        value=json.loads(row[0])
+        if principal and row[1]!=principal.id:raise JobError('Task graph not found',404)
+        value=decode_graph(row)
         if principal and (value['owner']!=principal.id or principal.experiment_id and principal.experiment_id!=value['experiment_id']):raise JobError('Task graph not found',404)
         return value
 
     def save(self,db,value):
+        row=db.execute('SELECT '+graph_columns()+' FROM job_graphs WHERE id=?',(value['id'],)).fetchone()
+        old=decode_graph(row)
+        if (any(old.get(k)!=value.get(k) for k in ['id','owner','name','created_at','jobs','experiment_id'])
+            or old['state']=='submitted' and value.get('state')!='submitted'):
+            raise JobError('Original graph identity or published state cannot change',409)
+        decode_graph((*row[:4],value['state'],value.get('retry_after',0),canonical(value)))
         db.execute('UPDATE job_graphs SET state=?,retry_after=?,record=? WHERE id=?',
             (value['state'],value.get('retry_after',0),json.dumps(value,ensure_ascii=False),value['id']))
 
     def reason(self,job,db=None):
         identifier=job.get('_graph_id')
-        if not identifier:return None
+        if not identifier:
+            return '任务图原任务绑定缺失，保留原任务等待核对' if 'submission_graph' in job or '_graph_payload' in job else None
         if db is None:
             with self.jobs.connect() as connection:return self.reason(job,connection)
         try:value=self.load(identifier,db)
         except (JobError,ValueError):return '任务图记录缺失，保留原任务等待核对'
-        if value['owner']!=job['owner'] or value['jobs'].get(job.get('submission_graph',{}).get('node'))!=job['id']:return '任务图原任务绑定不符，保留原任务等待核对'
+        binding=job.get('submission_graph')
+        if not isinstance(binding,dict) or not isinstance(binding.get('node'),str) or not bound_stage(value,binding['node'],job):return '任务图原任务绑定不符，保留原任务等待核对'
         if value['state']!='submitted':return '任务图归档准备未完成，尚未允许任何阶段执行'
+        if '_graph_payload' in job:return '任务图阶段仍有未完成归档，保留原任务等待核对'
         return None
 
     def public(self,value,db,principal):
@@ -226,7 +347,7 @@ class Graphs:
                 if not force and (value['state']=='needs_attention' or value.get('retry_after',0)>time.time()):return
                 for label,ident in value['jobs'].items():
                     job=self.jobs.get(ident,db);pending=job.get('_graph_payload')
-                    if not isinstance(pending,dict) or job.get('_graph_id')!=identifier or job['owner']!=value['owner'] or job['state']!='queued' or job.get('attempt_id'):
+                    if not isinstance(pending,dict) or not bound_stage(value,label,job) or job['state']!='queued' or job.get('attempt_id'):
                         raise JobError('Graph preparation binding or original queued task changed',409)
                     path=self.jobs.directory(ident,owner=value['owner'])
                     if not path.exists():
