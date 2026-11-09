@@ -65,8 +65,8 @@ def main():
     args = parser.parse_args()
     limit()
     if args.action == 'pressure':
-        from resource_pressure import sample
-        return sample()
+        from resource_pressure import sample,sample_execution
+        return {**sample(),'execution_pressure':sample_execution()}
     if args.action=='maintenance-window':
         from maintenance_runner import with_execution
         return with_execution(private_json(args.plan),private_json(args.contract))

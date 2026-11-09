@@ -189,6 +189,7 @@ class Collector:
         self.previous_cpu = total, idle
         return {'hostname': os.uname().nodename, 'cpu_count': os.cpu_count(),
                 'resource_pressure': __import__('resource_pressure').sample(),
+                'execution_pressure': __import__('resource_pressure').sample_execution(),
                 'cpu_utilization_pct': utilization, 'load_average': list(os.getloadavg()),
                 'memory_total_bytes': memory['MemTotal'], 'memory_available_bytes': memory['MemAvailable'],
                 'memory_used_bytes': memory['MemTotal'] - memory['MemAvailable'],

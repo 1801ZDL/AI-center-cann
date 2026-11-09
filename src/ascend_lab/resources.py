@@ -10,6 +10,7 @@ KEYS=('cpu_ids','memory_mib','shm_mib','max_running')
 MULTI_SLOT='concurrent-attempts-v1'
 MAX_SLOTS=32
 MANAGED_OVERHEAD_MIB=128
+MANAGED_PIDS_LIMIT=128
 
 
 def memory_cost(job,managed=None):

@@ -826,7 +826,8 @@ class Scheduler:
         if not reason:
             from resource_pressure import reason as pressure_reason
             reason=pressure_reason(snapshot['host'].get('resource_pressure'),
-                                   wanted['memory_mib']*1024**2,self.jobs.policy.get('resource_pressure'))
+                                   wanted['memory_mib']*1024**2,self.jobs.policy.get('resource_pressure'),
+                                   execution=snapshot['host'].get('execution_pressure'),requested_pids=1)
         if reason:pass
         elif domain['draining']:
             reason='此物理资源域正在排空，暂停分配新任务'

@@ -14,7 +14,7 @@ import time
 
 from jobs import ROOT,atomic_json,read_json,now
 from workflow_spec import WORKFLOWS,validate as validate_workflow,runtime_manifest
-from resources import MANAGED_OVERHEAD_MIB
+from resources import MANAGED_OVERHEAD_MIB,MANAGED_PIDS_LIMIT
 
 LABEL='io.ascend-lab.attempt'
 MAX_LOG=2*1024**2
@@ -245,7 +245,7 @@ class DockerAttempt:
               '--network','none','--read-only','--cap-drop','ALL','--cap-add','CHOWN','--cap-add','SETUID',
               '--cap-add','SETGID','--security-opt','no-new-privileges:true','--user','0:0',
               '--memory',str(resource['memory_mib'])+'m','--memory-swap',str(resource['memory_mib'])+'m',
-              '--cpuset-cpus',cpus,'--cpus',str(resource['cpu']),'--pids-limit','128',
+              '--cpuset-cpus',cpus,'--cpus',str(resource['cpu']),'--pids-limit',str(MANAGED_PIDS_LIMIT),
               *(['--shm-size',str(resource['shm_mib'])+'m'] if resource.get('shm_mib',0) else ['--ipc','none']),
               '--tmpfs','/tmp:rw,noexec,nosuid,size=16777216',
               '--log-opt','max-size=2m','--log-opt','max-file=1',

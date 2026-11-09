@@ -126,6 +126,7 @@ class Worker:
         capabilities=['start-ticket-v1','cleanup-before-complete-v1',PINNED_RUNTIME,ENVIRONMENT,INVENTORY,MULTI_SLOT,*sorted(CAPABILITIES)]
         capabilities.append(__import__('interactive_debug').CAPABILITY)
         capabilities.append(PROBE_MEMORY_CAPABILITY)
+        capabilities.append(__import__('resource_pressure').EXECUTION_CAPABILITY)
         from npu_measurement import CAPABILITY as MEASUREMENT
         capabilities.append(MEASUREMENT)
         from node_quota_admin import CAPABILITY as QUOTA_RESIZE
@@ -171,6 +172,7 @@ class Worker:
             npu.update(access_host_sha256=host_sha,access_runtime_files=runtime_manifest())
         body={'physical_id':physical_identity(),
              'resource_pressure':__import__('resource_pressure').sample(),
+             'execution_pressure':__import__('resource_pressure').sample_execution(),
              'measurement_source_sha256':__import__('npu_measurement').source_sha(),
              'image_sha256':self.config['image'],'environment_setup':self.config.get('environment_setup'),
              'python_executable':self.config.get('python','/usr/bin/python3'),

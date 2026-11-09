@@ -27,6 +27,39 @@
 
 `opsctl pressure` 是显式一次性只读检查，不启动采集线程。
 
+2026-11-09新增可选CPU/PID反馈，仍在`scheduler.resource_pressure`内配置：
+
+```json
+{"enabled":true,"cpu_some_avg10":80,"reserve_pids":32}
+```
+
+两个新字段默认均为`null`，分别表示不启用该项准入；上例仅演示配置格式，不是当前服务器
+已启用的阈值。CPU使用宿主与可见祖先的`some avg10`最高值，表示等待压力，不是CPU利用率。
+PID余量取可见祖先有限`pids.max-pids.current`的最小值，下限为0；读取上限前后变化取较严者。
+PID控制器也计入线程。[内核PSI说明](https://docs.kernel.org/accounting/psi.html)与
+[cgroup v2 PID说明](https://docs.kernel.org/admin-guide/cgroup-v2.html#pid)定义了这些接口。
+
+采样仍只读取固定proc/cgroup文件：最多32层、每文件16KiB，无进程枚举、fork、Docker exec、
+设备调用或新增采集线程。CPU/PID分别记录未知，不因一种控制器缺失丢弃另一种有效观测。
+根层可以没有pids接口；非根层缺失则PID未知。全部可见上限均为max时记为no_visible_limit，
+不将其当成无限可用PID；启用PID准入后这种状态也等待管理员确认有限边界。
+
+原`resource_pressure`观测格式保持v1，CPU/PID放在单独的`execution_pressure`字段，Node声明
+`cgroup-cpu-pids-pressure-v1`能力。旧Node仍可在未启用新阈值时接入；启用后缺失、过期或坏
+观测会暂停新分配。声明能力但不提供合法观测的心跳返回400，不覆盖原有效报告。新Worker
+同时发送两份观测，旧中央按现有心跳字段过滤方式忽略扩展；真实混合版本滚动升级尚未验收。
+Node资源API显示数值但不暴露cgroup路径。`opsctl pressure`保留旧顶层字段并附加新观测。
+
+Node分配要求PID余量至少为现有任务容器上限128加reserve_pids，入口与容器参数共享同一常量；
+辅助探针的32上限保持不变，统一按128检查是保守估算。本地协作入口只检查至少1个启动PID
+加余量，不能据此证明后续任意命令都有足够PID。高压力不会终止既有任务、撤销原预留或
+重提任务；健康事件沿原outbox记一次阻塞及一次恢复，不新增投递线程。
+
+这些是**观测进程可见祖先**的压力反馈，不是实际容器/每租户的资源测量或原子PID预留。
+Node服务与Docker任务可能处于不同cgroup分支；必须由管理员核对实际执行拓扑。隐藏祖先、
+每租户执行边界关联、启动前再次核对及真实Root/容器/跨机压力场景仍待，不能承诺避免所有
+准入后的竞争，也不能限制用户绕过调度器自行运行。
+
 ## 防止监控探针累积
 
 周期采集不再进入租户容器探测共享内存；使用量为 unknown，仅保留配置上限。

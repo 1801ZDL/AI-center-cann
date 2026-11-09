@@ -1,5 +1,15 @@
 # 实施进度
 
+## 2026-11-09 CPU/PID可见祖先压力反馈（开发源码）
+
+resource_pressure保留原内存/IO观测v1，新增独立execution_pressure及Node能力标记。固定proc/cgroup读取CPU some avg10的宿主/祖先最大值，PID取可见有限祖先最小余量；控制器缺失分别unknown，root可无pids接口，全部max标no_visible_limit，不宣称无限空闲。最多32层/文件16KiB，无fork/设备/新线程。新cpu_some_avg10、reserve_pids默认null，启用时缺失/过期/高压阻断新分配，原内存/IO规则继续。大整数/NaN/bool/坏状态均转有限验证失败，避免验证器自身OverflowError/TypeError。
+
+中央本地、Node分配、Worker心跳、Node资源API、opsctl及原健康outbox接线；Node预算按任务容器128PID+显式reserve，container_engine/resources共用原值常量，辅助32不变，本地仅1个启动PID+余量。旧Node在未开启新阈值时仍可用，开启后等待观测；新Worker保留旧观测另加扩展，声明能力却缺失/非法报告返回400且保留旧报告。未做真实混合版本升级。CPU/PID未知独立，新压力不释放活跃预留、不重提或取消任务。实际JobStore场景验证缺失/PID不足/CPU高压均0attempt，恢复后原job领取1attempt，之后高压不改已有任务；健康事件只记录压力/恢复，无投递。
+
+初24项中一例本地placement夹具缺physical_id，补测试字段后通过；再加Worker心跳替代传输和数值异常。所有原始日志私有保留，生产权限规则未放松。真实Root、容器/执行cgroup关联、每租户观测及启动前复核仍待；观测进程祖先不是Docker任务分支，PID检查也不是内核原子预留。默认策略及既有runtime配置/数据库/容量没有改动，未启服务/模型/设备/线程/定时器/宿主账号或通知投递，整体目标未完成。
+
+26新增与原164项最终按65/100/25三组串行通过190项，CPU合计1.553秒/wall合计1.640秒/VmHWM45572KiB；各单CPU/AS256MiB/CPU5秒/截止8秒，禁Popen/socket/Thread.start。实际小型SQL票据与私有临时文件，Worker传输/环境检查替代；没有完整回归、真实Root、容器/跨机或压力负载验收。[公开摘要](../../reports/execution-pressure-check.json)保留范围，不是生产放行。
+
 ## 2026-11-09 任务图与执行尝试恢复一致性（开发源码）
 
 job_graphs读取新增SQL/JSON一致性及有限结构检查，owner先于JSON；save保持原图身份/阶段/实验且不回退submitted。归档准备和dispatch核对图ID、节点、任务、owner与实验；已发布图仍有待归档快照或丢失绑定时保留等待。手动resume超过自动32次仍允许原图续接。恢复改为显式关闭的只读事务/逐图摘要，对全部图元数据、阶段SQL身份/键/fingerprint、完整执行事实（仅排除原允许重定位的归档overlay）及原attempt逐项比对。当前attempt/node/state必须一致，游离active拒；额外目标图/空当前状态也独立验绑定。已迁出正文按原副本分组、每次只保留一份解析缓存且后续调用重验，不恢复授权、返还配额或重新执行。

@@ -103,7 +103,7 @@ def health_once(db, owner, settings, pressure_config, *, epoch=None, storage=Non
         report = json.loads(raw)
         observe(db, owner, 'node_unavailable', ident, 'ready' if 0 <= epoch - seen <= 30 else 'heartbeat_stale', settings)
         reading = report.get('resource_pressure')
-        blocked = reason(reading, 0, monitoring, epoch=epoch)
+        blocked = reason(reading, 0, monitoring, epoch=epoch,execution=report.get('execution_pressure'))
         observe(db, owner, 'resource_pressure', ident, 'pressure_or_observation_blocked' if blocked else 'ready', settings)
     if storage is not None:
         observe(db, owner, 'storage_pressure', 'controller', storage, settings)

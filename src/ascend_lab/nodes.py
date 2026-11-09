@@ -240,6 +240,11 @@ class NodeRegistry:
             from resource_pressure import validate as validate_pressure
             try:report['resource_pressure']=validate_pressure(body['resource_pressure'])
             except ValueError as error:raise JobError(str(error),400) from None
+        from resource_pressure import EXECUTION_CAPABILITY,validate_execution
+        if EXECUTION_CAPABILITY in body.get('capabilities',[]) or 'execution_pressure' in body:
+            if EXECUTION_CAPABILITY not in body.get('capabilities',[]):raise JobError('CPU/PID pressure requires its capability',400)
+            try:report['execution_pressure']=validate_execution(body.get('execution_pressure'))
+            except ValueError as error:raise JobError(str(error),400) from None
         from workflow_spec import DEADLINE_CAPABILITY,MAX_TIMEOUT_SECONDS
         if DEADLINE_CAPABILITY in body.get('capabilities',[]):
             maximum=body.get('max_timeout_seconds')
@@ -249,6 +254,7 @@ class NodeRegistry:
         if cpu is not None and (isinstance(cpu,bool) or not isinstance(cpu,(int,float)) or not math.isfinite(cpu) or not 0<=cpu<=100):raise JobError('Invalid node CPU observation')
         report['host_cpu_utilization_pct']=cpu
         report['capabilities']=sorted((REQUIRED_CAPABILITIES|CAPABILITIES|{MULTI_SLOT})&set(body.get('capabilities',[])))
+        if EXECUTION_CAPABILITY in body.get('capabilities',[]):report['capabilities'].append(EXECUTION_CAPABILITY)
         from interactive_debug import CAPABILITY as DEBUG
         if DEBUG in body.get('capabilities',[]):report['capabilities'].append(DEBUG)
         if FIXED_PROBE_CAPABILITY in body.get('capabilities',[]):report['capabilities'].append(FIXED_PROBE_CAPABILITY)
@@ -434,8 +440,10 @@ class NodeRegistry:
         if not reason and (node['report']['memory_available_bytes']<memory_cost(job,True)*1024**2+512*1024**2 or node['report']['disk_free_bytes']<512*1024**2):reason='节点实际内存或磁盘余量不足'
         if not reason:
             from resource_pressure import reason as pressure_reason
+            from resources import MANAGED_PIDS_LIMIT
             reason=pressure_reason(node['report'].get('resource_pressure'),memory_cost(job,True)*1024**2,
-                                   self.jobs.policy.get('resource_pressure'))
+                                   self.jobs.policy.get('resource_pressure'),execution=node['report'].get('execution_pressure'),
+                                   requested_pids=MANAGED_PIDS_LIMIT)
         from node_storage import pressure,CAPABILITY as SPOOL
         if not reason and self.jobs.policy.get('require_node_spool') and SPOOL not in node['report']['capabilities']:
             reason='节点需要升级暂存准入和已确认副本回收能力'
@@ -829,7 +837,7 @@ class NodeRegistry:
                     **({key:profile['environment_manifest']['observed'][key] for key in ['python','machine','packages']}
                        if profile.get('environment_manifest') else {}),
                     **({'lock':__import__('environment_contract').lock_for(profile['environment_manifest'])} if profile.get('environment_manifest') else {})},
-                'observed':{k:node['report'].get(k) for k in ['memory_available_bytes','disk_free_bytes','disk_free_inodes','artifact_gc_ready','host_cpu_utilization_pct','resource_pressure']},
+                'observed':{k:node['report'].get(k) for k in ['memory_available_bytes','disk_free_bytes','disk_free_inodes','artifact_gc_ready','host_cpu_utilization_pct','resource_pressure','execution_pressure']},
                 'capacity':profile['policy'],'resource_domain':domain,'npu_configured':bool(profile.get('npu')),
                 'device_access':{'counts':access,'scope':'device-files-only','acl_verified':False,'numerical_verified':False},
                 'io_limits':__import__('io_policy').limits(profile.get('io_limits')),
