@@ -17,3 +17,5 @@
 目录分工：`guides/` 面向使用者，`architecture/` 解释设计，`reference/` 记录接口，
 `operations/` 面向管理员，`development/` 保存开发进展与历史验收。
 领域 Agent、夜间 PR 分析和网页操作扩展暂缓，按[当前状态](STATUS.md)的优先级推进。
+
+新增[失效授权正文与预算恢复保护](operations/GRANT_HISTORY.md)，完整长期历史轮转仍待。

@@ -81,3 +81,6 @@ python3 scripts/check-focused.py
 历史验收范围见[进展记录](docs/development/PROGRESS.md)与[公开摘要](reports/v036-public.json)，
 历史通过数不代表当前源码的完整回归通过。
 贡献约定见 [CONTRIBUTING.md](CONTRIBUTING.md)。
+
+新增[失效授权正文与预算恢复保护](docs/operations/GRANT_HISTORY.md)：历史授权不恢复新许可，
+迁出不退费，恢复须保留已知批准与扣费。真实Root验收和完整关联轮转仍待。

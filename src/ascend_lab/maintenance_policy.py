@@ -135,5 +135,5 @@ def plan(prefix,value,*,after_rowid=0,epoch=None,execution=None):
             original=copies.plan_in_context(db,binding,meta,result['selected'],settings['archive_budget'])
             if original['source']['bytes']>MAX_SOURCE_BYTES:raise ValueError('Selected related history exceeds256KiB; reduce max_jobs')
             result['maintenance_plan']=maintenance_plan(prefix,[{'action':action,'plan':original}
-                for action in ['control_copy','control_verify','control_rotate','result_rotate']],execution=execution)
+                for action in ['control_copy','control_verify','control_rotate','result_rotate','grant_rotate']],execution=execution)
         return result

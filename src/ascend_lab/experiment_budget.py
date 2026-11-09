@@ -12,6 +12,8 @@ PATTERN=re.compile(r'experiment-[0-9a-f]{24}')
 TEMPLATES={'cpu_demo','accuracy_v1','performance_v1','simulation_v1','build_v1','ir_v1'}
 DEFAULT={'max_jobs':64,'max_cpu_seconds':1000000,'max_npu_seconds':86400,
          'max_lifetime_seconds':604800,'max_budgets_per_owner':1000}
+MAX_RESTORE_ROWS=100000
+MAX_RESTORE_BYTES=32*1024**2
 
 
 def policy(value):
@@ -186,3 +188,40 @@ def rebind_restored(state):
         with sqlite3.connect(state/'identities.sqlite3') as db:
             if 'experiment_id' in {r[1] for r in db.execute('PRAGMA table_info(tokens)')}:
                 db.execute('UPDATE tokens SET revoked=1 WHERE experiment_id IS NOT NULL AND revoked=0')
+
+
+def require_restore_history(current,staged):
+    """Preserve every known approval and debit before existing restore freeze.
+
+    Rows remain the authoritative compact ledger. This never recreates unknown
+    spend, refunds jobs or authorizes a restored budget to run new work.
+    """
+    import sqlite3
+    from pathlib import Path
+    from deployment import DeployError
+    path=Path(current)/'jobs.sqlite3'
+    if not path.exists():return
+    target_path=Path(staged)/'jobs.sqlite3'
+    if not target_path.exists():raise DeployError('Restore would lose known experiment approvals or charges')
+    tables={'experiment_budgets':['id','owner','idem_key','fingerprint','data'],
+            'experiment_charges':['job_id','budget_id','cpu_seconds','npu_seconds']}
+    with sqlite3.connect(path.as_uri()+'?mode=ro',uri=True) as old, \
+         sqlite3.connect(target_path.as_uri()+'?mode=ro',uri=True) as new:
+        count=size=0
+        for name,columns in tables.items():
+            if not old.execute('SELECT 1 FROM sqlite_master WHERE type="table" AND name=?',(name,)).fetchone():continue
+            query='SELECT '+','.join(columns)+' FROM '+name+' ORDER BY '+columns[0]
+            source=iter(old.execute(query));first=next(source,None)
+            if first is None:continue
+            if not new.execute('SELECT 1 FROM sqlite_master WHERE type="table" AND name=?',(name,)).fetchone():
+                raise DeployError('Restore would lose known experiment approvals or charges')
+            target=iter(new.execute(query));candidate=next(target,None)
+            while first is not None:
+                count+=1;size+=sum(len(str(v).encode()) for v in first)
+                if count>MAX_RESTORE_ROWS or size>MAX_RESTORE_BYTES:raise DeployError('Budget history audit exceeds100000rows/32MiB')
+                while candidate is not None and candidate[0]<first[0]:
+                    count+=1;size+=sum(len(str(v).encode()) for v in candidate)
+                    if count>MAX_RESTORE_ROWS or size>MAX_RESTORE_BYTES:raise DeployError('Budget history audit exceeds100000rows/32MiB')
+                    candidate=next(target,None)
+                if candidate!=first:raise DeployError('Restore would change a known experiment approval or charge; no refund is allowed')
+                first=next(source,None);candidate=next(target,None)

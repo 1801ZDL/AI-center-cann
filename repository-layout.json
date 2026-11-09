@@ -59,7 +59,8 @@
     "DOCS.md": "docs/index.md",
     "MAINTENANCE_POLICY.md": "docs/operations/MAINTENANCE_POLICY.md",
     "MAINTENANCE_EXECUTION.md": "docs/operations/MAINTENANCE_EXECUTION.md",
-    "RESULT_HISTORY.md": "docs/operations/RESULT_HISTORY.md"
+    "RESULT_HISTORY.md": "docs/operations/RESULT_HISTORY.md",
+    "GRANT_HISTORY.md": "docs/operations/GRANT_HISTORY.md"
   },
   "commands": [
     "labctl",

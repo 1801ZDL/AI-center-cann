@@ -1,5 +1,13 @@
 # 实施进度
 
+## 2026-11-09 失效授权正文及已知计费恢复保护（开发源码）
+
+grant_history.py迁出原verified生产任务副本中的撤销/冻结/过期授权正文，保留ID/owner/幂等/fingerprint/生产任务/目的实验/到期/失效状态。revoked/frozen保留，过期active转archived_inactive，回拨不恢复许可。当前owner/实验先于Root文件，active准入在本地列/JSON/历史标记处先拒；结构重放可以读原scope但不获新权。GET/list分组读、逐请求重验，原行SHA/生产任务迁出/新批准/完整投影核验，缺失或改scope拒。Snapshot后的撤销覆盖保留，文件/目的实验等不可变范围改动拒。正常active仍走原生产证据，旧幂等只返回原ID，不延期。新维护选择增加grant_rotate第五步，旧3/4步批准不改；派生CAS先持久，回包丢失原计划复用。256KiB原副本/64KiB单授权/32选中/4096索引/128批准，Root停止/匹配/离线/稳定存储保护继续。
+
+experiment_charges与原budget批准保留权威SQL，不迁出、不退费；恢复冻结前新增排序流核对，已知ID/owner/键/fingerprint/limits-state/绑定/CPU-NPU秒数不可丢改，允许更多目标记录。合计100000行/32MiB有限扫描，未知后续消费不猜测，原冻结和令牌撤销仍保留。Root副本计数增加inactive_grants，无恢复授权/额度。
+
+31新增小型SQL/当前UID文件/替代Root上下文专项，初26一例夹具缺jobs.policy修复后过，原错误保留；后补active篡改、scope拒、实际文件SHA及普通授权回归。生产持久化不改，临时SQL同步关/内存journal仅验逻辑，非真Root/SIGKILL/进程恢复。最终136项按80/25/31三组直接源串行通过(CPU合计约0.97秒、峰值约42MiB)，原件保存；单CPU/AS256MiB/CPU5秒/截止8秒，禁真实Popen/socket/Thread.start，无模型/服务/Docker/NPU/账号/通知/timer或现有DB/配置/额度改动。attempts/graphs/部分计费表示和副本/批准/索引最终留存、真实Root与多机NPU验收仍待，整体目标未缩小。详见[授权历史](../operations/GRANT_HISTORY.md)。
+
 ## 2026-11-09 结果正文迁出及读取（开发源码）
 
 result_history.py将已沿control_rotate迁出的原任务结果正文接入同一原副本，保留workflow_results原ID/rowid/owner/project/kind投影；结果字符串SHA、原job迁出、新结果批准及投影共同核验，缺失或不一致拒读。原ResultStore按当前ACL/类型/分页后分组读副本，CSV数据保持；同页同副本一次核验、不跨请求缓存。普通写入器拒覆盖，存储元数据字节统计读取原正文；配额/尝试/授权/计费/任务图不改。原副本<=256KiB/单结果128KiB/32选择/4096索引/128批准；无结果或过小结果不迁出，不创建空批准。原任务副本状态增加结果引用计数。新增旧版本拒绝与恢复原投影/索引/批准/可读副本保护。

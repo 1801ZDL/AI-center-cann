@@ -50,6 +50,10 @@ def main():
     p.add_argument('--prefix',required=True);p.add_argument('--export-id',required=True)
     p = subs.add_parser('result-history-apply',help='Apply one exact offline result-body migration approval')
     p.add_argument('--plan',required=True)
+    p = subs.add_parser('grant-history-plan',help='Preview inactive source-grant body rotation only')
+    p.add_argument('--prefix',required=True);p.add_argument('--export-id',required=True)
+    p = subs.add_parser('grant-history-apply',help='Apply one exact inactive grant history approval')
+    p.add_argument('--plan',required=True)
     p = subs.add_parser('notify-once', help='Optional one-event delivery; never called by the scheduler')
     p.add_argument('--prefix', required=True)
     p.add_argument('--destinations', required=True)
@@ -72,6 +76,11 @@ def main():
         value=private_json(args.plan)
         from result_history import check
         check(value)
+        return apply(value['binding']['prefix'],value)
+    if args.action in {'grant-history-plan','grant-history-apply'}:
+        from grant_history import plan,apply,check
+        if args.action=='grant-history-plan':return plan(args.prefix,args.export_id)
+        value=check(private_json(args.plan))
         return apply(value['binding']['prefix'],value)
     if args.action == 'maintenance-select':
         from deployment import require_root,verify

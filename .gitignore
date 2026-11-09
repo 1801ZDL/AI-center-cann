@@ -51,3 +51,5 @@ __pycache__/
 !/reports/retention-policy-check.json
 !/reports/maintenance-execution-check.json
 !/reports/result-history-check.json
+
+!/reports/grant-history-check.json

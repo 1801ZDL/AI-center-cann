@@ -221,6 +221,18 @@ def checked(path,record):
     with read_admission():return _checked(path,record)
 
 
+def bounded_body(db,identifier,cache,maximum=256*1024):
+    """One verified private body per authorized caller-local read cache."""
+    found=rows(db).get(identifier)
+    if found is None or found[0] not in {'verified','restore_frozen'}:
+        raise DeployError('Original private control snapshot is not verified')
+    if found[1]['plan']['source']['bytes']>maximum:
+        raise DeployError('Private history copy exceeds256KiB reader budget')
+    if identifier not in cache:
+        cache.clear();cache[identifier]=checked(found[1]['plan']['binding']['prefix'],found[1])[0]
+    return found,cache[identifier]
+
+
 def _checked(path,record):
     value=record['plan'];check(value)
     base,identity=directory(path,value['binding']['gid'],record['directory'])
@@ -344,6 +356,7 @@ def status(jobs,principal,identifier):
         found=rows(db).get(identifier)
         migrated=db.execute('SELECT count(*) FROM control_rotation_jobs WHERE export_id=?',(identifier,)).fetchone()[0] if exists(db,'control_rotation_jobs') else 0
         results=db.execute('SELECT count(*) FROM result_history_rows WHERE export_id=?',(identifier,)).fetchone()[0] if exists(db,'result_history_rows') else 0
+        grants=db.execute('SELECT count(*) FROM grant_history_rows WHERE export_id=?',(identifier,)).fetchone()[0] if exists(db,'grant_history_rows') else 0
     if found is None:raise JobError('Control export not found',404)
     state,record=found;verified=False;proof={}
     if state in {'verified','restore_frozen'}:
@@ -352,7 +365,8 @@ def status(jobs,principal,identifier):
     return {**response(record,state,verified=verified),'readonly_mount':proof.get('readonly_mount'),
         'selected_job_count':len(record['plan']['selection']),'normal_read_authority':migrated>0,
         'control_capacity_released':migrated>0,'migrated_job_count':migrated,
-        'migrated_result_count':results,'result_read_authority':results>0}
+        'migrated_result_count':results,'result_read_authority':results>0,
+        'migrated_inactive_grant_count':grants,'grant_authorization_restored':False}
 
 
 def require_stable_code(state):

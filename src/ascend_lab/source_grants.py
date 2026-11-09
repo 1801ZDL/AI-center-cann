@@ -66,7 +66,9 @@ class SourceGrants:
         value=json.loads(row[1])
         if principal.experiment_id and principal.experiment_id!=value['destination_experiment_id']:
             raise JobError('Source grant not found',404)
-        return {**value,'usable':value['state']=='active' and value['expires_at']>time.time()}
+        from grant_history import read
+        value=read(db,key,row[1])
+        return {**value,'usable':not value.get('history_archived',False) and value['state']=='active' and value['expires_at']>time.time()}
 
     def list(self,principal):
         principal.require('jobs:read')
@@ -74,9 +76,12 @@ class SourceGrants:
             # Bound the query as well as the response, including historical grants.
             rows=db.execute('SELECT id,data FROM source_grants WHERE owner=? ORDER BY rowid DESC LIMIT ?',
                 (principal.id,MAX_PER_OWNER)).fetchall()
-            ids=[key for key,raw in rows if not principal.experiment_id or
+            selected=[(key,raw) for key,raw in rows if not principal.experiment_id or
                 json.loads(raw)['destination_experiment_id']==principal.experiment_id][:100]
-            return {'grants':[self.get(db,key,principal) for key in ids],'limit':100,'capability':CAPABILITY}
+            from grant_history import read_many
+            values=read_many(db,selected)
+            return {'grants':[{**v,'usable':not v.get('history_archived',False) and v['state']=='active' and v['expires_at']>time.time()} for v in values],
+                    'limit':100,'capability':CAPABILITY}
 
     def source(self,db,key,owner,files):
         if not isinstance(key,str) or not re.fullmatch('job-[0-9a-f]{12}',key):raise JobError('Source job not found',404)
@@ -190,11 +195,14 @@ class SourceGrants:
         if not imports:return
         owner=spec['owner'];destination=spec.get('experiment_id')
         for key in sorted({x['source_grant'] for x in imports}):
-            row=db.execute('SELECT owner,data FROM source_grants WHERE id=?',(identity(key),)).fetchone()
+            row=db.execute('SELECT owner,data,state,expires_at FROM source_grants WHERE id=?',(identity(key),)).fetchone()
             if not row or row[0]!=owner:raise JobError('Source grant not found',404)
             grant=json.loads(row[1])
             if not destination or grant['destination_experiment_id']!=destination:raise JobError('Source grant not found',404)
-            if active and (grant['state']!='active' or grant['expires_at']<=time.time()):raise JobError('Source grant is revoked, expired or restored frozen',409)
+            from grant_history import REF,read
+            if active and (REF in grant or grant['state']!='active' or row[2]!='active'
+                           or row[3]!=grant['expires_at'] or row[3]<=time.time()):raise JobError('Source grant is revoked, expired or restored frozen',409)
+            grant=read(db,key,row[1])
             items=[x for x in imports if x['source_grant']==key];selected={x['name']:x for x in grant['files']}
             for item in items:
                 file=selected.get(item['name'])

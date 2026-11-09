@@ -63,14 +63,14 @@ def checked(value):
         if not isinstance(step, dict):
             raise ValueError('Invalid maintenance step')
         action = step.get('action')
-        if action in {'control_copy', 'control_verify', 'control_rotate','result_rotate'}:
+        if action in {'control_copy', 'control_verify', 'control_rotate','result_rotate','grant_rotate'}:
             if set(step) != {'action', 'plan'} or not isinstance(step['plan'], dict):
                 raise ValueError('An original control copy approval is required')
             from control_history import check
             check(step['plan'])
             if step['plan']['source']['bytes'] > MAX_SOURCE_BYTES:
                 raise ValueError('Automatic maintenance accepts copies at most 256KiB')
-            if action in {'control_rotate','result_rotate'}:
+            if action in {'control_rotate','result_rotate','grant_rotate'}:
                 key=(action,step['plan']['id'])
                 if key in rotations:raise ValueError('A control copy may be rotated only once per action in a maintenance plan')
                 rotations.add(key)
@@ -126,6 +126,13 @@ def operation(prefix, step, results, steps):
         if value['export_id']!=step['plan']['id'] or value['selection']!=step['plan']['selection']:
             raise ValueError('Result rotation differs from the original approved snapshot')
         return apply(prefix,value),True
+    if action=='grant_rotate':
+        from grant_history import apply
+        index=next(index for index,item in enumerate(steps) if item is step)
+        value=results[str(index)]['prepared_grant_rotation_plan']
+        if value['export_id']!=step['plan']['id'] or value['selection']!=step['plan']['selection']:
+            raise ValueError('Grant rotation differs from the original approved snapshot')
+        return apply(prefix,value),True
     if action == 'audit_export':
         from audit_retention import export
         return export(prefix, step['output'], max_rows=32, max_bytes=64 * 1024), True
@@ -138,6 +145,11 @@ def operation(prefix, step, results, steps):
 
 
 def prepare_rotation(prefix, step):
+    if step['action']=='grant_rotate':
+        from grant_history import plan as grant_plan
+        value=grant_plan(prefix,step['plan']['id'])
+        if value['selection']!=step['plan']['selection']:raise ValueError('Grant rotation changed the original producer selection')
+        return value
     if step['action']=='result_rotate':
         from result_history import plan as result_plan
         value=result_plan(prefix,step['plan']['id'])
@@ -347,10 +359,10 @@ def run_once(value, journal, *, apply=False, executor=operation, prepare=prepare
             if not blocker and now<state['last_invocation_epoch']:blocker='clock_regressed'
             if blocker:return {'status':'deferred','reason':blocker,'writes':True,**progress(value,state)}
         action=value['steps'][index]['action']
-        if action in {'control_rotate','result_rotate'} and str(index) not in state['results']:
+        if action in {'control_rotate','result_rotate','grant_rotate'} and str(index) not in state['results']:
             # Capture the derived CAS before-image before applying it. Replanning
             # after a committed mutation would lose idempotent crash recovery.
-            key='prepared_result_rotation_plan' if action=='result_rotate' else 'prepared_rotation_plan'
+            key={'control_rotate':'prepared_rotation_plan','result_rotate':'prepared_result_rotation_plan','grant_rotate':'prepared_grant_rotation_plan'}[action]
             state['results'][str(index)]={key:prepare(value['prefix'],value['steps'][index])}
             save()
             return {'status':'pending','step':index,'step_completed':False,'prepared':True,**progress(value,state)}

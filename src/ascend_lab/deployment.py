@@ -41,6 +41,7 @@ CORE.extend(['maintenance_policy.py','MAINTENANCE_POLICY.md'])
 CORE.append('MAINTENANCE_EXECUTION.md')
 CORE.append('result_history.py')
 CORE.append('RESULT_HISTORY.md')
+CORE.extend(['grant_history.py','GRANT_HISTORY.md'])
 EXECUTABLES={'servicectl','accessctl','workerctl','labctl','install-client'}
 EXECUTABLES.update({'opsctl','debugctl'})
 # Bundles always include these helpers, but earlier compatible service releases
@@ -54,6 +55,7 @@ OPTIONAL_ADMIN_FILES.update({'maintenance_policy.py','MAINTENANCE_POLICY.md'})
 OPTIONAL_ADMIN_FILES.add('MAINTENANCE_EXECUTION.md')
 OPTIONAL_ADMIN_FILES.add('result_history.py')
 OPTIONAL_ADMIN_FILES.add('RESULT_HISTORY.md')
+OPTIONAL_ADMIN_FILES.update({'grant_history.py','GRANT_HISTORY.md'})
 
 
 # Older intact services do not need the optional personal diagnostic reader.
