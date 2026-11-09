@@ -343,6 +343,7 @@ def status(jobs,principal,identifier):
     with jobs.connect() as db:
         found=rows(db).get(identifier)
         migrated=db.execute('SELECT count(*) FROM control_rotation_jobs WHERE export_id=?',(identifier,)).fetchone()[0] if exists(db,'control_rotation_jobs') else 0
+        results=db.execute('SELECT count(*) FROM result_history_rows WHERE export_id=?',(identifier,)).fetchone()[0] if exists(db,'result_history_rows') else 0
     if found is None:raise JobError('Control export not found',404)
     state,record=found;verified=False;proof={}
     if state in {'verified','restore_frozen'}:
@@ -350,7 +351,8 @@ def status(jobs,principal,identifier):
         except (DeployError,OSError,ValueError):raise JobError('Historical control snapshot is unavailable',409) from None
     return {**response(record,state,verified=verified),'readonly_mount':proof.get('readonly_mount'),
         'selected_job_count':len(record['plan']['selection']),'normal_read_authority':migrated>0,
-        'control_capacity_released':migrated>0,'migrated_job_count':migrated}
+        'control_capacity_released':migrated>0,'migrated_job_count':migrated,
+        'migrated_result_count':results,'result_read_authority':results>0}
 
 
 def require_stable_code(state):

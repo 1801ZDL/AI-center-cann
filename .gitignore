@@ -50,3 +50,4 @@ __pycache__/
 !/reports/repository-layout-check.json
 !/reports/retention-policy-check.json
 !/reports/maintenance-execution-check.json
+!/reports/result-history-check.json

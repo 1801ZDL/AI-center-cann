@@ -281,7 +281,9 @@ def apply(prefix,value,maximum_entries=256):
         retained=65536+len(fs.encode(job))+len(fs.encode(record))
         if db.execute("SELECT 1 FROM sqlite_master WHERE name='workflow_results'").fetchone():
             row=db.execute('SELECT record FROM workflow_results WHERE job_id=?',(job['id'],)).fetchone()
-            if row:retained+=len(row[0].encode())
+            if row:
+                from result_history import resolve
+                retained+=len(resolve(db,job['id'],row[0]).encode())
         retained=min(allocation[1],retained)
         record.update(hot_state='retired',retained_control_bytes=retained,released_bytes=allocation[1]-retained,retired_at=time.time())
         db.execute('UPDATE storage_allocations SET bytes=?,settled=1 WHERE kind="archive" AND id=?',(retained,job['id']))

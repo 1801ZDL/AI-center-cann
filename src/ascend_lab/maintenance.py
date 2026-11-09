@@ -360,6 +360,8 @@ def restore(prefix,archive_path,new_state,max_bytes=10*1024**3,payload_config=No
                 require_export_history(old,stage)
                 from control_rotation import require_history as require_rotation_history
                 require_rotation_history(old,stage)
+                from result_history import require_history as require_result_history
+                require_result_history(old,stage)
                 from notifications import require_history as require_notification_history
                 require_notification_history(old,stage)
                 from interactive_debug import require_history as require_debug_history
@@ -489,6 +491,8 @@ def require_control_storage(config,role,manifest):
 
 
 def require_features(state,role,manifest,installation=None):
+    from result_history import require_compatible as require_result_history
+    require_result_history(state,role,manifest)
     from notifications import require_compatible as require_notifications
     require_notifications(state,role,manifest)
     from interactive_debug import require_compatible as require_debug

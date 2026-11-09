@@ -122,7 +122,9 @@ class Lifecycle:
         size=len(fs.encode(compact))+len(fs.encode({k:v for k,v in subject.items() if not k.startswith('_')}))
         if record['kind']=='archive':
             row=db.execute('SELECT record FROM workflow_results WHERE job_id=?',(record['id'],)).fetchone()
-            if row:size+=len(row[0].encode())
+            if row:
+                from result_history import resolve
+                size+=len(resolve(db,record['id'],row[0]).encode())
         return 65536+size
 
     def plan(self,principal,body):

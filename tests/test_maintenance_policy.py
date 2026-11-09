@@ -87,7 +87,7 @@ class RetentionTests(unittest.TestCase):
                 result=retention.plan(folder,self.settings,epoch=NOW)
         self.assertEqual(result['selected'],[ident]);self.assertFalse(result['automatic_execution'])
         value=upkeep.checked(result['maintenance_plan'])
-        self.assertEqual([s['action'] for s in value['steps']],['control_copy','control_verify','control_rotate'])
+        self.assertEqual([s['action'] for s in value['steps']],['control_copy','control_verify','control_rotate','result_rotate'])
         self.assertEqual(value['steps'][0]['plan']['selection'],[ident])
         copies.check(value['steps'][0]['plan'])
         self.assertEqual(list(self.db.iterdump()),before);self.assertEqual(self.db.total_changes,changes)

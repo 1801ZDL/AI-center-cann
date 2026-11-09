@@ -67,6 +67,9 @@ preview不写文件。真实执行要求匹配版本的已安装中央；底层�
 - control_copy/control_verify/control_rotate：三步均绑定同一个原 control_history 计划。
   原选择最多32任务、总正文最多256KiB，每次copy最多64KiB；verify之后才沿原规则迁出。
   rotate再次核对原任务集合。未满足原 purge/cold-retired 条件的任务不会被自动回收。
+- result_rotate：同样绑定原control_history计划，在任务正文迁出后先保存派生计划再按
+  CAS执行。[结果正文读取](RESULT_HISTORY.md)保留当前ACL、分页和CSV，不新增回收额度或授权。
+  旧三步批准对象保持原样。
 
 计划journal保存在prefix/maintenance-runs/PLAN.json，原意图先落盘；失败或超时保留原步，
 下次复用既有幂等操作，不更换任务ID、计划或归档。每计划最多32步，完成后不继续生成新计划。

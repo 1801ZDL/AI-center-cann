@@ -46,6 +46,10 @@ def main():
     p.add_argument('--plan',required=True);p.add_argument('--contract',required=True)
     p = subs.add_parser('maintenance-status',help='Read original journal progress without advancing it')
     p.add_argument('--plan',required=True)
+    p = subs.add_parser('result-history-plan',help='Preview result-body rotation against an original migrated job copy')
+    p.add_argument('--prefix',required=True);p.add_argument('--export-id',required=True)
+    p = subs.add_parser('result-history-apply',help='Apply one exact offline result-body migration approval')
+    p.add_argument('--plan',required=True)
     p = subs.add_parser('notify-once', help='Optional one-event delivery; never called by the scheduler')
     p.add_argument('--prefix', required=True)
     p.add_argument('--destinations', required=True)
@@ -62,6 +66,13 @@ def main():
     if args.action=='maintenance-window':
         from maintenance_runner import with_execution
         return with_execution(private_json(args.plan),private_json(args.contract))
+    if args.action in {'result-history-plan','result-history-apply'}:
+        from result_history import plan,apply
+        if args.action=='result-history-plan':return plan(args.prefix,args.export_id)
+        value=private_json(args.plan)
+        from result_history import check
+        check(value)
+        return apply(value['binding']['prefix'],value)
     if args.action == 'maintenance-select':
         from deployment import require_root,verify
         require_root()

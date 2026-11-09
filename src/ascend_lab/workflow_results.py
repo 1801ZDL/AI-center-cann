@@ -26,6 +26,8 @@ class ResultStore:
             db.execute('CREATE TABLE IF NOT EXISTS workflow_results(job_id TEXT PRIMARY KEY,record TEXT NOT NULL)')
 
     def unstarted_dependency(self,job,result,db):
+        from result_history import guard_write
+        guard_write(db,job['id'])
         from jobs import now,atomic_json
         row={'schema':'ascend-lab-record/v1','job_id':job['id'],'owner':job['owner'],'project':job['project'],
             'kind':WORKFLOWS[job['template']],'name':job['name'],'passed':False,'state':'cancelled','recorded_at':now(),
@@ -38,6 +40,8 @@ class ResultStore:
         return row
 
     def record(self,job,execution,db):
+        from result_history import guard_write
+        guard_write(db,job['id'])
         from jobs import atomic_json,now
         directory=self.jobs.directory(job['id']);kind=WORKFLOWS[job['template']]
         row={'schema':'ascend-lab-record/v1','job_id':job['id'],'owner':job['owner'],'project':job['project'],
@@ -120,24 +124,31 @@ class ResultStore:
             with self.jobs.connect() as db:
                 query=' FROM workflow_results r JOIN jobs j ON j.id=r.job_id WHERE '+where
                 total=db.execute('SELECT count(*)'+query,args).fetchone()[0]
-                page=db.execute('SELECT j.id,j.owner,j.state,j.data,r.record'+query+' ORDER BY r.rowid DESC LIMIT ? OFFSET ?',args+[limit,offset])
+                page=list(db.execute('SELECT j.id,j.owner,j.state,j.data,r.record'+query+' ORDER BY r.rowid DESC LIMIT ? OFFSET ?',args+[limit,offset]))
+                # Authorization and SQL kind/order/page selection precede all
+                # private snapshot reads. Group copies only within this page.
+                from result_history import read_many
+                restored=read_many(db,((item[0],item[4]) for item in page))
                 records=[]
                 from npu_conditions import fallback
-                for item in page:
-                    job=decode(item[:4]);row=json.loads(item[4])
+                for item,row in zip(page,restored):
+                    job=decode(item[:4])
                     if (row.get('job_id'),row.get('owner'),row.get('project'))!=(job['id'],job['owner'],job.get('project','personal:'+job['owner'])):
                         raise JobError('Result identity differs from its retained job',409)
                     row['archive_state']=job.get('archive_status',{}).get('state','available')
                     row.setdefault('device_conditions',fallback(job));records.append(row)
             return {'rows':records,'total':total,'limit':limit,'offset':offset}
         visible={job['id']:job for job in self.jobs.access.readable_jobs(principal,self.jobs.all())}
-        with self.jobs.connect() as db:records=[json.loads(row[0]) for row in db.execute('SELECT record FROM workflow_results ORDER BY rowid DESC')]
-        records=[row for row in records if row['job_id'] in visible and (kind is None or row['kind']==kind)]
+        with self.jobs.connect() as db:
+            rows=[(ident,raw) for ident,raw in db.execute('SELECT job_id,record FROM workflow_results ORDER BY rowid DESC')
+                  if ident in visible and (kind is None or json.loads(raw)['kind']==kind)]
+            from result_history import read_many
+            records=read_many(db,rows[offset:offset+limit]);total=len(rows)
         from npu_conditions import fallback
         for row in records:
             row['archive_state']=visible[row['job_id']].get('archive_status',{}).get('state','available')
             row.setdefault('device_conditions',fallback(visible[row['job_id']]))
-        return {'rows':records[offset:offset+limit],'total':len(records),'limit':limit,'offset':offset}
+        return {'rows':records,'total':total,'limit':limit,'offset':offset}
 
     def csv(self,principal,kind=None):
         from jobs import JobError

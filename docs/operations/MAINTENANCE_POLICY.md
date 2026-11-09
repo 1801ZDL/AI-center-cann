@@ -76,7 +76,9 @@ next_after_rowid非null时可显式用`--after-rowid N`继续有界扫描；无�
 选择、原副本计划生成共用一次已停止中央的原数据库事务，避免两个离线锁之间的状态变化。
 原副本预算、128份总上限、未完成副本优先恢复、安装/配置/DB身份及匹配代码检查全部保留。
 所选任务及关联数据的完整副本仍限256KiB；超出时拒绝，应减小max_jobs，不截断关联数据。
-生成的三步为control_copy、control_verify、control_rotate，真正执行继续使用原保守协议。
+新生成计划依次为control_copy、control_verify、control_rotate、result_rotate；
+末步沿[结果正文迁出](RESULT_HISTORY.md)协议，没有结果或正文较小时可无操作完成。
+旧三步批准对象不会自动改变，真正执行继续使用原保守协议。
 
 ## 本轮证据与未完成范围
 

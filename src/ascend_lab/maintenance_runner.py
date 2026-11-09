@@ -63,16 +63,17 @@ def checked(value):
         if not isinstance(step, dict):
             raise ValueError('Invalid maintenance step')
         action = step.get('action')
-        if action in {'control_copy', 'control_verify', 'control_rotate'}:
+        if action in {'control_copy', 'control_verify', 'control_rotate','result_rotate'}:
             if set(step) != {'action', 'plan'} or not isinstance(step['plan'], dict):
                 raise ValueError('An original control copy approval is required')
             from control_history import check
             check(step['plan'])
             if step['plan']['source']['bytes'] > MAX_SOURCE_BYTES:
                 raise ValueError('Automatic maintenance accepts copies at most 256KiB')
-            if action=='control_rotate':
-                if step['plan']['id'] in rotations:raise ValueError('A control copy may be rotated only once per maintenance plan')
-                rotations.add(step['plan']['id'])
+            if action in {'control_rotate','result_rotate'}:
+                key=(action,step['plan']['id'])
+                if key in rotations:raise ValueError('A control copy may be rotated only once per action in a maintenance plan')
+                rotations.add(key)
         elif action == 'audit_export':
             if set(step) != {'action', 'output'} or not isinstance(step['output'], str) or not step['output'].startswith('/'):
                 raise ValueError('Audit export needs a protected absolute destination')
@@ -118,6 +119,13 @@ def operation(prefix, step, results, steps):
         if value['export_id']!=original['id']:
             raise ValueError('Prepared rotation references another original control copy')
         return apply(prefix, value), True
+    if action=='result_rotate':
+        from result_history import apply
+        index=next(index for index,item in enumerate(steps) if item is step)
+        value=results[str(index)]['prepared_result_rotation_plan']
+        if value['export_id']!=step['plan']['id'] or value['selection']!=step['plan']['selection']:
+            raise ValueError('Result rotation differs from the original approved snapshot')
+        return apply(prefix,value),True
     if action == 'audit_export':
         from audit_retention import export
         return export(prefix, step['output'], max_rows=32, max_bytes=64 * 1024), True
@@ -130,6 +138,11 @@ def operation(prefix, step, results, steps):
 
 
 def prepare_rotation(prefix, step):
+    if step['action']=='result_rotate':
+        from result_history import plan as result_plan
+        value=result_plan(prefix,step['plan']['id'])
+        if value['selection']!=step['plan']['selection']:raise ValueError('Result rotation changed the original job selection')
+        return value
     from control_rotation import plan as rotate_plan
     value=rotate_plan(prefix,step['plan']['id'])
     if value['export_id']!=step['plan']['id'] or [item['job_id'] for item in value['indexes']]!=step['plan']['selection']:
@@ -333,10 +346,12 @@ def run_once(value, journal, *, apply=False, executor=operation, prepare=prepare
             now=clock();blocker=execution_gate(contract,now)
             if not blocker and now<state['last_invocation_epoch']:blocker='clock_regressed'
             if blocker:return {'status':'deferred','reason':blocker,'writes':True,**progress(value,state)}
-        if value['steps'][index]['action']=='control_rotate' and str(index) not in state['results']:
+        action=value['steps'][index]['action']
+        if action in {'control_rotate','result_rotate'} and str(index) not in state['results']:
             # Capture the derived CAS before-image before applying it. Replanning
             # after a committed mutation would lose idempotent crash recovery.
-            state['results'][str(index)]={'prepared_rotation_plan':prepare(value['prefix'],value['steps'][index])}
+            key='prepared_result_rotation_plan' if action=='result_rotate' else 'prepared_rotation_plan'
+            state['results'][str(index)]={key:prepare(value['prefix'],value['steps'][index])}
             save()
             return {'status':'pending','step':index,'step_completed':False,'prepared':True,**progress(value,state)}
         result, complete = executor(value['prefix'], value['steps'][index], state['results'], value['steps'])

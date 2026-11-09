@@ -11,13 +11,19 @@ import sys
 import tempfile
 import time
 import unittest
+from contextlib import nullcontext
 from unittest.mock import patch
 
 
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--module',action='append',choices=['test_core_operations','test_collector_safety','test_read_retry','test_repository_layout','test_maintenance_policy','test_maintenance_execution'])
+    parser.add_argument('--module',action='append',choices=['test_core_operations','test_collector_safety','test_read_retry','test_repository_layout','test_maintenance_policy','test_maintenance_execution','test_result_history'])
+    parser.add_argument('--direct-source',action='store_true',help='Explicit supported focused modules only; skip legacy source snapshot IO')
     args=parser.parse_args()
+    direct={'test_core_operations','test_collector_safety','test_read_retry','test_repository_layout',
+            'test_maintenance_policy','test_maintenance_execution','test_result_history'}
+    if args.direct_source and (not args.module or set(args.module)-direct):
+        parser.error('--direct-source needs explicit supported source modules')
     os.umask(0o077);os.nice(10);os.sched_setaffinity(0,{min(os.sched_getaffinity(0))})
     resource.setrlimit(resource.RLIMIT_AS,(256*1024**2,256*1024**2))
     resource.setrlimit(resource.RLIMIT_CPU,(5,5));signal.alarm(8)
@@ -27,10 +33,12 @@ def main():
     from source_layout import snapshot
     os.environ['ASCEND_LAB_REPOSITORY_ROOT']=str(root)
     output=io.StringIO();started=time.monotonic()
-    with tempfile.TemporaryDirectory(prefix='ascend-lab-source-check-') as folder:
-        info=snapshot(root,folder)
-        sys.path[:0]=[folder,str(Path(folder)/'tests')]
-        modules=args.module or ['test_core_operations','test_collector_safety','test_read_retry','test_repository_layout','test_maintenance_policy','test_maintenance_execution']
+    print(json.dumps({'phase':'source_setup','direct_source':args.direct_source}),flush=True)
+    with (nullcontext(None) if args.direct_source else tempfile.TemporaryDirectory(prefix='ascend-lab-source-check-')) as folder:
+        info={'files':0,'bytes':0,'mode':'direct_source'} if args.direct_source else snapshot(root,folder)
+        sys.path[:0]=[str(root/'src/ascend_lab'),str(root/'tests')] if args.direct_source else [folder,str(Path(folder)/'tests')]
+        print(json.dumps({'phase':'source_ready','snapshot':info}),flush=True)
+        modules=args.module or ['test_core_operations','test_collector_safety','test_read_retry','test_repository_layout','test_maintenance_policy','test_maintenance_execution','test_result_history']
         with patch('socket.socket',side_effect=AssertionError('Network forbidden in focused checks')), \
              patch('subprocess.Popen',side_effect=AssertionError('Subprocess forbidden in focused checks')), \
              patch('threading.Thread.start',side_effect=AssertionError('Background threads forbidden in focused checks')):
